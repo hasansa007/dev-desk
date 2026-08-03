@@ -82,10 +82,20 @@ src/
 - Minimize client bundle: audit with `@next/bundle-analyzer`
 - Avoid `"use client"` at layout level — pushes all children into client bundle
 
-### 9. Deployment (Vercel)
-- Environment variables in Vercel dashboard, mirrored in `.env.local` (gitignored)
-- Preview deployments on every PR — use for testing before merge
-- `vercel --prod` or push to main for production deploy
+### 9. Release — pre prod and prod (Vercel)
+- **Name both environments and the branch that reaches each.** Phase 14 merges to PRE PROD; Phase 16
+  promotes to PROD. If one branch does both, say so explicitly — that is a single-stage model and
+  the merge IS the production gate.
+- **Write the branch model into a release runbook** (`docs/deploy-and-staging.md` or similar). Some
+  hosts release prod on the merge itself, others need a manual step; getting it wrong means either
+  reaching production by surprise or believing you released when you didn't.
+- Environment variables per environment in the Vercel dashboard, mirrored in `.env.local`
+  (gitignored). **Note which values DIFFER between pre prod and prod** — that difference is exactly
+  where "verified in pre prod" stops being evidence.
+- Preview deployments on every PR — use them for review before the pre-prod merge.
+- Production: `vercel --prod`, or the promotion merge when auto-deploy is wired.
+- **Migrations reach prod BEFORE the promotion merge**, never after — the merge releases code that
+  expects the new schema.
 
 ### 10. Risks
 - **Server/client boundary confusion** — component marked `"use client"` that imports a server-only module (crashes at runtime)
