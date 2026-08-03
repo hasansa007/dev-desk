@@ -32,20 +32,53 @@ already reaches production. Say so explicitly, and skip Phase 10.5.
 
 ---
 
-## Always load from `shared/pipeline.md`
+## What to load from `shared/pipeline.md`
 
-Every entry point in this family loads these, whatever phase it then runs:
+**Always, for every entry point** — these are cheap and they govern how you work:
 
-| Section | Why it is never optional |
+| Section | Why |
 |---|---|
 | Guiding Principles | Simplicity First, Stop on Ambiguity, Surgical Editing |
 | Right-Size the Process | pick Light / Standard / Deep and SAY which |
-| Phase 0 — Context Load | `PROJECT_MAP.md`, `ARCHITECTURE.md`, existing spec |
-| Phase 2 — Tech Stack & Project Discovery | stack detect → the matching `pipeline-<platform>.md` |
 | Universal Rules | commit hygiene, no AI attribution, no worktrees in this repo |
-| Output Header Format | the response header |
+
+**Conditionally** — a sibling loads these only when its own phase actually consumes them.
+Right-Size applies to the preamble too: loading discovery for a read-only gate is the ceremony
+this pipeline exists to refuse.
+
+| Section | Load it when | So: |
+|---|---|---|
+| **Phase 0 — Context Load** | your phase reads or changes code, and needs to know the system | `dev-verify`, `dev-review` |
+| **Phase 2 — Tech Stack & Discovery** | **your phase has a platform overlay.** `pipeline-<platform>.md` defines additions to Phases 8, 9 and 10 ONLY — no other phase has one, so no other phase needs the stack detected | `dev-verify` (9), `dev-pre-prod` (10) |
+
+| Sibling | Phase | Loads |
+|---|---|---|
+| `dev` | 0–10.5 | everything — it runs every phase |
+| `dev-verify` | 9 | always + Phase 0 + Phase 2 → platform pipeline |
+| `dev-pre-prod` | 10 | always + Phase 2 → platform pipeline |
+| `dev-review` | 10.2 | always + Phase 0 |
+| `dev-docs` | 9.4 | always only |
+| `dev-prod` | 10.5 | always only — plus the release runbook, per Workspace Resolution above |
+
+`dev-docs` reads `PROJECT_MAP.md` as its *subject*, not as context load — checking whether it is
+current is the job, not the preparation.
 
 Then execute only the phase(s) your own skill file names.
+
+---
+
+## Response header
+
+The pipeline's full `Output Header Format` (Source / Type / Branch / Stack / Platform pipeline /
+Scope / Context) is for a `dev` run, where every field is populated. A sibling enters mid-stream
+with most of them empty, so it opens with **one line** instead:
+
+```
+Dev · <sibling> — Phase <N> | <repo> | <branch or diff> | <tier>
+```
+
+State any assumption you had to make in that same line or immediately under it. Never pad it with
+fields you inferred rather than resolved.
 
 ---
 
