@@ -12,19 +12,19 @@ allowed-tools: [gh, git]
 
 # Dev — Review Cycle
 
-Standalone entry into **Phase 10.2 — Review Cycle** of the dev pipeline.
+Standalone entry into **Phase 15 — Review Cycle** of the dev pipeline.
 
 ## This is a loop, not a stage
 
 Review comments arrive while the PR is still **OPEN**. This skill's last step is `push`, never
-`merge` — you re-enter Phase 10's pre-merge gates and go round again until the review is clean.
+`merge` — you re-enter Phase 14's pre-merge gates and go round again until the review is clean.
 
 ```
-dev-pre-prod (Phase 10)  push → PR → gates → merge → PRE PROD
+dev-pre-prod (Phase 14)  push → PR → gates → merge → PRE PROD
                               ↑              │
-dev-review   (Phase 10.2) ────┘  fix → push  │   ← loops back, never forward
+dev-review   (Phase 15) ────┘  fix → push  │   ← loops back, never forward
                                              ↓
-dev-prod     (Phase 10.5)              promote → PROD
+dev-prod     (Phase 16)              promote → PROD
 ```
 
 It runs **before** pre prod, and long before any production promotion. If you reached for this
@@ -37,8 +37,8 @@ A PR number or URL that has review comments on it.
 ## Run
 
 1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it.
-2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 10.2 — Review Cycle**.
-3. After the fixes land and are pushed, **return to Phase 10's pre-merge gates** — the diff
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 15 — Review Cycle**.
+3. After the fixes land and are pushed, **return to Phase 14's pre-merge gates** — the diff
    changed, so the review that was clean no longer is.
 
 ## The protocol
@@ -56,7 +56,7 @@ Follow `receiving-code-review` — technical rigor, not performative agreement:
 
 - **New commits, never `git commit --amend`.** Reviewers need to see what changed since their pass.
 - **Never force-push** without an explicit request.
-- **Re-verify if logic changed.** Re-run the affected Phase 9 rows (`dev-verify`) — cosmetic-only
+- **Re-verify if logic changed.** Re-run the affected Phase 11 rows (`dev-verify`) — cosmetic-only
   fixes (comments, imports, formatting) can skip it.
 - **Re-run the docs gate if the fixes touched a number, a decision or an env var** (`dev-docs`).
   Review fixes are a classic way for an ADR to drift out of date silently.

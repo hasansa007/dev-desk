@@ -12,7 +12,7 @@ allowed-tools: [gh, git]
 
 # Dev — Pre Prod
 
-Standalone entry into **Phase 10 — PR Creation → Review → Merge → Pre Prod**.
+Standalone entry into **Phase 14 — PR Creation → Review → Merge → Pre Prod**.
 
 ## Input
 
@@ -23,8 +23,8 @@ A branch with the work committed. The base is the **pre-prod branch** resolved b
 
 1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it. **State the resolved base branch
    before doing anything** — getting this wrong means a PR that never deploys.
-2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 10** in full, including the
-   `Phase 10 Additions` from `dev/SKILL.md` when the source is a GitHub issue (`Closes #N`, labels).
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 14** in full, including the
+   `Phase 14 Additions` from `dev/SKILL.md` when the source is a GitHub issue (`Closes #N`, labels).
 
 ## The sequence
 
@@ -35,9 +35,9 @@ sequence autonomously, not for a one-line change.
 
 **Pre-merge gates, all required:**
 
-0. **Phase 9.4 — docs & ADRs** (`dev-docs`). Prices, limits, decisions with rejected
+0. **Phase 12 — docs & ADRs** (`dev-docs`). Prices, limits, decisions with rejected
    alternatives, env vars, migrations and deferred work recorded BEFORE the merge.
-1. **Phase 9.5 review** — `/code-review` + a spec-compliance check against the full PR diff.
+1. **Phase 13 review** — `/code-review` + a spec-compliance check against the full PR diff.
    Add `security-review` when the diff touches money, auth, migrations, uploads, or untrusted input.
 2. Fix every **Critical** and **Important** finding; re-verify if logic changed.
 3. **Do NOT merge** while any Critical/Important finding is open. "It's small / I already
@@ -47,15 +47,15 @@ sequence autonomously, not for a one-line change.
 ## Guards
 
 - **This ends at PRE PROD, not production.** Do not report the work as "shipped" or "live". If the
-  repo has a two-stage model, production is `dev-prod` (Phase 10.5) and it has its own gate.
+  repo has a two-stage model, production is `dev-prod` (Phase 16) and it has its own gate.
 - **The runbook overrides this sequence.** If `docs/deploy-and-staging.md` or similar exists, read
   it — some repos release prod on the merge itself, in which case this skill IS the prod release
-  and needs the Phase 10.5 confirmation instead.
+  and needs the Phase 16 confirmation instead.
 - **Carry the verification evidence into the PR body.** `## VERIFICATION`, `## DOCS`, and
-  `## HOW TO TEST` are required sections — the checklist left in chat is a failed Phase 9.
+  `## HOW TO TEST` are required sections — the checklist left in chat is a failed Phase 11.
 - Never add `Co-Authored-By` trailers or AI-attribution footers.
 
 ## Next
 
-`dev-review` (Phase 10.2) if reviewers request changes — it loops back into these gates.
-`dev-prod` (Phase 10.5) to promote, later, as a separate decision.
+`dev-review` (Phase 15) if reviewers request changes — it loops back into these gates.
+`dev-prod` (Phase 16) to promote, later, as a separate decision.

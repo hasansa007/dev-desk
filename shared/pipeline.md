@@ -32,7 +32,7 @@ The deep phases are for work that earns them. Triage every task into a tier BEFO
 |---|---|---|
 | **Light** (default) | Small diff, low blast radius, no money/security/migration | Existing test suite + a quick self-review of the diff. NO subagent reviews, NO browser-automation pass, no checklist ceremony. Phase 4 = only as much investigation as the bug demands. |
 | **Standard** | Multi-file features, user-visible flows | Tests + run the ONE most valuable live check (the bug repro or the new flow), not the full matrix. Self-review; subagent review only if something feels off. |
-| **Deep** | Money paths, auth/security, migrations, wide refactors, novel-design features — or the developer asks | The full pipeline: exploration fan-out (Phase 2), architecture alternatives (Phase 4.5), evidence ladder, agent-run checklist, verified AI review. |
+| **Deep** | Money paths, auth/security, migrations, wide refactors, novel-design features — or the developer asks | The full pipeline: exploration fan-out (Phase 2), architecture alternatives (Phase 6), evidence ladder, agent-run checklist, verified AI review. |
 
 When in doubt between two tiers, pick the lighter one — the developer can always say "go deeper". A slow pipeline that gets skipped protects nothing.
 
@@ -40,16 +40,16 @@ When in doubt between two tiers, pick the lighter one — the developer can alwa
 
 ---
 
-## Phase 0 — Context Load
+## Phase 1 — Context Load
 
 Runs before everything else. Reads persistent project context to skip re-discovery.
 
 1. Check for `PROJECT_MAP.md` → load `TECH_STACK`, `SYSTEM_FLOW`, `ORPHANS & PENDING`
 2. Check for `ARCHITECTURE.md` → load architectural decisions and conventions
-3. Check for `specs/[feature-slug].md` → if found, resume from existing spec (skip Phase 5; for BUGS, Phase 4's reproduce-first step is never skipped — a spec is a plan, not a reproduction)
+3. Check for `specs/[feature-slug].md` → if found, resume from existing spec (skip Phase 7; for BUGS, Phase 4's reproduce-first step is never skipped — a spec is a plan, not a reproduction)
 4. Report what was loaded: e.g. `"Loaded PROJECT_MAP + ARCHITECTURE. No existing spec found."`
 
-If a spec is found and Phase 6 or Phase 7 is the next step, skip straight there.
+If a spec is found and Phase 8 or Phase 9 is the next step, skip straight there.
 
 ---
 
@@ -57,7 +57,7 @@ If a spec is found and Phase 6 or Phase 7 is the next step, skip straight there.
 
 Always run, regardless of source:
 
-1. **Read `PROJECT_MAP.md`** if it exists — extract `TECH_STACK` and `SYSTEM_FLOW`. If absent, create it in Phase 5.
+1. **Read `PROJECT_MAP.md`** if it exists — extract `TECH_STACK` and `SYSTEM_FLOW`. If absent, create it in Phase 7.
 
 2. **Ambiguity check:** If the requirements have any ambiguity (unclear scope, missing context, conflicting signals), stop and ask. Do not choose a path silently.
 
@@ -75,7 +75,7 @@ Always run, regardless of source:
 5. Identify affected platforms from the ticket/feature description.
 6. Identify relevant files, models, DB tables, or modules likely touched.
 
-**After detecting the stack, read the matching platform pipeline and apply its additions to Phases 8, 9, and 10:**
+**After detecting the stack, read the matching platform pipeline and apply its additions to Phases 10, 11, and 14:**
 
 | Detected stack | Platform pipeline |
 |---|---|
@@ -124,17 +124,17 @@ Work the evidence layers in order; stop at the first layer that yields a confirm
 2. **Hypothesis elimination** — list the usual suspects for the symptom class and rule them out one by one with targeted greps/reads, not intuition.
 3. **Live probes** — replay the exact calls the client makes, as the real role: REST/RPC with a real token, direct DB reads, seeded fixtures. A probe that surprises you is a probe to distrust first.
 4. **Live UI reproduction** — drive the real running app:
-   - **Web:** Chrome DevTools MCP (`chrome-devtools` tools) — open the page, read console + network, inject `initScript` error listeners to capture what the console alone won't attribute, screenshot states. Connect to the app the developer already runs — NEVER start a competing dev server. **Kill the MCP's debug browser when the probe is over** — teardown rule + commands in Phase 9.
+   - **Web:** Chrome DevTools MCP (`chrome-devtools` tools) — open the page, read console + network, inject `initScript` error listeners to capture what the console alone won't attribute, screenshot states. Connect to the app the developer already runs — NEVER start a competing dev server. **Kill the MCP's debug browser when the probe is over** — teardown rule + commands in Phase 11.
    - **Mobile:** build/launch via the `run` skill; drive + capture per the platform pipeline file (adb/uiautomator on Android, simctl on iOS).
 5. **Environment check** — a wedged dev server, stale cache, or schema drift can BE the bug or mask it; verify the environment answers before blaming code.
 
-Capture the confirmed reproduction as a failing test when the surface allows it — it becomes Phase 7's RED.
+Capture the confirmed reproduction as a failing test when the surface allows it — it becomes Phase 9's RED.
 
 ---
 
-## Phase 4.2 — Discuss Before Building (REQUIRED)
+## Phase 5 — Discuss Before Building (REQUIRED)
 
-**This gate comes before any design, plan, or code.** Phase 4.5 designs, Phase 5 plans, Phase 7
+**This gate comes before any design, plan, or code.** Phase 6 designs, Phase 7 plans, Phase 9
 builds — this is where you find out whether the right problem is even being solved. It runs here,
 after Phase 4, so the discussion is informed: for bugs the root cause is confirmed; for features
 the affected area is understood. (Phase 3's branch already exists by now — that's fine, a branch
@@ -152,7 +152,7 @@ How to run it:
   it isn't a discussion yet.
 - **Step by step — one thread at a time.** Do not dump a roadmap and ask for approval of all of it.
 - **Name ambiguities and contradictions explicitly, and STOP.** Never implement a silent guess;
-  a wrong assumption discovered at Phase 7 costs the whole branch.
+  a wrong assumption discovered at Phase 9 costs the whole branch.
 - **Propose, then wait.** "Go ahead" is a specific thing the developer says. Inferring it from
   their interest in the topic is how unrequested work gets built.
 
@@ -173,7 +173,7 @@ settle the design here — before the plan, and long before the build:
 
 ---
 
-## Phase 4.5 — Architecture Alternatives (conditional)
+## Phase 6 — Architecture Alternatives (conditional)
 
 **When:** Deep-tier features, genuinely novel design decisions (new module, new data flow, several
 plausible shapes), or the developer asks. **Skip** for bugs and for features with one obvious shape —
@@ -188,20 +188,20 @@ a fan-out that can only produce one answer three times is ceremony.
 3. Present to the developer: one-paragraph summary per approach, a trade-offs comparison, **your
    recommendation with reasoning** — then let them pick. Stop on Ambiguity applies: when the
    approaches genuinely differ, never pick silently.
-4. **Write down the losers NOW.** The rejected approaches + why they lost are Phase 9.4's ADR
+4. **Write down the losers NOW.** The rejected approaches + why they lost are Phase 12's ADR
    rejected-alternatives section, and the arithmetic is only fresh once. Capture it in the spec
    (`## Rejected Alternatives`) so the ADR is a copy job, not a reconstruction.
 
-The winning approach seeds Phase 5's plan.
+The winning approach seeds Phase 7's plan.
 
 ---
 
-## Phase 5 — Plan Output
+## Phase 7 — Plan Output
 
-> Phase 4.2 already settled *what* to build and, for UI work, *what it looks like*. This phase is
+> Phase 5 already settled *what* to build and, for UI work, *what it looks like*. This phase is
 > only the written plan. If you arrived here without that go-ahead, go back.
 
-Use the `writing-plans` skill to create a detailed implementation plan (seeded by Phase 4.5's
+Use the `writing-plans` skill to create a detailed implementation plan (seeded by Phase 6's
 winning approach when that phase ran). The plan must include:
 
 - **Exact file paths** for every file to be created or modified
@@ -251,7 +251,7 @@ After presenting the plan: ask "Any clarifications or changes before I start imp
 
 ---
 
-## Phase 6 — Task Breakdown
+## Phase 8 — Task Breakdown
 
 ```
 [ ] 1. <task> — <exact file path(s)> — concrete description of change
@@ -263,7 +263,7 @@ Order by dependency. Each task should be small and focused (one logical change).
 
 ---
 
-## Phase 7 — Implement
+## Phase 9 — Implement
 
 ### Pre-edit — Impact Analysis
 Before touching any file:
@@ -300,7 +300,7 @@ Print summary of changed files, any assumptions made, and flag any incomplete fe
 
 ---
 
-## Phase 8 — Pre-PR Quality Checks
+## Phase 10 — Pre-PR Quality Checks
 
 Scoped to `git diff <BASE_BRANCH>...HEAD`.
 
@@ -325,7 +325,7 @@ For each file in the diff: "Does any change here silently affect an existing cal
 
 ---
 
-## Phase 9 — Verification Gate (agent-run)
+## Phase 11 — Verification Gate (agent-run)
 
 After implementation and commit, **pause** before pushing. Apply `verification-before-completion` — no claims without fresh evidence.
 
@@ -403,7 +403,7 @@ makes one green page maximally misleading.
 
 Presenting the table in chat only is a FAILURE of this phase — the chat scrolls away and the person testing reads the PR. So:
 
-- **Before a PR exists:** present it in chat, and carry it into the PR body's `## HOW TO TEST` section at Phase 10.
+- **Before a PR exists:** present it in chat, and carry it into the PR body's `## HOW TO TEST` section at Phase 14.
 - **PR already open:** post it as a PR comment immediately (`gh pr comment <N> --body ...`).
 - Lead with a copy-pasteable **Setup** block (branch checkout, install, run, the automated command + its expected counts) so the tester starts from a known state.
 
@@ -420,11 +420,11 @@ Presenting the table in chat only is a FAILURE of this phase — the chat scroll
 
 Do NOT push or create a PR until the developer explicitly confirms the prod decision. What they confirm is the EVIDENCE (the executed table + screenshots + the short can't-reach list) — not a request to go test by hand. If issues surface, iterate on fixes within the current branch and re-run the affected rows.
 
-The prod question — *is this production-worthy?* — is asked ONCE, at the end of Phase 9.5 (after the review is clean); Phase 9 ends by presenting the evidence, not by asking. A yes starts Phase 10, which merges to PRE PROD. The promotion to production itself is confirmed again at Phase 10.5: this decision approves the WORK, that one approves the RELEASE.
+The prod question — *is this production-worthy?* — is asked ONCE, at the end of Phase 13 (after the review is clean); Phase 11 ends by presenting the evidence, not by asking. A yes starts Phase 14, which merges to PRE PROD. The promotion to production itself is confirmed again at Phase 16: this decision approves the WORK, that one approves the RELEASE.
 
 ---
 
-## Phase 9.4 — Docs & Decisions Gate (BEFORE any merge)
+## Phase 12 — Docs & Decisions Gate (BEFORE any merge)
 
 Code ships faster than the paper trail, and the gap is invisible until someone reads the docs and
 believes them. Run this against `git diff <BASE_BRANCH>...HEAD` before the review gate:
@@ -432,7 +432,7 @@ believes them. Run this against `git diff <BASE_BRANCH>...HEAD` before the revie
 | If the diff contains… | Then update… |
 |---|---|
 | a changed price, limit, cap or plan | the monetization/pricing doc — every number AND the reason it is that number |
-| a decision with a rejected alternative | a new ADR in the decisions log — including the alternative and why it lost (Phase 4.5 ran? its losing designs go here verbatim) |
+| a decision with a rejected alternative | a new ADR in the decisions log — including the alternative and why it lost (Phase 6 ran? its losing designs go here verbatim) |
 | a new/changed env var, migration or runbook step | the release/ops doc |
 | a new module, flow or entry point | `PROJECT_MAP.md` (`TECH_STACK` / `SYSTEM_FLOW`) |
 | work deliberately deferred | `ORPHANS & PENDING`, not a memory of it |
@@ -459,7 +459,7 @@ only because the developer asked — "suites green + evidence table done" is NOT
 
 ---
 
-## Phase 9.5 — Code Review Gate (AI, verified findings)
+## Phase 13 — Code Review Gate (AI, verified findings)
 
 Run the `code-review` skill (`/code-review`) against the branch diff (`git diff <BASE_BRANCH>...HEAD`). It fans out reviewers and adversarially VERIFIES findings before reporting — prefer it over a single self-review pass. Supplement with one **spec-compliance check**: re-read the ticket/issue and confirm each acceptance criterion maps to actual code in the diff (not implementer claims).
 
@@ -473,21 +473,21 @@ Address findings by verdict and severity:
 - **PLAUSIBLE:** judge against the actual code — fix or refute with a one-line reason (never silently drop)
 - **Minor / style:** document for later; optionally run `/simplify` for quality-only cleanups
 
-After review fixes, re-run the affected Phase 9 rows if any logic changed (agent-run, as above). If only cosmetic fixes (comments, imports, formatting), skip re-verification.
+After review fixes, re-run the affected Phase 11 rows if any logic changed (agent-run, as above). If only cosmetic fixes (comments, imports, formatting), skip re-verification.
 
 Then ask: "Review clean, verification evidence attached. Want me to push and create a PR?"
 
 ---
 
-## Phase 10 — PR Creation → Review → Merge → Pre Prod
+## Phase 14 — PR Creation → Review → Merge → Pre Prod
 
 The pre prod sequence is **push → PR → review → merge → pre prod**, in that order. The review is a
 **HARD GATE**: never merge or release an unreviewed diff — even when you run the whole sequence
 autonomously in one go, and even for a one-line change.
 
 **This phase ends at PRE PROD, not production.** Merging a feature branch releases it to the
-pre-prod environment only. Production is Phase 10.5 and it has its own separate gate — do not
-treat a green Phase 10 as "shipped".
+pre-prod environment only. Production is Phase 16 and it has its own separate gate — do not
+treat a green Phase 14 as "shipped".
 
 **Release runbook (check first):** if the repo has a runbook (`docs/deploy-and-staging.md`
 or similar), its promotion flow OVERRIDES the generic sequence — read it rather than assuming in
@@ -496,10 +496,10 @@ a manual workflow_dispatch after merge. Get this wrong and you either reach prod
 believe you released when you didn't. Never skip the runbook's pre-prod verification steps.
 
 **Pre-merge gates (REQUIRED, before any merge):**
-0. **Phase 9.4 — docs & ADRs.** Prices, limits, decisions with rejected alternatives, env vars,
+0. **Phase 12 — docs & ADRs.** Prices, limits, decisions with rejected alternatives, env vars,
    migrations and deferred work are all recorded BEFORE the merge. Written afterwards they get
    written from memory, which keeps the conclusion and loses the reason.
-1. After the PR exists and **before merging**, run the Phase 9.5 review (the `code-review`
+1. After the PR exists and **before merging**, run the Phase 13 review (the `code-review`
    skill + spec-compliance check) against the full PR diff: `git diff <BASE_BRANCH>...HEAD`.
 2. Fix every **Critical** and **Important** finding; re-verify (rebuild/tests) if logic changed.
 3. **Do NOT merge** while any Critical/Important finding is open. "The change looks small / I
@@ -518,12 +518,12 @@ After developer confirms:
 
  - <commands actually run + their real results, incl. skipped counts>
 
-## DOCS                 ← Phase 9.4's output — REQUIRED in every PR, no exceptions
+## DOCS                 ← Phase 12's output — REQUIRED in every PR, no exceptions
  - <docs/ADRs updated in THIS branch: ADR-NN, PROJECT_MAP section, pricing/ops doc — or>
  - none needed — checked: no price/limit change, no decision-with-alternative, no env/migration,
    no new module/flow, no deferred work, no doc made stale by this diff
 
-## HOW TO TEST          ← the Phase 9 checklist, carried over — never left in chat only
+## HOW TO TEST          ← the Phase 11 checklist, carried over — never left in chat only
  Setup: <branch checkout · install · run · automated command + expected counts>
  <numbered scenarios: exact mechanism → **Expect:** … → what the old behavior was>
  Not manually testable: <what, and how it was verified instead>
@@ -549,7 +549,7 @@ gh pr create \
 
 ## DOCS
 
- - <ADRs/docs updated in this branch, or "none needed — checked: ..." per Phase 9.4>
+ - <ADRs/docs updated in this branch, or "none needed — checked: ..." per Phase 12>
 
 ## HOW TO TEST
 
@@ -575,11 +575,11 @@ After PR is merged, move `specs/[feature-slug].md` → `specs/archive/[feature-s
 
 ---
 
-## Phase 10.2 — Review Cycle (loops BACK to Phase 10)
+## Phase 15 — Review Cycle (loops BACK to Phase 14)
 
 **This is a loop, not a stage.** Human review comments arrive while the PR is still OPEN. Its
-last step is `push`, never `merge` — you re-enter Phase 10's pre-merge gates and go round again
-until the review is clean. It happens BEFORE pre prod, and long before Phase 10.5's promotion.
+last step is `push`, never `merge` — you re-enter Phase 14's pre-merge gates and go round again
+until the review is clean. It happens BEFORE pre prod, and long before Phase 16's promotion.
 
 **Trigger:** "changes requested", "review feedback", "fix PR comments", PR URL with review, or mention of reviewer feedback.
 
@@ -613,19 +613,19 @@ until the review is clean. It happens BEFORE pre prod, and long before Phase 10.
 
 ---
 
-## Phase 10.5 — Prod Promotion (conditional)
+## Phase 16 — Prod Promotion (conditional)
 
 **When:** the repo has a two-stage model — a pre-prod branch that feature PRs merge into, plus a
 separate promotion to production. **Skip** when the repo has a single branch model, where Phase
 10's merge already reached prod.
 
-Phase 10 left the change in PRE PROD. Production is a SECOND release with its OWN gate: the
-evidence that cleared Phase 9 was gathered against pre prod, and the two environments differ
+Phase 14 left the change in PRE PROD. Production is a SECOND release with its OWN gate: the
+evidence that cleared Phase 11 was gathered against pre prod, and the two environments differ
 precisely where the risk lives (real keys, real payment provider, real storage backend, real
 data volume).
 
 1. **Verify in pre prod first.** Run the rows only a deployed environment can answer — the ones
-   Phase 9 handed over as unreachable. A green local suite is not pre-prod verification.
+   Phase 11 handed over as unreachable. A green local suite is not pre-prod verification.
 2. **Migrations reach prod BEFORE the promotion merge** — never after, never during. The merge
    releases code that expects the new schema; a schema arriving second is an outage. Rehearse on
    pre prod, dry-run against prod, then apply, then merge — `supabase` skill for the mechanics.
@@ -634,7 +634,7 @@ data volume).
 4. **Read what is actually in the promotion.** It is a diff of already-reviewed commits, so it
    needs no second code review — but it does need `git log <prod>..<pre-prod> --oneline`.
    Anything you did not expect stops the promotion until you know why it is there.
-5. **The promotion is the developer's call, and it is confirmed HERE, again.** Phase 9's prod
+5. **The promotion is the developer's call, and it is confirmed HERE, again.** Phase 11's prod
    decision approved the WORK; this one approves the RELEASE, and the two are days apart.
    Present three things — what is in the promotion, what was verified in pre prod, which
    migrations are already applied — then ask. Never promote autonomously.
@@ -657,7 +657,7 @@ Branch:  <branch-name>  (base: <base-branch>)
 Stack:   <detected stack>
 Platform pipeline: <pipeline-ios | pipeline-android | pipeline-kmp | pipeline-web>
 Scope:   <platforms / modules affected>
-Context: <what was loaded from Phase 0>
+Context: <what was loaded from Phase 1>
 ```
 
 ---
@@ -672,9 +672,9 @@ Context: <what was loaded from Phase 0>
 - DB migrations: always add a new version, never modify existing ones (mechanics: `supabase` skill)
 - **Never `git worktree add` for studyhub-deploy.** The IDE opens each worktree in its own window and splits the session. Branch IN PLACE in the main checkout, stashing if needed. `using-git-worktrees` does not apply to this repo.
 - If unsure about a convention, read 2–3 existing examples first
-- **Docs before merge:** never merge a diff that changes a price, a limit, a decision or an env var without the doc/ADR update in the SAME branch (Phase 9.4).
-- **Review before merge (non-negotiable):** never merge or release a diff that hasn't passed the Phase 9.5 review (`code-review` skill + spec check) on the final PR diff — not for a one-line change, not when running push→PR→merge→pre prod autonomously. Review → resolve CONFIRMED critical/important → then merge.
-- **Pre prod ≠ prod:** Phase 10 reaches pre prod only. Promoting to production is Phase 10.5, needs its own developer confirmation, and never happens autonomously.
+- **Docs before merge:** never merge a diff that changes a price, a limit, a decision or an env var without the doc/ADR update in the SAME branch (Phase 12).
+- **Review before merge (non-negotiable):** never merge or release a diff that hasn't passed the Phase 13 review (`code-review` skill + spec check) on the final PR diff — not for a one-line change, not when running push→PR→merge→pre prod autonomously. Review → resolve CONFIRMED critical/important → then merge.
+- **Pre prod ≠ prod:** Phase 14 reaches pre prod only. Promoting to production is Phase 16, needs its own developer confirmation, and never happens autonomously.
 - NEVER add `Co-Authored-By` trailers to commit messages
 - NEVER add "Generated with Claude Code" or any AI attribution footer to PR descriptions
 - Always present git commands in copy-paste blocks

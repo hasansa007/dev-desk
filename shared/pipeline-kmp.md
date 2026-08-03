@@ -1,10 +1,10 @@
 # Pipeline — KMP Additions
 
-Apply these additions to Phases 8, 9, and 10 when the detected stack is **KMP** (`androidApp/` + `iOSApp/` + `shared/`).
+Apply these additions to Phases 10, 11, and 14 when the detected stack is **KMP** (`androidApp/` + `iOSApp/` + `shared/`).
 
 ---
 
-## Phase 8 — KMP Additions
+## Phase 10 — KMP Additions
 
 ### UI Previews
 - **iOS (SwiftUI):** Add `#Preview` macro per state/flow. Use realistic production-shaped fixture data.
@@ -34,13 +34,13 @@ Cross-platform parity changes: include on both lists, described from each platfo
 
 ---
 
-## Phase 9 — KMP Build & Verification (agent-run, both platforms)
+## Phase 11 — KMP Build & Verification (agent-run, both platforms)
 
 Launch BOTH targets yourself via the `run` skill (`/run android emulator`, `/run ios sim`) and execute the checklist on each, using each platform's own mechanics:
 
-- **Android:** full adb automation — see `pipeline-android.md` Phase 9 (hierarchy dump → tap → screenshot → logcat).
-- **iOS:** simctl deep links + screenshots, XCUITest when a UI-test target exists — see `pipeline-ios.md` Phase 9.
+- **Android:** full adb automation — see `pipeline-android.md` Phase 11 (hierarchy dump → tap → screenshot → logcat).
+- **iOS:** simctl deep links + screenshots, XCUITest when a UI-test target exists — see `pipeline-ios.md` Phase 11.
 
-Run the same rows on both and compare the evidence side by side — that screenshot pair IS the Phase 8 parity check made concrete. Flag any divergence.
+Run the same rows on both and compare the evidence side by side — that screenshot pair IS the Phase 10 parity check made concrete. Flag any divergence.
 
 Hand the developer only hardware-bound / interaction-only-iOS rows plus the prod decision.

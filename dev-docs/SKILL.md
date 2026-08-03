@@ -12,7 +12,7 @@ allowed-tools: [gh, git]
 
 # Dev — Docs & Decisions Gate
 
-Standalone entry into **Phase 9.4 — Docs & Decisions Gate** of the dev pipeline.
+Standalone entry into **Phase 12 — Docs & Decisions Gate** of the dev pipeline.
 
 ## Input
 
@@ -21,7 +21,7 @@ A branch, or any diff: `git diff <BASE_BRANCH>...HEAD`.
 ## Run
 
 1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it.
-2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 9.4** against the diff.
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 12** against the diff.
 3. Output the `## DOCS` section verbatim, ready to paste into the PR body.
 
 ## Why this exists as its own entry point

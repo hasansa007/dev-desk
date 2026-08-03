@@ -1,10 +1,10 @@
 # Pipeline — Android Additions
 
-Apply these additions to Phases 8, 9, and 10 when the detected stack is **Android only** (`build.gradle*` + Android manifest, no iOS).
+Apply these additions to Phases 10, 11, and 14 when the detected stack is **Android only** (`build.gradle*` + Android manifest, no iOS).
 
 ---
 
-## Phase 8 — Android Additions
+## Phase 10 — Android Additions
 
 ### UI Previews
 Add `@Preview` annotations with `@PreviewParameter` for data variants on all new Composables.
@@ -25,7 +25,7 @@ Draft Play Store "What's New" copy:
 
 ---
 
-## Phase 9 — Android Build & Verification (agent-run via adb)
+## Phase 11 — Android Build & Verification (agent-run via adb)
 
 Build + launch on the **emulator** yourself via the `run` skill (`/run android emulator`); ask about a physical device only when the row genuinely needs hardware (camera, sensors, real notifications).
 

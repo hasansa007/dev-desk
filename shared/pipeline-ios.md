@@ -1,10 +1,10 @@
 # Pipeline — iOS Additions
 
-Apply these additions to Phases 8, 9, and 10 when the detected stack is **iOS only** (`*.xcodeproj` / `Package.swift`, Swift only).
+Apply these additions to Phases 10, 11, and 14 when the detected stack is **iOS only** (`*.xcodeproj` / `Package.swift`, Swift only).
 
 ---
 
-## Phase 8 — iOS Additions
+## Phase 10 — iOS Additions
 
 ### UI Previews
 Add `#Preview` macro per state/flow. Use realistic production-shaped fixture data — not placeholder strings.
@@ -25,7 +25,7 @@ Draft App Store "What's New" copy:
 
 ---
 
-## Phase 9 — iOS Build & Verification (agent-run on the simulator)
+## Phase 11 — iOS Build & Verification (agent-run on the simulator)
 
 Build + launch on the **simulator** yourself via the `run` skill (`/run ios sim`); ask about a physical device only when the row needs hardware.
 

@@ -27,8 +27,8 @@ Prod branch: the branch whose merge RELEASES PRODUCTION.
   never deploys, and merging to `main` DEPLOYS PROD. Confirm both before acting.
 ```
 
-If the two resolve to the same branch, the repo has a **single-stage model**: Phase 10's merge
-already reaches production. Say so explicitly, and skip Phase 10.5.
+If the two resolve to the same branch, the repo has a **single-stage model**: Phase 14's merge
+already reaches production. Say so explicitly, and skip Phase 16.
 
 ---
 
@@ -48,20 +48,20 @@ this pipeline exists to refuse.
 
 | Section | Load it when | So: |
 |---|---|---|
-| **Phase 0 — Context Load** | your phase reads or changes code, and needs to know the system | `dev-verify`, `dev-review` |
-| **Phase 2 — Tech Stack & Discovery** | **your phase has a platform overlay.** `pipeline-<platform>.md` defines additions to Phases 8, 9 and 10 ONLY — no other phase has one, so no other phase needs the stack detected | `dev-verify` (9), `dev-pre-prod` (10) |
+| **Phase 1 — Context Load** | your phase reads or changes code, and needs to know the system | `dev-verify`, `dev-review` |
+| **Phase 2 — Tech Stack & Discovery** | **your phase has a platform overlay.** `pipeline-<platform>.md` defines additions to Phases 10, 11 and 14 ONLY — no other phase has one, so no other phase needs the stack detected | `dev-verify` (11), `dev-pre-prod` (14) |
 
 | Sibling | Phase | Loads |
 |---|---|---|
-| `dev` | 0–10.5 | everything — it runs every phase |
-| `dev-verify` | 9 | always + Phase 0 + Phase 2 → platform pipeline |
-| `dev-pre-prod` | 10 | always + Phase 2 → platform pipeline |
-| `dev-review` | 10.2 | always + Phase 0 |
-| `dev-docs` | 9.4 | always only |
-| `dev-prod` | 10.5 | always only — plus the release runbook, per Workspace Resolution above |
+| `dev` | 1–16 | everything — it runs every phase |
+| `dev-verify` | 11 | always + Phase 1 + Phase 2 → platform pipeline |
+| `dev-pre-prod` | 14 | always + Phase 2 → platform pipeline |
+| `dev-review` | 15 | always + Phase 1 |
+| `dev-docs` | 12 | always only |
+| `dev-prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
 
 `run` ships in this repo too, but it is **a tool, not a sibling** — it maps to no phase and loads
-none of this. Phases 4 and 9 call it to build and launch mobile targets (`/run ios sim`,
+none of this. Phases 4 and 11 call it to build and launch mobile targets (`/run ios sim`,
 `/run android emulator`), and it is equally useful on its own for any prototype. It lives here
 because it is the pipeline's only **personal-skill** dependency: everything else the pipeline
 calls (`superpowers:*`, `/code-review`, `security-review`, `frontend-design`, `supabase`,
@@ -94,17 +94,17 @@ fields you inferred rather than resolved.
 
 | Skill | Phase | Input it needs | Kind |
 |---|---|---|---|
-| `dev` | Entry 1–2 → 0–10.5 | issue ref or a description | full run |
-| `dev-verify` | 9 | a branch | stage |
-| `dev-docs` | 9.4 | a diff | gate |
-| `dev-pre-prod` | 10 | a branch | stage |
-| `dev-review` | 10.2 | a PR number | **loop** ↺ |
-| `dev-prod` | 10.5 | pre-prod + prod branches | stage |
+| `dev` | Entry 1–2 → 1–16 | issue ref or a description | full run |
+| `dev-verify` | 11 | a branch | stage |
+| `dev-docs` | 12 | a diff | gate |
+| `dev-pre-prod` | 14 | a branch | stage |
+| `dev-review` | 15 | a PR number | **loop** ↺ |
+| `dev-prod` | 16 | pre-prod + prod branches | stage |
 
-**Why these five and not more:** Phases 0–8 pass *reasoning* between each other, and reasoning
+**Why these five and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning
 lives only in the conversation that produced it — there is no artifact to hand a fresh session.
-From Phase 9 on, every phase takes a durable artifact (branch, diff, PR number), which is exactly
-what makes it independently invocable. Phase 9.5 is deliberately absent: it is 20 lines that mostly
+From Phase 11 on, every phase takes a durable artifact (branch, diff, PR number), which is exactly
+what makes it independently invocable. Phase 13 is deliberately absent: it is 20 lines that mostly
 say "run `/code-review`", so run `/code-review`.
 
 ---

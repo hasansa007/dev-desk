@@ -1,10 +1,10 @@
 # Pipeline — Web Additions
 
-Apply these additions to Phases 8, 9, and 10 when the detected stack is **Web** (`package.json` → Next.js / React / Vue).
+Apply these additions to Phases 10, 11, and 14 when the detected stack is **Web** (`package.json` → Next.js / React / Vue).
 
 ---
 
-## Phase 8 — Web Additions
+## Phase 10 — Web Additions
 
 ### UI Previews
 Add `.stories.tsx` story per component state variant for all new UI components. Use realistic production-shaped fixture data.
@@ -31,11 +31,11 @@ No platform isolation rules apply (single platform).
 
 ---
 
-## Phase 9 — Web Build & Verification (agent-run via Chrome DevTools MCP)
+## Phase 11 — Web Build & Verification (agent-run via Chrome DevTools MCP)
 
 **Server first:** check whether the dev server is already running (probe the app's port). The developer may run it themselves (IDE run config) — connect to THEIR instance; never start a second one on the same port. Start `npm run dev` only if nothing is running AND the project has no run-it-myself convention; when the convention exists but the port is silent, ask the developer to start it (their run button) — do not start it for them. Run `npm run build` only if the repo has no rule against it (some do — check memory/CLAUDE.md); the test suite plus the live checks below are the default evidence.
 
-**Execute the Phase 9 checklist yourself** with the Chrome DevTools MCP tools:
+**Execute the Phase 11 checklist yourself** with the Chrome DevTools MCP tools:
 
 1. `new_page` / `navigate_page` to the flow's entry point — signed in via the project's dev sign-in path when one exists.
 2. Drive each row: `click`, `fill`, `press_key` through the real UI — the same clicks the user would make.
@@ -47,10 +47,10 @@ Mark rows ✅/❌ with the evidence attached. Hand the developer ONLY the rows t
 
 ---
 
-## Phase 10 — Web Pre Prod Note
+## Phase 14 — Web Pre Prod Note
 
 After PR is merged, remind:
 
-> "Merged to pre prod. Run `vercel` for a preview, or push to your pre-prod branch if auto-deploy is configured. Production is Phase 10.5 — a separate promotion with its own gate."
+> "Merged to pre prod. Run `vercel` for a preview, or push to your pre-prod branch if auto-deploy is configured. Production is Phase 16 — a separate promotion with its own gate."
 
 No store submission steps apply.

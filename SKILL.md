@@ -28,7 +28,7 @@ so it is defined once there and never duplicated here.
 
 > **Numbering:** these two are ENTRY steps, not pipeline phases. They run before
 > `shared/pipeline.md` starts, and are numbered separately so they never collide with the
-> pipeline's own Phase 0 (Context Load). Order is: Entry 1 → Entry 2 → pipeline Phase 0 → Phase 2 → …
+> pipeline's own Phase 1 (Context Load). Order is: Entry 1 → Entry 2 → pipeline Phase 1 → Phase 2 → …
 
 | Input | Route |
 |---|---|
@@ -62,9 +62,9 @@ Read local context: `CLAUDE.md`, `README.md`, `docs/`, `.spec/`.
 
 ---
 
-## Phase 10 Additions (GitHub) — overlay, not a separate phase
+## Phase 14 Additions (GitHub) — overlay, not a separate phase
 
-Applied ON TOP of the pipeline's Phase 10 when the source is a GitHub issue:
+Applied ON TOP of the pipeline's Phase 14 when the source is a GitHub issue:
 
 - Add `Closes #N` at the end of the PR body
 - Apply labels from the source issue where applicable
@@ -79,13 +79,13 @@ directly when the work already exists and only that phase is needed:
 
 | Skill | Phase | Input | Use when |
 |---|---|---|---|
-| `dev-verify` | 9 | a branch | "does this branch actually work?" |
-| `dev-docs` | 9.4 | a diff | "are the ADRs and docs current?" |
-| `dev-pre-prod` | 10 | a branch | "PR and merge this to pre prod" |
-| `dev-review` | 10.2 ↺ | a PR number | "changes requested" — loops back to 10 |
-| `dev-prod` | 10.5 | pre-prod + prod branches | "promote to production" |
+| `dev-verify` | 11 | a branch | "does this branch actually work?" |
+| `dev-docs` | 12 | a diff | "are the ADRs and docs current?" |
+| `dev-pre-prod` | 14 | a branch | "PR and merge this to pre prod" |
+| `dev-review` | 15 ↺ | a PR number | "changes requested" — loops back to 10 |
+| `dev-prod` | 16 | pre-prod + prod branches | "promote to production" |
 
-They all read the same `shared/pipeline.md`; none of them copies it. Phases 0–8 have no sibling on
+They all read the same `shared/pipeline.md`; none of them copies it. Phases 1–8 have no sibling on
 purpose — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.
 
 ---
@@ -95,7 +95,7 @@ purpose — they pass reasoning rather than artifacts, so there is nothing to ha
 1. Read `~/Developer/skills/dev-skill/shared/entry.md` — workspace + base-branch resolution, shared with
    every `dev-*` sibling.
 2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` and execute all phases from it, incorporating the
-   Phase 10 additions defined above.
+   Phase 14 additions defined above.
 
 The pipeline's Phase 2 detects the stack and routes to the matching platform pipeline automatically.
 
@@ -121,7 +121,7 @@ Apply only when `ARCHITECTURE.md` is **missing** from the repo root (first featu
 
 ### Per-Feature Prompts
 
-For every feature (regardless of whether ARCHITECTURE.md exists), use the matching feature prompt as the seed for Phase 5 (Plan Output):
+For every feature (regardless of whether ARCHITECTURE.md exists), use the matching feature prompt as the seed for Phase 7 (Plan Output):
 
 | Stack | Feature prompt |
 |---|---|

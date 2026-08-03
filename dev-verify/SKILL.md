@@ -12,7 +12,7 @@ allowed-tools: [gh, git]
 
 # Dev — Verify
 
-Standalone entry into **Phase 9 — Verification Gate** of the dev pipeline.
+Standalone entry into **Phase 11 — Verification Gate** of the dev pipeline.
 
 ## Input
 
@@ -25,13 +25,13 @@ working state. They are different claims.
 ## Run
 
 1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it.
-2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 9 — Verification Gate**
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 11 — Verification Gate**
    in full, including the platform additions from the matching `pipeline-<platform>.md`.
 3. Present the evidence table. Hand back only the rows you genuinely cannot reach.
 
 ## What this skill is for
 
-The pipeline's Phase 9 is 99 lines and it is the fattest phase for a reason: **the agent executes
+The pipeline's Phase 11 is 99 lines and it is the fattest phase for a reason: **the agent executes
 the checklist, the developer is not the test runner.** Every row gets real evidence — a screenshot,
 a console excerpt, a network status — never a narrative claim.
 
@@ -57,5 +57,5 @@ Carry the three passes over from the pipeline, none of them optional:
 
 ## Next
 
-Verification passing is not permission to merge. `dev-docs` (Phase 9.4) and `/code-review`
-(Phase 9.5) are still gates, and `dev-pre-prod` (Phase 10) is what actually merges.
+Verification passing is not permission to merge. `dev-docs` (Phase 12) and `/code-review`
+(Phase 13) are still gates, and `dev-pre-prod` (Phase 14) is what actually merges.
