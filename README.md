@@ -11,7 +11,7 @@ the work already exists and only that stage is needed.
 ## Layout
 
 ```
-~/Developer/dev-skill/            ← this repo; its root IS the `dev` skill
+~/Developer/skills/dev-skill/            ← this repo; its root IS the `dev` skill
 ├── SKILL.md                      name: dev — entry routing + the family table
 ├── shared/
 │   ├── entry.md                  workspace + pre-prod/prod branch resolution (read by all six)
@@ -39,9 +39,9 @@ warning. The family is nested here for authoring, and each entry is symlinked ou
 discovery still sees a flat layout:
 
 ```bash
-ln -sfn ~/Developer/dev-skill              ~/.claude/skills/dev
+ln -sfn ~/Developer/skills/dev-skill         ~/.claude/skills/dev
 for s in dev-verify dev-docs dev-pre-prod dev-review dev-prod; do
-  ln -sfn ~/Developer/dev-skill/"$s"       ~/.claude/skills/"$s"
+  ln -sfn ~/Developer/skills/dev-skill/"$s"  ~/.claude/skills/"$s"
 done
 ```
 

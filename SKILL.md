@@ -18,7 +18,7 @@ GitHub issues, features and bugs for personal projects.
 
 ## Workspace Config
 
-**Lives in `~/Developer/dev-skill/shared/entry.md`** — repo auto-detect, pre-prod branch resolution,
+**Lives in `~/Developer/skills/dev-skill/shared/entry.md`** — repo auto-detect, pre-prod branch resolution,
 prod branch resolution, and the single-stage detection. It is shared with every `dev-*` sibling,
 so it is defined once there and never duplicated here.
 
@@ -92,9 +92,9 @@ purpose — they pass reasoning rather than artifacts, so there is nothing to ha
 
 ## Shared Pipeline
 
-1. Read `~/Developer/dev-skill/shared/entry.md` — workspace + base-branch resolution, shared with
+1. Read `~/Developer/skills/dev-skill/shared/entry.md` — workspace + base-branch resolution, shared with
    every `dev-*` sibling.
-2. Read `~/Developer/dev-skill/shared/pipeline.md` and execute all phases from it, incorporating the
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` and execute all phases from it, incorporating the
    Phase 10 additions defined above.
 
 The pipeline's Phase 2 detects the stack and routes to the matching platform pipeline automatically.
@@ -109,15 +109,15 @@ Apply only when `ARCHITECTURE.md` is **missing** from the repo root (first featu
 
 | Detected stack | Variant | Prompt location |
 |---|---|---|
-| `*.xcodeproj` / `Package.swift` only | A — iOS only | `~/Developer/dev-skill/mobile/MASTER_PROMPT.md` |
-| `build.gradle*` + Android manifest only | B — Android only | `~/Developer/dev-skill/mobile/MASTER_PROMPT.md` |
-| `androidApp/` + `iOSApp/` + `shared/` (KMP) | C — iOS + Android + KMP | `~/Developer/dev-skill/mobile/MASTER_PROMPT.md` |
+| `*.xcodeproj` / `Package.swift` only | A — iOS only | `~/Developer/skills/dev-skill/mobile/MASTER_PROMPT.md` |
+| `build.gradle*` + Android manifest only | B — Android only | `~/Developer/skills/dev-skill/mobile/MASTER_PROMPT.md` |
+| `androidApp/` + `iOSApp/` + `shared/` (KMP) | C — iOS + Android + KMP | `~/Developer/skills/dev-skill/mobile/MASTER_PROMPT.md` |
 
 ### Web
 
 | Detected stack | Prompt location |
 |---|---|
-| `package.json` → Next.js / React / Vue | `~/Developer/dev-skill/web/MASTER_PROMPT.md` |
+| `package.json` → Next.js / React / Vue | `~/Developer/skills/dev-skill/web/MASTER_PROMPT.md` |
 
 ### Per-Feature Prompts
 
@@ -125,7 +125,7 @@ For every feature (regardless of whether ARCHITECTURE.md exists), use the matchi
 
 | Stack | Feature prompt |
 |---|---|
-| Mobile (iOS / Android / KMP) | `~/Developer/dev-skill/mobile/FEATURE_PROMPT.md` |
-| Web (Next.js / React / Vue) | `~/Developer/dev-skill/web/FEATURE_PROMPT.md` |
+| Mobile (iOS / Android / KMP) | `~/Developer/skills/dev-skill/mobile/FEATURE_PROMPT.md` |
+| Web (Next.js / React / Vue) | `~/Developer/skills/dev-skill/web/FEATURE_PROMPT.md` |
 
 Do not invoke architecture or feature prompts for trivial changes (typos, copy edits, dependency bumps).

@@ -22,8 +22,8 @@ model — say so and stop; Phase 10's merge already reached production.
 
 ## Run
 
-1. Read `~/Developer/dev-skill/shared/entry.md` and apply it.
-2. Read `~/Developer/dev-skill/shared/pipeline.md` → execute **Phase 10.5 — Prod Promotion**.
+1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it.
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 10.5 — Prod Promotion**.
 3. Present, then ask. **Never promote autonomously.**
 
 ## Why this is a second gate, not a formality

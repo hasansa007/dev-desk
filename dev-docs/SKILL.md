@@ -20,8 +20,8 @@ A branch, or any diff: `git diff <BASE_BRANCH>...HEAD`.
 
 ## Run
 
-1. Read `~/Developer/dev-skill/shared/entry.md` and apply it.
-2. Read `~/Developer/dev-skill/shared/pipeline.md` → execute **Phase 9.4** against the diff.
+1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it.
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 9.4** against the diff.
 3. Output the `## DOCS` section verbatim, ready to paste into the PR body.
 
 ## Why this exists as its own entry point

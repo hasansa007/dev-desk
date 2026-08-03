@@ -21,9 +21,9 @@ A branch with the work committed. The base is the **pre-prod branch** resolved b
 
 ## Run
 
-1. Read `~/Developer/dev-skill/shared/entry.md` and apply it. **State the resolved base branch
+1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it. **State the resolved base branch
    before doing anything** — getting this wrong means a PR that never deploys.
-2. Read `~/Developer/dev-skill/shared/pipeline.md` → execute **Phase 10** in full, including the
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 10** in full, including the
    `Phase 10 Additions` from `dev/SKILL.md` when the source is a GitHub issue (`Closes #N`, labels).
 
 ## The sequence
