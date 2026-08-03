@@ -44,12 +44,30 @@ ADR is part of the diff.
 | a new module, flow or entry point | `PROJECT_MAP.md` (`TECH_STACK` / `SYSTEM_FLOW`) |
 | work deliberately deferred | `ORPHANS & PENDING` — not a memory of it |
 
+## The check that actually fails things
+
+The table above asks whether the right document was **touched**. That is the easy half. The gate is
+whether **every claim in the section you touched is still true** — a partial edit passes the
+touched-test while leaving the doc lying.
+
+For each doc the diff modifies, reread the **whole paragraph around the edit** — not your diff of
+it — and ask of each sentence: *is this still true after this branch?* Fix or delete what is not.
+
+Observed 2026-08-03: the segmented-nav branch added ADR-73 **and** updated its PROJECT_MAP
+paragraph — green on every row of the table — while leaving three claims in that same paragraph
+describing a rail the dialog no longer has. One mention had been fixed, three had not. **A partial
+sweep is indistinguishable from a complete one from the outside**, so the pass criterion is the
+reread, not the edit.
+
 ## Output
 
 Either the list of ADRs and docs updated in this branch, or the explicit line:
 
 > none needed — checked: no price/limit, no decision-with-alternative, no env/migration,
 > no new module, no deferred work, no doc made stale
+
+Either way, state the reread: *"reread §X and §Y in full — N claims corrected"*, or *"reread §X in
+full — still accurate"*. An unstated reread did not happen.
 
 A PR without a `## DOCS` section is not ready to merge.
 

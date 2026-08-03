@@ -36,6 +36,25 @@ The deep phases are for work that earns them. Triage every task into a tier BEFO
 
 When in doubt between two tiers, pick the lighter one — the developer can always say "go deeper". A slow pipeline that gets skipped protects nothing.
 
+**The tier must land in an artifact, not just in chat.** A tier stated once and then scrolled away
+is not something anyone can hold you to — the same reason Phase 12's output is a required PR
+section rather than a claim. So it goes in **two** places, every run:
+
+- the **response header** (`dev`), or its one-line equivalent (`dev-*` siblings)
+- the **PR body**, on the `## VERIFICATION` line — `Tier: Standard` next to what was actually run
+
+Without it, a reader cannot tell whether a thin verification section means *low risk* or
+*skipped work*.
+
+**Deep tier declares its cost BEFORE spending it.** Deep spawns 2–3 explorer agents (Phase 2),
+2–3 architect agents (Phase 6) and a review fan-out (Phase 13) — real time, real money. Say what it
+will cost and get a word first:
+
+> "Deep tier: ~3 explorers + ~3 architects + the review fan-out. Go, or lighter?"
+
+Never open a fan-out on the developer's behalf and report the bill afterwards. If they say lighter,
+they are right — the tier is a proposal, not a verdict.
+
 **Use the developer as a fast collaborator:** when a blocker is their state (debugger, session, dashboard) or a 30-second human action beats minutes of automation, ask for it immediately and specifically — one sentence, what + why.
 
 ---
@@ -314,12 +333,23 @@ Update `PROJECT_MAP.md` to reflect the current state of the project:
 - Run `git diff <BASE_BRANCH>...HEAD --name-only` and for each changed file ask: "What existing behavior could this silently break?"
 - Confirm no regressions exist
 
-### Bug Scan
-For each file in the diff: "Does any change here silently affect an existing caller outside this ticket's scope?" Flag:
+### Bug Scan — the cheap static pass that FEEDS Phase 11
+
+This asks the same question Phase 11's Pass 2 asks, so do not ask it twice: **this is the reading
+pass, Phase 11 is the running pass.** Read the diff and produce a list of suspected regressions;
+every item on that list becomes a row in Phase 11's table, where it gets executed and evidenced.
+An item you cannot turn into a runnable row is one you have not understood yet.
+
+For each file in the diff: "Does any change here silently affect an existing caller outside this
+ticket's scope?" Flag:
 - New code that could silently change existing behavior for existing callers
 - Inconsistencies with surrounding code style or architecture patterns
 - Unhandled edge cases not covered by the ticket scope
 - Unexpected interactions between new and existing code
+
+Carry the output forward as **named rows**, not as a feeling that you checked. If this pass finds
+nothing, say so explicitly — "no cross-scope callers touched" — because that is a claim Phase 11
+can falsify, and "I looked and it was fine" is not.
 
 > Platform-specific additions (UI previews, localization audit, release notes) are in the platform pipeline file.
 
@@ -437,6 +467,23 @@ believes them. Run this against `git diff <BASE_BRANCH>...HEAD` before the revie
 | a new module, flow or entry point | `PROJECT_MAP.md` (`TECH_STACK` / `SYSTEM_FLOW`) |
 | work deliberately deferred | `ORPHANS & PENDING`, not a memory of it |
 
+### The check is ACCURACY, not presence — reread what you edited
+
+The table above asks whether the right document was *touched*. That is not the gate. **The gate is
+whether every claim in the section you touched is still true**, and a partial edit passes the
+touched-test while leaving the doc lying.
+
+For each doc the diff modifies, reread the **whole paragraph or section around your edit** — not
+your diff of it — and ask of each sentence: *is this still true after this branch?* Fix or delete
+what is not. A doc that describes the previous design in three sentences and the new one in one is
+worse than an untouched doc, because it reads as current.
+
+Observed 2026-08-03, and it is why this subsection exists: the segmented-nav branch correctly added
+ADR-73 **and** updated the PROJECT_MAP paragraph — green on every row of the table above — while
+leaving three claims inside that same paragraph describing a rail the dialog no longer has. One
+"rail" mention had been fixed, three had not. **A partial sweep looks identical to a complete one
+from the outside**, so the pass criterion is the reread, not the edit.
+
 Two rules that make this worth doing:
 
 - **Write the alternatives you REJECTED, with their arithmetic.** A log that lists only what was
@@ -516,6 +563,7 @@ After developer confirms:
 
 ## VERIFICATION
 
+ - Tier: <Light | Standard | Deep>   ← what was run is only judgeable against what was promised
  - <commands actually run + their real results, incl. skipped counts>
 
 ## DOCS                 ← Phase 12's output — REQUIRED in every PR, no exceptions
@@ -545,6 +593,7 @@ gh pr create \
 
 ## VERIFICATION
 
+ - Tier: <Light | Standard | Deep>
  - <real command output>
 
 ## DOCS
@@ -679,7 +728,7 @@ Context: <what was loaded from Phase 1>
 - NEVER add "Generated with Claude Code" or any AI attribution footer to PR descriptions
 - Always present git commands in copy-paste blocks
 - Never guess ticket/issue content — fetch or ask the user to paste
-- Ask exactly ONE round of clarifying questions before finalizing the plan (Stop on Ambiguity)
+- **Discussion before building is Phase 5's gate, and it is not rationed.** Ask as many rounds as the ambiguity actually needs — one thread at a time, plain language, explicit go-ahead. (This replaced an older "exactly ONE round of clarifying questions" rule, which contradicted Phase 5 outright: a budget of one question is a licence to guess the rest.)
 - Keep task granularity at ~1–4 hours each
 - Every edit must be a verifiable goal — define the success condition before and confirm it after (Goal-Oriented Execution)
 - Incomplete features go in `PROJECT_MAP.md` → `ORPHANS & PENDING`, never left silently unfinished (Live Synchronization)
