@@ -23,11 +23,25 @@ the work already exists and only that stage is needed.
 ├── dev-docs/SKILL.md             → Phase 9.4
 ├── dev-pre-prod/SKILL.md         → Phase 10
 ├── dev-review/SKILL.md           → Phase 10.2  ↺
-└── dev-prod/SKILL.md             → Phase 10.5
+├── dev-prod/SKILL.md             → Phase 10.5
+│
+└── run/SKILL.md                  a TOOL, not a phase — build & launch iOS/Android/web
 ```
 
-Every skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
+Every `dev-*` skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
 `shared/`, once.
+
+### Why `run` is here
+
+`run` maps to no phase and reads none of the pipeline — it builds and launches an app, and it is
+just as useful on its own for a throwaway prototype (`/run ios sim`, `/run android emulator`,
+`/run` on an HTML directory). It keeps its plain name for exactly that reason.
+
+It ships here because it is the pipeline's only **personal-skill** dependency. Phases 4 and 9 call
+it to build and launch mobile targets, and everything else the pipeline reaches for —
+`superpowers:*`, `/code-review`, `security-review`, `frontend-design`, `supabase`,
+`feature-dev:*` — is a plugin that installs anywhere. `run` is the one that would simply be
+missing after a clone, and mobile verification would fail with nothing to explain why.
 
 ---
 
@@ -40,7 +54,7 @@ discovery still sees a flat layout:
 
 ```bash
 ln -sfn ~/Developer/skills/dev-skill         ~/.claude/skills/dev
-for s in dev-verify dev-docs dev-pre-prod dev-review dev-prod; do
+for s in dev-verify dev-docs dev-pre-prod dev-review dev-prod run; do
   ln -sfn ~/Developer/skills/dev-skill/"$s"  ~/.claude/skills/"$s"
 done
 ```

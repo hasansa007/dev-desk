@@ -60,6 +60,14 @@ this pipeline exists to refuse.
 | `dev-docs` | 9.4 | always only |
 | `dev-prod` | 10.5 | always only — plus the release runbook, per Workspace Resolution above |
 
+`run` ships in this repo too, but it is **a tool, not a sibling** — it maps to no phase and loads
+none of this. Phases 4 and 9 call it to build and launch mobile targets (`/run ios sim`,
+`/run android emulator`), and it is equally useful on its own for any prototype. It lives here
+because it is the pipeline's only **personal-skill** dependency: everything else the pipeline
+calls (`superpowers:*`, `/code-review`, `security-review`, `frontend-design`, `supabase`,
+`feature-dev:*`) is a plugin that installs anywhere, so `run` is the one that would be missing
+after a clone.
+
 `dev-docs` reads `PROJECT_MAP.md` as its *subject*, not as context load — checking whether it is
 current is the job, not the preparation.
 
