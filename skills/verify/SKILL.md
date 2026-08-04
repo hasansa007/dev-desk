@@ -3,7 +3,8 @@ name: verify
 description: >
   Run the agent-executed verification checklist against a branch that already exists — build the
   evidence table, drive the real app (Chrome DevTools MCP / simulator / adb), attach screenshots
-  and console+network output per row, then tear down what was spawned.
+  and console+network output per row, then tear down what was spawned. When every row passes it
+  chains automatically into the docs/ADR gate (dev:docs) on the same diff.
   Trigger when the user says "verify this branch", "does this actually work", "test this branch",
   "run the checklist", "prove it works", or asks for evidence that a finished change behaves.
   Does NOT plan or implement — the code must already be written.
@@ -55,7 +56,34 @@ Carry the three passes over from the pipeline, none of them optional:
 - **The checklist must land where the tester looks.** Chat-only is a failure of this phase: carry
   it into the PR body's `## HOW TO TEST`, or `gh pr comment` it if the PR is already open.
 
+## Then chain into `dev:docs` — automatically
+
+**When every row is ✅, continue straight into `dev:docs` (Phase 12) against the same diff.** Do not
+ask first; announce it and run it. The two produce the two halves of the same PR body
+(`## HOW TO TEST` and `## DOCS`), they are adjacent phases, and `dev:docs` is read-only — so
+stopping between them buys nothing and costs the gate.
+
+This closes the failure mode Phase 12 was written for: a branch with **green suites and a full
+verification table** merged with its ADR unwritten, caught only because the developer thought to
+ask. Green evidence is the moment that feels like done — which is exactly when the docs gate gets
+skipped.
+
+```
+Verification clean — running dev:docs (Phase 12) on the same diff.
+```
+
+**Do NOT chain when:**
+
+- **any row is ❌** — fix first, re-run the affected rows, then chain. A docs gate on a branch that
+  does not work is measuring the wrong thing
+- **rows were handed back as unreachable and they carry the real risk** — say so and let the
+  developer decide whether to proceed
+- the developer asked for verification *only*
+
+Chaining stops there. `/code-review` (Phase 13) and `dev:pre-prod` (Phase 14) are separate
+decisions — Phase 14 merges, and nothing auto-runs a merge.
+
 ## Next
 
-Verification passing is not permission to merge. `dev:docs` (Phase 12) and `/code-review`
-(Phase 13) are still gates, and `dev:pre-prod` (Phase 14) is what actually merges.
+Verification passing is not permission to merge. After the `dev:docs` chain, `/code-review`
+(Phase 13) is still a gate, and `dev:pre-prod` (Phase 14) is what actually merges.

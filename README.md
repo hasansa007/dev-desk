@@ -87,7 +87,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | 8 | Task Breakdown | |
 | 9 | Implement — surgical protocol | |
 | 10 | Pre-PR Quality Checks | |
-| **11** | **Verification Gate** — agent-run, evidence per row, teardown | `dev:verify` |
+| **11** | **Verification Gate** — agent-run, evidence per row, teardown → chains to 12 | `dev:verify` |
 | **12** | **Docs & Decisions Gate** — ADRs before merge | `dev:docs` |
 | 13 | Code Review Gate — `/code-review`, + `security-review` on Deep | |
 | **14** | **PR → Review → Merge → Pre Prod** | `dev:pre-prod` |

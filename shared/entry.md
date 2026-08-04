@@ -119,3 +119,7 @@ say "run `/code-review`", so run `/code-review`.
   and let the developer decide — do not silently backfill a plan or a spec.
 - **State what you assumed.** Which branch, which base, which tier — one line, before acting.
 - **A sibling never promotes to production autonomously.** `dev:prod` asks. Always.
+- **Chaining is allowed only between adjacent READ-ONLY gates, and only one hop.** `dev:verify` →
+  `dev:docs` is the one wired pair: same diff, adjacent phases (11 → 12), both read-only, and their
+  outputs are the two halves of one PR body. Nothing chains into `/code-review`, and **nothing ever
+  chains into a merge or a promotion** — those are decisions, not steps.
