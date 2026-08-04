@@ -53,6 +53,10 @@ approves the **release**.
    ```
    It is a diff of already-reviewed commits, so it needs no second code review — but anything you
    did not expect stops the promotion until you know why it is there.
+
+   **Zero commits is its own outcome.** Empty means pre prod and prod already match, and opening
+   the PR regardless deploys production for no change. Name it, stop, and report what is in flight
+   and where it is stuck — an empty promotion nearly always means something never reached pre prod.
 5. **Ask.** Present three things — what is in the promotion, what was verified in pre prod, which
    migrations are already applied — then wait for the developer's word.
 
@@ -70,3 +74,5 @@ the gate — there is no separate deploy step to catch a mistake afterwards. `st
 - **Migrations first, always.** If a migration is pending and unapplied, that is a stop, not a
   warning.
 - If anything in `git log <prod>..<pre-prod>` is unexplained, stop and surface it.
+- **An empty promotion is a STOP, not a green light.** Zero commits means there is nothing to
+  release; opening the PR would deploy prod for no change.

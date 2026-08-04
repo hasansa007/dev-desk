@@ -770,6 +770,14 @@ data volume).
 4. **Read what is actually in the promotion.** It is a diff of already-reviewed commits, so it
    needs no second code review — but it does need `git log <prod>..<pre-prod> --oneline`.
    Anything you did not expect stops the promotion until you know why it is there.
+
+   **Zero commits is its own outcome — name it and STOP.** An empty promotion is not "nothing to
+   check, so proceed": it means pre prod and prod are already the same commit, and opening the PR
+   regardless fires a real production deploy for no change. Say it plainly — *"staging and main are
+   on the same commit; there is nothing to promote"* — and do not open it. Then report what IS in
+   flight and where it is stuck, because an empty promotion nearly always means something never
+   reached pre prod. Observed 2026-08-04: an unmerged PR sat at Phase 14 while a promotion was
+   attempted.
 5. **The promotion is the developer's call, and it is confirmed HERE, again.** Phase 11's prod
    decision approved the WORK; this one approves the RELEASE, and the two are days apart.
    Present three things — what is in the promotion, what was verified in pre prod, which
