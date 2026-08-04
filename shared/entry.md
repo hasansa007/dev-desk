@@ -85,7 +85,7 @@ Scope / Context) is for a `dev` run, where every field is populated. A sibling e
 with most of them empty, so it opens with **one line** instead:
 
 ```
-Dev · <sibling> — Phase <N> | <repo> | <branch or diff> | <tier>
+Dev · <sibling> — Phase <N> | <repo> | <branch or diff> | <tier> | <mode>
 ```
 
 State any assumption you had to make in that same line or immediately under it. Never pad it with

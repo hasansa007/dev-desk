@@ -59,6 +59,49 @@ they are right — the tier is a proposal, not a verdict.
 
 ---
 
+## Run Mode — ask ONCE, then honour it
+
+Immediately after stating the tier, ask how the run should proceed. **Once** — never at every phase:
+
+> "Tier: Standard. **Manual** (I stop after each phase for your word) or **auto** (I run through and
+> stop only at the decision gates)?"
+
+| Mode | Between phases |
+|---|---|
+| **Manual** (default when they don't say) | after each phase, present what it produced and **ask before continuing** |
+| **Auto** | continue without asking — except at the gates below |
+
+### Four gates stop in BOTH modes
+
+These are **decisions, not steps**, and auto never covers a decision:
+
+| Phase | Why it cannot be automatic |
+|---|---|
+| **5 — Discuss Before Building** | the go-ahead is the developer's by definition; a mode setting is not consent to build |
+| **6 — Architecture Alternatives** | the approaches genuinely differ — they pick, you recommend |
+| **14 — merge to pre prod** | the prod decision, made once against the evidence |
+| **16 — promotion to prod** | never autonomous, whatever the mode |
+
+**"Auto" means "do not ask me between mechanical steps." It never means unattended.** Anyone who
+picks auto is asking you to skip the ceremony, not the judgment.
+
+### Rules
+
+- **State the mode in the response header**, next to the tier — like the tier, a mode that only
+  lived in chat cannot be held to.
+- **It is changeable mid-run.** "just go" switches to auto from here; "slow down" / "ask me"
+  switches to manual. Confirm the switch in one line and carry on.
+- **Auto still reports.** Each phase still says what it did and produced — it just does not stop.
+  Silence is not speed.
+- **A blocker outranks the mode.** Ambiguity, a failed gate, a destructive step or a missing
+  decision stops an auto run exactly as it stops a manual one. Auto suppresses *"shall I continue?"*,
+  never *"this needs you."*
+
+> Sibling skills invoked on their own follow the chaining rule in `entry.md` instead — one hop
+> between adjacent read-only gates. Run mode governs a full `dev` run, not a standalone member.
+
+---
+
 ## Phase 1 — Context Load
 
 Runs before everything else. Reads persistent project context to skip re-discovery.
@@ -702,6 +745,8 @@ Start every response with:
 ## Dev: <name>
 Source:  <Jira | GitHub | Generic>
 Type:    <Bug | Feature | Story | Task | Enhancement>
+Tier:    <Light | Standard | Deep>       ← stated before starting, not after
+Mode:    <manual | auto>                 ← asked ONCE; auto still stops at Phases 5, 6, 14, 16
 Branch:  <branch-name>  (base: <base-branch>)
 Stack:   <detected stack>
 Platform pipeline: <pipeline-ios | pipeline-android | pipeline-kmp | pipeline-web>

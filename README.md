@@ -111,6 +111,9 @@ Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-
 
 - **Right-size first.** Every task is triaged Light / Standard / Deep before starting, and the tier
   is stated. Light is the default. *A slow pipeline that gets skipped protects nothing.*
+- **Run mode is asked once, not per phase.** Manual stops after every phase; auto runs through.
+  Either way Phases 5, 6, 14 and 16 stop — those are decisions, not steps. *Auto means "don't ask
+  me between mechanical steps", never "unattended".*
 - **Pre prod ≠ prod.** Phase 14 reaches pre prod only. Promotion is Phase 16, needs its own
   confirmation, and never happens autonomously.
 - **Evidence before assertions.** No "should work" — run it, read the output, paste what it printed.
