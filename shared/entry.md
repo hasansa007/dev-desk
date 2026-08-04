@@ -59,16 +59,16 @@ this pipeline exists to refuse.
 | `dev:review` | 15 | always + Phase 1 |
 | `dev:docs` | 12 | always only |
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
-| `dev:run` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
+| `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
 
-`dev:run` is a family member of a different **kind**: the others are *phases*, it is a *tool*. It
+`dev:launch` is a family member of a different **kind**: the others are *phases*, it is a *tool*. It
 maps to no phase number and loads none of this preamble — it builds and launches the app. Phases 4
-and 11 call it for mobile targets (`/dev:run ios sim`, `/dev:run android emulator`), and it is
+and 11 call it for mobile targets (`/dev:launch ios sim`, `/dev:launch android emulator`), and it is
 equally useful on its own for a throwaway prototype.
 
 It belongs in this repo because it is the pipeline's only **personal-skill** dependency: everything
 else the pipeline calls (`superpowers:*`, `/code-review`, `security-review`, `frontend-design`,
-`supabase`, `feature-dev:*`) is a plugin that installs anywhere. `dev:run` is the one that would
+`supabase`, `feature-dev:*`) is a plugin that installs anywhere. `dev:launch` is the one that would
 simply be missing after a clone, taking mobile verification down with it.
 
 `dev:docs` reads `PROJECT_MAP.md` as its *subject*, not as context load — checking whether it is
@@ -103,7 +103,7 @@ fields you inferred rather than resolved.
 | `dev:pre-prod` | 14 | a branch | stage |
 | `dev:review` | 15 | a PR number | **loop** ↺ |
 | `dev:prod` | 16 | pre-prod + prod branches | stage |
-| `dev:run` | — | a project to launch | **tool** |
+| `dev:launch` | — | a project to launch | **tool** |
 
 **Why these five phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning
 lives only in the conversation that produced it — there is no artifact to hand a fresh session.

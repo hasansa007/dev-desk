@@ -27,7 +27,7 @@ Draft Play Store "What's New" copy:
 
 ## Phase 11 — Android Build & Verification (agent-run via adb)
 
-Build + launch on the **emulator** yourself via the `dev:run` skill (`/dev:run android emulator`); ask about a physical device only when the row genuinely needs hardware (camera, sensors, real notifications).
+Build + launch on the **emulator** yourself via the `dev:launch` skill (`/dev:launch android emulator`); ask about a physical device only when the row genuinely needs hardware (camera, sensors, real notifications).
 
 **Execute the checklist yourself** — the emulator is fully drivable over adb:
 

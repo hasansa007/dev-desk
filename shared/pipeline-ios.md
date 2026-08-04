@@ -27,7 +27,7 @@ Draft App Store "What's New" copy:
 
 ## Phase 11 — iOS Build & Verification (agent-run on the simulator)
 
-Build + launch on the **simulator** yourself via the `dev:run` skill (`/dev:run ios sim`); ask about a physical device only when the row needs hardware.
+Build + launch on the **simulator** yourself via the `dev:launch` skill (`/dev:launch ios sim`); ask about a physical device only when the row needs hardware.
 
 **Execute what the simulator can reach:**
 

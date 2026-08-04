@@ -1,18 +1,22 @@
 ---
-name: run
+name: launch
 description: >
-  Build and run any iOS, Android, or web prototype project. For mobile, runs on simulator,
-  emulator, or physical device — auto-detects project type, scheme, bundle ID, package name,
-  and main activity. Works with Xcode projects (xcodeproj/xcworkspace), xcodegen (project.yml),
-  Gradle (gradlew), CocoaPods, SPM, and KMP multi-platform repos. For a framework web app
-  (Next.js, Vite, Astro, SvelteKit, CRA) it reuses the dev server if one is already listening —
-  opening the browser and starting nothing — and otherwise launches it via the project's OWN
-  script when it has one. For a static prototype it serves the directory over local HTTP
-  (handles JSX/Babel-in-browser pages that fail under file://).
+  COMPILES and launches a real app — an Xcode or Gradle BUILD onto a simulator, emulator or
+  physical device, or a framework web app on its own dev server. Not a generic process starter.
+  MOBILE: auto-detects scheme, bundle ID, package name and main activity, then builds, installs
+  and launches — Xcode (xcodeproj/xcworkspace), xcodegen (project.yml), Gradle (gradlew),
+  CocoaPods, SPM, KMP multi-platform.
+  WEB APP (Next.js, Vite, Astro, SvelteKit, CRA): checks the port FIRST and reuses a dev server
+  that is already listening — opening the browser and starting nothing, never killing the
+  developer's own process — otherwise launches it via the project's OWN script
+  (.vscode/dev.sh, bin/dev, scripts/dev, a Makefile target) in preference to a bare `npm run dev`,
+  because such a wrapper usually starts a database or injects env that the bare command skips.
+  STATIC PROTOTYPE: serves the directory over local HTTP (for JSX/Babel-in-browser pages that
+  fail under file://).
   Trigger on: "run the app", "build and run", "launch on simulator", "launch on device",
-  "install on device", "run on emulator", "run on iPhone", "run on Android",
-  "boot simulator and run", "run debug build", "start the dev server", "open the app",
-  "open page", "serve this", "run the html", "preview the prototype".
+  "install on device", "run on emulator", "run on iPhone", "run on Android", "boot the simulator",
+  "run a debug build", "run a release build", "start the dev server", "open the app",
+  "serve this", "run the html", "preview the prototype".
 allowed-tools: [xcodebuild, gradle, adb, python3]
 ---
 
@@ -37,14 +41,14 @@ scheme names, bundle IDs, package names, simulator names, or file paths.
 | Anything else in quotes or multi-word | Device/simulator name OR HTML entry filename | iOS: latest iPhone sim; Android: first available; Web: auto-detected entry |
 
 Examples:
-- `/dev:run` — auto-detect platform, run on simulator/emulator/browser
-- `/dev:run ios device` — iOS on physical device, debug
-- `/dev:run android` — Android on emulator, debug
-- `/dev:run ios sim "iPhone 16 Pro"` — iOS on named simulator
-- `/dev:run android release` — Android release build on emulator/device
-- `/dev:run web` — a framework app: reuse its dev server if up, else start it; a static folder: serve it
-- `/dev:run web 8080` — serve on port 8080
-- `/dev:run web index.html` — serve and open a specific entry file
+- `/dev:launch` — auto-detect platform, run on simulator/emulator/browser
+- `/dev:launch ios device` — iOS on physical device, debug
+- `/dev:launch android` — Android on emulator, debug
+- `/dev:launch ios sim "iPhone 16 Pro"` — iOS on named simulator
+- `/dev:launch android release` — Android release build on emulator/device
+- `/dev:launch web` — a framework app: reuse its dev server if up, else start it; a static folder: serve it
+- `/dev:launch web 8080` — serve on port 8080
+- `/dev:launch web index.html` — serve and open a specific entry file
 
 ---
 
@@ -352,7 +356,7 @@ Display the results as a formatted table showing Name, State (connected/unavaila
 
 - If a specific device name was provided in arguments, match it
 - Otherwise, **automatically pick the first device with State = `connected`** — no need to ask
-- If NO devices are connected: "No physical iOS device connected. Connect a device and try again, or use `/dev:run ios sim`."
+- If NO devices are connected: "No physical iOS device connected. Connect a device and try again, or use `/dev:launch ios sim`."
 
 **Use the `Identifier` column from `devicectl list devices`** (UUID format) — NOT the UDID from `xctrace`.
 
@@ -615,4 +619,4 @@ Scope it to the **current branch**, not the whole project:
 Skip Phase 4 if:
 - The build failed (you already stopped per the Rules above).
 - The platform was `web` (this section is mobile-app-specific).
-- The user explicitly told you to skip post-launch notes (e.g. `/dev:run quiet`).
+- The user explicitly told you to skip post-launch notes (e.g. `/dev:launch quiet`).

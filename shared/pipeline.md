@@ -144,7 +144,7 @@ Work the evidence layers in order; stop at the first layer that yields a confirm
 3. **Live probes** — replay the exact calls the client makes, as the real role: REST/RPC with a real token, direct DB reads, seeded fixtures. A probe that surprises you is a probe to distrust first.
 4. **Live UI reproduction** — drive the real running app:
    - **Web:** Chrome DevTools MCP (`chrome-devtools` tools) — open the page, read console + network, inject `initScript` error listeners to capture what the console alone won't attribute, screenshot states. Connect to the app the developer already runs — NEVER start a competing dev server. **Kill the MCP's debug browser when the probe is over** — teardown rule + commands in Phase 11.
-   - **Mobile:** build/launch via the `dev:run` skill; drive + capture per the platform pipeline file (adb/uiautomator on Android, simctl on iOS).
+   - **Mobile:** build/launch via the `dev:launch` skill; drive + capture per the platform pipeline file (adb/uiautomator on Android, simctl on iOS).
 5. **Environment check** — a wedged dev server, stale cache, or schema drift can BE the bug or mask it; verify the environment answers before blaming code.
 
 Capture the confirmed reproduction as a failing test when the surface allows it — it becomes Phase 9's RED.
@@ -362,7 +362,7 @@ After implementation and commit, **pause** before pushing. Apply `verification-b
 **The agent executes the checklist — the developer is no longer the test runner.** Build the table below, then RUN every row you can reach yourself against the live app:
 
 - **Web:** Chrome DevTools MCP — drive the real flow (click/fill/navigate), read console + network per step, screenshot each end state. New/changed UI components get a screenshot per state variant (and per direction for RTL/LTR products).
-- **Mobile:** launch via the `dev:run` skill, then drive + capture per the platform pipeline file.
+- **Mobile:** launch via the `dev:launch` skill, then drive + capture per the platform pipeline file.
 - Cover three row classes: the **bug repro** (must now pass), the **new flow** (must work end-to-end), and **existing flows** the diff could plausibly regress (must still work).
 - Mark each row ✅/❌ with its evidence (screenshot, console excerpt, network status) — not a narrative claim.
 - Rows the agent genuinely cannot reach (real OAuth, real payments, device-only behavior) are handed to the developer explicitly — that short list is all that remains of manual testing.

@@ -4,7 +4,7 @@ A personal development workflow for Claude Code: take a GitHub issue or a plain 
 "what should this do?" all the way to production, without skipping the gates that matter.
 
 `/dev` is the full run. Five members are doors into the same pipeline at later phases, for when
-the work already exists and only that stage is needed — plus `/dev:run`, a tool the pipeline calls
+the work already exists and only that stage is needed — plus `/dev:launch`, a tool the pipeline calls
 to launch the app.
 
 ---
@@ -26,22 +26,25 @@ to launch the app.
     ├── pre-prod/SKILL.md         → /dev:pre-prod   Phase 14
     ├── review/SKILL.md           → /dev:review     Phase 15  ↺
     ├── prod/SKILL.md             → /dev:prod       Phase 16
-    └── run/SKILL.md              → /dev:run        no phase — a TOOL
+    └── launch/SKILL.md           → /dev:launch     no phase — a TOOL
 ```
 
 Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
 `shared/`, once.
 
-### `dev:run` — a member of a different kind
+### `dev:launch` — a member of a different kind
 
-The other five are **phases**; `dev:run` is a **tool**. It maps to no phase number and reads none
-of the pipeline — it detects the project and launches it (`/dev:run ios sim`,
-`/dev:run android emulator`, `/dev:run web`). Phases 4 and 11 call it for mobile targets, and it is
-equally useful alone on a throwaway prototype.
+The other five are **phases**; `dev:launch` is a **tool**. It maps to no phase number and reads none
+of the pipeline — it detects the project and launches it (`/dev:launch ios sim`,
+`/dev:launch android emulator`, `/dev:launch web`). Phases 4 and 11 call it for mobile targets, and
+it is equally useful alone on a throwaway prototype.
+
+The name is deliberately **not** `run`: Claude Code ships a built-in `run` skill, and a member
+called `dev:run` reads as a namespaced flavour of it rather than a different tool.
 
 It belongs in this repo because it is the pipeline's only **personal-skill** dependency. Everything
 else the pipeline reaches for — `superpowers:*`, `/code-review`, `security-review`,
-`frontend-design`, `supabase`, `feature-dev:*` — is a plugin that installs anywhere. `dev:run` is
+`frontend-design`, `supabase`, `feature-dev:*` — is a plugin that installs anywhere. `dev:launch` is
 the one that would simply be missing after a clone, taking mobile verification down with it and
 leaving nothing to explain why.
 
@@ -57,9 +60,9 @@ ln -sfn ~/Developer/skills/dev-skill  ~/.claude/skills/dev
 ```
 
 It auto-loads next session as `dev@skills-dir`; `/reload-plugins` loads it immediately. Members
-then invoke as `/dev:verify`, `/dev:run`, and so on — **the namespace comes from
+then invoke as `/dev:verify`, `/dev:launch`, and so on — **the namespace comes from
 `.claude-plugin/plugin.json`, not from the directory names**, which is why the members are called
-`verify` and `run` rather than `dev-verify` and `dev-run`.
+`verify` and `launch` rather than `dev-verify` and `dev-launch`.
 
 Without that manifest the same tree registers **nothing**: plain skill discovery is flat
 (`~/.claude/skills/<name>/SKILL.md`, exactly one level) and would never look inside `skills/`.
@@ -90,7 +93,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | **14** | **PR → Review → Merge → Pre Prod** | `dev:pre-prod` |
 | **15** | **Review Cycle** — a LOOP back into Phase 14, never forward | `dev:review` |
 | **16** | **Prod Promotion** — migrations first, never autonomous | `dev:prod` |
-| — | *(no phase)* — build & launch the app | `dev:run` |
+| — | *(no phase)* — build & launch the app | `dev:launch` |
 
 ### Why only five phase members
 
