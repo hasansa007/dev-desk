@@ -33,7 +33,25 @@ so it is defined once there and never duplicated here.
 | Input | Route |
 |---|---|
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
+| A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
+
+### Guard — a command-shaped argument is not a feature title
+
+`/dev` takes no subcommands, so a bare word falls through to "any other free text" and gets read as
+a **feature name**: `/dev run` would branch `feature/run` and start building a feature called
+"run". Observed 2026-08-04.
+
+Before routing to Generic, STOP if the argument is:
+
+- **a family name** — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, with or without the
+  `dev-` prefix. Name the sibling it maps to and confirm:
+  *"`/dev run` isn't a subcommand — did you mean `/dev-run`?"*
+- **a single word with no verb and no object** (`deploy`, `test`, `fix`). Far likelier a mistyped
+  command than a feature brief.
+
+Never open a branch on a one-word argument. **Stop on Ambiguity** applies at the front door, not
+only at Phase 2 — the cheapest place to catch a wrong turn is before the branch exists.
 
 ---
 
@@ -82,8 +100,9 @@ directly when the work already exists and only that phase is needed:
 | `dev-verify` | 11 | a branch | "does this branch actually work?" |
 | `dev-docs` | 12 | a diff | "are the ADRs and docs current?" |
 | `dev-pre-prod` | 14 | a branch | "PR and merge this to pre prod" |
-| `dev-review` | 15 ↺ | a PR number | "changes requested" — loops back to 10 |
+| `dev-review` | 15 ↺ | a PR number | "changes requested" — loops back to 14 |
 | `dev-prod` | 16 | pre-prod + prod branches | "promote to production" |
+| `dev-run` | — | a project to launch | "run the app" — a TOOL, not a phase |
 
 They all read the same `shared/pipeline.md`; none of them copies it. Phases 1–8 have no sibling on
 purpose — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.

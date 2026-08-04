@@ -4,7 +4,8 @@ A personal development workflow for Claude Code: take a GitHub issue or a plain 
 "what should this do?" all the way to production, without skipping the gates that matter.
 
 `/dev` is the full run. Five siblings are doors into the same pipeline at later phases, for when
-the work already exists and only that stage is needed.
+the work already exists and only that stage is needed — plus `dev-run`, a tool the pipeline calls
+to launch the app.
 
 ---
 
@@ -24,24 +25,24 @@ the work already exists and only that stage is needed.
 ├── dev-pre-prod/SKILL.md         → Phase 14
 ├── dev-review/SKILL.md           → Phase 15  ↺
 ├── dev-prod/SKILL.md             → Phase 16
-│
-└── run/SKILL.md                  a TOOL, not a phase — build & launch iOS/Android/web
+└── dev-run/SKILL.md              → no phase — a TOOL: build & launch iOS/Android/web
 ```
 
-Every `dev-*` skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
+Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
 `shared/`, once.
 
-### Why `run` is here
+### `dev-run` — a member of a different kind
 
-`run` maps to no phase and reads none of the pipeline — it builds and launches an app, and it is
-just as useful on its own for a throwaway prototype (`/run ios sim`, `/run android emulator`,
-`/run` on an HTML directory). It keeps its plain name for exactly that reason.
+The other five are **phases**; `dev-run` is a **tool**. It maps to no phase number and reads none
+of the pipeline — it detects the project and launches it (`/dev-run ios sim`,
+`/dev-run android emulator`, `/dev-run web`). Phases 4 and 11 call it for mobile targets, and it is
+equally useful alone on a throwaway prototype.
 
-It ships here because it is the pipeline's only **personal-skill** dependency. Phases 4 and 11 call
-it to build and launch mobile targets, and everything else the pipeline reaches for —
-`superpowers:*`, `/code-review`, `security-review`, `frontend-design`, `supabase`,
-`feature-dev:*` — is a plugin that installs anywhere. `run` is the one that would simply be
-missing after a clone, and mobile verification would fail with nothing to explain why.
+It belongs in this repo because it is the pipeline's only **personal-skill** dependency. Everything
+else the pipeline reaches for — `superpowers:*`, `/code-review`, `security-review`,
+`frontend-design`, `supabase`, `feature-dev:*` — is a plugin that installs anywhere. `dev-run` is
+the one that would simply be missing after a clone, taking mobile verification down with it and
+leaving nothing to explain why.
 
 ---
 
@@ -54,7 +55,7 @@ discovery still sees a flat layout:
 
 ```bash
 ln -sfn ~/Developer/skills/dev-skill         ~/.claude/skills/dev
-for s in dev-verify dev-docs dev-pre-prod dev-review dev-prod run; do
+for s in dev-verify dev-docs dev-pre-prod dev-review dev-prod dev-run; do
   ln -sfn ~/Developer/skills/dev-skill/"$s"  ~/.claude/skills/"$s"
 done
 ```
@@ -87,6 +88,7 @@ nothing about it being registered. New skills usually appear on the next session
 | **14** | **PR → Review → Merge → Pre Prod** | `dev-pre-prod` |
 | **15** | **Review Cycle** — a LOOP back into Phase 14, never forward | `dev-review` |
 | **16** | **Prod Promotion** — migrations first, never autonomous | `dev-prod` |
+| — | *(no phase)* — build & launch the app | `dev-run` |
 
 ### Why only five siblings
 
@@ -116,4 +118,4 @@ Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-
 ## Editing
 
 Edit here — `~/.claude/skills/*` are symlinks to these files. After changing anything under
-`shared/`, all six skills pick it up with no further action.
+`shared/`, every phase skill picks it up with no further action.

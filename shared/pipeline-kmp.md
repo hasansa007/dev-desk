@@ -36,7 +36,7 @@ Cross-platform parity changes: include on both lists, described from each platfo
 
 ## Phase 11 — KMP Build & Verification (agent-run, both platforms)
 
-Launch BOTH targets yourself via the `run` skill (`/run android emulator`, `/run ios sim`) and execute the checklist on each, using each platform's own mechanics:
+Launch BOTH targets yourself via the `dev-run` skill (`/dev-run android emulator`, `/dev-run ios sim`) and execute the checklist on each, using each platform's own mechanics:
 
 - **Android:** full adb automation — see `pipeline-android.md` Phase 11 (hierarchy dump → tap → screenshot → logcat).
 - **iOS:** simctl deep links + screenshots, XCUITest when a UI-test target exists — see `pipeline-ios.md` Phase 11.

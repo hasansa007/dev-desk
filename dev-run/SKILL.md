@@ -1,5 +1,5 @@
 ---
-name: run
+name: dev-run
 description: >
   Build and run any iOS, Android, or web prototype project. For mobile, runs on simulator,
   emulator, or physical device — auto-detects project type, scheme, bundle ID, package name,
@@ -35,14 +35,14 @@ scheme names, bundle IDs, package names, simulator names, or file paths.
 | Anything else in quotes or multi-word | Device/simulator name OR HTML entry filename | iOS: latest iPhone sim; Android: first available; Web: auto-detected entry |
 
 Examples:
-- `/run` — auto-detect platform, run on simulator/emulator/browser
-- `/run ios device` — iOS on physical device, debug
-- `/run android` — Android on emulator, debug
-- `/run ios sim "iPhone 16 Pro"` — iOS on named simulator
-- `/run android release` — Android release build on emulator/device
-- `/run web` — serve the current directory and open the detected HTML entry
-- `/run web 8080` — serve on port 8080
-- `/run web index.html` — serve and open a specific entry file
+- `/dev-run` — auto-detect platform, run on simulator/emulator/browser
+- `/dev-run ios device` — iOS on physical device, debug
+- `/dev-run android` — Android on emulator, debug
+- `/dev-run ios sim "iPhone 16 Pro"` — iOS on named simulator
+- `/dev-run android release` — Android release build on emulator/device
+- `/dev-run web` — serve the current directory and open the detected HTML entry
+- `/dev-run web 8080` — serve on port 8080
+- `/dev-run web index.html` — serve and open a specific entry file
 
 ---
 
@@ -301,7 +301,7 @@ Display the results as a formatted table showing Name, State (connected/unavaila
 
 - If a specific device name was provided in arguments, match it
 - Otherwise, **automatically pick the first device with State = `connected`** — no need to ask
-- If NO devices are connected: "No physical iOS device connected. Connect a device and try again, or use `/run ios sim`."
+- If NO devices are connected: "No physical iOS device connected. Connect a device and try again, or use `/dev-run ios sim`."
 
 **Use the `Identifier` column from `devicectl list devices`** (UUID format) — NOT the UDID from `xctrace`.
 
@@ -477,4 +477,4 @@ Scope it to the **current branch**, not the whole project:
 Skip Phase 4 if:
 - The build failed (you already stopped per the Rules above).
 - The platform was `web` (this section is mobile-app-specific).
-- The user explicitly told you to skip post-launch notes (e.g. `/run quiet`).
+- The user explicitly told you to skip post-launch notes (e.g. `/dev-run quiet`).
