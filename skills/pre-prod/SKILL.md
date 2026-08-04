@@ -26,34 +26,15 @@ A branch with the work committed. The base is the **pre-prod branch** resolved b
 2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 14** in full, including the
    `Phase 14 Additions` from `dev/SKILL.md` when the source is a GitHub issue (`Closes #N`, labels).
 
-## The sequence
+## The sequence and its guards
 
-**push → PR → review → merge → pre prod**, in that order.
+**push → PR → review → merge → pre prod.** The sequence, the pre-merge gates, the runbook override,
+the required PR sections and the commit-hygiene rules are all written in **Phase 14** and Universal
+Rules — and only there. This door is loaded alongside the pipeline, not instead of it; a gate copied
+here is a gate that will disagree with Phase 14 the first time either is edited.
 
-The review is a **HARD GATE**: never merge an unreviewed diff — not when running the whole
-sequence autonomously, not for a one-line change.
-
-**Pre-merge gates, all required:**
-
-0. **Phase 12 — docs & ADRs** (`dev:docs`). Prices, limits, decisions with rejected
-   alternatives, env vars, migrations and deferred work recorded BEFORE the merge.
-1. **Phase 13 review** — `/code-review` + a spec-compliance check against the full PR diff.
-   Add `security-review` when the diff touches money, auth, migrations, uploads, or untrusted input.
-2. Fix every **Critical** and **Important** finding; re-verify if logic changed.
-3. **Do NOT merge** while any Critical/Important finding is open. "It's small / I already
-   self-reviewed / tests pass" does not waive this.
-4. Review clean **and** the developer confirms → merge → pre prod.
-
-## Guards
-
-- **This ends at PRE PROD, not production.** Do not report the work as "shipped" or "live". If the
-  repo has a two-stage model, production is `dev:prod` (Phase 16) and it has its own gate.
-- **The runbook overrides this sequence.** If `docs/deploy-and-staging.md` or similar exists, read
-  it — some repos release prod on the merge itself, in which case this skill IS the prod release
-  and needs the Phase 16 confirmation instead.
-- **Carry the verification evidence into the PR body.** `## VERIFICATION`, `## DOCS`, and
-  `## HOW TO TEST` are required sections — the checklist left in chat is a failed Phase 11.
-- Never add `Co-Authored-By` trailers or AI-attribution footers.
+The one thing worth saying twice, because getting it wrong is silent: **this ends at PRE PROD.**
+Never report the work as "shipped" or "live".
 
 ## Next — ask, never stop flat
 

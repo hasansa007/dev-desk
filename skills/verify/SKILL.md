@@ -36,25 +36,10 @@ The pipeline's Phase 11 is 99 lines and it is the fattest phase for a reason: **
 the checklist, the developer is not the test runner.** Every row gets real evidence — a screenshot,
 a console excerpt, a network status — never a narrative claim.
 
-Carry the three passes over from the pipeline, none of them optional:
-
-- **Pass 1** — one row per acceptance criterion or reported symptom
-- **Pass 2** — diff-scoped regression rows (`git diff <BASE>...HEAD --name-only`)
-- **Pass 2b** — shared-surface rows: **enumerate the consumers, don't reason about them**
-- **Pass 3** — make each row runnable: the exact mechanism, not the intent
-
-## Guards
-
-- **Tear down what you started.** The DevTools MCP Chrome, emulators, docker fixtures, background
-  shells — killed in the same turn the rows finish, matched by profile path and never by app name.
-  Report the teardown as one line of evidence. Never touch the developer's own browser or their
-  dev server.
-- **No claims without fresh output.** Apply `verification-before-completion`. State skipped tests
-  explicitly rather than reporting a bare pass count.
-- **Include a falsification row** — the check that would prove the change WRONG if it failed. A
-  checklist that can only confirm you is not a test.
-- **The checklist must land where the tester looks.** Chat-only is a failure of this phase: carry
-  it into the PR body's `## HOW TO TEST`, or `gh pr comment` it if the PR is already open.
+Its four passes, its teardown rule, its falsification row and its where-the-checklist-lands rule are
+all written in Phase 11 — **none of them optional, and none of them repeated here.** This door is
+loaded alongside the pipeline, not instead of it, and a guard copied here is a guard that will
+disagree with Phase 11 the first time either is edited.
 
 ## Then chain into `dev:docs` — automatically
 

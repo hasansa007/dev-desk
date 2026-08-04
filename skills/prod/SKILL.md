@@ -36,46 +36,13 @@ reach.
 And the two decisions are days apart: Phase 11's prod decision approved the **work**; this one
 approves the **release**.
 
-## The sequence
+## The sequence and its guards
 
-1. **Verify in pre prod first.** Run the rows only a deployed environment can answer — the ones
-   Phase 11 handed over as unreachable (real OAuth, real payments, real storage). A green local
-   suite is not pre-prod verification.
-2. **Migrations reach prod BEFORE the promotion merge** — never after, never during. The merge
-   releases code that expects the new schema; a schema arriving second is an outage. Rehearse on
-   pre prod, dry-run against prod, then apply, then merge. Use the `supabase` skill for the
-   mechanics.
-3. **Never merge while a build is running.** Two releases racing produce a deployment you cannot
-   attribute and a rollback that restores the wrong thing.
-4. **Read what is actually in the promotion:**
-   ```bash
-   git log <prod>..<pre-prod> --oneline
-   ```
-   It is a diff of already-reviewed commits, so it needs no second code review — but anything you
-   did not expect stops the promotion until you know why it is there.
-
-   **Zero commits is its own outcome.** Empty means pre prod and prod already match, and opening
-   the PR regardless deploys production for no change. Name it, stop, and report what is in flight
-   and where it is stuck — an empty promotion nearly always means something never reached pre prod.
-5. **Ask.** Present three things — what is in the promotion, what was verified in pre prod, which
-   migrations are already applied — then wait for the developer's word.
-
-## studyhub-deploy
-
-Feature PRs target `staging`; the **`staging → main` merge AUTO-DEPLOYS PROD**, so the merge IS
-the gate — there is no separate deploy step to catch a mistake afterwards. `staging` drifts behind
-`main`; catch up with `git push origin origin/main:staging`. Full flow in
-`docs/deploy-and-staging.md`.
-
-## Guards
-
-- **Never autonomously.** This skill always ends in a question, whatever the automation level.
-- **Do not merge while a build runs.** Check first.
-- **Migrations first, always.** If a migration is pending and unapplied, that is a stop, not a
-  warning.
-- If anything in `git log <prod>..<pre-prod>` is unexplained, stop and surface it.
-- **An empty promotion is a STOP, not a green light.** Zero commits means there is nothing to
-  release; opening the PR would deploy prod for no change.
+**Phase 16, steps 1–5, unchanged** — verify in pre prod, migrations before the merge, never merge
+into a running build, read `git log <prod>..<pre-prod>`, then ask. They are written there and only
+there. This door restates none of them, because it is loaded *alongside* the pipeline, not instead
+of it — and a guard copied here is a guard that will disagree with Phase 16 the first time either is
+edited.
 
 ## Next — ask, never stop flat
 
