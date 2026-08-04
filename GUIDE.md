@@ -158,6 +158,12 @@ from a branch that merged without its ADR, Phase 16's migrations-first from a sc
 the code that needed it. **A rule with no incident behind it is a guess.** Write the incident into
 the rule; that is why so many carry a date.
 
+> **The date is the marker, and its ABSENCE is information.** A rule carrying a date was paid for
+> with a real failure. A rule without one was *reasoned* into existence — plausible, untested, and
+> the first thing to suspect when the pipeline fights you. When friction appears, check the
+> undated rules before the dated ones; when pruning, they are the cheap cut. Most of Phase 0 and
+> the epic decomposition are undated as of 2026-08-04: they are designs, not scars.
+
 **2. A gate is only real if it produces an artifact.** Phase 12 works because its output is a
 required `## DOCS` section in the PR — its absence is visible. Gates that produce only a
 conversation get skipped and nobody notices. **When adding a gate, ask what it leaves behind.**
@@ -170,6 +176,12 @@ standalone members start at 11 and not earlier, and why an epic cannot resume mi
 
 **4. Ceremony is the failure mode, not sloppiness.** *A slow pipeline that gets skipped protects
 nothing.* Every addition must earn the tier it lands in. Prefer conditional over mandatory.
+
+> **Budget: `shared/pipeline.md` stays under 950 lines** (938 at 2026-08-04). Not a style
+> preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
+> than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
+> `wc -l shared/pipeline.md` before you write. The number is deliberately close to current: this
+> file grew 593 → 938 without ever losing a rule, and an unstated ceiling is not a ceiling.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.
