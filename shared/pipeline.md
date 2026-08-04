@@ -26,13 +26,20 @@ Derived from three operating protocols. These apply across every phase.
 
 ## Right-Size the Process (read first)
 
-The deep phases are for work that earns them. Triage every task into a tier BEFORE starting, and say which tier you picked:
+The deep phases are for work that earns them. Triage every task into a tier before you start
+**building**, and say which tier you picked.
+
+**Reading the affected file first is part of triage, not a violation of it.** You cannot tell an
+auth gate from a typo without opening it, and the tier turns on exactly that. A cheap look — read
+the file, count the referrers — comes before the tier; the investigation proper is still Phase 4.
+Observed 2026-08-04: a "rename one file" task was Deep the moment the file turned out to be the
+app-wide auth redirect.
 
 | Tier | When | Process |
 |---|---|---|
 | **Light** (default) | Small diff, low blast radius, no money/security/migration | Existing test suite + a quick self-review of the diff. NO subagent reviews, NO browser-automation pass, no checklist ceremony. Phase 4 = only as much investigation as the bug demands. |
 | **Standard** | Multi-file features, user-visible flows | Tests + run the ONE most valuable live check (the bug repro or the new flow), not the full matrix. Self-review; subagent review only if something feels off. |
-| **Deep** | Money paths, auth/security, migrations, wide refactors, novel-design features — or the developer asks | The full pipeline: exploration fan-out (Phase 2), architecture alternatives (Phase 6), evidence ladder, agent-run checklist, verified AI review. |
+| **Deep** | Money paths, auth/security, migrations, wide refactors, novel-design features — or the developer asks | Maximum **evidence and rigor**: the full evidence ladder, an agent-run checklist, verified AI review, and a security pass. The two fan-outs (Phase 2 explorers, Phase 6 architects) stay **independently conditional** — Deep does not mandate them, and a rename with one obvious shape should skip both. Deep buys care, not agents. |
 
 When in doubt between two tiers, pick the lighter one — the developer can always say "go deeper". A slow pipeline that gets skipped protects nothing.
 
@@ -61,7 +68,12 @@ they are right — the tier is a proposal, not a verdict.
 
 ## Run Mode — ask ONCE, then honour it
 
-Immediately after stating the tier, ask how the run should proceed. **Once** — never at every phase:
+Immediately after stating the tier, ask how the run should proceed. **Once** — never at every phase.
+
+**Do not spend a turn on it by itself.** Ask it alongside whatever else needs deciding — the tier
+if that is genuinely open, or Phase 5's go-ahead when Phase 5 is close. Two questions in one turn
+is one interruption; two questions in two turns is two, and the developer sees no work in either.
+Observed 2026-08-04: a mode ask and a Phase 5 ask arrived back to back before a single file changed.
 
 > "Tier: Standard. **Manual** (I stop after each phase for your word) or **auto** (I run through and
 > stop only at the decision gates)?"
@@ -171,6 +183,23 @@ already cover the area (most Light/Standard tasks — do not fan out for a known
 | GitHub | `gh-{N}-{slug}`: e.g. `gh-42-add-dark-mode` |
 | Generic | `feature/{slug}`: e.g. `feature/dark-mode-toggle` (max 5 words, lowercase, hyphens) |
 
+### When to cut it — at the FIRST WRITE, which differs by flow
+
+Naming is free; **creating** is what carries commitment. So:
+
+| Flow | First write | Cut the branch |
+|---|---|---|
+| **Bug** | Phase 4 — the reproduction becomes a failing test | before that capture step |
+| **Feature** | Phase 9 — implementation | **after Phase 5's go-ahead**, not before |
+
+**For a feature, do not open a branch named after it before the discussion.** Phase 5 is a real
+"should this exist" gate, and `feature/weekday-plan` sitting there already frames the answer as
+yes — to both of you. For a bug the objection does not apply: you reproduced it, so *whether* was
+never the question, only the approach.
+
+If the branch already exists (a resumed task, or the developer cut it), say so and move on — this
+is a rule about not pre-committing, not about rejecting work in progress.
+
 ---
 
 ## Phase 4 — Investigation
@@ -263,8 +292,22 @@ The winning approach seeds Phase 7's plan.
 > Phase 5 already settled *what* to build and, for UI work, *what it looks like*. This phase is
 > only the written plan. If you arrived here without that go-ahead, go back.
 
-Use the `writing-plans` skill to create a detailed implementation plan (seeded by Phase 6's
-winning approach when that phase ran). The plan must include:
+### Scale the plan to the work — a spec FILE is not always the artifact
+
+A ten-section spec written to `specs/` is right for work that will outlive this conversation. It is
+ceremony for a task that finishes in one sitting, and ceremony is what gets the phase skipped.
+
+| Write | When |
+|---|---|
+| **An inline plan** — 3–6 lines, in the response | the work finishes this session and nothing needs handing over |
+| **A spec file** (`specs/[slug].md`, full template below) | **REQUIRED** when any of: the work spans sessions · someone else will pick it up · Phase 6 ran, so rejected alternatives must survive to Phase 12's ADR · the plan itself is the deliverable |
+
+Say which you chose and why, in one clause. **Silently producing neither is the failure this rule
+closes** — observed 2026-08-04, when a 14-file rename ran end to end with a 4-line inline plan, no
+spec file, and nothing in the pipeline noticed the template had been skipped.
+
+Use the `writing-plans` skill to create the plan (seeded by Phase 6's winning approach when that
+phase ran). Whichever form it takes, it must include:
 
 - **Exact file paths** for every file to be created or modified
 - **Concrete code blocks** showing what changes (no placeholders like "add error handling" or "TBD")
@@ -307,7 +350,8 @@ changes to TECH_STACK, SYSTEM_FLOW, or ORPHANS & PENDING
 what to call out in review
 ```
 
-After producing the plan, write it to `specs/[feature-slug].md` in the repo.
+If the table above called for a spec file, write it to `specs/[feature-slug].md` now. If it called
+for an inline plan, the plan above IS the artifact — do not create a file nobody will read.
 
 After presenting the plan: ask "Any clarifications or changes before I start implementing?"
 
