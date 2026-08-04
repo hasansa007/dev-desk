@@ -34,6 +34,10 @@ starts it too.
 
 **That is the whole start.** Everything below is what happens next.
 
+Not ready to build it yet? `/dev:create-bug`, `/dev:create-issue` and `/dev:create-epic` file it into
+the tracker instead — one turn, no branch, no work — and hand you the number to run `/dev #N` on
+whenever you are ready.
+
 ## It will ask you two things
 
 Answer these and you are running it correctly. There are no other required decisions.
@@ -78,10 +82,11 @@ If it stops anywhere else, something is wrong — an ambiguity, a failed check �
 You do not need to memorise these. It announces each as it goes.
 
 ```
+0     file it — only from /dev:create-*, never inside a /dev run
 1–2   load project context, detect the stack
 3     name the branch (cut at the first write, not before)
 4     investigate — for a bug: reproduce it BEFORE theorising
-5     ── DISCUSS ── ask you ─────────────────────
+5     ── DISCUSS ── ask you ── (and SPLIT it here, if it's several tasks) ──
 6     architecture options, if there are real ones ── ask you ──
 7–8   write the plan, break it into tasks
 9     implement — small commits, one logical change each
@@ -100,6 +105,9 @@ The work already exists and you want a single stage:
 
 | Say | Runs |
 |---|---|
+| *"file a bug"* / *"log this"* | `/dev:create-bug` — drafts the report, files it, does **not** fix it |
+| *"file an issue"* / *"capture this"* | `/dev:create-issue` |
+| *"this is a big one"* / *"file an epic"* | `/dev:create-epic` — files the **parent only** |
 | *"verify this branch"* / *"does this actually work?"* | `/dev:verify` — builds the evidence table, drives the app |
 | *"are the docs updated?"* | `/dev:docs` — checks ADRs and PROJECT_MAP against the diff |
 | *"open a PR"* / *"merge to staging"* | `/dev:pre-prod` |
@@ -173,7 +181,8 @@ skip a judgment — building, architecture, merging, promoting.
 | Behaviour of any phase | `shared/pipeline.md` — **once**; all 7 entry points read it |
 | A stack-specific addition | `shared/pipeline-{web,ios,android,kmp}.md` — these overlay Phases 10, 11, 14 only |
 | Branch/environment resolution | `shared/entry.md` |
-| A new standalone member | `skills/<name>/SKILL.md` + a row in both family tables. **Only worth it for a phase ≥ 11** |
+| A new standalone member | `skills/<name>/SKILL.md` + a row in both family tables. **Only worth it for Phase 0 or a phase ≥ 11** — the rest pass reasoning, which cannot be handed over |
+| A per-type issue template | the `dev:create-*` member itself — templates are the only thing those three doors hold |
 | Entry routing | `SKILL.md` |
 
 Members are ~60-line doors into the pipeline. **A member that copies pipeline content is a bug** —
@@ -214,8 +223,9 @@ they point, never duplicate.
 
 Honest, as of 2026-08-04:
 
-- **No epic support.** The pipeline is task-shaped — one branch, one PR, one promotion. Epics
-  spanning many tasks, sessions and sub-issues have no representation.
+- **Epic support is new and unexercised (2026-08-04).** The design: file the parent with
+  `/dev:create-epic`, split it at Phase 5 into real sub-issues, run `/dev #child` per slice — the
+  pipeline stays task-shaped and the sub-issue list is the queue. Never run end to end.
 - **No rollback.** It runs 1 → 16 and stops. Nothing answers *"prod is broken, now what."*
 - **New-project path barely tested.** The `ARCHITECTURE.md`-absent branch and both MASTER_PROMPTs
   have never run.

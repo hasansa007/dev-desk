@@ -3,9 +3,9 @@
 A personal development workflow for Claude Code: take a GitHub issue or a plain description from
 "what should this do?" all the way to production, without skipping the gates that matter.
 
-`/dev` is the full run. Five members are doors into the same pipeline at later phases, for when
-the work already exists and only that stage is needed — plus `/dev:launch`, a tool the pipeline calls
-to launch the app.
+`/dev` is the full run. Three `/dev:create-*` members file the work item before it starts; five more
+are doors into the same pipeline at later phases, for when the work already exists and only that
+stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the app.
 
 > **New here? Read [GUIDE.md](GUIDE.md).** Part 1 is what to type and what it will ask you;
 > Part 2 is how to change it and what not to. This README is the repo's own structure.
@@ -20,10 +20,13 @@ to launch the app.
 ├── SKILL.md                      name: dev — the full run; entry routing + family table
 ├── shared/
 │   ├── entry.md                  workspace + pre-prod/prod branch resolution (read by all)
-│   ├── pipeline.md               ALL the behavior — Phases 1 → 16
+│   ├── pipeline.md               ALL the behavior — Phases 0 → 16
 │   └── pipeline-{web,ios,android,kmp}.md   platform overlays on Phases 10/11/14
 ├── web/  mobile/                 architecture + feature prompts (conditional)
 └── skills/
+    ├── create-bug/SKILL.md       → /dev:create-bug    Phase 0
+    ├── create-issue/SKILL.md     → /dev:create-issue  Phase 0
+    ├── create-epic/SKILL.md      → /dev:create-epic   Phase 0
     ├── verify/SKILL.md           → /dev:verify     Phase 11
     ├── docs/SKILL.md             → /dev:docs       Phase 12
     ├── pre-prod/SKILL.md         → /dev:pre-prod   Phase 14
@@ -37,7 +40,8 @@ Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavi
 
 ### `dev:launch` — a member of a different kind
 
-The other five are **phases**; `dev:launch` is a **tool**. It maps to no phase number and reads none
+The other eight are **phases** (three filing, five staged); `dev:launch` is a **tool**. It maps to
+no phase number and reads none
 of the pipeline — it detects the project and launches it (`/dev:launch ios sim`,
 `/dev:launch android emulator`, `/dev:launch web`). Phases 4 and 11 call it for mobile targets, and
 it is equally useful alone on a throwaway prototype.
@@ -80,11 +84,12 @@ about registration — check `claude plugin list` and the session's skill list.
 
 | Phase | | Sibling |
 |---|---|---|
+| **0** | **Filing** — draft, resolve real labels, create. Standalone only; a `/dev` run never reaches it | `dev:create-*` |
 | 1 | Context Load — `PROJECT_MAP.md`, `ARCHITECTURE.md`, existing spec | |
 | 2 | Tech Stack & Discovery — stack detect, conditional explorer fan-out | |
 | 3 | Git Branch Naming | |
 | 4 | Investigation — evidence ladder, reproduce before theorising | |
-| **5** | **Discuss Before Building** — plain-language, explicit go-ahead; conditional UI discussion | |
+| **5** | **Discuss Before Building** — plain-language, explicit go-ahead; conditional UI discussion **and epic decomposition** | |
 | 6 | Architecture Alternatives — 3 forced-different biases, losers recorded | |
 | 7 | Plan Output — written to `specs/` | |
 | 8 | Task Breakdown | |
@@ -98,12 +103,16 @@ about registration — check `claude plugin list` and the session's skill list.
 | **16** | **Prod Promotion** — migrations first, never autonomous | `dev:prod` |
 | — | *(no phase)* — build & launch the app | `dev:launch` |
 
-### Why only five phase members
+### Why these phase members and not others
 
 Phases 1–8 pass **reasoning** between each other, and reasoning lives only in the conversation that
 produced it — there is no artifact to hand a fresh session. From Phase 11 on, every phase takes
 something durable (a branch, a diff, a PR number), which is exactly what makes it independently
 invocable.
+
+Phase 0 qualifies from the other side of that seam: it runs *before* any reasoning exists, takes
+only a description, and produces an issue number. Nothing to hand over, because nothing has been
+worked out yet.
 
 Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-review`", so run
 `/code-review`.

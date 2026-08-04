@@ -97,6 +97,9 @@ directly when the work already exists and only that phase is needed:
 
 | Skill | Phase | Input | Use when |
 |---|---|---|---|
+| `dev:create-bug` | 0 | a description | "file this bug" — creates the issue, does not fix it |
+| `dev:create-issue` | 0 | a description | "capture this feature/task" |
+| `dev:create-epic` | 0 | a description | "this is a big one" — files the PARENT only |
 | `dev:verify` | 11 | a branch | "does this branch actually work?" |
 | `dev:docs` | 12 | a diff | "are the ADRs and docs current?" |
 | `dev:pre-prod` | 14 | a branch | "PR and merge this to pre prod" |
@@ -104,8 +107,10 @@ directly when the work already exists and only that phase is needed:
 | `dev:prod` | 16 | pre-prod + prod branches | "promote to production" |
 | `dev:launch` | — | a project to launch | "run the app" — a TOOL, not a phase |
 
-They all read the same `shared/pipeline.md`; none of them copies it. Phases 1–8 have no sibling on
-purpose — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.
+They all read the same `shared/pipeline.md`; none of them copies it. **Phases 1–8 have no sibling on
+purpose** — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.
+Phase 0 sits on the other side of that seam: it runs *before* any reasoning exists, takes only a
+description, and produces an issue number. That is why it can be a door when Phase 4 cannot.
 
 ---
 

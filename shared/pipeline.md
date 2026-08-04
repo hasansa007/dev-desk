@@ -106,6 +106,68 @@ is skipped, not the judgment.
 
 ---
 
+## Phase 0 — Filing (standalone entry only)
+
+Creating the work item. Reached ONLY from `dev:create-bug` / `dev:create-issue` /
+`dev:create-epic` — a `/dev` run never executes it, because by then the item exists. It produces one
+issue number and stops.
+
+### Filing is intake, not work
+
+- **Not investigation.** The report describes the symptom; Phase 4 finds the cause. No repro
+  attempts, no grepping, no reading the handler — a filing door that debugs turns a one-minute
+  capture into an afternoon, and the item still is not filed.
+- **Not decomposition.** An epic is filed as ONE issue. Its slices are cut at Phase 5, where context
+  load, discovery and investigation have actually happened; here they would be imagined.
+- **Not a branch.** Phase 3 owns branch timing and cuts at the first WRITE. A branch opened here
+  would pre-commit a decision Phase 5 has not made yet.
+
+The whole phase is one turn. If it is taking three, it has become the work.
+
+### The sequence
+
+1. **Resolve the repo** — `entry.md` → Workspace Resolution. An issue filed into the wrong tracker
+   is invisible where it is needed and noise where it landed.
+2. **Read 2–3 existing issues of the same type before drafting** — `gh issue list --limit 10 --json
+   number,title,labels`, then `gh issue view <N>`. This is Universal Rules' *read 2–3 examples first*
+   applied to the tracker: an issue that does not look like its neighbours gets triaged like an
+   outsider's.
+3. **Resolve the labels that EXIST** — `gh label list --limit 60`. **Never pass a label absent from
+   that output.** `gh issue create --label <unknown>` fails outright, and the reflex fix — drop the
+   label, file anyway — produces an unlabelled issue that no board query will ever surface. A
+   missing label is a taxonomy decision: ask, never create one silently.
+4. **Draft the whole thing, then ask at most TWO questions.** Draft first, never interview: a fixed
+   questionnaire is the ceremony this pipeline exists to refuse, and it guarantees the item gets
+   filed later or never. Ask only where a wrong guess changes the issue materially — *"every course
+   or only long lists?"* changes it; *"what priority?"* does not, so propose one. Mark every
+   inference as one: *"(assumed: RTL only — correct me)"*. **Zero questions is the good outcome, not
+   a shortcut.**
+5. **Show the draft — title, body, labels — before it exists.** Filing is cheap to do and public to
+   undo; an issue edited three times in its first minute was public in all three.
+6. **Create it, then hand off** per `entry.md` → *Never end silently*.
+
+````bash
+gh issue create --title "<title>" --label "<resolved labels>" --body "$(cat <<'EOF'
+<body>
+EOF
+)"
+````
+
+### Rules
+
+- **One item per invocation.** Three problems in one description are three issues — say so and ask
+  which to file, or file the first and name the rest. Silently folding them into one produces the
+  issue that later gets half-closed.
+- **The type is a default, not a contract.** `dev:create-bug` pointed at something plainly a feature
+  files a feature and says so. Stop on Ambiguity outranks the door you came through.
+- **These issues never auto-close** — `Closes #N` does not fire in a repo whose feature PRs target
+  pre prod. `dev:prod` → *Next* offers the write-back; that is where they close.
+
+> The per-type templates live in the three `dev:create-*` members — that is the only thing that
+> differs between them, and it is the only thing they hold.
+
+---
+
 ## Phase 1 — Context Load
 
 Runs before everything else. Reads persistent project context to skip re-discovery.
@@ -238,6 +300,37 @@ How to run it:
   a wrong assumption discovered at Phase 9 costs the whole branch.
 - **Propose, then wait.** "Go ahead" is a specific thing the developer says. Inferring it from
   their interest in the topic is how unrequested work gets built.
+
+### Decomposition — when this is several tasks (conditional)
+
+**When:** the work spans several branches, surfaces or sessions — whether or not it arrived labelled
+an epic. **Skip** when it is one task, which is most of them.
+
+This is the only phase that can do it. Phase 0 filed the item before anything was known; by here,
+context load, discovery and investigation have all run, so the seams are **observed rather than
+imagined** — and a wrong seam is expensive, because each slice becomes its own branch, PR and
+promotion.
+
+1. **Propose the slices in plain language** — with dependencies and the order you would take them.
+   Each must be **independently shippable**. A slice that cannot reach pre prod without another is
+   not a slice; fold it into the one it depends on.
+2. **Wait.** Phase 5 is a stop-gate and filing children is a write.
+3. **Then file each as its own labelled issue and attach it to the parent:**
+
+````bash
+CHILD=$(gh issue create --title "..." --label "..." --body "..." --json id -q .id)
+gh api repos/<owner>/<repo>/issues/<PARENT>/sub_issues -f sub_issue_id="$CHILD"
+````
+
+   **`sub_issue_id` is the node `.id`, never the `number`.** Passing the number fails or silently
+   attaches the wrong issue, and it is the part of this that bites every time.
+
+4. **Never `- [ ]` checkbox lines for slices.** A checklist in the parent body is invisible to every
+   board query, carries no label, and cannot be worked by `/dev #N`.
+5. **Continue this run on the FIRST child, and say which.** The parent is a tracker — it takes no
+   branch and stays open until its children close. Later children are their own `/dev #N` runs: the
+   sub-issue list IS the queue, it lives on GitHub, and it therefore survives the session that
+   created it. Nothing about an epic is held in the conversation.
 
 ### UI discussion (conditional)
 

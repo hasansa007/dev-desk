@@ -53,13 +53,20 @@ this pipeline exists to refuse.
 
 | Sibling | Phase | Loads |
 |---|---|---|
-| `dev` | 1–16 | everything — it runs every phase |
+| `dev` | 1–16 | everything except Phase 0 — the item already exists by the time it runs |
+| `dev:create-bug` | 0 | always **minus Right-Size** + Phase 0 |
+| `dev:create-issue` | 0 | always **minus Right-Size** + Phase 0 |
+| `dev:create-epic` | 0 | always **minus Right-Size** + Phase 0 |
 | `dev:verify` | 11 | always + Phase 1 + Phase 2 → platform pipeline |
 | `dev:pre-prod` | 14 | always + Phase 2 → platform pipeline |
 | `dev:review` | 15 | always + Phase 1 |
 | `dev:docs` | 12 | always only |
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
+
+**The `dev:create-*` doors take no tier**, which is the one exception to the always-load list above.
+A tier answers *how much process does building this deserve* — filing builds nothing, and Phase 0 is
+one turn by construction. Their header line ends at the repo.
 
 `dev:launch` is a family member of a different **kind**: the others are *phases*, it is a *tool*. It
 maps to no phase number and loads none of this preamble — it builds and launches the app. Phases 4
@@ -97,6 +104,9 @@ fields you inferred rather than resolved.
 
 | Skill | Phase | Input it needs | Kind |
 |---|---|---|---|
+| `dev:create-bug` | 0 | a description of what is broken | **filing** |
+| `dev:create-issue` | 0 | a description of the work | **filing** |
+| `dev:create-epic` | 0 | a description spanning several tasks | **filing** |
 | `dev` | Entry 1–2 → 1–16 | issue ref or a description | full run |
 | `dev:verify` | 11 | a branch | stage |
 | `dev:docs` | 12 | a diff | gate |
@@ -105,10 +115,11 @@ fields you inferred rather than resolved.
 | `dev:prod` | 16 | pre-prod + prod branches | stage |
 | `dev:launch` | — | a project to launch | **tool** |
 
-**Why these five phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning
+**Why these phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning
 lives only in the conversation that produced it — there is no artifact to hand a fresh session.
 From Phase 11 on, every phase takes a durable artifact (branch, diff, PR number), which is exactly
-what makes it independently invocable. Phase 13 is deliberately absent: it is 20 lines that mostly
+what makes it independently invocable. Phase 0 qualifies from the opposite side of that seam: it
+runs before any reasoning exists, takes only a description, and produces an issue number. Phase 13 is deliberately absent: it is 20 lines that mostly
 say "run `/code-review`", so run `/code-review`.
 
 ---
