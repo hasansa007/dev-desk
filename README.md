@@ -7,6 +7,9 @@ A personal development workflow for Claude Code: take a GitHub issue or a plain 
 the work already exists and only that stage is needed — plus `/dev:launch`, a tool the pipeline calls
 to launch the app.
 
+> **New here? Read [GUIDE.md](GUIDE.md).** Part 1 is what to type and what it will ask you;
+> Part 2 is how to change it and what not to. This README is the repo's own structure.
+
 ---
 
 ## Layout
