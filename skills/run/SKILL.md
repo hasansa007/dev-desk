@@ -4,13 +4,15 @@ description: >
   Build and run any iOS, Android, or web prototype project. For mobile, runs on simulator,
   emulator, or physical device — auto-detects project type, scheme, bundle ID, package name,
   and main activity. Works with Xcode projects (xcodeproj/xcworkspace), xcodegen (project.yml),
-  Gradle (gradlew), CocoaPods, SPM, and KMP multi-platform repos. For web, serves a directory
-  containing an HTML entry point via a local HTTP server and opens it in the browser
-  (handles JSX/Babel-in-browser prototypes that fail under file://).
+  Gradle (gradlew), CocoaPods, SPM, and KMP multi-platform repos. For a framework web app
+  (Next.js, Vite, Astro, SvelteKit, CRA) it reuses the dev server if one is already listening —
+  opening the browser and starting nothing — and otherwise launches it via the project's OWN
+  script when it has one. For a static prototype it serves the directory over local HTTP
+  (handles JSX/Babel-in-browser pages that fail under file://).
   Trigger on: "run the app", "build and run", "launch on simulator", "launch on device",
   "install on device", "run on emulator", "run on iPhone", "run on Android",
-  "boot simulator and run", "run debug build", "open page", "serve this", "run the html",
-  "preview the prototype".
+  "boot simulator and run", "run debug build", "start the dev server", "open the app",
+  "open page", "serve this", "run the html", "preview the prototype".
 allowed-tools: [xcodebuild, gradle, adb, python3]
 ---
 
@@ -40,7 +42,7 @@ Examples:
 - `/dev:run android` — Android on emulator, debug
 - `/dev:run ios sim "iPhone 16 Pro"` — iOS on named simulator
 - `/dev:run android release` — Android release build on emulator/device
-- `/dev:run web` — serve the current directory and open the detected HTML entry
+- `/dev:run web` — a framework app: reuse its dev server if up, else start it; a static folder: serve it
 - `/dev:run web 8080` — serve on port 8080
 - `/dev:run web index.html` — serve and open a specific entry file
 
@@ -72,6 +74,7 @@ If the user did not specify a platform, detect from project files:
 ```bash
 HAS_IOS=false
 HAS_ANDROID=false
+HAS_WEBAPP=false
 HAS_WEB=false
 
 # iOS markers (check root and common subdirectories)
@@ -80,13 +83,23 @@ find "$PROJECT_ROOT" -maxdepth 2 \( -name "*.xcodeproj" -o -name "*.xcworkspace"
 # Android markers
 [ -f "$PROJECT_ROOT/gradlew" ] && HAS_ANDROID=true
 
-# Web markers — any .html in the cwd or PROJECT_ROOT (excluding hidden / node_modules)
+# Framework web APP — a package.json carrying a dev script (root or one level down: web/, app/, frontend/)
+find "$PROJECT_ROOT" -maxdepth 2 -name package.json -not -path "*/node_modules/*" -not -path "*/.*" \
+  -exec grep -l '"dev"' {} \; 2>/dev/null | head -1 && HAS_WEBAPP=true
+
+# Static web prototype — a loose .html (excluding hidden / node_modules)
 find "$PROJECT_ROOT" -maxdepth 2 -name "*.html" -not -path "*/node_modules/*" -not -path "*/.*" 2>/dev/null | head -1 && HAS_WEB=true
 ```
 
 Platform precedence when multiple are detected:
-- Native (iOS/Android) takes precedence over web — web is the fallback when no mobile project files are present
+- Native (iOS/Android) takes precedence over anything web
+- **`HAS_WEBAPP` beats `HAS_WEB`.** A framework app needs its dev server (3F); a static file server
+  (3E) would serve the source directory and render nothing useful. Repos trip both detectors all the
+  time — a Next.js project with a stray `public/preview.html` — and choosing static there is the
+  silent-wrong-answer case
 - If both iOS and Android exist (KMP/multi-platform): cwd inside `iOSApp/`/`ios/`/`iosApp/` → iOS; inside `androidApp/`/`app/` → Android; otherwise ask
+- **If NOTHING is detected, say so and stop.** Never fall back to "serve the directory" — an empty
+  static server returns 200 on a directory listing and looks like success
 - If user explicitly passed `web`, use web even when mobile project files are present
 
 ### Step 2.3 — iOS Project Discovery
@@ -219,6 +232,44 @@ done
 ```
 
 Store: `$SERVE_DIR`, `$ENTRY`, `$PORT`
+
+### Step 2.6 — Framework App Discovery
+
+Run only when `HAS_WEBAPP`.
+
+#### 2.6.1 — Find the app directory and its dev script
+
+```bash
+APP_JSON=$(find "$PROJECT_ROOT" -maxdepth 2 -name package.json -not -path "*/node_modules/*" -not -path "*/.*" \
+  -exec grep -l '"dev"' {} \; 2>/dev/null | head -1)
+APP_DIR=$(dirname "$APP_JSON")
+DEV_SCRIPT=$(node -p "require('$APP_JSON').scripts.dev" 2>/dev/null)
+echo "$APP_DIR — dev: $DEV_SCRIPT"
+```
+
+#### 2.6.2 — Find the LAUNCH PATH — prefer the project's own script
+
+**Do not reach for `npm run dev` first.** Many repos wrap it in a script that does work the bare
+command skips — starting a local database, injecting env, linking a deploy CLI, freeing the port.
+Running the bare command instead boots a *differently configured* app that looks fine and behaves
+subtly wrong. Check in this order and use the first that exists:
+
+| Order | Source | Look for |
+|---|---|---|
+| 1 | **A project launch script** | `.vscode/dev.sh`, `bin/dev`, `scripts/dev*`, `dev.sh`, a `dev`/`start` target in `Makefile`/`Justfile` |
+| 2 | **A documented command** | `CLAUDE.md`, `README.md`, `CONTRIBUTING.md` — a "run locally" / "development" section |
+| 3 | **The package.json script** | `<pm> run dev`, package manager from the lockfile: `package-lock.json`→npm · `pnpm-lock.yaml`→pnpm · `yarn.lock`→yarn · `bun.lockb`→bun |
+
+**Read the script before running it** — it tells you the port, the prerequisites (Docker, a local
+database), and whether it opens a browser itself. If it already opens one, do not open a second.
+
+#### 2.6.3 — Resolve the port
+
+From the dev script's own flags first (`-p 3007`, `--port 5173`, `${PORT:-3007}`), then the
+launch script, then framework defaults: Next 3000 · Vite 5173 · CRA/Remix 3000 · Astro 4321 ·
+SvelteKit 5173. **Never assume — a wrong port makes a healthy server look dead.**
+
+Store: `$APP_DIR`, `$LAUNCH_CMD`, `$PORT`, `$OPENS_BROWSER`
 
 ---
 
@@ -432,6 +483,87 @@ Stop the server: lsof -ti:<PORT> | xargs kill
 
 ---
 
+### 3F — Framework Web App (Next / Vite / Astro / SvelteKit / CRA …)
+
+Use when `HAS_WEBAPP`. The app needs **its own dev server**; serving the directory statically (3E)
+would hand the browser raw source.
+
+#### 3F.1 — Is one already running? CHECK FIRST, ALWAYS
+
+```bash
+lsof -nP -iTCP:$PORT -sTCP:LISTEN 2>/dev/null
+```
+
+**If something is listening → do NOT start anything. Open the browser and stop.**
+
+```bash
+curl -s -o /dev/null -w "HTTP %{http_code}\n" "http://localhost:$PORT"
+open "http://localhost:$PORT"     # macOS · Linux: xdg-open · Windows: start
+```
+
+Report it as reuse: *"Your server was already up on :3007 — opened it, started nothing."*
+
+This is a **guard, not an optimisation.** Launch scripts commonly free the port before binding —
+this repo's does, with `lsof -ti tcp:3007 | xargs kill` on its first line. Running one against a
+live server silently kills the developer's process and replaces it with yours. Their server is
+theirs: you may open it, never restart it.
+
+If the port answers but the response looks wrong (404 on `/`, a different app), say so and ask
+rather than killing it.
+
+#### 3F.2 — Nothing running → start it
+
+Use `$LAUNCH_CMD` from Step 2.6.2 — the project's own script when it has one, the package.json
+script otherwise. Run from `$APP_DIR` (or the script's own directory), backgrounded and disowned so
+the terminal stays free:
+
+```bash
+cd "$APP_DIR"
+$LAUNCH_CMD >/tmp/run-webapp-$PORT.log 2>&1 &
+disown
+```
+
+**Say what you are about to run, before running it** — a launch script can start Docker, boot a
+local database, or pull remote env, and that is not a surprise to spring on someone.
+
+#### 3F.3 — Wait for it to actually listen
+
+Dev servers take seconds to bind, and framework startup is not instant. Poll rather than sleeping a
+guessed interval:
+
+```bash
+for i in $(seq 1 60); do
+  nc -z localhost "$PORT" 2>/dev/null && break
+  sleep 1
+done
+nc -z localhost "$PORT" 2>/dev/null || { tail -40 /tmp/run-webapp-$PORT.log; exit 1; }
+```
+
+**On timeout, print the log and STOP.** Do not open a browser at a port nothing is serving — a
+blank tab is a worse error message than the stack trace sitting in the log.
+
+#### 3F.4 — Open the browser
+
+Skip if `$OPENS_BROWSER` — the project's script already does it, and a second tab is noise.
+
+```bash
+open "http://localhost:$PORT"
+```
+
+#### 3F.5 — Report, including how to stop it
+
+```
+Running <app-name> on http://localhost:<PORT>   (started by this skill)
+Log:  /tmp/run-webapp-<PORT>.log
+Stop: lsof -ti:<PORT> | xargs kill
+```
+
+**Teardown rule: stop only what you started.** If 3F.1 found the server already up, you started
+nothing — say that, and never offer to stop it. If the launch script also started a database or a
+container, say what is now running that was not before.
+
+---
+
 ## Error Recovery
 
 | Error | Recovery |
@@ -445,6 +577,9 @@ Stop the server: lsof -ti:<PORT> | xargs kill
 | `xcodebuild -list` hangs (SPM resolution) | Kill and suggest `xcodegen generate` if `project.yml` exists |
 | Web: page renders blank / console shows CORS or "Failed to fetch" for local files | This is exactly why we serve over HTTP — confirm the URL is `http://localhost:<PORT>/<ENTRY>`, not `file://` |
 | Web: port already in use | Pick the next free port (Phase 2.5.3) instead of killing the existing process |
+| Webapp: port answers but it's a different app | Say so and ASK — never kill a process you did not start |
+| Webapp: server never binds within 60s | Print `/tmp/run-webapp-<PORT>.log` and stop; do not open a blank tab |
+| Webapp: launch script needs Docker / a local DB | Its prerequisites are the project's, not yours to bypass — surface the script's own error |
 | Web: `python3` not installed | Fall back to `npx http-server "$SERVE_DIR" -p "$PORT"` or `php -S localhost:$PORT -t "$SERVE_DIR"` |
 
 ## Rules
@@ -459,6 +594,9 @@ Stop the server: lsof -ti:<PORT> | xargs kill
 - If auto-detection finds multiple candidates for any value, present options and ask the user
 - On build failure, show error output and STOP — do not proceed to install/launch
 - For Android, always `cd` to the directory containing `gradlew` before running Gradle
+- **Check the port BEFORE launching a webapp.** If it is already serving, open it and start nothing — launch scripts often free the port first, so running one against a live server kills the developer's process
+- **Prefer the project's own launch script over `npm run dev`.** Test for it (`.vscode/dev.sh`, `bin/dev`, `scripts/dev*`, a Makefile target); never hardcode a path, and always fall back to the package.json script. A wrapper usually exists because the bare command produces a differently configured app
+- **Stop only what you started**, and say which case it was
 - For web, never open an HTML file directly with `file://` if it contains `<script src="...">`, fetch, JSX, or modules — always serve over HTTP
 - For web, run the server in the background (`&` + `disown`) so the user keeps their terminal, and tell them how to stop it
 - After successful launch, print: "App launched successfully on <target>." (mobile) or "Serving on http://localhost:<PORT>/<ENTRY>" (web)
