@@ -114,9 +114,13 @@ Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-
 
 - **Right-size first.** Every task is triaged Light / Standard / Deep before starting, and the tier
   is stated. Light is the default. *A slow pipeline that gets skipped protects nothing.*
-- **Run mode is asked once, not per phase.** Manual stops after every phase; auto runs through.
-  Either way Phases 5, 6, 14 and 16 stop — those are decisions, not steps. *Auto means "don't ask
-  me between mechanical steps", never "unattended".*
+- **It runs straight through; there is no mode question.** Phases 5, 6, 14 and 16 stop regardless —
+  those are decisions, not steps. Running automatically skips the ceremony, never the judgment.
+- **Never end silently.** Wherever a run stops — the last phase, a gate, a blocker — it names the
+  next phase and asks. Entering at Phase 12 never leaves you guessing what followed it.
+- **Skipping leaves a trace.** Every PR carries `## PIPELINE`: tier, what ran, what was skipped and
+  **why**, and what each gate caught. It is also the only record of whether a rule ever earned its
+  place, which is what makes rules removable.
 - **Pre prod ≠ prod.** Phase 14 reaches pre prod only. Promotion is Phase 16, needs its own
   confirmation, and never happens autonomously.
 - **Evidence before assertions.** No "should work" — run it, read the output, paste what it printed.

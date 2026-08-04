@@ -85,7 +85,7 @@ Scope / Context) is for a `dev` run, where every field is populated. A sibling e
 with most of them empty, so it opens with **one line** instead:
 
 ```
-Dev · <sibling> — Phase <N> | <repo> | <branch or diff> | <tier> | <mode>
+Dev · <sibling> — Phase <N> | <repo> | <branch or diff> | <tier>
 ```
 
 State any assumption you had to make in that same line or immediately under it. Never pad it with
@@ -119,7 +119,25 @@ say "run `/code-review`", so run `/code-review`.
   and let the developer decide — do not silently backfill a plan or a spec.
 - **State what you assumed.** Which branch, which base, which tier — one line, before acting.
 - **A sibling never promotes to production autonomously.** `dev:prod` asks. Always.
-- **Chaining is allowed only between adjacent READ-ONLY gates, and only one hop.** `dev:verify` →
-  `dev:docs` is the one wired pair: same diff, adjacent phases (11 → 12), both read-only, and their
-  outputs are the two halves of one PR body. Nothing chains into `/code-review`, and **nothing ever
-  chains into a merge or a promotion** — those are decisions, not steps.
+
+### Never end silently
+
+**Applies to every entry point, including a full `dev` run that stops early.** Entering at Phase 11
+means the developer is standing in the MIDDLE of a pipeline when your phase finishes, not at the end
+of one. So close every invocation by naming **the next phase, what it would do, and where it ends**
+— then ask:
+
+> "Phase 12 clean. Next is Phase 13 (`/code-review`) on the same diff, then Phase 14 opens the PR
+> and merges to `staging`. Continue?"
+
+Stopping flat is the failure this closes: it makes the developer remember both that there IS more
+and what it is called, which is precisely the work the family exists to absorb. Say it even when
+nothing follows — `dev:prod` ends by offering the tracker write-back, not with silence.
+
+This is an **ask**, not a chain:
+
+- **Chaining — proceeding WITHOUT asking — is allowed only between adjacent READ-ONLY gates, and
+  only one hop.** `dev:verify` → `dev:docs` is the one wired pair: same diff, adjacent phases
+  (11 → 12), both read-only, and their outputs are the two halves of one PR body. Everywhere else,
+  you ask. Nothing chains into `/code-review`, and **nothing ever chains into a merge or a
+  promotion** — those are decisions, not steps.

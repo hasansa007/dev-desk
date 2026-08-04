@@ -62,3 +62,11 @@ Follow `receiving-code-review` — technical rigor, not performative agreement:
   Review fixes are a classic way for an ADR to drift out of date silently.
 - Ask for confirmation before implementing: *"Here's the plan to address the review comments.
   Proceed?"*
+
+## Next — ask, never stop flat
+
+Pushing is not the end; the diff changed, so the gates that were clean no longer are. End by naming
+the loop and asking (`entry.md` → *Never end silently*):
+
+> "3 comments addressed and pushed. The diff changed, so Phase 12 (docs) and Phase 13 (review) are
+> stale — re-running both, then `dev:pre-prod` merges. Continue?"

@@ -34,7 +34,7 @@ starts it too.
 
 **That is the whole start.** Everything below is what happens next.
 
-## It will ask you three things
+## It will ask you two things
 
 Answer these and you are running it correctly. There are no other required decisions.
 
@@ -51,26 +51,18 @@ It proposes one; you can override.
 **If unsure, say nothing** — it defaults light and you can say *"go deeper"* any time. A heavy
 process you skip protects nothing.
 
-### 2. Mode — how often it stops
-
-| Mode | |
-|---|---|
-| **Manual** | stops after each phase and waits for you. Slower, and you see everything |
-| **Auto** | runs through, stopping only at the real decisions |
-
-**Pick auto once you trust it.** Auto is not "unattended" — four gates stop either way (below).
-
-### 3. The go-ahead — *"should we build this at all?"*
+### 2. The go-ahead — *"should we build this at all?"*
 
 Before writing code it explains, in plain language, what it intends to do and why, and waits.
-This is **Phase 5**, and it stops even in auto mode.
+This is **Phase 5**, and it stops however the run was started.
 
 **Use it.** This is the cheapest moment to say *"actually, no"* or *"not like that"*. Disagreeing
 here costs a sentence; disagreeing after Phase 9 costs the branch.
 
-## The four moments it always stops
+## It runs straight through — and stops at four moments
 
-Even in auto. These are decisions, not steps — a mode setting is not your consent.
+It never asks *"shall I continue?"* between phases. It reports what each one did and moves on. But
+these four are decisions, not steps, and it always stops at them:
 
 | | Stops to ask |
 |---|---|
@@ -115,7 +107,12 @@ The work already exists and you want a single stage:
 | *"promote to prod"* | `/dev:prod` |
 | *"run the app"* / *"launch on simulator"* | `/dev:launch` |
 
-## Five things that will confuse you the first time
+**Starting mid-pipeline never leaves you stranded.** Whichever one you invoke, it finishes by naming
+the next phase, what it would do and where it ends — then asks whether to continue. You do not have
+to remember what comes after Phase 12, or that it is called `/dev:pre-prod`. Say *"yes"* and it
+carries on; say nothing and it stops there, having told you what it stopped short of.
+
+## Six things that will confuse you the first time
 
 1. **It asks before it builds, and it means it.** The pause at Phase 5 is not politeness. Answer
    with what you actually think.
@@ -127,11 +124,15 @@ The work already exists and you want a single stage:
    perfect tests and no ADR.
 5. **It cleans up after itself.** Browsers, emulators and servers it started get killed and
    reported. Anything it did *not* start — your dev server — it will never touch.
+6. **Every PR gets a `## PIPELINE` section**, and the interesting line is `Skipped:`. It says which
+   phases were skipped *and why*. Read that line before the code — an unconvincing reason there is
+   the cheapest bug you will ever catch.
 
 ## If something goes wrong
 
 - **It is doing too much** → *"light tier"*
-- **It is asking too often** → *"auto"*
+- **It is moving too fast to follow** → *"slow down"* / *"ask me between phases"*, honoured for the
+  rest of the run. It will never offer this — running through is the default and stays that way
 - **It is going the wrong way** → say so at Phase 5; that is what the gate is for
 - **It skipped something** → tell it. That is a bug in the pipeline, and Part 2 is how it gets fixed
 
@@ -152,6 +153,8 @@ the rule; that is why so many carry a date.
 **2. A gate is only real if it produces an artifact.** Phase 12 works because its output is a
 required `## DOCS` section in the PR — its absence is visible. Gates that produce only a
 conversation get skipped and nobody notices. **When adding a gate, ask what it leaves behind.**
+`## PIPELINE` is the same idea applied to the phases that produce nothing of their own: it does not
+make them leave artifacts, it makes *skipping* them leave one.
 
 **3. Phase 11 is the seam.** Phases 1–10 pass *reasoning*, which exists only in the conversation
 that produced it. Phases 11–16 pass *artifacts* — a branch, a diff, a PR number. That is why the
@@ -194,8 +197,18 @@ they point, never duplicate.
    is not an input. This whole file's last five fixes came from one real run.
 2. **Say what artifact proves it.** If the gate cannot leave evidence behind, it will be skipped.
 3. **Say which tier pays for it.** Everything mandatory taxes every task forever.
-4. **Say what it replaces.** The pipeline has grown 593 → 823 lines and has never lost a rule. An
-   addition that removes nothing needs to be worth its permanent cost.
+4. **Say what it replaces — and now you can prove it.** The pipeline grew 593 → 823 lines without
+   ever losing a rule, because deletion was never safe: you cannot remove on a hunch what was added
+   after an incident. `## PIPELINE`'s `Gates:` line is what makes it safe. Query the history —
+
+   ```bash
+   gh pr list --state merged --limit 100 --json body -q '.[].body' | grep '^Gates:'
+   ```
+
+   — and a gate that has read `clean` across twenty PRs is a rule you can retire with evidence, not
+   nerve. **Every addition names its deletion**, justified either by that query or by pointing at
+   where the rule is already written. An addition that removes nothing pays a permanent tax on every
+   future task.
 
 ## Known gaps
 
@@ -206,8 +219,10 @@ Honest, as of 2026-08-04:
 - **No rollback.** It runs 1 → 16 and stops. Nothing answers *"prod is broken, now what."*
 - **New-project path barely tested.** The `ARCHITECTURE.md`-absent branch and both MASTER_PROMPTs
   have never run.
-- **Nothing measures the gates.** There is no record of which gate has ever caught anything, so
-  pruning is guesswork. A per-run log would fix this and enable everything else.
+- **The gate log has a mechanism but no data.** `## PIPELINE`'s `Gates:` line was added 2026-08-04
+  to fix this; until ~20 PRs carry it, pruning is still guesswork. It is also self-reported — a run
+  that skips a phase *and* omits it from `Skipped:` is invisible, same as before. This buys
+  visibility, not enforcement.
 - **`dev:pre-prod`, `dev:review`, `dev:prod` unexercised.**
 - **Enforcement is thin.** 3 of 16 phases produce a durable artifact; the rest depend on the reader
   complying. This is the single biggest structural weakness.

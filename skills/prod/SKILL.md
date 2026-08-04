@@ -76,3 +76,13 @@ the gate — there is no separate deploy step to catch a mistake afterwards. `st
 - If anything in `git log <prod>..<pre-prod>` is unexplained, stop and surface it.
 - **An empty promotion is a STOP, not a green light.** Zero commits means there is nothing to
   release; opening the PR would deploy prod for no change.
+
+## Next — ask, never stop flat
+
+Phase 16 is the last phase, which makes this the easiest place to stop flat — and the worst, because
+the tracker is now the only thing that still says the work is unfinished. End by offering the
+write-back (`entry.md` → *Never end silently*):
+
+> "Promoted — `<sha>` is live. Nothing follows in the pipeline, but the issues this closes are still
+> open: `Closes #N` never fires here (feature PRs target the pre-prod branch, and GitHub honours the
+> keyword only on the default branch). Want me to close #N and #M with a comment linking the PRs?"

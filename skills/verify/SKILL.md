@@ -83,7 +83,13 @@ Verification clean — running dev:docs (Phase 12) on the same diff.
 Chaining stops there. `/code-review` (Phase 13) and `dev:pre-prod` (Phase 14) are separate
 decisions — Phase 14 merges, and nothing auto-runs a merge.
 
-## Next
+## Next — ask, never stop flat
 
-Verification passing is not permission to merge. After the `dev:docs` chain, `/code-review`
-(Phase 13) is still a gate, and `dev:pre-prod` (Phase 14) is what actually merges.
+Verification passing is not permission to merge. After the `dev:docs` chain, end by naming the rest
+and asking (`entry.md` → *Never end silently*):
+
+> "Rows green, docs gate clean. Next is Phase 13 (`/code-review`) on the same diff, then
+> `dev:pre-prod` (Phase 14) opens the PR and merges to `<pre-prod branch>`. Continue?"
+
+If any row was ❌ or handed back as unreachable, say that FIRST — the question is then whether to
+proceed at all, not which phase comes next.

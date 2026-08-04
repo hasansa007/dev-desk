@@ -55,7 +55,12 @@ sequence autonomously, not for a one-line change.
   `## HOW TO TEST` are required sections — the checklist left in chat is a failed Phase 11.
 - Never add `Co-Authored-By` trailers or AI-attribution footers.
 
-## Next
+## Next — ask, never stop flat
 
-`dev:review` (Phase 15) if reviewers request changes — it loops back into these gates.
-`dev:prod` (Phase 16) to promote, later, as a separate decision.
+End by naming what remains and asking (`entry.md` → *Never end silently*):
+
+> "Merged to `<pre-prod branch>` — this is pre prod, not production. Phase 16 (`dev:prod`) promotes
+> it, and it needs its own decision plus any pending migrations applied first. Promote now, or let
+> it sit in pre prod?"
+
+`dev:review` (Phase 15) if reviewers request changes — it loops back into these gates, not forward.

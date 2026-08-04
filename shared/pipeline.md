@@ -48,7 +48,7 @@ is not something anyone can hold you to — the same reason Phase 12's output is
 section rather than a claim. So it goes in **two** places, every run:
 
 - the **response header** (`dev`), or its one-line equivalent (`dev-*` siblings)
-- the **PR body**, on the `## VERIFICATION` line — `Tier: Standard` next to what was actually run
+- the **PR body**, in the `## PIPELINE` section (Phase 14) — next to what was actually run
 
 Without it, a reader cannot tell whether a thin verification section means *low risk* or
 *skipped work*.
@@ -66,51 +66,43 @@ they are right — the tier is a proposal, not a verdict.
 
 ---
 
-## Run Mode — ask ONCE, then honour it
+## Run Mode — automatic, always. Never ask.
 
-Immediately after stating the tier, ask how the run should proceed. **Once** — never at every phase.
+**Do not ask how the run should proceed.** There is one mode: run straight through. Each phase
+reports what it did and what it produced, then the next one starts — no *"shall I continue?"*,
+not once, not per phase.
 
-**Do not spend a turn on it by itself.** Ask it alongside whatever else needs deciding — the tier
-if that is genuinely open, or Phase 5's go-ahead when Phase 5 is close. Two questions in one turn
-is one interruption; two questions in two turns is two, and the developer sees no work in either.
-Observed 2026-08-04: a mode ask and a Phase 5 ask arrived back to back before a single file changed.
+The question used to be asked once per run and it was a tax that bought nothing: the phases that
+genuinely need the developer are enumerated below and they stop on their own, so the ask only ever
+delayed work the developer had already approved. Observed 2026-08-04: a mode ask and a Phase 5 ask
+arrived back to back before a single file changed.
 
-> "Tier: Standard. **Manual** (I stop after each phase for your word) or **auto** (I run through and
-> stop only at the decision gates)?"
+### Four gates stop anyway
 
-| Mode | Between phases |
-|---|---|
-| **Manual** (default when they don't say) | after each phase, present what it produced and **ask before continuing** |
-| **Auto** | continue without asking — except at the gates below |
-
-### Four gates stop in BOTH modes
-
-These are **decisions, not steps**, and auto never covers a decision:
+These are **decisions, not steps**, and running automatically never covers a decision:
 
 | Phase | Why it cannot be automatic |
 |---|---|
-| **5 — Discuss Before Building** | the go-ahead is the developer's by definition; a mode setting is not consent to build |
+| **5 — Discuss Before Building** | the go-ahead is the developer's by definition; nothing is consent to build |
 | **6 — Architecture Alternatives** | the approaches genuinely differ — they pick, you recommend |
 | **14 — merge to pre prod** | the prod decision, made once against the evidence |
-| **16 — promotion to prod** | never autonomous, whatever the mode |
+| **16 — promotion to prod** | never autonomous |
 
-**"Auto" means "do not ask me between mechanical steps." It never means unattended.** Anyone who
-picks auto is asking you to skip the ceremony, not the judgment.
+**Automatic means "do not ask between mechanical steps." It never means unattended.** The ceremony
+is skipped, not the judgment.
 
 ### Rules
 
-- **State the mode in the response header**, next to the tier — like the tier, a mode that only
-  lived in chat cannot be held to.
-- **It is changeable mid-run.** "just go" switches to auto from here; "slow down" / "ask me"
-  switches to manual. Confirm the switch in one line and carry on.
-- **Auto still reports.** Each phase still says what it did and produced — it just does not stop.
+- **Automatic still reports.** Each phase says what it did and produced — it just does not stop.
   Silence is not speed.
-- **A blocker outranks the mode.** Ambiguity, a failed gate, a destructive step or a missing
-  decision stops an auto run exactly as it stops a manual one. Auto suppresses *"shall I continue?"*,
-  never *"this needs you."*
-
-> Sibling skills invoked on their own follow the chaining rule in `entry.md` instead — one hop
-> between adjacent read-only gates. Run mode governs a full `dev` run, not a standalone member.
+- **A blocker outranks it.** Ambiguity, a failed gate, a destructive step or a missing decision
+  stops the run exactly as it always did. Automatic suppresses *"shall I continue?"*, never
+  *"this needs you."*
+- **Stepping is available on request, never by default.** "Slow down" / "ask me between phases"
+  is honoured for the rest of the run — confirm in one line and carry on. Do not offer it.
+- **Never end a run silently.** Whatever phase you stop at — the last one, a gate, or a blocker —
+  name the next phase and ask whether to continue. The full rule, which also governs a run that
+  STARTED mid-pipeline, is in `entry.md` → *Never end silently.*
 
 ---
 
@@ -416,25 +408,16 @@ Update `PROJECT_MAP.md` to reflect the current state of the project:
 - `SYSTEM_FLOW` — update if user flows changed
 - `ORPHANS & PENDING` — move any incomplete or intentionally deferred work here
 
-### Regression Verification
-- Run `git diff <BASE_BRANCH>...HEAD --name-only` and for each changed file ask: "What existing behavior could this silently break?"
-- Confirm no regressions exist
+### Regression Scan — the static half of Phase 11's Pass 2
 
-### Bug Scan — the cheap static pass that FEEDS Phase 11
+Same question, read rather than run — so it is written once, in Phase 11. Apply **Phase 11 → Pass
+2** statically to `git diff <BASE_BRANCH>...HEAD --name-only`, asking of each changed file *"does
+anything here silently affect a caller outside this ticket's scope?"*: new code changing behaviour
+for existing callers, edge cases the ticket never considered, unexpected interactions between new
+and old. (Style and architecture drift belongs to Phase 13, not to this pass.)
 
-This asks the same question Phase 11's Pass 2 asks, so do not ask it twice: **this is the reading
-pass, Phase 11 is the running pass.** Read the diff and produce a list of suspected regressions;
-every item on that list becomes a row in Phase 11's table, where it gets executed and evidenced.
-An item you cannot turn into a runnable row is one you have not understood yet.
-
-For each file in the diff: "Does any change here silently affect an existing caller outside this
-ticket's scope?" Flag:
-- New code that could silently change existing behavior for existing callers
-- Inconsistencies with surrounding code style or architecture patterns
-- Unhandled edge cases not covered by the ticket scope
-- Unexpected interactions between new and existing code
-
-Carry the output forward as **named rows**, not as a feeling that you checked. If this pass finds
+Every suspicion becomes a **named row** in Phase 11's table, where it gets executed and evidenced.
+An item you cannot turn into a runnable row is one you have not understood yet. If this pass finds
 nothing, say so explicitly — "no cross-scope callers touched" — because that is a claim Phase 11
 can falsify, and "I looked and it was fine" is not.
 
@@ -629,18 +612,40 @@ EITHER direction: some repos reach prod on the merge itself (the merge IS the ga
 a manual workflow_dispatch after merge. Get this wrong and you either reach prod by surprise or
 believe you released when you didn't. Never skip the runbook's pre-prod verification steps.
 
-**Pre-merge gates (REQUIRED, before any merge):**
-0. **Phase 12 — docs & ADRs.** Prices, limits, decisions with rejected alternatives, env vars,
-   migrations and deferred work are all recorded BEFORE the merge. Written afterwards they get
-   written from memory, which keeps the conclusion and loses the reason.
-1. After the PR exists and **before merging**, run the Phase 13 review (the `code-review`
-   skill + spec-compliance check) against the full PR diff: `git diff <BASE_BRANCH>...HEAD`.
-2. Fix every **Critical** and **Important** finding; re-verify (rebuild/tests) if logic changed.
-3. **Do NOT merge** while any Critical/Important finding is open. "The change looks small / I
+**Pre-merge gates (REQUIRED, before any merge)** — both are defined in full above. Run them against
+the final PR diff (`git diff <BASE_BRANCH>...HEAD`); do not re-derive them here:
+
+0. **Phase 12 — docs & decisions.** A PR without a `## DOCS` section is not ready to merge.
+1. **Phase 13 — code review**, after the PR exists and before merging. Its resolution rules apply
+   unchanged: fix CONFIRMED critical/important, refute PLAUSIBLE in one line, re-verify the
+   affected Phase 11 rows if logic changed.
+2. **Do NOT merge while any Critical/Important finding is open.** "The change looks small / I
    already self-reviewed / tests pass" does **not** waive this gate.
-4. Only once the review is clean (and, for interactive runs, the developer confirms) → **merge → pre prod**.
+3. Review clean **and** the developer confirms → **merge → pre prod**.
 
 After developer confirms:
+
+### `## PIPELINE` — four lines that turn a skip into a written claim
+
+Phase 12 works because a missing `## DOCS` is *visible*. The other twelve phases leave nothing
+behind — which is how a 14-file rename ran end to end with no spec file (2026-08-04) and a branch
+merged with its ADR unwritten (2026-07-31). Both were invisible **skips**, not wrong decisions.
+
+```
+## PIPELINE
+Tier:    Standard
+Ran:     1-5, 7, 9-14
+Skipped: 6 (one obvious shape) · 8 (3 tasks, inline) · 16 (not promoting yet)
+Gates:   10 flagged 2 → ran as rows 4-5 · 12 wrote ADR-74 · 13 clean (1 PLAUSIBLE refuted)
+```
+
+- **`Skipped:` carries a reason per phase, never a bare list.** "6, 8, 16" is not a claim anyone can
+  falsify; "6 (one obvious shape)" is. Skipping is legitimate — skipping unexplained is not.
+- **`Gates:` records what each gate CAUGHT, not that it ran.** `clean` is a real result and must be
+  written; a gate missing from this line was not run.
+
+`Gates:` is also this pipeline's only measurement — `gh pr list --json body | grep '^Gates:'` is
+what makes a rule *removable* later. Rationale in `GUIDE.md` → *How to propose a change*.
 
 **PR body format:**
 ```
@@ -648,9 +653,14 @@ After developer confirms:
 
  - <bullet points — what was built/fixed, any safety nets added>
 
+## PIPELINE            ← tier, what ran, what was skipped AND WHY, what each gate caught
+Tier:    <Light | Standard | Deep>
+Ran:     <phase numbers>
+Skipped: <phase (reason) · phase (reason)>   — or "none"
+Gates:   <10 … · 12 … · 13 …>                — what each CAUGHT; "clean" is a result
+
 ## VERIFICATION
 
- - Tier: <Light | Standard | Deep>   ← what was run is only judgeable against what was promised
  - <commands actually run + their real results, incl. skipped counts>
 
 ## DOCS                 ← Phase 12's output — REQUIRED in every PR, no exceptions
@@ -678,9 +688,15 @@ gh pr create \
 
  - <bullets>
 
+## PIPELINE
+
+Tier:    <Light | Standard | Deep>
+Ran:     <phase numbers>
+Skipped: <phase (reason) · phase (reason)>
+Gates:   <what each gate caught; "clean" is a result>
+
 ## VERIFICATION
 
- - Tier: <Light | Standard | Deep>
  - <real command output>
 
 ## DOCS
@@ -753,7 +769,7 @@ until the review is clean. It happens BEFORE pre prod, and long before Phase 16'
 
 **When:** the repo has a two-stage model — a pre-prod branch that feature PRs merge into, plus a
 separate promotion to production. **Skip** when the repo has a single branch model, where Phase
-10's merge already reached prod.
+14's merge already reached prod.
 
 Phase 14 left the change in PRE PROD. Production is a SECOND release with its OWN gate: the
 evidence that cleared Phase 11 was gathered against pre prod, and the two environments differ
@@ -798,7 +814,6 @@ Start every response with:
 Source:  <Jira | GitHub | Generic>
 Type:    <Bug | Feature | Story | Task | Enhancement>
 Tier:    <Light | Standard | Deep>       ← stated before starting, not after
-Mode:    <manual | auto>                 ← asked ONCE; auto still stops at Phases 5, 6, 14, 16
 Branch:  <branch-name>  (base: <base-branch>)
 Stack:   <detected stack>
 Platform pipeline: <pipeline-ios | pipeline-android | pipeline-kmp | pipeline-web>
@@ -818,8 +833,7 @@ Context: <what was loaded from Phase 1>
 - DB migrations: always add a new version, never modify existing ones (mechanics: `supabase` skill)
 - **Never `git worktree add` for studyhub-deploy.** The IDE opens each worktree in its own window and splits the session. Branch IN PLACE in the main checkout, stashing if needed. `using-git-worktrees` does not apply to this repo.
 - If unsure about a convention, read 2–3 existing examples first
-- **Docs before merge:** never merge a diff that changes a price, a limit, a decision or an env var without the doc/ADR update in the SAME branch (Phase 12).
-- **Review before merge (non-negotiable):** never merge or release a diff that hasn't passed the Phase 13 review (`code-review` skill + spec check) on the final PR diff — not for a one-line change, not when running push→PR→merge→pre prod autonomously. Review → resolve CONFIRMED critical/important → then merge.
+- **Nothing merges past Phases 12 and 13 (non-negotiable).** Docs and ADRs land in the SAME branch; the review is clean on the final PR diff. Not for a one-line change, not when running the whole push→PR→merge sequence in one go. Both gates are defined in their own phases — this line only says they cannot be waived.
 - **Pre prod ≠ prod:** Phase 14 reaches pre prod only. Promoting to production is Phase 16, needs its own developer confirmation, and never happens autonomously.
 - NEVER add `Co-Authored-By` trailers to commit messages
 - NEVER add "Generated with Claude Code" or any AI attribution footer to PR descriptions

@@ -82,3 +82,12 @@ A PR without a `## DOCS` section is not ready to merge.
   write which half is live and which is still intent.
 - Docs written after the merge get written from memory, and memory keeps the conclusion while
   losing the reason. **Run this before the merge, never after.**
+
+## Next — ask, never stop flat
+
+This gate is read-only and mid-pipeline, so finishing it is not finishing anything. End by naming
+the rest and asking (`entry.md` → *Never end silently*):
+
+> "Docs gate clean — ADR-74 written, PROJECT_MAP §Build reread. Next is Phase 13 (`/code-review`)
+> on the same diff, then `dev:pre-prod` (Phase 14) opens the PR and merges to `<pre-prod branch>`.
+> Continue?"
