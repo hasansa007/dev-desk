@@ -246,5 +246,9 @@ Honest, as of 2026-08-04:
   that skips a phase *and* omits it from `Skipped:` is invisible, same as before. This buys
   visibility, not enforcement.
 - **`dev:pre-prod`, `dev:review`, `dev:prod` unexercised.**
-- **Enforcement is thin.** 3 of 16 phases produce a durable artifact; the rest depend on the reader
-  complying. This is the single biggest structural weakness.
+- **Enforcement is honour-system, by decision (2026-08-04).** ~5 of 17 phases produce a durable
+  artifact; the rest depend on the reader complying, and `## PIPELINE` / `## DOCS` are self-reported
+  — a run that skips a phase *and* omits it from `Skipped:` is invisible. A working GitHub Actions
+  check exists at `ci/pr-gates.yml` and is deliberately **not installed** anywhere. Install with
+  `cp ci/pr-gates.yml <repo>/.github/workflows/` if that call changes; advisory until made a
+  required check in branch protection.

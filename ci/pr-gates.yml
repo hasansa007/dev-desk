@@ -1,0 +1,76 @@
+name: PR gates
+
+# NOT INSTALLED, and not running from here. This repo has no `.github/workflows/`, so this file is
+# inert — and it belongs that way: dropped into dev-skill's own workflows it would fail every PR
+# opened here, since those are not /dev pipeline runs and carry no `## PIPELINE` body. It lives in
+# this repo to sit BESIDE the rules it enforces: rename `## PIPELINE` in shared/pipeline.md and this
+# file is right there, visibly stale, instead of drifting unnoticed in someone else's repo.
+#
+# To install in a repo that opens PRs:  cp ci/pr-gates.yml <repo>/.github/workflows/
+# Merging it there is advisory only — it blocks nothing until added to branch protection as a
+# required check. Enforcement is deliberately honour-system as of 2026-08-04 (owner's call).
+#
+# Makes two /dev pipeline gates mechanical instead of honour-system.
+#
+# Phase 12 requires every PR body to carry `## DOCS` — the ADRs and docs updated in the branch, or an
+# explicit "none needed — checked: …". Phase 14 requires `## PIPELINE` — the tier, which phases ran,
+# which were SKIPPED and why, and what each gate caught. Both rules lived only in a document whose
+# author was also its only reader, so a skipped gate left no trace: that is exactly how a branch
+# merged with green suites, a full verification table and its ADR unwritten (2026-07-31), caught only
+# because someone thought to ask. A missing section now fails here rather than later, or never.
+#
+# Deliberately NOT checked: `## HOW TO TEST`. The pipeline explicitly allows it to be a PR *comment*
+# when the PR is already open, so requiring it in the body would fail correct PRs — and a check that
+# fires on correct work is how a check gets ignored.
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+    branches: [staging, main]
+
+concurrency:
+  group: pr-gates-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  required-sections:
+    name: PR body carries PIPELINE + DOCS
+    runs-on: ubuntu-latest
+    # Promotion PRs (staging -> main) carry already-reviewed commits rather than one branch's work.
+    # The sections belong on the feature PRs that make up a promotion, not on the promotion itself.
+    if: github.head_ref != 'staging'
+    steps:
+      - name: Check required sections
+        shell: bash
+        env:
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # Anchored to line start: the section must be a real HEADING, not a mention of one.
+          # An unanchored match passed a body whose `## DOCS` heading had been deleted, because the
+          # same string appeared five more times in prose and fenced blocks — so a PR that merely
+          # discussed the sections satisfied the gate. Found by deleting the heading from this
+          # workflow's own PR and watching the check stay green.
+          missing=()
+          for section in 'PIPELINE' 'DOCS'; do
+            grep -qE "^## ${section}\b" <<< "$BODY" || missing+=("## ${section}")
+          done
+
+          if [ ${#missing[@]} -ne 0 ]; then
+            echo "::error::PR body is missing: ${missing[*]}"
+            echo ""
+            echo "These are /dev Phase 12 and Phase 14 gates:"
+            echo ""
+            echo "  ## PIPELINE"
+            echo "  Tier:    Light | Standard | Deep"
+            echo "  Ran:     <phase numbers>"
+            echo "  Skipped: <phase (reason) - a reason per phase, never a bare list>"
+            echo "  Gates:   <what each gate CAUGHT; \"clean\" is a result>"
+            echo ""
+            echo "  ## DOCS"
+            echo "  <ADRs/docs updated in THIS branch>   - or -"
+            echo "  none needed - checked: no price/limit change, no decision-with-alternative,"
+            echo "  no env/migration, no new module/flow, no deferred work, no doc made stale"
+            exit 1
+          fi
+
+          echo "PIPELINE and DOCS both present."
