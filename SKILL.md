@@ -46,7 +46,7 @@ Before routing to Generic, STOP if the argument is:
 
 - **a family name** — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
-  *"`/dev run` isn't a subcommand — did you mean `/dev-run`?"*
+  *"`/dev run` isn't a subcommand — did you mean `/dev:run`?"*
 - **a single word with no verb and no object** (`deploy`, `test`, `fix`). Far likelier a mistyped
   command than a feature brief.
 
@@ -97,12 +97,12 @@ directly when the work already exists and only that phase is needed:
 
 | Skill | Phase | Input | Use when |
 |---|---|---|---|
-| `dev-verify` | 11 | a branch | "does this branch actually work?" |
-| `dev-docs` | 12 | a diff | "are the ADRs and docs current?" |
-| `dev-pre-prod` | 14 | a branch | "PR and merge this to pre prod" |
-| `dev-review` | 15 ↺ | a PR number | "changes requested" — loops back to 14 |
-| `dev-prod` | 16 | pre-prod + prod branches | "promote to production" |
-| `dev-run` | — | a project to launch | "run the app" — a TOOL, not a phase |
+| `dev:verify` | 11 | a branch | "does this branch actually work?" |
+| `dev:docs` | 12 | a diff | "are the ADRs and docs current?" |
+| `dev:pre-prod` | 14 | a branch | "PR and merge this to pre prod" |
+| `dev:review` | 15 ↺ | a PR number | "changes requested" — loops back to 14 |
+| `dev:prod` | 16 | pre-prod + prod branches | "promote to production" |
+| `dev:run` | — | a project to launch | "run the app" — a TOOL, not a phase |
 
 They all read the same `shared/pipeline.md`; none of them copies it. Phases 1–8 have no sibling on
 purpose — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.

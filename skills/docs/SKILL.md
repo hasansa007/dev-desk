@@ -1,5 +1,5 @@
 ---
-name: dev-docs
+name: docs
 description: >
   Check that docs, ADRs and PROJECT_MAP are current for a branch's diff BEFORE it merges — prices
   and limits, decisions with their rejected alternatives, env vars, migrations, new modules, and

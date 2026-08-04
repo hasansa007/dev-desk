@@ -1,12 +1,12 @@
 ---
-name: dev-prod
+name: prod
 description: >
   Promote already-merged, already-verified work from the pre-prod branch to PRODUCTION — verify in
   pre prod, apply migrations to prod BEFORE the merge, read what is actually in the promotion, then
   ask for the release decision and merge.
   Trigger when the user says "promote to prod", "release to production", "ship it to prod",
   "staging to main", "push this live", or asks to promote a pre-prod branch.
-  NOT for merging a feature branch — that is `dev-pre-prod`.
+  NOT for merging a feature branch — that is `dev:pre-prod`.
 allowed-tools: [gh, git]
 ---
 

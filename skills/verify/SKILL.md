@@ -1,5 +1,5 @@
 ---
-name: dev-verify
+name: verify
 description: >
   Run the agent-executed verification checklist against a branch that already exists — build the
   evidence table, drive the real app (Chrome DevTools MCP / simulator / adb), attach screenshots
@@ -57,5 +57,5 @@ Carry the three passes over from the pipeline, none of them optional:
 
 ## Next
 
-Verification passing is not permission to merge. `dev-docs` (Phase 12) and `/code-review`
-(Phase 13) are still gates, and `dev-pre-prod` (Phase 14) is what actually merges.
+Verification passing is not permission to merge. `dev:docs` (Phase 12) and `/code-review`
+(Phase 13) are still gates, and `dev:pre-prod` (Phase 14) is what actually merges.

@@ -1,5 +1,5 @@
 ---
-name: dev-review
+name: review
 description: >
   Handle human review feedback on an OPEN pull request — fetch the comments, restate each one,
   push back with technical reasoning where a suggestion is wrong, implement one item at a time,
@@ -20,11 +20,11 @@ Review comments arrive while the PR is still **OPEN**. This skill's last step is
 `merge` — you re-enter Phase 14's pre-merge gates and go round again until the review is clean.
 
 ```
-dev-pre-prod (Phase 14)  push → PR → gates → merge → PRE PROD
+dev:pre-prod (Phase 14)  push → PR → gates → merge → PRE PROD
                               ↑              │
-dev-review   (Phase 15) ────┘  fix → push  │   ← loops back, never forward
+dev:review   (Phase 15) ────┘  fix → push  │   ← loops back, never forward
                                              ↓
-dev-prod     (Phase 16)              promote → PROD
+dev:prod     (Phase 16)              promote → PROD
 ```
 
 It runs **before** pre prod, and long before any production promotion. If you reached for this
@@ -56,9 +56,9 @@ Follow `receiving-code-review` — technical rigor, not performative agreement:
 
 - **New commits, never `git commit --amend`.** Reviewers need to see what changed since their pass.
 - **Never force-push** without an explicit request.
-- **Re-verify if logic changed.** Re-run the affected Phase 11 rows (`dev-verify`) — cosmetic-only
+- **Re-verify if logic changed.** Re-run the affected Phase 11 rows (`dev:verify`) — cosmetic-only
   fixes (comments, imports, formatting) can skip it.
-- **Re-run the docs gate if the fixes touched a number, a decision or an env var** (`dev-docs`).
+- **Re-run the docs gate if the fixes touched a number, a decision or an env var** (`dev:docs`).
   Review fixes are a classic way for an ADR to drift out of date silently.
 - Ask for confirmation before implementing: *"Here's the plan to address the review comments.
   Proceed?"*

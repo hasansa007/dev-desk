@@ -1,12 +1,12 @@
 ---
-name: dev-pre-prod
+name: pre-prod
 description: >
   Take finished work to PRE PROD — push, open the PR, run the pre-merge gates (docs, code review),
   then merge to the pre-prod branch (`staging` in studyhub-deploy). Ends at pre prod, never at
   production.
   Trigger when the user says "open a PR for this", "PR this branch", "merge to staging", "take this
   to staging", "ship this to pre prod", or when work is finished and needs to reach the shared
-  environment. NOT for promoting staging to production — that is `dev-prod`.
+  environment. NOT for promoting staging to production — that is `dev:prod`.
 allowed-tools: [gh, git]
 ---
 
@@ -35,7 +35,7 @@ sequence autonomously, not for a one-line change.
 
 **Pre-merge gates, all required:**
 
-0. **Phase 12 — docs & ADRs** (`dev-docs`). Prices, limits, decisions with rejected
+0. **Phase 12 — docs & ADRs** (`dev:docs`). Prices, limits, decisions with rejected
    alternatives, env vars, migrations and deferred work recorded BEFORE the merge.
 1. **Phase 13 review** — `/code-review` + a spec-compliance check against the full PR diff.
    Add `security-review` when the diff touches money, auth, migrations, uploads, or untrusted input.
@@ -47,7 +47,7 @@ sequence autonomously, not for a one-line change.
 ## Guards
 
 - **This ends at PRE PROD, not production.** Do not report the work as "shipped" or "live". If the
-  repo has a two-stage model, production is `dev-prod` (Phase 16) and it has its own gate.
+  repo has a two-stage model, production is `dev:prod` (Phase 16) and it has its own gate.
 - **The runbook overrides this sequence.** If `docs/deploy-and-staging.md` or similar exists, read
   it — some repos release prod on the merge itself, in which case this skill IS the prod release
   and needs the Phase 16 confirmation instead.
@@ -57,5 +57,5 @@ sequence autonomously, not for a one-line change.
 
 ## Next
 
-`dev-review` (Phase 15) if reviewers request changes — it loops back into these gates.
-`dev-prod` (Phase 16) to promote, later, as a separate decision.
+`dev:review` (Phase 15) if reviewers request changes — it loops back into these gates.
+`dev:prod` (Phase 16) to promote, later, as a separate decision.
