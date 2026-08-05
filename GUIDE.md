@@ -246,9 +246,14 @@ Honest, as of 2026-08-04:
   that skips a phase *and* omits it from `Skipped:` is invisible, same as before. This buys
   visibility, not enforcement.
 - **`dev:pre-prod`, `dev:review`, `dev:prod` unexercised.**
-- **Enforcement is honour-system, by decision (2026-08-04).** ~5 of 17 phases produce a durable
-  artifact; the rest depend on the reader complying, and `## PIPELINE` / `## DOCS` are self-reported
-  — a run that skips a phase *and* omits it from `Skipped:` is invisible. A working GitHub Actions
-  check exists at `ci/pr-gates.yml` and is deliberately **not installed** anywhere. Install with
-  `cp ci/pr-gates.yml <repo>/.github/workflows/` if that call changes; advisory until made a
-  required check in branch protection.
+- **Enforcement is part mechanical as of 2026-08-05.** ~5 of 17 phases produce a durable artifact;
+  the rest depend on the reader complying, and `## PIPELINE` / `## DOCS` are self-reported — a run
+  that skips a phase *and* omits it from `Skipped:` is still invisible. Four hooks in `hooks/` now
+  make Phases 1, 3, 12, 14 and 16 — plus Phase 11's teardown rule, though not its checklist —
+  mechanical **where they touch a tool call**. That qualifier is the whole limit: a hook checks
+  presence of state at a tool boundary, so Phases 4–8 are unreachable by construction, on the same
+  seam that gives them no `dev-*` door. Pipe-tested only, **zero real runs**; `hooks/README.md`
+  separates the three dated fixes from the undated design. A GitHub Actions check also exists at
+  `ci/pr-gates.yml`, deliberately **not installed** — `hooks/pr-gates.sh` supersedes it locally
+  (earlier, no infra, no false failures on this repo's own PRs) and it should be deleted once ~10
+  real PRs carry `fired.log` evidence, not before.

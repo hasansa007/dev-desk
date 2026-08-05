@@ -23,6 +23,8 @@ stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the 
 │   ├── pipeline.md               ALL the behavior — Phases 0 → 16
 │   └── pipeline-{web,ios,android,kmp}.md   platform overlays on Phases 10/11/14
 ├── ci/pr-gates.yml               NOT installed — a PR-body check, kept beside the rules it enforces
+├── hooks/                        4 Claude Code hooks — Phases 1, 3, 11(teardown), 12, 14, 16
+│   └── README.md                 what a hook can enforce, install blocks, the fired.log query
 ├── web/  mobile/                 architecture + feature prompts (conditional)
 └── skills/
     ├── create-bug/SKILL.md       → /dev:create-bug    Phase 0
