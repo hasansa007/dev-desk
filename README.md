@@ -35,19 +35,32 @@ stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the 
     ├── pre-prod/SKILL.md         → /dev:pre-prod   Phase 14
     ├── review/SKILL.md           → /dev:review     Phase 15  ↺
     ├── prod/SKILL.md             → /dev:prod       Phase 16
-    └── launch/SKILL.md           → /dev:launch     no phase — a TOOL
+    ├── launch/SKILL.md           → /dev:launch     no phase — a TOOL
+    └── launch-kill/SKILL.md      → /dev:launch-kill  no phase — `launch` inverted
 ```
 
 Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
 `shared/`, once.
 
-### `dev:launch` — a member of a different kind
+### `dev:launch` and `dev:launch-kill` — members of a different kind
 
-The other eight are **phases** (three filing, five staged); `dev:launch` is a **tool**. It maps to
-no phase number and reads none
-of the pipeline — it detects the project and launches it (`/dev:launch ios sim`,
-`/dev:launch android emulator`, `/dev:launch web`). Phases 4 and 11 call it for mobile targets, and
-it is equally useful alone on a throwaway prototype.
+The other eight are **phases** (three filing, five staged); these two are **tools**. They map to no
+phase number and read none of the pipeline — one detects the project and launches it
+(`/dev:launch ios sim`, `/dev:launch android emulator`, `/dev:launch web`), the other stops what it
+started. Phases 4 and 11 call `launch` for mobile targets, and it is equally useful alone on a
+throwaway prototype.
+
+`launch-kill` is a **door into `launch`**, exactly as the phase members are doors into
+`shared/pipeline.md`: it points at `launch` 2.1 / 2.5.3 / 2.6.2 / 2.6.3 for project root, ports and
+the launch script, and restates none of it. Two copies of port resolution drift, and a drift here
+kills the wrong port. Discovery bugs get fixed in `launch`, once — which is how `2.1`'s worktree bug
+(`[ -d "$dir/.git" ]` is false when `.git` is a file) got fixed for both at the same time.
+
+What it adds is the **boundary**. It proves a process belongs to *this worktree* by its cwd before
+touching it, and kills the tree from the top so the launch script's traps fire. Killing the port
+holder alone orphans every background process the script started: three `worker.py` processes were
+found leaked that way on 2026-08-05, one per dev session, all still polling the same local queue.
+The line `launch` used to print — `lsof -ti:<PORT> | xargs kill` — is that bug.
 
 The name is deliberately **not** `run`: Claude Code ships a built-in `run` skill, and a member
 called `dev:run` reads as a namespaced flavour of it rather than a different tool.
@@ -105,6 +118,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | **15** | **Review Cycle** — a LOOP back into Phase 14, never forward | `dev:review` |
 | **16** | **Prod Promotion** — migrations first, never autonomous | `dev:prod` |
 | — | *(no phase)* — build & launch the app | `dev:launch` |
+| — | *(no phase)* — stop this project's servers | `dev:launch-kill` |
 
 ### Why these phase members and not others
 

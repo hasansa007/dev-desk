@@ -114,6 +114,7 @@ The work already exists and you want a single stage:
 | *"changes requested"* + a PR link | `/dev:review` |
 | *"promote to prod"* | `/dev:prod` |
 | *"run the app"* / *"launch on simulator"* | `/dev:launch` |
+| *"kill the dev server"* / *"free the port"* | `/dev:launch-kill` — stops what `launch` started, in this worktree only |
 
 **Starting mid-pipeline never leaves you stranded.** Whichever one you invoke, it finishes by naming
 the next phase, what it would do and where it ends — then asks whether to continue. You do not have
@@ -194,6 +195,7 @@ skip a judgment — building, architecture, merging, promoting.
 | A stack-specific addition | `shared/pipeline-{web,ios,android,kmp}.md` — these overlay Phases 10, 11, 14 only |
 | Branch/environment resolution | `shared/entry.md` |
 | A new standalone member | `skills/<name>/SKILL.md` + a row in both family tables. **Only worth it for Phase 0 or a phase ≥ 11** — the rest pass reasoning, which cannot be handed over |
+| A new **tool** (no phase) | Same, but it points at another tool rather than at `pipeline.md` — `launch-kill` reads `launch`'s Phase 2 for discovery. The no-copy rule is the same rule |
 | A per-type issue template | the `dev:create-*` member itself — templates are the only thing those three doors hold |
 | Entry routing | `SKILL.md` |
 

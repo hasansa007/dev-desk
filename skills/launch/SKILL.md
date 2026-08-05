@@ -59,15 +59,27 @@ Examples:
 Walk up from the current working directory to find the project root:
 
 ```bash
-dir="$PWD"
-while [ "$dir" != "/" ]; do
-  ls "$dir"/*.xcworkspace "$dir"/*.xcodeproj "$dir"/project.yml 2>/dev/null && break
-  [ -f "$dir/gradlew" ] && break
-  [ -d "$dir/.git" ] && break
-  dir="$(dirname "$dir")"
-done
+# Git first — it is the only form that gets WORKTREES right.
+dir="$(git rev-parse --show-toplevel 2>/dev/null)"
+if [ -z "$dir" ]; then
+  dir="$PWD"
+  while [ "$dir" != "/" ]; do
+    ls "$dir"/*.xcworkspace "$dir"/*.xcodeproj "$dir"/project.yml 2>/dev/null && break
+    [ -f "$dir/gradlew" ] && break
+    [ -e "$dir/.git" ] && break        # -e, not -d: in a worktree .git is a FILE
+    dir="$(dirname "$dir")"
+  done
+fi
 echo "Project root: $dir"
 ```
+
+**2026-08-05 — `-d "$dir/.git"` resolved `$PROJECT_ROOT` to `/`.** In a git worktree `.git` is a
+*file*, not a directory, so the `-d` test never fires and the loop never stops: measured from
+`~/.superconductor/worktrees/studyhub-deploy/sc-frozen-niobium-40f3` it climbed through `~/`, through
+`/Users/`, and returned **`/`**. Every detector below then searches the filesystem root — and
+`dev:launch-kill`, which reads this section, would have treated *every process on the machine* as
+owned by the project. `git rev-parse --show-toplevel` returns the worktree's own path, which is why
+it goes first and why the fallback tests `-e`.
 
 Store as `$PROJECT_ROOT`. **It is a boundary, not a hint** — every detector below searches inside it
 and nowhere else. Additional working directories, sibling repos and anything else this session
@@ -495,7 +507,7 @@ open "http://localhost:$PORT/$ENTRY"   # macOS
 After launching, print:
 ```
 Serving <SERVE_DIR> on http://localhost:<PORT>/<ENTRY>
-Stop the server: lsof -ti:<PORT> | xargs kill
+Stop the server: /dev:launch-kill <PORT>
 ```
 
 ---
@@ -572,8 +584,14 @@ open "http://localhost:$PORT"
 ```
 Running <app-name> on http://localhost:<PORT>   (started by this skill)
 Log:  /tmp/run-webapp-<PORT>.log
-Stop: lsof -ti:<PORT> | xargs kill
+Stop: /dev:launch-kill
 ```
+
+**Do not print `lsof -ti:<PORT> | xargs kill`.** It kills the listener and nothing else, so every
+background process the launch script started — a build worker, a queue consumer — reparents to init
+and keeps running. Observed 2026-08-05: three `worker.py` processes leaked this way, one per dev
+session, all still polling the same local queue. `/dev:launch-kill` kills the tree from the top so
+the script's own traps fire.
 
 **Teardown rule: stop only what you started.** If 3F.1 found the server already up, you started
 nothing — say that, and never offer to stop it. If the launch script also started a database or a
@@ -615,7 +633,7 @@ container, say what is now running that was not before.
 - **Prefer the project's own launch script over `npm run dev`.** Test for it (`.vscode/dev.sh`, `bin/dev`, `scripts/dev*`, a Makefile target); never hardcode a path, and always fall back to the package.json script. A wrapper usually exists because the bare command produces a differently configured app
 - **Stop only what you started**, and say which case it was
 - For web, never open an HTML file directly with `file://` if it contains `<script src="...">`, fetch, JSX, or modules — always serve over HTTP
-- For web, run the server in the background (`&` + `disown`) so the user keeps their terminal, and tell them how to stop it
+- For web, run the server in the background (`&` + `disown`) so the user keeps their terminal, and tell them how to stop it — **always `/dev:launch-kill`, never a bare port kill**, which orphans whatever the launch script started alongside the server
 - After successful launch, print: "App launched successfully on <target>." (mobile) or "Serving on http://localhost:<PORT>/<ENTRY>" (web)
 
 ## Phase 4 — Post-launch: "what can I test?"
