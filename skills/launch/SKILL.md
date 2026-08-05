@@ -69,7 +69,9 @@ done
 echo "Project root: $dir"
 ```
 
-Store as `$PROJECT_ROOT`.
+Store as `$PROJECT_ROOT`. **It is a boundary, not a hint** — every detector below searches inside it
+and nowhere else. Additional working directories, sibling repos and anything else this session
+happens to be able to read are NOT this project.
 
 ### Step 2.2 — Detect platform(s)
 
@@ -102,8 +104,19 @@ Platform precedence when multiple are detected:
   time — a Next.js project with a stray `public/preview.html` — and choosing static there is the
   silent-wrong-answer case
 - If both iOS and Android exist (KMP/multi-platform): cwd inside `iOSApp/`/`ios/`/`iosApp/` → iOS; inside `androidApp/`/`app/` → Android; otherwise ask
-- **If NOTHING is detected, say so and stop.** Never fall back to "serve the directory" — an empty
-  static server returns 200 on a directory listing and looks like success
+- **If NOTHING is detected in `$PROJECT_ROOT`, say so and STOP.** Two wrong answers live here, and
+  the second one is the quiet one:
+  - Never fall back to "serve the directory" — an empty static server returns 200 on a directory
+    listing and looks like success
+  - **Never reach into another repo.** Observed 2026-08-05: `/dev:launch` run from the dev-skill
+    repo found no app there and silently continued discovery in `studyhub-deploy` — a different
+    project, reachable only because it was an additional working directory — getting as far as
+    reading its launch script before anyone noticed the repo had changed. A session can reach many
+    repos; exactly one of them is `$PROJECT_ROOT`. When another obviously holds the app, that is a
+    sentence to say, not a licence to launch: *"No app in dev-skill. `studyhub-deploy/web` has one
+    — launch that instead?"* The user answering "yes" is what makes it the project; proximity is not
+  This is not the web path's problem. A repo of skills, a docs repo, a monorepo tool directory —
+  any of them can be `$PWD`, and the iOS and Android detectors fail the same way
 - If user explicitly passed `web`, use web even when mobile project files are present
 
 ### Step 2.3 — iOS Project Discovery
