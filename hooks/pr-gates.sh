@@ -17,6 +17,17 @@ ROOT=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null) || ROOT=$CWD
 
 # ── Phases 12 + 14 — the PR body must carry ## PIPELINE and ## DOCS ───────────
 if grep -qE '(^|[;&|])[[:space:]]*gh[[:space:]]+pr[[:space:]]+create\b' <<<"$CMD"; then
+  # A promotion PR (pre prod -> prod) carries already-reviewed commits rather than one branch's
+  # work, so the sections belong on the feature PRs it is made of, not on it. Mirrors
+  # ci/pr-gates.yml's `if: github.head_ref != 'staging'`, which this hook otherwise supersedes.
+  HEAD_BR=$(grep -oE -- '--head[= ][^[:space:]]+' <<<"$CMD" | sed -E 's/^--head[= ]//' | tr -d "\"'")
+  [ -n "$HEAD_BR" ] || HEAD_BR=$(git -C "$ROOT" branch --show-current 2>/dev/null)
+  case "$HEAD_BR" in
+    staging|pre-prod) log pass promotion-pr; HEAD_BR=skip ;;
+    *) HEAD_BR=check ;;
+  esac
+fi
+if [ "${HEAD_BR:-}" = "check" ]; then
   BF=$(grep -oE -- '--body-file[= ][^[:space:]]+' <<<"$CMD" | head -1 \
        | sed -E 's/^--body-file[= ]//' | tr -d "\"'")
   if [ -n "$BF" ]; then BODY=$(cat "${BF/#\~/$HOME}" 2>/dev/null) || BODY=""
