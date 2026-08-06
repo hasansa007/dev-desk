@@ -42,7 +42,7 @@ Read `skills/launch/SKILL.md` and use, unchanged:
 | **2.0** | the three resolution rules — installed ≠ reachable · never report absence without your search path · prefer a declaration over a guess |
 | **2.1** | `$PROJECT_ROOT` — worktree-safe, `git rev-parse --show-toplevel` first |
 | **2.6.2** | the launch script — Phase 5 needs it as the manifest of what a launch spawns |
-| **2.6.2a** | `launch.json` / `tasks.json` — the project's DECLARED stop entries, so this skill does not guess that filename either |
+| **2.2a** | the project's DECLARED entry points (all platforms) — the stop entries live here, so this skill does not guess that filename either |
 | **2.6.3** | the port, in its order: arg → dev-script flags → launch script → framework default |
 | **2.5.3** | the 8000–8999 static-server range, for servers `launch` 3E started |
 
@@ -197,7 +197,7 @@ Left up  :3000  node next dev  cwd=<another-repo>/web  — NOT this project
 **The "left up" lines are the point, not filler** — an unreported survivor is the process still
 running tomorrow, and this report is the only artifact the tool leaves behind.
 
-**Name the project's own stop entries; run none of them.** 2.6.2a discovers them from
+**Name the project's own stop entries; run none of them.** 2.2a discovers them from
 `launch.json`/`tasks.json` rather than guessing a filename, and they routinely sit next to a
 **destructive** sibling — a real pair reads `⏹ Stop local` and `⏹ Stop local + WIPE database`, one
 `--wipe` apart. Listing both is useful; picking one is not this skill's call. It stops servers, not

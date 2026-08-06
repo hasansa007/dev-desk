@@ -77,7 +77,7 @@ than inferring it from names:
 
 | Guess | Declaration |
 |---|---|
-| `dev.sh`, `bin/dev`, `scripts/dev*` | `.vscode/launch.json` / `tasks.json` (2.6.2a) |
+| `dev.sh`, `bin/dev`, `scripts/dev*` | `.vscode/launch.json` · `.xcscheme` · `.idea/runConfigurations` (2.2a) |
 | a hardcoded store dimension | the device's native resolution (`dev:shots` Phase 5) |
 | `grep '#[0-9]+'` over an epic body | its `- [ ] #N` task list (`dev:issues` 4.1) |
 | `[ -d "$dir/.git" ]` | `git rev-parse --show-toplevel` (2.1) |
@@ -166,6 +166,95 @@ Platform precedence when multiple are detected:
   This is not the web path's problem. A repo of skills, a docs repo, a monorepo tool directory —
   any of them can be `$PWD`, and the iOS and Android detectors fail the same way
 - If user explicitly passed `web`, use web even when mobile project files are present
+
+### Step 2.2a — Read the project's DECLARED entry points — EVERY platform
+
+Rule 3 of Step 2.0, implemented. Run this for **whatever 2.2 detected** — it is not a web step.
+Each ecosystem declares what is runnable in a different file, and the mistake is assuming the
+editor you use is the one the project was configured in:
+
+| Platform | The declaration | Notes |
+|---|---|---|
+| Any | `.vscode/launch.json` · `.vscode/tasks.json` | JSONC — see the parser below |
+| iOS | `*.xcodeproj/xcshareddata/xcschemes/*.xcscheme` | the **shared**, committed schemes |
+| iOS (xcodegen) | `project.yml` → `schemes:` | already read at 2.3.2 path A |
+| Android | `.idea/runConfigurations/*.xml` | Android Studio's equivalent of `launch.json` |
+| Android | `settings.gradle*`, `build.gradle*` | already read at 2.4 |
+
+> **2026-08-05 — this step was written web-only and had to be moved.** It first lived under Step 2.6
+> (*"Run only when `HAS_WEBAPP`"*), so 2.0's "prefer a declaration over a guess" applied to exactly
+> one of three platforms. Re-running it for mobile would not have fixed it either: **not one mobile
+> repo checked had a `.vscode/` directory** — mobile is configured in Xcode and Android Studio, so
+> its declarations live in `.xcscheme` and `.idea/runConfigurations`. The rule was portable; the
+> implementation was shaped like the platform it was discovered on.
+
+**Two iOS-specific traps this exposes:**
+
+- **Unshared schemes are invisible.** Of three mobile repos checked, one had **21** shared
+  `.xcscheme` files and two had **zero** — not because they lack schemes, but because theirs live in
+  `xcuserdata/`, which is user-local and usually gitignored. So `xcodebuild -list` can come back
+  thin or empty on a fresh clone. **Report that as "no shared schemes", never as "no schemes"** —
+  they are different facts and only one of them is the project's.
+- **Enumerating schemes is a declaration; picking one is a guess.** 2.3.2's exclusion list
+  (`Tests`, `UITests`, `Widget`, `Screenshot`, …) is a heuristic sitting on top of good data, and it
+  degrades as the list grows — with 21 schemes, "the one that isn't a test" is not a unique answer.
+  When more than one survives the filter, **present them and ask** (Rules).
+
+```bash
+python3 - "$PROJECT_ROOT/.vscode" <<'PY'
+import json, re, sys, pathlib
+def strip_jsonc(s):                       # comments + trailing commas, STRING-AWARE
+    out=[]; i=0; n=len(s); instr=False; esc=False
+    while i < n:
+        c = s[i]
+        if instr:
+            out.append(c)
+            if esc: esc=False
+            elif c=='\\': esc=True
+            elif c=='"': instr=False
+            i+=1; continue
+        if c=='"': instr=True; out.append(c); i+=1; continue
+        if c=='/' and i+1<n and s[i+1]=='/':
+            while i<n and s[i]!='\n': i+=1
+            continue
+        if c=='/' and i+1<n and s[i+1]=='*':
+            i+=2
+            while i+1<n and not (s[i]=='*' and s[i+1]=='/'): i+=1
+            i+=2; continue
+        out.append(c); i+=1
+    return re.sub(r',(\s*[}\]])', r'\1', ''.join(out))
+d = pathlib.Path(sys.argv[1])
+for f, key, name in (("launch.json","configurations","name"), ("tasks.json","tasks","label")):
+    p = d/f
+    if not p.exists(): continue
+    for e in json.loads(strip_jsonc(p.read_text())).get(key, []):
+        cmd = e.get("command") or e.get("program") or e.get("runtimeExecutable") or ""
+        print(f"{f}\t{e.get(name,'?')}\t{cmd}")
+PY
+```
+
+**These files are JSONC, not JSON.** `json.loads` fails outright — comments and trailing commas are
+both legal. And a naive `s.replace('//','')` corrupts every `http://` in the file, which is how the
+open-in-browser entry gets silently mangled. The strip above is string-aware for exactly that
+reason. **If parsing fails, fall through to filename guessing and say so** (Rule 2) — never guess at
+the contents of a file you could not read.
+
+Then choose:
+
+- **Pick the entry whose name says run** — `run`, `dev`, `start`, `▶`. If several match they are
+  usually *variants*, not duplicates: one injecting remote env, one using a local `.env`.
+  **Present them and ask.** Picking silently is how you boot the differently-configured app.
+- **Record the stop entries** (`stop`, `⏹`) for `dev:launch-kill`, which otherwise guesses that
+  filename too.
+- **Never auto-run a destructive entry.** `--wipe`, `reset`, `db reset`, `clean` sit in these files
+  beside the run entries — an editor list is a menu, not a queue. Name them; run none.
+- **`tasks.json` also declares the build/verify command** (`verify: build`, `check`). Prefer it over
+  a guessed `npm run build` wherever a pre-PR build is needed.
+- **A declared command can still be WRONG.** Verified 2026-08-05: a repo's default build task
+  (`isDefault: true`, i.e. Cmd+Shift+B) ran the app through the remote-env wrapper with **none** of
+  the overrides its own launch script applies — pointing localhost at the production database and
+  live payment credentials. A declaration tells you what the project *says*; it does not certify it.
+  Prefer it over a guess, then still read it.
 
 ### Step 2.3 — iOS Project Discovery
 
@@ -342,7 +431,7 @@ subtly wrong. Check in this order and use the first that exists:
 
 | Order | Source | Look for |
 |---|---|---|
-| 1 | **The editor's DECLARED entry points** | `.vscode/launch.json` configurations · `.vscode/tasks.json` tasks — see 2.6.2a |
+| 1 | **The project's DECLARED entry points** | read at **2.2a** — all platforms, not just this one |
 | 2 | **A project launch script** | `.vscode/dev.sh`, `bin/dev`, `scripts/dev*`, `dev.sh`, a `dev`/`start` target in `Makefile`/`Justfile` |
 | 3 | **A documented command** | `CLAUDE.md`, `README.md`, `CONTRIBUTING.md` — a "run locally" / "development" section |
 | 4 | **The package.json script** | `<pm> run dev`, package manager from the lockfile: `package-lock.json`→npm · `pnpm-lock.yaml`→pnpm · `yarn.lock`→yarn · `bun.lockb`→bun |
@@ -350,63 +439,10 @@ subtly wrong. Check in this order and use the first that exists:
 **Read the script before running it** — it tells you the port, the prerequisites (Docker, a local
 database), and whether it opens a browser itself. If it already opens one, do not open a second.
 
-#### 2.6.2a — Read `launch.json` / `tasks.json` before guessing filenames
+#### 2.6.2a — Declared entry points
 
-Order 2 finds a script by **guessing what it is called**. `launch.json` and `tasks.json` are the
-project **declaring** what to run — they survive a rename, and they name commands that exist under
-no filename at all. Read them first.
-
-```bash
-python3 - "$PROJECT_ROOT/.vscode" <<'PY'
-import json, re, sys, pathlib
-def strip_jsonc(s):                       # comments + trailing commas, STRING-AWARE
-    out=[]; i=0; n=len(s); instr=False; esc=False
-    while i < n:
-        c = s[i]
-        if instr:
-            out.append(c)
-            if esc: esc=False
-            elif c=='\\': esc=True
-            elif c=='"': instr=False
-            i+=1; continue
-        if c=='"': instr=True; out.append(c); i+=1; continue
-        if c=='/' and i+1<n and s[i+1]=='/':
-            while i<n and s[i]!='\n': i+=1
-            continue
-        if c=='/' and i+1<n and s[i+1]=='*':
-            i+=2
-            while i+1<n and not (s[i]=='*' and s[i+1]=='/'): i+=1
-            i+=2; continue
-        out.append(c); i+=1
-    return re.sub(r',(\s*[}\]])', r'\1', ''.join(out))
-d = pathlib.Path(sys.argv[1])
-for f, key, name in (("launch.json","configurations","name"), ("tasks.json","tasks","label")):
-    p = d/f
-    if not p.exists(): continue
-    for e in json.loads(strip_jsonc(p.read_text())).get(key, []):
-        cmd = e.get("command") or e.get("program") or e.get("runtimeExecutable") or ""
-        print(f"{f}\t{e.get(name,'?')}\t{cmd}")
-PY
-```
-
-**These files are JSONC, not JSON.** `json.loads` fails on them outright — comments and trailing
-commas are both legal here. And a naive `s.replace('//','')` corrupts every `http://` in the file,
-which is how the "open in browser" entry gets silently mangled. The strip above is string-aware for
-exactly that reason. **If parsing fails, fall through to order 2 and say so** — never guess at the
-contents of a file you could not read.
-
-Then choose:
-
-- **Pick the entry whose name says run** — `run`, `dev`, `start`, `▶`. If several match, they are
-  usually *variants*, not duplicates: one injecting remote env, one using a local `.env` file.
-  **Present them and ask** — this is the "multiple candidates" rule, and picking silently is how you
-  boot the differently-configured app the section above warns about.
-- **Record the stop entries** (`stop`, `⏹`) for `dev:launch-kill`, which otherwise guesses that
-  filename too.
-- **Never auto-run a destructive entry.** `--wipe`, `reset`, `db reset`, `clean` appear in these
-  files alongside the run entries — an editor list is a menu, not a queue. Name them; run none.
-- **`tasks.json` also declares the project's build/verify command** (`verify: build`, `check`).
-  Prefer it over a guessed `npm run build` wherever a pre-PR build is needed.
+Moved to **Step 2.2a**, which runs for every platform. It is not a web step: the same rule
+covers `.xcscheme` files and `.idea/runConfigurations`. Do not re-implement it here.
 
 #### 2.6.3 — Resolve the port
 
