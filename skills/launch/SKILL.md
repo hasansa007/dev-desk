@@ -54,6 +54,42 @@ Examples:
 
 ## Phase 2 — Project Discovery
 
+### Step 2.0 — Three resolution rules — read before any detector
+
+Every detector below, and every tool that points at this phase, obeys these. They exist because the
+same failure happened three times in one day, in three unrelated places.
+
+**1. Installed ≠ reachable. Check all three hiding places before reporting a capability absent.**
+
+| | Where it hides | Miss looks like |
+|---|---|---|
+| `PATH` | the obvious one | — |
+| The SDK's canonical location | `${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/` | "Android unavailable" |
+| The **toolchain selector** | `xcode-select -p` pointing at Command Line Tools while Xcode sits installed | "no simulators" |
+
+**2. Never report absence without printing where you looked.** *"iOS unavailable"* is a claim; it
+needs its search path attached. This is the rule with teeth — a false negative survives only while
+it is unexamined, and a visibly empty search path is self-refuting. **These failures do not error,
+they answer** — and a confident wrong answer gets believed in a way a stack trace never does.
+
+**3. Prefer a DECLARATION over a guess.** When the project states a fact, read the statement rather
+than inferring it from names:
+
+| Guess | Declaration |
+|---|---|
+| `dev.sh`, `bin/dev`, `scripts/dev*` | `.vscode/launch.json` / `tasks.json` (2.6.2a) |
+| a hardcoded store dimension | the device's native resolution (`dev:shots` Phase 5) |
+| `grep '#[0-9]+'` over an epic body | its `- [ ] #N` task list (`dev:issues` 4.1) |
+| `[ -d "$dir/.git" ]` | `git rev-parse --show-toplevel` (2.1) |
+
+> **2026-08-05 — four instances, one root.** `adb` present but off `PATH`; `simctl` present but not
+> selected; a run script found by filename while `launch.json` named it outright; an epic child
+> invented by a bare `#N` grep. Each encoded a *correct principle* as a *fragile lookup*, and each
+> failed as a **false negative rather than an error**. The `adb` fix was written into one tool while
+> this file had carried the same fallback for the emulator 200 lines away — neither knew about the
+> other. **That** is why these rules sit here, at the top of the phase every tool points at, instead
+> of being re-learned per skill.
+
 ### Step 2.1 — Find project root
 
 Walk up from the current working directory to find the project root:

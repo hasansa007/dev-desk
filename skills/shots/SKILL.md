@@ -40,6 +40,7 @@ Read `skills/launch/SKILL.md` and use unchanged:
 
 | From `dev:launch` | For |
 |---|---|
+| **2.0** | the three resolution rules — **this skill is where two of the three were found**, so it must not re-learn them |
 | **2.1** | `$PROJECT_ROOT` — worktree-safe (`git rev-parse --show-toplevel` first) |
 | **2.2** | which platforms exist, and its precedence rules |
 | **2.3.0** | **resolving the Xcode toolchain** — `xcrun simctl` fails outright when `xcode-select` points at Command Line Tools, even with Xcode installed |

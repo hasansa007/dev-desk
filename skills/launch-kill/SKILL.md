@@ -39,6 +39,7 @@ Read `skills/launch/SKILL.md` and use, unchanged:
 
 | From `dev:launch` | For |
 |---|---|
+| **2.0** | the three resolution rules — installed ≠ reachable · never report absence without your search path · prefer a declaration over a guess |
 | **2.1** | `$PROJECT_ROOT` — worktree-safe, `git rev-parse --show-toplevel` first |
 | **2.6.2** | the launch script — Phase 5 needs it as the manifest of what a launch spawns |
 | **2.6.2a** | `launch.json` / `tasks.json` — the project's DECLARED stop entries, so this skill does not guess that filename either |
