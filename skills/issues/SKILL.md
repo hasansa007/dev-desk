@@ -165,6 +165,35 @@ ORPHANED  <branch-1>  5 commits, its issue CLOSED
 leaves the user to re-type a number you already know. Naming one hands to `/dev #N` — this skill
 does not start it.
 
+## Phase 6b — When NEXT is empty, read what the repo says about ITSELF
+
+Fires only when NEXT has nothing — an empty tracker, or every issue classified into another bucket.
+"Nothing to start" is a true answer and a useless one; a repo that tracks no issues still knows
+where it is weak, because it wrote it down.
+
+**Read only what is already written. Never invent work.**
+
+| Source | Find it with |
+|---|---|
+| Self-declared gap sections | `grep -rnE "^## (Known gaps\|Known limits)" --include="*.md"` |
+| The family's honesty convention | `grep -rn "Undated, therefore unproven" --include="*.md"` |
+| Deferred work in a spec's status line | `grep -rniE "^\*\*Status.*(deferred\|NOT (implemented\|executed))"` |
+
+Render them grouped by source file, and **label them as the repo's words, not yours**. The
+distinction is the whole point: a gap the repo recorded is evidence, and a gap you thought of on
+the spot is a guess wearing the same clothes.
+
+**If the repo declares no gaps, say so and just ask.** *"This repo records no gaps"* is an honest
+answer. Manufacturing a backlog to fill the space is the failure this phase exists to avoid — an
+invented board is worse than an empty one, because an empty one is obviously empty.
+
+**One ranking judgement is allowed, marked as yours:** which recorded gap costs most if it bites.
+Say why in a clause — *"the only one here that loses data"* — so it reads as a claim that can be
+argued with, not a priority handed down.
+
+Then ask what they want to work on. That question is the point of the phase; the gap list only
+exists so the question is not asked into a vacuum.
+
 ## Never
 
 - **Never cut a branch, never edit an issue, never start work.** Read-only is the whole contract.
@@ -173,6 +202,8 @@ does not start it.
 - **Never treat a stale local branch as in-flight** — require unmerged commits (4.2).
 - **Never render an auth failure as an empty board.**
 - **Never render another repo's board** because this one's is empty (Phase 2).
+- **Never invent work to fill an empty board** (6b). Surface only gaps the repo already wrote down;
+  "this repo records no gaps" is a complete answer.
 
 ## Known limits
 
