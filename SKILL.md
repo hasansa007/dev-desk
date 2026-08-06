@@ -1,8 +1,7 @@
 ---
 name: dev
 description: >
-  Personal developer workflow for features AND bugs on personal projects — StudyHub
-  (studyhub-deploy) is the daily driver; also Irtiqaa and others.
+  Personal developer workflow for features AND bugs on personal projects.
   Accepts: GitHub issue URL or number (#123, github.com/.../issues/N), or a plain feature
   title / bug description.
   Also trigger when user says "start feature", "work on issue", "new branch for",

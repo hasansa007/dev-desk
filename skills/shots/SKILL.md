@@ -139,12 +139,12 @@ is exactly why the driven suites name tests `test01_…`, `test06_…`. Keep tho
 ## Phase 6 — Report, then tear down what *you* started
 
 ```
-## shots: Irtiqaa
+## shots: <project>
 iOS sim (iPhone 16 Pro Max, 1320×2868 native)  driven suite, 6 screens × ar,en  -> shots/ios/
 Android (emulator-5554)                        current screen ×1                -> shots/android/
 Web                                            reused :3007, started nothing    -> shots/web/
 
-project.yml: IrtiqaaScreenshots scheme enabled (diff printed above), xcodegen re-run
+project.yml: screenshot scheme enabled (diff printed above), xcodegen re-run
 Teardown: simulator left booted (yours) · dev server untouched (already up)
 ```
 
@@ -172,7 +172,7 @@ tomorrow.
 ## Scar tissue
 
 **2026-08-05 — replaces `appstore-screenshots`, which had four defects.** That skill was 53 lines of
-manual post-processing, and it existed only because Irtiqaa's screenshot automation — 11 ordered
+manual post-processing, and it existed only because a real project's screenshot automation — 11 ordered
 UITests, a `SnapshotHelper`, a seeder — was unreachable behind a commented-out scheme. Both of its
 steps were compensating for not running the suite.
 

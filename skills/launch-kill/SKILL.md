@@ -83,7 +83,7 @@ Phase 4, never after.
 
 ## Phase 4 — Kill the tree, from the top
 
-The port holder is a leaf, and a deeper one than it looks. Measured on studyhub 2026-08-05: the
+The port holder is a leaf, and a deeper one than it looks. Measured on a real Next app 2026-08-05: the
 listener on `:3007` was `next-server`, a **child of `next dev`**, six levels below the chain root.
 Killing it leaves `railway run`, two shells, `npm`, `node` and `worker.py` up — the port frees for a
 moment and the app is still half running.
@@ -183,12 +183,12 @@ killed. Phase 5 is what covers that gap, which is why it must run to zero.
 Then report:
 
 ```
-## launch-kill: studyhub-deploy      /Users/hasan/Developer/studyhub-deploy
+## launch-kill: <project>            /path/to/<project>
 Killed   :3007  tree of 7, rooted at 66434
          railway run → sh → { npm → next dev → next-server ; sh → worker.py }
 Killed   orphan worker.py ×3   (PPID 1, matched "worker.py" at .vscode/dev.sh:112)
 Left up  Docker / local Supabase :54321-54327  — shared across worktrees
-Left up  :3000  node next dev  cwd=~/Developer/questxp/web  — NOT this project
+Left up  :3000  node next dev  cwd=<another-repo>/web  — NOT this project
 :3007 free · 0 orphaned workers
 ```
 
@@ -206,8 +206,8 @@ A `137` there means SIGKILL: the trap never ran, so **check Phase 5 twice**.
 ## Never
 
 - **Kill by port number alone** — `:3000` here is a different project's app.
-- **Pattern-kill machine-wide.** 2026-08-05: `studyhub-deploy/.vscode/stop.sh` does
-  `pkill -f "next dev"`, which would have taken `questxp`'s `:3000` with it.
+- **Pattern-kill machine-wide.** 2026-08-05: a project's own `.vscode/stop.sh` did
+  `pkill -f "next dev"`, which would have taken an UNRELATED project's `:3000` with it.
 - **Touch anything outside the current worktree**, including a sibling worktree of the same repo —
   that usually means another live session. Report it.
 - **Climb into a harness or interactive shell** (4.1).
@@ -240,18 +240,18 @@ which `dev:launch` printed as its "Stop:" line until this tool replaced it, is e
 **The durable fix belongs in `dev.sh`** — trap the worker's own PID, or kill the process group. This
 tool cleans up after the bug; it does not remove it.
 
-**2026-08-05 — first real run, on studyhub.** It freed `:3007`, killed the 7-process chain, spared
+**2026-08-05 — first real run.** It freed `:3007`, killed the 7-process chain, spared
 the soak test and Supabase — and left one orphan, because 4.2 listed descendants *after* the kill
 and Phase 6 only counted them. Both fixed above. A dry run had passed cleanly the same day: dry mode
 never kills, so it cannot expose a defect that only appears *after* something dies. **A dry run is
 not a run.**
 
 **2026-08-05 — second run, end to end, clean.** Server started from the fixed `dev.sh`, then killed
-by this tool with `questxp` deliberately left running on `:3000` as a foreign control:
+by this tool with an unrelated project deliberately left running on `:3000` as a foreign control:
 
 ```
 :3007 free · worker.py count=0 · no leftover chain
-questxp :3000 still up · supabase :54321 up
+other project :3000 still up · supabase :54321 up
 ```
 
 It also falsified the phase's own rationale: SIGTERM at the root was swallowed by `railway run`, the

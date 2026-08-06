@@ -75,7 +75,7 @@ echo "Project root: $dir"
 
 **2026-08-05 — `-d "$dir/.git"` resolved `$PROJECT_ROOT` to `/`.** In a git worktree `.git` is a
 *file*, not a directory, so the `-d` test never fires and the loop never stops: measured from
-`~/.superconductor/worktrees/studyhub-deploy/sc-frozen-niobium-40f3` it climbed through `~/`, through
+a real worktree under `~/.superconductor/worktrees/` it climbed through `~/`, through
 `/Users/`, and returned **`/`**. Every detector below then searches the filesystem root — and
 `dev:launch-kill`, which reads this section, would have treated *every process on the machine* as
 owned by the project. `git rev-parse --show-toplevel` returns the worktree's own path, which is why
@@ -121,11 +121,11 @@ Platform precedence when multiple are detected:
   - Never fall back to "serve the directory" — an empty static server returns 200 on a directory
     listing and looks like success
   - **Never reach into another repo.** Observed 2026-08-05: `/dev:launch` run from the dev-skill
-    repo found no app there and silently continued discovery in `studyhub-deploy` — a different
+    repo found no app there and silently continued discovery in ANOTHER repo — a different
     project, reachable only because it was an additional working directory — getting as far as
     reading its launch script before anyone noticed the repo had changed. A session can reach many
     repos; exactly one of them is `$PROJECT_ROOT`. When another obviously holds the app, that is a
-    sentence to say, not a licence to launch: *"No app in dev-skill. `studyhub-deploy/web` has one
+    sentence to say, not a licence to launch: *"No app in this repo. `<other-repo>/web` has one
     — launch that instead?"* The user answering "yes" is what makes it the project; proximity is not
   This is not the web path's problem. A repo of skills, a docs repo, a monorepo tool directory —
   any of them can be `$PWD`, and the iOS and Android detectors fail the same way

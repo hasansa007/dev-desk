@@ -892,9 +892,9 @@ data volume).
    Present three things — what is in the promotion, what was verified in pre prod, which
    migrations are already applied — then ask. Never promote autonomously.
 
-**studyhub-deploy:** feature PRs target `staging`; the `staging → main` merge AUTO-DEPLOYS PROD,
-so the merge IS the gate. `staging` drifts behind `main` — catch up with
-`git push origin origin/main:staging`. Full flow in `docs/deploy-and-staging.md`.
+**When the promotion merge auto-deploys:** feature PRs target the pre-prod branch; the
+`<pre-prod> → <prod>` merge RELEASES PROD, so the merge IS the gate. Pre prod drifts behind prod —
+catch up with `git push origin origin/<prod>:<pre-prod>`. The repo's runbook has the full flow.
 
 ---
 
@@ -924,7 +924,7 @@ Context: <what was loaded from Phase 1>
 - Do not create helpers for one-time use
 - Follow the language/framework conventions already present in the codebase (Style Matching)
 - DB migrations: always add a new version, never modify existing ones (mechanics: `supabase` skill)
-- **Never `git worktree add` for studyhub-deploy.** The IDE opens each worktree in its own window and splits the session. Branch IN PLACE in the main checkout, stashing if needed. `using-git-worktrees` does not apply to this repo.
+- **Never `git worktree add` when the IDE opens each worktree in its own window** — it splits the session. Branch IN PLACE in the main checkout, stashing if needed. Confirm the repo's own convention before assuming `using-git-worktrees` applies.
 - If unsure about a convention, read 2–3 existing examples first
 - **Nothing merges past Phases 12 and 13 (non-negotiable).** Docs and ADRs land in the SAME branch; the review is clean on the final PR diff. Not for a one-line change, not when running the whole push→PR→merge sequence in one go. Both gates are defined in their own phases — this line only says they cannot be waived.
 - **Pre prod ≠ prod:** Phase 14 reaches pre prod only. Promoting to production is Phase 16, needs its own developer confirmation, and never happens autonomously.

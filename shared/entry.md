@@ -23,8 +23,8 @@ Prod branch: the branch whose merge RELEASES PRODUCTION.
   1. The runbook wins.
   2. Else `main` / `master`.
 
-  studyhub-deploy: pre prod = `staging`, prod = `main`. A feature PR based on `main`
-  never deploys, and merging to `main` DEPLOYS PROD. Confirm both before acting.
+  Worked example — a two-stage repo: pre prod = `staging`, prod = `main`. A feature PR
+  based on `main` never deploys; merging to `main` DEPLOYS PROD. Confirm both before acting.
 ```
 
 If the two resolve to the same branch, the repo has a **single-stage model**: Phase 14's merge

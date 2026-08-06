@@ -2,7 +2,7 @@
 name: pre-prod
 description: >
   Take finished work to PRE PROD — push, open the PR, run the pre-merge gates (docs, code review),
-  then merge to the pre-prod branch (`staging` in studyhub-deploy). Ends at pre prod, never at
+  then merge to the pre-prod branch (`staging`, typically). Ends at pre prod, never at
   production.
   Trigger when the user says "open a PR for this", "PR this branch", "merge to staging", "take this
   to staging", "ship this to pre prod", or when work is finished and needs to reach the shared

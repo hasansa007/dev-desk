@@ -126,7 +126,7 @@ Show the top 2–3 of NEXT by default, not all 15. A board you have to scroll is
 ## Phase 6 — Render, then ask
 
 ```
-## studyhub-deploy — 15 open / 135 closed
+## <project> — 15 open / 135 closed
 
 CURRENT   none — on `staging`, clean tree
 
@@ -178,7 +178,7 @@ building a feature called 'run'. Observed 2026-08-04"* — and its guard catches
 argument while leaving the **zero-word** one, which is strictly more ambiguous, unhandled. This
 skill is that missing row: the emptiest possible input now produces the most useful possible answer.
 
-**2026-08-05 — first run against a real tracker found two design errors** (studyhub-deploy, 15 open
+**2026-08-05 — first run against a real tracker found two design errors** (15 open
 / 135 closed). Both are written up at 4.1 and 4.3: a bare `#N` grep invented an epic child and would
 have reported 1/5 instead of 0/4, and two branches carrying 7 unmerged commits between them were
 invisible because their issues are closed. The first was caught only because the *right* answer and
