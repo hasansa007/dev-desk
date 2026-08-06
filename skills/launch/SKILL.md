@@ -17,7 +17,7 @@ description: >
   "install on device", "run on emulator", "run on iPhone", "run on Android", "boot the simulator",
   "run a debug build", "run a release build", "start the dev server", "open the app",
   "serve this", "run the html", "preview the prototype".
-allowed-tools: [xcodebuild, gradle, adb, python3]
+allowed-tools: [git, xcodebuild, xcrun, xcodegen, gradle, adb, lsof, nc, curl, open, python3]
 ---
 
 # Run — Universal Build & Run
@@ -301,6 +301,15 @@ done
 
 #### 2.3.2 — Detect scheme and bundle ID
 
+**Path 0 — a scheme NAMED by 2.2a wins outright.** If a shared `.xcscheme`, a `.vscode` entry or an
+`.idea/runConfigurations` entry names the scheme to run, use it and skip the heuristics below. That
+is the project stating the answer; A and B are two ways of inferring it.
+
+> **2026-08-05 — 2.2a had no consumer here.** The step was made platform-neutral, and then only the
+> web path (2.6.2) actually read its output — iOS and Android went on inferring while the
+> declarations sat unused. A rule stated generally and consumed narrowly is *worse* than one honestly
+> scoped, because it looks fixed. If 2.2a returns nothing for iOS, fall through to A/B and say so.
+
 **Path A — xcodegen project (project.yml exists):**
 
 Read `project.yml` directly and extract:
@@ -317,6 +326,16 @@ xcodebuild -list $XCODE_FLAG "$XCODE_FILE" 2>/dev/null
 
 Pick the app scheme: exclude names ending with `Tests`, `UITests`, or containing `Widget`, `Screenshot`, `Watch`, `Extension`, `Clip`. Prefer the scheme matching the project/workspace filename.
 
+**If more than one scheme survives the filter, present them and ASK.** Enumerating schemes is a
+declaration; picking one is a guess, and the guess degrades as the list grows — a repo checked on
+2026-08-05 had **21** shared schemes, where "the one that isn't a test" is not a unique answer.
+
+**If `xcodebuild -list` returns few or no schemes, say "no SHARED schemes" — never "no schemes."**
+Unshared schemes live in `xcuserdata/`, which is user-local and usually gitignored, so a fresh clone
+legitimately shows none while the project has plenty. Two of three repos checked that day reported
+zero for exactly that reason. The two statements are different facts and only one is about the
+project (Step 2.0, rule 2).
+
 Then extract bundle ID:
 
 ```bash
@@ -329,6 +348,22 @@ xcodebuild -showBuildSettings \
 Store: `$SCHEME`, `$BUNDLE_ID`, `$XCODE_FILE`, `$XCODE_FLAG`, `$IOS_DIR`
 
 ### Step 2.4 — Android Project Discovery
+
+#### 2.4.0 — A run configuration NAMED by 2.2a wins outright
+
+`.idea/runConfigurations/*.xml` is Android Studio's `launch.json` — it declares the module, and often
+the launch activity and extra flags, that the Run button uses:
+
+```bash
+find "$PROJECT_ROOT/.idea/runConfigurations" -name '*.xml' 2>/dev/null | while read -r f; do
+  grep -oE 'name="[^"]+"|MODULE_NAME[^/]*value="[^"]+"|ACTIVITY_CLASS[^/]*value="[^"]+"' "$f"
+done
+```
+
+Use it when present and skip the inference in 2.4.1–2.4.3; fall through to them when it is absent,
+and **say which happened**. The grep-the-manifest path below reconstructs by hand what this file
+already states — and it silently picks the *first* LAUNCHER activity when a manifest declares
+several (flavors, a debug entry point), where the run configuration names the intended one.
 
 #### 2.4.1 — Find Gradle project and app module
 
@@ -768,6 +803,11 @@ container, say what is now running that was not before.
 | Webapp: server never binds within 60s | Print `/tmp/run-webapp-<PORT>.log` and stop; do not open a blank tab |
 | Webapp: launch script needs Docker / a local DB | Its prerequisites are the project's, not yours to bypass — surface the script's own error |
 | Web: `python3` not installed | Fall back to `npx http-server "$SERVE_DIR" -p "$PORT"` or `php -S localhost:$PORT -t "$SERVE_DIR"` |
+| `xcrun: error: unable to find utility "simctl"` | NOT "no Xcode". `xcode-select -p` is on Command Line Tools — set `DEVELOPER_DIR` per **2.3.0**. Every iOS step fails this way, and it reads as "no simulators" |
+| `adb: command not found` | NOT "Android unavailable". Try `${ANDROID_HOME:-$HOME/Library/Android/sdk}/platform-tools/adb` — it is routinely installed off `PATH` (Step 2.0, rule 1) |
+| `$PROJECT_ROOT` resolves to `/` or to a parent directory | You are in a git **worktree**, where `.git` is a file. Use `git rev-parse --show-toplevel` (**2.1**). Every detector below searches the wrong tree, and `dev:launch-kill` would treat the whole machine as owned |
+| `launch.json` / `tasks.json` fails to parse | They are **JSONC** — comments and trailing commas. `json.loads` cannot read them, and stripping `//` corrupts `http://`. Use the string-aware parser in **2.2a**; on failure fall through to filename guessing and SAY SO |
+| `xcodebuild -list` shows few or no schemes | Report "no **shared** schemes", not "no schemes" — unshared ones live in gitignored `xcuserdata/` (**2.3.2**) |
 
 ## Rules
 
