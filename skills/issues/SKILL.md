@@ -33,6 +33,23 @@ Read `~/Developer/skills/dev-skill/shared/entry.md` — repo auto-detect and pre
 resolution. Both are needed: the repo to query, the pre-prod branch to measure "unmerged" against.
 Do not restate that logic.
 
+**The resolved repo is a BOUNDARY, not a hint.** Render the board for that repo and no other. An
+empty board *is* the answer when the tracker is empty — do not go looking for a fuller one
+elsewhere. Another repo's backlog is a **sentence you may say**, never a board you render:
+*"nothing here; the other checkout has 11 open — want that board instead?"* and then stop until
+asked.
+
+> **2026-08-05 — observed, in this skill's own first week.** Invoked from a repo whose tracker has
+> never held an issue, it correctly reported zero — then offered to run against a different repo,
+> did so, and rendered a board of that repo's issues and branches. The user's next message was
+> *"what branch, what repo?"*, because two repos' state had been merged into one answer with
+> nothing marking the seam.
+>
+> `dev:launch` 2.2 already carries this rule — *"A session can reach many repos; exactly one of them
+> is `$PROJECT_ROOT`"* — and it was written after the same mistake in the same week. A board is more
+> tempting to widen than a launch, because an empty board feels like a failure to be fixed. It is
+> not: **an empty tracker is a finding, and a full board from the wrong repo is worse than nothing.**
+
 ## Phase 3 — Fetch once
 
 ```bash
@@ -155,6 +172,7 @@ does not start it.
 - **Never call `gh issue view` per row** — the list call already has the fields.
 - **Never treat a stale local branch as in-flight** — require unmerged commits (4.2).
 - **Never render an auth failure as an empty board.**
+- **Never render another repo's board** because this one's is empty (Phase 2).
 
 ## Known limits
 
