@@ -103,13 +103,16 @@ orphans this tool exists to clear.
 ```bash
 descendants() { for c in $(pgrep -P "$1" 2>/dev/null); do echo "$c"; descendants "$c"; done; }
 KIDS=$(descendants "$ROOT")            # BEFORE the kill — see below
-kill -TERM "$ROOT" 2>/dev/null
-i=0; while [ $i -lt 10 ]; do           # poll; never guess a fixed interval
-  left=$({ echo "$ROOT"; echo "$KIDS"; } | while read -r p; do
-           [ -n "$p" ] && kill -0 "$p" 2>/dev/null && echo "$p"; done)
-  [ -z "$left" ] && break
-  i=$((i+1)); sleep 1
-done
+alive() { { echo "$ROOT"; echo "$KIDS"; } | while read -r p; do
+            [ -n "$p" ] && kill -0 "$p" 2>/dev/null && echo "$p"; done; }
+
+kill -TERM "$ROOT" 2>/dev/null         # rung 1: the root relays, if it relays at all
+i=0; while [ $i -lt 3 ] && [ -n "$(alive)" ]; do i=$((i+1)); sleep 1; done
+
+if [ -n "$(alive)" ]; then             # rung 2: TERM the members directly, so INNER traps fire
+  alive | while read -r p; do owns "$p" && kill -TERM "$p" 2>/dev/null; done
+  i=0; while [ $i -lt 7 ] && [ -n "$(alive)" ]; do i=$((i+1)); sleep 1; done
+fi
 { echo "$ROOT"; echo "$KIDS"; } | while read -r p; do
   [ -n "$p" ] || continue
   kill -0 "$p" 2>/dev/null || continue
@@ -120,6 +123,15 @@ done
 **Snapshot the descendants BEFORE the SIGTERM.** Deriving them afterwards finds nothing: the moment
 the root dies its grandchildren reparent to init, and `pgrep -P` can no longer see them. This is the
 same ordering `dev.sh`'s own trap needed.
+
+> **2026-08-05 — the snapshot is the mechanism, not the safety net.** Measured end to end: SIGTERM to
+> the chain root was **swallowed**. The root was `railway run`, which does not forward the signal to
+> its `sh -c` child, so the launch script's trap never ran, the poll burned its full 10s budget, and
+> all six processes died by SIGKILL from the reap. Zero orphans — but only because the snapshot
+> existed. **Do not count on the trap firing.** A wrapper that does not forward signals (`railway`,
+> some `docker` and `npx` shims) turns the reap into the primary path. Sending SIGTERM to the
+> snapshot members too, before escalating, gives inner traps their chance without depending on the
+> root to relay it.
 
 **Poll; do not `sleep 2` once.** A tree whose launch script has a *buggy* trap is exactly the case
 this tool exists for, and those take longer than a fixed guess to settle.
@@ -210,6 +222,7 @@ A `137` there means SIGKILL: the trap never ran, so **check Phase 5 twice**.
 | A process that `cd`s out after starting | Reads as unowned, survives. cwd is a snapshot, not provenance |
 | A sibling worktree holding this port | Reported, never killed — by design. Run this from that worktree |
 | An orphaned **extensionless** binary (`./bin/worker`) | Not swept. A missed orphan is recoverable; a wrong kill is not |
+| A root that sets `trap "" TERM` (`SIG_IGN`) | `SIG_IGN` is inherited across fork/exec, so the whole subtree ignores TERM and **rung 2 cannot help** — only the SIGKILL reap ends it. Verified 2026-08-05. Distinct from a root that merely fails to *forward*, where rung 2 works |
 | Simulators, emulators, MCP debug Chrome | Out of scope — no port. Chrome is Phase 11 + `hooks/teardown.sh` |
 
 ## Scar tissue
@@ -233,6 +246,27 @@ and Phase 6 only counted them. Both fixed above. A dry run had passed cleanly th
 never kills, so it cannot expose a defect that only appears *after* something dies. **A dry run is
 not a run.**
 
-**Undated, therefore unproven:** the harness-shell stop list in 4.1, the two-condition orphan match
-in Phase 5, and both fixes from that first run — the pre-kill snapshot and Phase 6's convergence
-loop. Reasoned and unit-tested, **not yet re-run end to end**.
+**2026-08-05 — second run, end to end, clean.** Server started from the fixed `dev.sh`, then killed
+by this tool with `questxp` deliberately left running on `:3000` as a foreign control:
+
+```
+:3007 free · worker.py count=0 · no leftover chain
+questxp :3000 still up · supabase :54321 up
+```
+
+It also falsified the phase's own rationale: SIGTERM at the root was swallowed by `railway run`, the
+trap never fired, the poll ran its full budget and SIGKILL did the work. Right outcome, wrong reason
+— which is why 4.2 now TERMs the members directly before escalating.
+
+**Proven:** Phases 3–6 end to end, the pre-kill snapshot, the ownership boundary (a live foreign
+server survived), and the orphan sweep.
+
+**2026-08-05 — rung 2, tested against both failure shapes.** Root that does not *forward* TERM
+(the `railway` case): rung 1 left the children orphaned, rung 2 reached them directly, their own
+traps fired and cleaned up — **no SIGKILL needed**. Root that *ignores* TERM via `trap "" TERM`:
+useless, because `SIG_IGN` is inherited across fork/exec, so the whole subtree ignores it and only
+the reap ends it. Both shapes end at zero survivors; they differ only in whether the shutdown is
+graceful.
+
+**Undated, therefore unproven:** the harness-shell stop list in 4.1 beyond the one `zsh -c` shape it
+has met, and the extension gate on a project whose worker is not a `.py`.
