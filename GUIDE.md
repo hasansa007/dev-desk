@@ -207,6 +207,10 @@ they point, never duplicate.
 ## What not to change without a strong reason
 
 - **The four always-stop gates.** They are the difference between a workflow and an autopilot.
+- **The write boundary** (`shared/entry.md`). Name the target `owner/repo` before acting; never write
+  outside the resolved repo without an explicit yes naming it; always cut a branch. Paid for on
+  2026-08-06 — a read-only version of this rule existed and did not stop two PRs being merged into
+  another repo on a two-word instruction. **A boundary that only governs reads is not a boundary.**
 - **Teardown rules.** Never kill a process you did not start. This one protects the developer's own
   session.
 - **"Prefer the project's own launch script."** A bare `npm run dev` boots a differently configured

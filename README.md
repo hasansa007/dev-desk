@@ -168,6 +168,9 @@ Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-
 - **Docs before merge.** A price, limit, decision or env var that changed without its ADR is an
   unfinished diff.
 - **One pipeline, many doors.** Members never copy `shared/pipeline.md`; they point into it.
+- **The resolved repo is a write boundary.** Name the target `owner/repo` and branch *before* acting,
+  never write outside the resolved repo without an explicit yes naming it, and always cut a branch so
+  there is something reviewable before anything lands. Defined once in `shared/entry.md`.
 
 ---
 
