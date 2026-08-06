@@ -310,6 +310,12 @@ is the project stating the answer; A and B are two ways of inferring it.
 > declarations sat unused. A rule stated generally and consumed narrowly is *worse* than one honestly
 > scoped, because it looks fixed. If 2.2a returns nothing for iOS, fall through to A/B and say so.
 
+> **Path 0 is also the fast path, by three orders of magnitude.** Measured the same day on the
+> 1130-scheme project: reading the declarations took **~4.2 s**, while `xcodebuild -list` — Path B —
+> **never returned**, hitting a 120 s alarm. That is this file's own `xcodebuild -list hangs (SPM
+> resolution)` recovery row, reproduced. Preferring the declaration is not only more correct here,
+> it is the difference between four seconds and a hang.
+
 **Path A — xcodegen project (project.yml exists):**
 
 Read `project.yml` directly and extract:
@@ -326,9 +332,19 @@ xcodebuild -list $XCODE_FLAG "$XCODE_FILE" 2>/dev/null
 
 Pick the app scheme: exclude names ending with `Tests`, `UITests`, or containing `Widget`, `Screenshot`, `Watch`, `Extension`, `Clip`. Prefer the scheme matching the project/workspace filename.
 
-**If more than one scheme survives the filter, present them and ASK.** Enumerating schemes is a
-declaration; picking one is a guess, and the guess degrades as the list grows — a repo checked on
-2026-08-05 had **21** shared schemes, where "the one that isn't a test" is not a unique answer.
+**Exclude dependency schemes first** (`Pods/`, `Carthage/`, `.build/`, `DerivedData/`) — CocoaPods
+and SPM generate one per dependency and none of them is the app.
+
+**If 2–10 schemes survive, present them and ASK. Above that, do NOT list — say the count and require
+either 2.2a's declaration or an explicit scheme argument.**
+
+> **2026-08-05, measured.** A real project carried **1130** shared schemes, and the exclusion filter
+> (`Tests`, `UITests`, `Widget`, `Screenshot`, `Watch`, `Extension`, `Clip`) left **870** survivors.
+> At that scale the heuristic is not weak, it is meaningless — and so is "present them and ask",
+> because 870 options is not a question anyone can answer. My own first count of this repo said
+> "21": that was a `-maxdepth 4` artifact, and the truncated number made the problem look survivable.
+> **A capped search that reports its capped result as the total is the same false-negative shape as
+> the rest of Step 2.0.** Only a declaration resolves this one.
 
 **If `xcodebuild -list` returns few or no schemes, say "no SHARED schemes" — never "no schemes."**
 Unshared schemes live in `xcuserdata/`, which is user-local and usually gitignored, so a fresh clone
