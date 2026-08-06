@@ -249,7 +249,16 @@ Honest, as of 2026-08-04:
   to fix this; until ~20 PRs carry it, pruning is still guesswork. It is also self-reported — a run
   that skips a phase *and* omits it from `Skipped:` is invisible, same as before. This buys
   visibility, not enforcement.
-- **`dev:pre-prod`, `dev:review`, `dev:prod` unexercised.**
+- **`dev:pre-prod`, `dev:review`, `dev:prod` — and where they CAN be exercised.** As of 2026-08-05
+  `dev:pre-prod` has run end to end once, on a two-stage repo: branch → PR → gates → merge to the
+  pre-prod branch. `dev:review` and the `pre-prod → prod` half of `dev:prod` still never have.
+  **They cannot be proven in this repo, by construction, and running them here is not a gap to
+  close — it is a category error.** This repo is single-stage: `entry.md` resolves pre prod and prod
+  both to `main`, so Phase 16 correctly skips itself, and there is no feature branch to PR because
+  commits land on `main` directly (which is also why `branch-guard.sh` is deliberately not installed
+  here). Proving them needs a repo with a real `staging` → `prod` split **and** something worth
+  promoting. Until that happens the honest status is *unexercised*, not *broken* — and an
+  `/dev:prod` here reporting "single-stage, nothing to promote" is the skill working, not failing.
 - **Enforcement is part mechanical as of 2026-08-05.** ~5 of 17 phases produce a durable artifact;
   the rest depend on the reader complying, and `## PIPELINE` / `## DOCS` are self-reported — a run
   that skips a phase *and* omits it from `Skipped:` is still invisible. Four hooks in `hooks/` now
