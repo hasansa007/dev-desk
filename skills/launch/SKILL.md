@@ -190,11 +190,14 @@ editor you use is the one the project was configured in:
 
 **Two iOS-specific traps this exposes:**
 
-- **Unshared schemes are invisible.** Of three mobile repos checked, one had **21** shared
+- **Unshared schemes are invisible.** Of three mobile repos checked, one had **1130** shared
   `.xcscheme` files and two had **zero** — not because they lack schemes, but because theirs live in
   `xcuserdata/`, which is user-local and usually gitignored. So `xcodebuild -list` can come back
   thin or empty on a fresh clone. **Report that as "no shared schemes", never as "no schemes"** —
   they are different facts and only one of them is the project's.
+  *(That count first read "21" here — a `-maxdepth 4` artifact of my own search. Both failure
+  directions are live in one bullet: a capped search under-reporting, and gitignored state
+  disappearing entirely.)*
 - **Enumerating schemes is a declaration; picking one is a guess.** 2.3.2's exclusion list
   (`Tests`, `UITests`, `Widget`, `Screenshot`, …) is a heuristic sitting on top of good data, and it
   degrades as the list grows — with 21 schemes, "the one that isn't a test" is not a unique answer.
