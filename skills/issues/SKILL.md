@@ -62,10 +62,10 @@ Four buckets, in this order. An issue lands in the first that matches.
 ### 4.1 — An epic parent is not startable
 
 An issue labelled `epic` **with open children is never offered as NEXT.** Offer its first unstarted
-child instead, and show the parent only as progress (`#174 Podcast 0/4`).
+child instead, and show the parent only as progress (`#E <epic title> 0/4`).
 
 This is the family's own rule, not a preference — `README.md`: *"split it at Phase 5 into real
-sub-issues, run `/dev #child` per slice — the sub-issue list IS the queue."* Starting `/dev #174`
+sub-issues, run `/dev #child` per slice — the sub-issue list IS the queue."* Starting `/dev #E`
 would re-enter decomposition on an epic that is already decomposed.
 
 **Parse the TASK LIST, never a bare `#N` grep.** Children are the checklist lines; anything else is
@@ -76,10 +76,11 @@ gh issue view <epic> --json body -q .body \
   | grep -E '^[[:space:]]*-[[:space:]]*\[[ xX]\][[:space:]]*#[0-9]+'
 ```
 
-> **2026-08-05 — a bare grep invented a child.** Epic #174's body references `#179` twice in prose
-> (*"see the Roadmap issue #179"*, *"Roadmap context: #179"*) while its actual children are four
-> `- [ ] #N` lines, #175–#178. Grepping `#[0-9]+` returns five children, one of them closed, and
-> reports the epic as **1/5 done**. The truth is **0/4** — nothing started. An epic whose progress
+> **2026-08-05 — a bare grep invented a child.** An epic's body referenced an unrelated roadmap
+> issue twice in **prose** (*"see the Roadmap issue #R"*, *"Roadmap context: #R"*) while its actual
+> children were four `- [ ] #N` checklist lines. Grepping `#[0-9]+` returns five children — the
+> roadmap issue among them, and it is closed — and so reports the epic as **1/5 done**. The truth
+> is **0/4**, nothing started. An epic whose progress
 > bar is wrong is worse than one with no progress bar, because it is the number you would plan from.
 > Epics cross-reference roadmaps, superseded issues and spin-offs constantly; only the checklist is
 > a parent-child claim.
@@ -96,19 +97,18 @@ A branch is only IN FLIGHT if `git rev-list --count <pre-prod>..<branch>` is non
 against `main` in a two-stage repo marks everything already merged to pre prod as still in flight —
 a board that reports finished work as unfinished is worse than no board.
 
-Local branches accumulate: this repo's daily driver carried `gh-14` … `gh-265` long after merge.
+Local branches accumulate: a real repo carried branches for long-since-merged issues, dozens of them.
 **A branch existing proves nothing; only unmerged commits do.**
 
 ### 4.3 — Unmerged work on a CLOSED issue is the finding, not a filter miss
 
 A board built only from `--state open` cannot see this, and it is the state most worth seeing.
 
-> **2026-08-05, on the first run against a real tracker.** `gh-113-course-roster` carried **5**
-> unmerged commits and `gh-265-account-delete` **2** — and issues #113 and #265 are both **CLOSED**.
-> So either the issues were closed while work was still outstanding, or the branches are abandoned
-> and should be deleted. Both readings need a human; neither is visible from the open list.
-> By contrast `gh-14-opus-json-build-hardening` had 0 unmerged commits — genuinely stale, correctly
-> silent.
+> **2026-08-05, on the first run against a real tracker.** Two branches carried **5** and **2**
+> unmerged commits — and both of their issues were **CLOSED**. So either the issues were closed
+> while work was still outstanding, or the branches are abandoned and should be deleted. Both
+> readings need a human; neither is visible from the open list. By contrast a third branch of
+> similar age had 0 unmerged commits — genuinely stale, and correctly silent.
 
 Report ORPHANED as **one warning line, never as work to start**, and say which of the two readings
 it is only if you can tell. Do not delete branches — this skill is read-only.
@@ -126,22 +126,22 @@ Show the top 2–3 of NEXT by default, not all 15. A board you have to scroll is
 ## Phase 6 — Render, then ask
 
 ```
-## <project> — 15 open / 135 closed
+## <repo> — 15 open / 135 closed
 
-CURRENT   none — on `staging`, clean tree
+CURRENT   none — on `<pre-prod>`, clean tree
 
-NEXT      #462  P1  Append flow: reuse the create wizard's per-video…
-          #60   P1  Content-addressed build cache — reuse existing…
-          #401  P2  App-shell landmarks: <main> + skip-to-content
+NEXT      #A   P1  <title of the oldest untouched P1>
+          #B   P1  <title of the next P1>
+          #C   P2  <title of the oldest P2>
 
 P1 2 · P2 5 · P3 8 · unlabelled 0
-epics 2   #174 Podcast 0/4 slices · #547 native client
+epics 2   #E <epic> 0/4 slices · #F <epic, no children — startable>
 deferred  4 epic-leftover        (show with `all`)
 
-ORPHANED  gh-113-course-roster  5 commits, issue #113 CLOSED
-          gh-265-account-delete 2 commits, issue #265 CLOSED
+ORPHANED  <branch-1>  5 commits, its issue CLOSED
+          <branch-2>  2 commits, its issue CLOSED
 
-→ start #462, or name another?
+→ start #A, or name another?
 ```
 
 **End by asking, never by listing.** The board exists to produce a decision; stopping at the list
@@ -186,8 +186,8 @@ the *wrong* answer differed — the earlier draft printed `0/4` correctly by luc
 computes `1/5`.
 
 **Proven:** the single-fetch shape, the priority mix, the epic-parent-not-startable rule, the
-task-list child parse, and the unmerged-commit test (`gh-14` correctly silent at 0, `gh-113`/`gh-265`
-correctly flagged).
+task-list child parse, and the unmerged-commit test (a merged branch correctly silent at 0, two
+unmerged ones correctly flagged).
 
 **Undated, therefore unproven:** CURRENT detection from a branch name (no issue-mapped branch was
 checked out at the time), slice ordering, and the `stats` / `all` / label-filter arguments.
