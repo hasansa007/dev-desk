@@ -30,6 +30,28 @@ Prod branch: the branch whose merge RELEASES PRODUCTION.
 If the two resolve to the same branch, the repo has a **single-stage model**: Phase 14's merge
 already reaches production. Say so explicitly, and skip Phase 16.
 
+## The resolved repo is a WRITE boundary
+
+Reading elsewhere is a mistake; **writing elsewhere is a different category of mistake.** Before any
+commit, branch, push, PR or merge:
+
+1. **State the target repo and branch, by name, before acting** — `owner/repo`, not "the app repo".
+   A phrase like "the other checkout" is not a repo identifier and cannot be checked.
+2. **Never write to a repo other than the resolved one without an explicit yes** naming that repo.
+   Authorization to fix something is not authorization to fix it *anywhere*.
+3. **Work on a NEW BRANCH, never directly on the main line**, so there is a reviewable object before
+   anything lands.
+
+> **2026-08-05 → 06 — read-boundary written, write-boundary missing.** A boundary rule was added to
+> `dev:issues` after it rendered another repo's board — read-only, and the user still had to ask
+> *"what branch, what repo?"*. Hours later the same session opened and merged **two PRs** into that
+> other repo on a two-word instruction, without naming the repo first. Both were docs-only; both
+> reached `main` via a promotion, and in that repo merging to `main` auto-deploys production.
+>
+> The first rule was scoped to rendering a board, so it did not cover the case that matters. **A
+> boundary that only governs reads is not a boundary.** The user's correction was explicit: verify
+> the origin before changing anything, and at minimum cut a branch.
+
 ---
 
 ## What to load from `shared/pipeline.md`
