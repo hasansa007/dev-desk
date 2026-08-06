@@ -116,6 +116,7 @@ The work already exists and you want a single stage:
 | *"run the app"* / *"launch on simulator"* | `/dev:launch` |
 | *"kill the dev server"* / *"free the port"* | `/dev:launch-kill` — stops what `launch` started, in this worktree only |
 | *"screenshot the app"* / *"app store screenshots"* | `/dev:shots` — captures iOS/Android/web; drives the project's own suite when it has one |
+| *"what should I work on?"* / nothing at all | `/dev:issues` — the tracker board, read-only. This is what bare `/dev` now does |
 
 **Starting mid-pipeline never leaves you stranded.** Whichever one you invoke, it finishes by naming
 the next phase, what it would do and where it ends — then asks whether to continue. You do not have

@@ -37,7 +37,8 @@ stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the 
     ├── prod/SKILL.md             → /dev:prod       Phase 16
     ├── launch/SKILL.md           → /dev:launch     no phase — a TOOL
     ├── launch-kill/SKILL.md      → /dev:launch-kill  no phase — `launch` inverted
-    └── shots/SKILL.md            → /dev:shots      no phase — capture, iOS/Android/web
+    ├── shots/SKILL.md            → /dev:shots      no phase — capture, iOS/Android/web
+    └── issues/SKILL.md           → /dev:issues     no phase — the tracker view; bare /dev routes here
 ```
 
 Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
@@ -132,6 +133,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | — | *(no phase)* — build & launch the app | `dev:launch` |
 | — | *(no phase)* — stop this project's servers | `dev:launch-kill` |
 | — | *(no phase)* — capture screens from the running app | `dev:shots` |
+| — | *(no phase)* — the tracker: current, next, stats | `dev:issues` |
 
 ### Why these phase members and not others
 

@@ -32,9 +32,22 @@ so it is defined once there and never duplicated here.
 
 | Input | Route |
 |---|---|
+| **Nothing at all** | **`dev:issues`** — the tracker view, then ask which to start |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
 | A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
+
+### The empty-input row is a guard, not a convenience
+
+**2026-08-05 — bare `/dev` had no defined behaviour.** With no empty row, it fell toward "any other
+free text", whose Entry 2 says *"the argument text is the feature description / seed"* — and with no
+argument there is no seed. The outcome was whatever got improvised, up to cutting a branch at
+Phase 3 for a feature nobody asked for.
+
+That is the same failure as the one-word guard below, one step further out: the guard catches
+`/dev run`, and left `/dev` — strictly more ambiguous — unhandled. Routing empty input to the
+tracker turns the emptiest input into the most useful answer, and `dev:issues` is read-only, so the
+worst case is now a board instead of a branch.
 
 ### Guard — a command-shaped argument is not a feature title
 
@@ -108,6 +121,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:launch` | — | a project to launch | "run the app" — a TOOL, not a phase |
 | `dev:launch-kill` | — | a project to stop | "kill the dev server", "free the port" — `launch` inverted |
 | `dev:shots` | — | a running app | "screenshot the app", "app store screenshots" — capture, iOS/Android/web |
+| `dev:issues` | — | the repo's tracker | "what should I work on?" — read-only board; **bare `/dev` routes here** |
 
 They all read the same `shared/pipeline.md`; none of them copies it. **Phases 1–8 have no sibling on
 purpose** — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.
