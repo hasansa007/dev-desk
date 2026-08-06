@@ -68,5 +68,5 @@ task at a time, and nobody can point at the commit where it happened.
 
 Phase 0 hands off as usual — but for an epic the handoff is specifically:
 
-> "Filed epic #174. Running `/dev #174` next will investigate it and propose the slices at Phase 5
+> "Filed epic #N. Running `/dev #N` next will investigate it and propose the slices at Phase 5
 > before filing any children. Start now, or leave it?"

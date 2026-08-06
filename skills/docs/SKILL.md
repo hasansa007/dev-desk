@@ -53,7 +53,7 @@ touched-test while leaving the doc lying.
 For each doc the diff modifies, reread the **whole paragraph around the edit** — not your diff of
 it — and ask of each sentence: *is this still true after this branch?* Fix or delete what is not.
 
-Observed 2026-08-03: the segmented-nav branch added ADR-73 **and** updated its PROJECT_MAP
+Observed 2026-08-03: a branch added its ADR **and** updated its PROJECT_MAP
 paragraph — green on every row of the table — while leaving three claims in that same paragraph
 describing a rail the dialog no longer has. One mention had been fixed, three had not. **A partial
 sweep is indistinguishable from a complete one from the outside**, so the pass criterion is the
@@ -88,6 +88,6 @@ A PR without a `## DOCS` section is not ready to merge.
 This gate is read-only and mid-pipeline, so finishing it is not finishing anything. End by naming
 the rest and asking (`entry.md` → *Never end silently*):
 
-> "Docs gate clean — ADR-74 written, PROJECT_MAP §Build reread. Next is Phase 13 (`/code-review`)
+> "Docs gate clean — ADR written, the PROJECT_MAP section reread. Next is Phase 13 (`/code-review`)
 > on the same diff, then `dev:pre-prod` (Phase 14) opens the PR and merges to `<pre-prod branch>`.
 > Continue?"

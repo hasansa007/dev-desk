@@ -641,8 +641,8 @@ your diff of it — and ask of each sentence: *is this still true after this bra
 what is not. A doc that describes the previous design in three sentences and the new one in one is
 worse than an untouched doc, because it reads as current.
 
-Observed 2026-08-03, and it is why this subsection exists: the segmented-nav branch correctly added
-ADR-73 **and** updated the PROJECT_MAP paragraph — green on every row of the table above — while
+Observed 2026-08-03, and it is why this subsection exists: a branch correctly added its ADR
+**and** updated the PROJECT_MAP paragraph — green on every row of the table above — while
 leaving three claims inside that same paragraph describing a rail the dialog no longer has. One
 "rail" mention had been fixed, three had not. **A partial sweep looks identical to a complete one
 from the outside**, so the pass criterion is the reread, not the edit.
@@ -729,7 +729,7 @@ merged with its ADR unwritten (2026-07-31). Both were invisible **skips**, not w
 Tier:    Standard
 Ran:     1-5, 7, 9-14
 Skipped: 6 (one obvious shape) · 8 (3 tasks, inline) · 16 (not promoting yet)
-Gates:   10 flagged 2 → ran as rows 4-5 · 12 wrote ADR-74 · 13 clean (1 PLAUSIBLE refuted)
+Gates:   10 flagged 2 → ran as rows 4-5 · 12 wrote the ADR · 13 clean (1 PLAUSIBLE refuted)
 ```
 
 - **`Skipped:` carries a reason per phase, never a bare list.** "6, 8, 16" is not a claim anyone can
