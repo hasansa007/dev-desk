@@ -306,12 +306,71 @@ subtly wrong. Check in this order and use the first that exists:
 
 | Order | Source | Look for |
 |---|---|---|
-| 1 | **A project launch script** | `.vscode/dev.sh`, `bin/dev`, `scripts/dev*`, `dev.sh`, a `dev`/`start` target in `Makefile`/`Justfile` |
-| 2 | **A documented command** | `CLAUDE.md`, `README.md`, `CONTRIBUTING.md` — a "run locally" / "development" section |
-| 3 | **The package.json script** | `<pm> run dev`, package manager from the lockfile: `package-lock.json`→npm · `pnpm-lock.yaml`→pnpm · `yarn.lock`→yarn · `bun.lockb`→bun |
+| 1 | **The editor's DECLARED entry points** | `.vscode/launch.json` configurations · `.vscode/tasks.json` tasks — see 2.6.2a |
+| 2 | **A project launch script** | `.vscode/dev.sh`, `bin/dev`, `scripts/dev*`, `dev.sh`, a `dev`/`start` target in `Makefile`/`Justfile` |
+| 3 | **A documented command** | `CLAUDE.md`, `README.md`, `CONTRIBUTING.md` — a "run locally" / "development" section |
+| 4 | **The package.json script** | `<pm> run dev`, package manager from the lockfile: `package-lock.json`→npm · `pnpm-lock.yaml`→pnpm · `yarn.lock`→yarn · `bun.lockb`→bun |
 
 **Read the script before running it** — it tells you the port, the prerequisites (Docker, a local
 database), and whether it opens a browser itself. If it already opens one, do not open a second.
+
+#### 2.6.2a — Read `launch.json` / `tasks.json` before guessing filenames
+
+Order 2 finds a script by **guessing what it is called**. `launch.json` and `tasks.json` are the
+project **declaring** what to run — they survive a rename, and they name commands that exist under
+no filename at all. Read them first.
+
+```bash
+python3 - "$PROJECT_ROOT/.vscode" <<'PY'
+import json, re, sys, pathlib
+def strip_jsonc(s):                       # comments + trailing commas, STRING-AWARE
+    out=[]; i=0; n=len(s); instr=False; esc=False
+    while i < n:
+        c = s[i]
+        if instr:
+            out.append(c)
+            if esc: esc=False
+            elif c=='\\': esc=True
+            elif c=='"': instr=False
+            i+=1; continue
+        if c=='"': instr=True; out.append(c); i+=1; continue
+        if c=='/' and i+1<n and s[i+1]=='/':
+            while i<n and s[i]!='\n': i+=1
+            continue
+        if c=='/' and i+1<n and s[i+1]=='*':
+            i+=2
+            while i+1<n and not (s[i]=='*' and s[i+1]=='/'): i+=1
+            i+=2; continue
+        out.append(c); i+=1
+    return re.sub(r',(\s*[}\]])', r'\1', ''.join(out))
+d = pathlib.Path(sys.argv[1])
+for f, key, name in (("launch.json","configurations","name"), ("tasks.json","tasks","label")):
+    p = d/f
+    if not p.exists(): continue
+    for e in json.loads(strip_jsonc(p.read_text())).get(key, []):
+        cmd = e.get("command") or e.get("program") or e.get("runtimeExecutable") or ""
+        print(f"{f}\t{e.get(name,'?')}\t{cmd}")
+PY
+```
+
+**These files are JSONC, not JSON.** `json.loads` fails on them outright — comments and trailing
+commas are both legal here. And a naive `s.replace('//','')` corrupts every `http://` in the file,
+which is how the "open in browser" entry gets silently mangled. The strip above is string-aware for
+exactly that reason. **If parsing fails, fall through to order 2 and say so** — never guess at the
+contents of a file you could not read.
+
+Then choose:
+
+- **Pick the entry whose name says run** — `run`, `dev`, `start`, `▶`. If several match, they are
+  usually *variants*, not duplicates: one injecting remote env, one using a local `.env` file.
+  **Present them and ask** — this is the "multiple candidates" rule, and picking silently is how you
+  boot the differently-configured app the section above warns about.
+- **Record the stop entries** (`stop`, `⏹`) for `dev:launch-kill`, which otherwise guesses that
+  filename too.
+- **Never auto-run a destructive entry.** `--wipe`, `reset`, `db reset`, `clean` appear in these
+  files alongside the run entries — an editor list is a menu, not a queue. Name them; run none.
+- **`tasks.json` also declares the project's build/verify command** (`verify: build`, `check`).
+  Prefer it over a guessed `npm run build` wherever a pre-PR build is needed.
 
 #### 2.6.3 — Resolve the port
 

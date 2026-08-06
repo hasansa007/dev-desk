@@ -44,7 +44,7 @@ Read `skills/launch/SKILL.md` and use unchanged:
 | **2.2** | which platforms exist, and its precedence rules |
 | **2.3.0** | **resolving the Xcode toolchain** — `xcrun simctl` fails outright when `xcode-select` points at Command Line Tools, even with Xcode installed |
 | **2.3 / 2.4** | iOS scheme + bundle ID · Android package + activity |
-| **2.6.2 / 2.6.3** | the web launch script and its port |
+| **2.6.2 / 2.6.2a / 2.6.3** | the web launch script, the editor's declared entry points, and the port |
 
 Two copies of project discovery drift, and a drift here captures the wrong app. Fix discovery in
 `dev:launch`; both read it.

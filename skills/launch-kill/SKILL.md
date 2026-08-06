@@ -41,6 +41,7 @@ Read `skills/launch/SKILL.md` and use, unchanged:
 |---|---|
 | **2.1** | `$PROJECT_ROOT` — worktree-safe, `git rev-parse --show-toplevel` first |
 | **2.6.2** | the launch script — Phase 5 needs it as the manifest of what a launch spawns |
+| **2.6.2a** | `launch.json` / `tasks.json` — the project's DECLARED stop entries, so this skill does not guess that filename either |
 | **2.6.3** | the port, in its order: arg → dev-script flags → launch script → framework default |
 | **2.5.3** | the 8000–8999 static-server range, for servers `launch` 3E started |
 
@@ -193,8 +194,13 @@ Left up  :3000  node next dev  cwd=<another-repo>/web  — NOT this project
 ```
 
 **The "left up" lines are the point, not filler** — an unreported survivor is the process still
-running tomorrow, and this report is the only artifact the tool leaves behind. If the project has
-its own stop script, name it here rather than running it (`.vscode/stop.sh` also stops Supabase).
+running tomorrow, and this report is the only artifact the tool leaves behind.
+
+**Name the project's own stop entries; run none of them.** 2.6.2a discovers them from
+`launch.json`/`tasks.json` rather than guessing a filename, and they routinely sit next to a
+**destructive** sibling — a real pair reads `⏹ Stop local` and `⏹ Stop local + WIPE database`, one
+`--wipe` apart. Listing both is useful; picking one is not this skill's call. It stops servers, not
+databases.
 
 **Exit 143 is SUCCESS — say so before the user reads it as a crash.** `143 = 128 + 15` = terminated
 by SIGTERM, i.e. Phase 4.2 worked. When the dev server was started by a harness-tracked background
