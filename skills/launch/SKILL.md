@@ -133,6 +133,27 @@ Platform precedence when multiple are detected:
 
 ### Step 2.3 — iOS Project Discovery
 
+#### 2.3.0 — Resolve the Xcode toolchain FIRST
+
+```bash
+if ! xcrun simctl help >/dev/null 2>&1; then
+  for x in /Applications/Xcode*.app; do
+    [ -x "$x/Contents/Developer/usr/bin/simctl" ] && export DEVELOPER_DIR="$x/Contents/Developer" && break
+  done
+fi
+xcrun simctl help >/dev/null 2>&1 || echo "No full Xcode found — only Command Line Tools."
+```
+
+**2026-08-05 — `xcrun simctl` failed on a machine with Xcode installed.** `xcode-select -p` pointed
+at `/Library/Developer/CommandLineTools`, which ships no `simctl`, while
+`/Applications/Xcode-27.0.0-Beta.3.app` sat there fully working. Every iOS step below — list, boot,
+install, launch — dies with *"unable to find utility simctl"*, and the honest-looking readings of
+that are all wrong: "no simulators", "iOS unavailable", "not a Mac with Xcode". It is a **false
+negative on a fully-equipped machine**, which is worse than an error.
+
+`DEVELOPER_DIR` is used deliberately instead of `sudo xcode-select -s`: it fixes this run without
+sudo and without changing global state the developer did not ask you to change.
+
 #### 2.3.1 — Find the Xcode project file
 
 ```bash

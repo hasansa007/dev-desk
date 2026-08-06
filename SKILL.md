@@ -107,6 +107,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:prod` | 16 | pre-prod + prod branches | "promote to production" |
 | `dev:launch` | — | a project to launch | "run the app" — a TOOL, not a phase |
 | `dev:launch-kill` | — | a project to stop | "kill the dev server", "free the port" — `launch` inverted |
+| `dev:shots` | — | a running app | "screenshot the app", "app store screenshots" — capture, iOS/Android/web |
 
 They all read the same `shared/pipeline.md`; none of them copies it. **Phases 1–8 have no sibling on
 purpose** — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.

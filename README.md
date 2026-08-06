@@ -36,19 +36,31 @@ stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the 
     ├── review/SKILL.md           → /dev:review     Phase 15  ↺
     ├── prod/SKILL.md             → /dev:prod       Phase 16
     ├── launch/SKILL.md           → /dev:launch     no phase — a TOOL
-    └── launch-kill/SKILL.md      → /dev:launch-kill  no phase — `launch` inverted
+    ├── launch-kill/SKILL.md      → /dev:launch-kill  no phase — `launch` inverted
+    └── shots/SKILL.md            → /dev:shots      no phase — capture, iOS/Android/web
 ```
 
 Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
 `shared/`, once.
 
-### `dev:launch` and `dev:launch-kill` — members of a different kind
+### `dev:launch`, `dev:launch-kill` and `dev:shots` — members of a different kind
 
-The other eight are **phases** (three filing, five staged); these two are **tools**. They map to no
+The other eight are **phases** (three filing, five staged); these three are **tools**. They map to no
 phase number and read none of the pipeline — one detects the project and launches it
-(`/dev:launch ios sim`, `/dev:launch android emulator`, `/dev:launch web`), the other stops what it
-started. Phases 4 and 11 call `launch` for mobile targets, and it is equally useful alone on a
-throwaway prototype.
+(`/dev:launch ios sim`, `/dev:launch android emulator`, `/dev:launch web`), one stops what it
+started, one captures screens from it. Phases 4 and 11 call `launch` for mobile targets, and it is
+equally useful alone on a throwaway prototype.
+
+They are three verbs on one noun — start it, stop it, shoot it — and the latter two are **doors into
+`launch`**, not copies of it. `shots` reads `launch` 2.1–2.6 for discovery and Phase 3 to get the app
+up, which is how it inherits the rule that matters most for a capture: *if a server is already
+listening, reuse it and start nothing.* Restarting the developer's app to photograph it is the
+failure this design forecloses.
+
+Phase 11 should delegate its evidence capture to `dev:shots` rather than restate the commands.
+That edit is **not** made: `shared/pipeline.md` sits at 938 of its 950-line budget, and `GUIDE.md`
+requires an addition there to name its deletion. The delegation is documented here and in the tool
+until a deletion pays for it.
 
 `launch-kill` is a **door into `launch`**, exactly as the phase members are doors into
 `shared/pipeline.md`: it points at `launch` 2.1 / 2.5.3 / 2.6.2 / 2.6.3 for project root, ports and
@@ -119,6 +131,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | **16** | **Prod Promotion** — migrations first, never autonomous | `dev:prod` |
 | — | *(no phase)* — build & launch the app | `dev:launch` |
 | — | *(no phase)* — stop this project's servers | `dev:launch-kill` |
+| — | *(no phase)* — capture screens from the running app | `dev:shots` |
 
 ### Why these phase members and not others
 
