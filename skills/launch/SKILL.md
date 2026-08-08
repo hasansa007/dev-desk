@@ -401,7 +401,27 @@ SETTINGS_FILE=""
 grep 'include' "$SETTINGS_FILE"
 ```
 
-Identify the Android app module — prefer `:androidApp` (KMP) or `:app` (standard). Verify by checking which module's `build.gradle.kts` contains `com.android.application`.
+Identify the Android app module by **which module applies the application plugin** — not by the
+names `:app` or `:androidApp`, which are conventions a project is free to ignore.
+
+**Do not grep the module for `com.android.application`.** On a version-catalog project that string
+is in `gradle/libs.versions.toml` and **nowhere else**; the module reads
+`alias(libs.plugins.android.application)`, so the literal match finds zero modules on a project that
+has one. Resolve the alias through the catalog, then match either form — and exclude lines carrying
+`apply false`, because the root build file declares every plugin that way without applying any:
+
+```bash
+# aliases in the catalog that map to the application plugin -> libs.plugins.<accessor>
+sed -n '/^\[plugins\]/,/^\[/p' "$PROJECT_ROOT/gradle/libs.versions.toml" 2>/dev/null \
+  | grep -E 'id[[:space:]]*=[[:space:]]*"com\.android\.application"' \
+  | sed -E 's/^[[:space:]]*([A-Za-z0-9_.-]+)[[:space:]]*=.*/\1/'      # e.g. android-application
+
+grep -E 'com\.android\.application|libs\.plugins\.android\.application' "$MODULE/build.gradle.kts" \
+  | grep -v 'apply false'
+```
+
+`scripts/run-android.sh` (**3C.0**) does exactly this and refuses to pick when more than one module
+matches. Measured 2026-08-08 — see the note at 3C.0.
 
 #### 2.4.2 — Extract package name
 
@@ -411,6 +431,15 @@ grep -E "applicationId|namespace" "$GRADLE_ROOT/$APP_MODULE/build.gradle.kts"
 
 Use `applicationId` value; fall back to `namespace` if not set.
 
+**This is the id declared in source, which is not always the id installed on the device.** A build
+type carrying `applicationIdSuffix ".debug"` installs `com.example.app.debug` while this grep
+returns `com.example.app` — and launching the un-suffixed name starts a *release* build if one is
+present, or fails silently if it is not. After building, read it from the artefact instead:
+
+```bash
+aapt2 dump badging "$APK" | sed -n "s/^package: name='\([^']*\)'.*/\1/p"
+```
+
 #### 2.4.3 — Extract main activity
 
 ```bash
@@ -419,6 +448,15 @@ grep -B5 "android.intent.category.LAUNCHER" "$MANIFEST"
 ```
 
 Parse the `android:name` from the LAUNCHER `<activity>`. If relative (`.MainActivity`), prepend the package name.
+
+**A manifest may declare more than one LAUNCHER activity** — flavors, a debug entry point, a
+separate launcher alias — and taking the first is the guess **2.4.0** exists to avoid. The APK knows
+which one this build actually shipped:
+
+```bash
+aapt2 dump badging "$APK" | sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p"
+adb -s "$SERIAL" shell cmd package resolve-activity --brief "$PACKAGE" | tail -1   # no aapt2
+```
 
 Store: `$APP_MODULE`, `$PACKAGE_NAME`, `$MAIN_ACTIVITY`, `$GRADLE_ROOT`
 
@@ -662,6 +700,61 @@ xcrun devicectl device process launch --device "$UDID" "$BUNDLE_ID"
 
 ### 3C — Android Emulator
 
+#### 3C.0 — Prefer the bundled script over hand-assembling 3C.1–3C.3
+
+```bash
+"$(dirname "$0")/scripts/run-android.sh" --root "$PROJECT_ROOT"   # from this skill's directory
+```
+
+Run it and skip to **Phase 4**. It performs 3C.1 through 3C.3 and prints the Phase 3 summary
+itself. Fall through to the steps below only when it exits **2** for a reason it names — more than
+one application module (pass `--module`), no module at all, no device, no AVD — or when the project
+ships its own run script, which outranks this one exactly as **2.6.2** says for web.
+
+**Why this is a script and not three prose steps.** Android's hand-assembled path is worse than
+iOS's, because more of its failures **report success**:
+
+| Hand-assembled | What actually happens |
+|---|---|
+| `adb install …` | older adb prints `Failure [INSTALL_FAILED_…]` on stdout and **exits 0** — so `&& adb shell am start` launches the PREVIOUS build |
+| `adb shell am start -n …` | prints `Error type 3 … does not exist` and **exits 0** — a wrong activity is indistinguishable from a launch |
+| `./gradlew :app:installDebug` | installs to **every** connected device; with a phone plugged in and an emulator up, "it worked" and "it went elsewhere" look identical |
+| `$ANDROID_SERIAL` set in the shell | silently redirects every `adb` call, and never appears in the command being run |
+| package from `applicationId` | `applicationIdSuffix ".debug"` means the INSTALLED package is not that string |
+| `adb wait-for-device` | returns when adbd answers, minutes before `sys.boot_completed` — installing there fails like a broken APK |
+
+The script resolves **one** serial and passes `-s` to every `adb` call, `assemble`s rather than
+`install`s so Gradle cannot fan out across devices, reads package and launchable activity from the
+**built APK** via `aapt2` (falling back to a before/after diff of `pm list packages`, never a guess),
+and treats adb's stdout as the exit status adb does not give. `run-android.sh --help` prints all of
+it. The steps below remain the reference for what it does, and the fallback for what it declines to
+guess at.
+
+> **2026-08-08 — the module detector matched a string that modern projects do not contain.**
+> Measured against a real KMP project: **zero** modules matched `com.android.application`, and the
+> project has one (`:androidApp`). With a **version catalog** the plugin id lives only in
+> `gradle/libs.versions.toml`; the module says `alias(libs.plugins.android.application)`, so the
+> literal id appears in **no** build file. The detector reported "no Android app module" on a
+> perfectly ordinary project — a **false negative that does not error**, which is Step 2.0's shape
+> again. It also has a mirror-image trap: the ROOT build file declares every plugin with
+> `apply false`, so an alias-aware match that forgets to exclude those picks the root as the app
+> module. The fix resolves the alias **through the catalog** and matches either form.
+>
+> Found while writing the script, before it ran anywhere — and the same string was sitting in
+> **2.4.1** below, which is now fixed with it.
+
+**Proven 2026-08-08:** SDK and `adb` resolution off `PATH` (found under `~/Library/Android/sdk`),
+newest-`build-tools` `aapt2` selection, and all three module-detection branches — the catalog-alias
+form on a real KMP project, the legacy literal-id form, a refusal on two application modules, and a
+zero-match that prints both the regex it used and whether a catalog was found.
+
+**Undated, therefore unproven:** everything from `assemble` onward — the build, the flavor-aware APK
+search, `aapt2 dump badging`, install, the `pm list packages` before/after fallback, `am start`, and
+the emulator boot with its `sys.boot_completed` wait. **No device was attached and no Gradle build
+was run**, because the only Android project to hand belongs to another repo and building writes into
+it. The adb-exits-0-on-failure behaviours are documented tool behaviour, not something this script
+has yet been observed to catch.
+
 #### 3C.1 — Check for running emulator or boot one
 
 ```bash
@@ -871,6 +964,10 @@ container, say what is now running that was not before.
 | `xcodebuild -list` shows few or no schemes | Report "no **shared** schemes", not "no schemes" — unshared ones live in gitignored `xcuserdata/` (**2.3.2**) |
 | The app on the simulator does not show the change you just built | Two runtimes almost certainly carry the same device name, so `-destination 'name=...'` and `simctl … booted` each picked — silently, and possibly differently. Target by **UDID**, or use `scripts/run-ios.sh` (**3A.0**), which resolves one and reuses it |
 | `run-ios.sh` exits 2 with "more than one app scheme" | It refuses to guess where **2.3.2** would. Pass `--scheme NAME`, or fall through to 3A.1–3A.4 |
+| `run-android.sh` exits 2 with "no module applies the Android application plugin" | It prints the regex it matched and whether a version catalog was found. A catalog project whose alias is unusual needs `--module :name` |
+| `run-android.sh` exits 2 with "more than one Android application module" | It refuses to guess where **2.4.1** would pick the first. Pass `--module :name` |
+| The Android app installs but the change is missing | Gradle's `install*` task fans out to every connected device, and `adb install` exits 0 while printing `Failure`. Use **3C.0**, which targets one serial and reads adb's stdout as the status |
+| `am start` printed nothing useful and no app appeared | It exits 0 on `Error type 3`. The activity name is wrong — read it from the APK (`aapt2 dump badging`), not from the manifest |
 
 ## Rules
 
@@ -881,6 +978,17 @@ container, say what is now running that was not before.
   error. Fall through to the prose steps only when the script names a reason it will not guess
 - **Target simulators by UDID, never by name, and never `simctl … booted`.** Both are ambiguous
   the moment two runtimes carry the same device name — the normal state mid-SDK-upgrade
+- **On Android, run `scripts/run-android.sh` (3C.0) rather than hand-assembling 3C.1–3C.3.** Same
+  reason, worse odds: `adb install` and `adb shell am start` both **exit 0 while printing failure**,
+  so a hand-assembled chain launches the previous build and calls it success
+- **Never `./gradlew :module:installDebug` when more than one device may be attached** — it installs
+  to all of them. `assemble`, then `adb -s <serial> install`
+- **Read the Android package and activity from the built APK, not from source.** `applicationIdSuffix`
+  makes the installed package differ from `applicationId`, and a manifest can declare several
+  LAUNCHER activities
+- **Find the Android app module by the plugin it applies, resolved through the version catalog** —
+  not by the name `:app`, and not by grepping for `com.android.application`, which appears in no
+  build file on a catalog project (**2.4.1**)
 - Prefer `.xcworkspace` over `.xcodeproj` when both exist (CocoaPods compatibility)
 - Prefer parsing `project.yml` over `xcodebuild -list` when available (faster, no SPM resolution)
 - Do NOT clean before building unless the user explicitly asks
