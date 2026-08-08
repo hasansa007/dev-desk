@@ -251,7 +251,28 @@ Honest, as of 2026-08-04:
 - **Epic support is new and unexercised (2026-08-04).** The design: file the parent with
   `/dev:create-epic`, split it at Phase 5 into real sub-issues, run `/dev #child` per slice — the
   pipeline stays task-shaped and the sub-issue list is the queue. Never run end to end.
-- **No rollback.** It runs 1 → 16 and stops. Nothing answers *"prod is broken, now what."*
+- **No rollback — but two thirds of it is mechanical.** It runs 1 → 16 and stops, and nothing
+  answers *"prod is broken, now what."* Spiked 2026-08-08, and the finding is that this is **not one
+  gap**. Phase 16 applies schema BEFORE code, so a rollback has to run code-then-schema, and only
+  the first half reverses:
+
+  | Case | Reversible | How |
+  |---|---|---|
+  | **Code-only promotion** — no migration in the diff | **yes, always** | revert the promotion merge on the prod branch. Any platform that deploys on merge redeploys on revert — no platform rollback feature is involved |
+  | **Additive migration** — new nullable column, new table, new index | **yes**, code only | old code ignores the new schema, so leave it forward. Must be *identified*, never assumed |
+  | **Destructive migration** — drop, rename, narrowing type, overwriting backfill | **no** | the data is already gone. What exists is point-in-time **restore**, which also reverts every unrelated write since. That is not a rollback, and it is never autonomous |
+
+  So a `dev:rollback` door's first job is **classification, not execution**: read the promotion
+  diff, classify each migration, and refuse the third case while naming what a restore would cost.
+  Phase 16 already computes the input it needs — `git log <prod>..<pre-prod>` — and already requires
+  migrations applied before the merge, which is exactly what makes the three cases separable.
+
+  **The trap it must not step in:** reverting the promotion merge on the prod branch does **not**
+  revert pre prod, so the next promotion re-introduces the bad commit — and `git cherry` reports the
+  branch clean, because patch-equivalence still sees the original. Observed 2026-08-06 in a
+  two-stage repo: a revert landed on one branch while the other still held every reverted file. A
+  rollback door must revert on **both** branches, or record the carry-forward where the next
+  promotion will read it.
 - **New-project path barely tested.** The `ARCHITECTURE.md`-absent branch and both MASTER_PROMPTs
   have never run.
 - **The gate log has a mechanism but no data.** `## PIPELINE`'s `Gates:` line was added 2026-08-04
