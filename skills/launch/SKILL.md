@@ -72,6 +72,10 @@ needs its search path attached. This is the rule with teeth — a false negative
 it is unexamined, and a visibly empty search path is self-refuting. **These failures do not error,
 they answer** — and a confident wrong answer gets believed in a way a stack trace never does.
 
+This rule covers the **empty** result only. Its other half — a **non-empty** result that answers a
+narrower question than you asked, and so gets reported as the broader one — is
+`shared/entry.md` § *A result is not a claim*. Same failure mode, one file, no copy of it here.
+
 **3. Prefer a DECLARATION over a guess.** When the project states a fact, read the statement rather
 than inferring it from names:
 

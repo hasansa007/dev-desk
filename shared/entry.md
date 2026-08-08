@@ -52,6 +52,43 @@ commit, branch, push, PR or merge:
 > boundary that only governs reads is not a boundary.** The user's correction was explicit: verify
 > the origin before changing anything, and at minimum cut a branch.
 
+## A result is not a claim — say what it MEANS
+
+`dev:launch` 2.0 rule 2 covers the **empty** result: never report absence without printing where you
+looked. This is its other half, and the harder one. A non-empty result that answers a **narrower
+question than you asked** is plausible on its face, so nothing prompts a second look — and it gets
+reported as the broader answer.
+
+Before any command's output becomes a claim, check three things:
+
+1. **Scope limiter** — does the command bound its own coverage? `-maxdepth`, `head`, `--limit`, a
+   path prefix, or a regex that **enumerates** cases where it should match a class. If it does:
+   remove the limit, or report the number as a **floor** and name what bounds it.
+2. **Ambiguous encoding** — does any output value carry two meanings? A blank field that means both
+   *"in sync"* and *"not configured"*; a `0` that means both *"none"* and *"not measured"*.
+   Disambiguate with a second query **before** labelling.
+3. **Predicate substitution** — is what you measured what you are claiming? Absence of code is not
+   staleness of docs.
+
+Then state it in the form **`<result> — from <command>, which covers <domain>`**.
+
+> **2026-08-06 → 08 — four instances in one session, each reported confidently, each wrong.**
+> A depth-limited `find` returned **21** build schemes and was reported as the repo's total; the
+> real figure is **1130**, and the small number made "present them all and ask" look viable when it
+> is not. A sweep whose pattern *enumerated* identifier forms and omitted two of them reported
+> **clean** while five identifiers stood. A branch check read a field that is blank for both *in
+> sync* and *no upstream*, and rendered **76** branches as unpushed when **67** were fine. A doc
+> audit measured whether the code existed and claimed the docs were stale; both docs already
+> carried accurate status.
+>
+> None of these errored. Each returned a plausible **non-empty** answer to a question slightly
+> smaller than the one asked. The empty-result rule existed throughout and could not fire, because
+> nothing was ever empty. Three of the four happened after that rule was written, by the person who
+> wrote it.
+>
+> **No hook can enforce this** — it is about interpretation, not a tool boundary. It raises the
+> floor; it does not seal it.
+
 ---
 
 ## What to load from `shared/pipeline.md`

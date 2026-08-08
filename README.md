@@ -171,6 +171,10 @@ Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-
 - **The resolved repo is a write boundary.** Name the target `owner/repo` and branch *before* acting,
   never write outside the resolved repo without an explicit yes naming it, and always cut a branch so
   there is something reviewable before anything lands. Defined once in `shared/entry.md`.
+- **A result is not a claim.** Say what a command's output *means* and what bounds it — scope
+  limiters, values carrying two meanings, a substituted predicate — not just where you looked.
+  `dev:launch` 2.0 rule 2 catches the empty result; this catches the plausible non-empty one that
+  answered a narrower question. Defined once in `shared/entry.md`.
 
 ---
 
