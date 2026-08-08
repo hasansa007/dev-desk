@@ -211,6 +211,11 @@ they point, never duplicate.
   outside the resolved repo without an explicit yes naming it; always cut a branch. Paid for on
   2026-08-06 — a read-only version of this rule existed and did not stop two PRs being merged into
   another repo on a two-word instruction. **A boundary that only governs reads is not a boundary.**
+- **The result-domain rule** (`shared/entry.md`). Say what an output *means* and what bounds it, not
+  just where you looked. Paid for on 2026-08-06 → 08 — four confident wrong answers in one session,
+  each a plausible **non-empty** result to a question narrower than the one asked. The empty-result
+  rule (`dev:launch` 2.0 rule 2) existed the whole time and could not fire, because nothing was ever
+  empty. **A rule that only governs absence does not govern reporting.**
 - **Teardown rules.** Never kill a process you did not start. This one protects the developer's own
   session.
 - **"Prefer the project's own launch script."** A bare `npm run dev` boots a differently configured

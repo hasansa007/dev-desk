@@ -72,6 +72,10 @@ needs its search path attached. This is the rule with teeth — a false negative
 it is unexamined, and a visibly empty search path is self-refuting. **These failures do not error,
 they answer** — and a confident wrong answer gets believed in a way a stack trace never does.
 
+This rule covers the **empty** result only. Its other half — a **non-empty** result that answers a
+narrower question than you asked, and so gets reported as the broader one — is
+`shared/entry.md` § *A result is not a claim*. Same failure mode, one file, no copy of it here.
+
 **3. Prefer a DECLARATION over a guess.** When the project states a fact, read the statement rather
 than inferring it from names:
 
@@ -528,6 +532,44 @@ Project:   <path-to-project-file>
 
 ### 3A — iOS Simulator
 
+#### 3A.0 — Prefer the bundled script over hand-assembling 3A.1–3A.4
+
+```bash
+"$(dirname "$0")/scripts/run-ios.sh" --root "$PROJECT_ROOT"     # from this skill's directory
+```
+
+Run it and skip to **Phase 4**. It performs 3A.1 through 3A.4 and prints the Phase 3 summary
+itself. Fall through to the steps below only when it exits **2** for a reason it names — more than
+one app scheme (pass `--scheme`), or no shared scheme at all — or when the project ships its own
+run script, which outranks this one exactly as **2.6.2** says for web.
+
+**Why this is a script and not four prose steps.** The four commands have to agree on one device,
+and every way they fall out of agreement is a **false success rather than an error**:
+
+| Hand-assembled | What actually happens |
+|---|---|
+| `-destination 'name=iPhone 17 Pro'` | ambiguous whenever two runtimes carry that name — it picks, silently |
+| `simctl install booted` | ambiguous whenever two devices are booted — it picks, silently |
+| `xcodebuild ... \| tail -5 && simctl install` | the pipeline returns `tail`'s status, so a FAILED build installs the previous `.app` |
+| `find DerivedData ... \| head -1` | a stale sibling from an old worktree is indistinguishable from what was just built |
+
+> **2026-08-08 — measured on a machine with two iOS SDKs.** `simctl list` showed **two** available
+> devices named `iPhone 17 Pro` (iOS 26.5 and 27.0) and **both were booted**. So `name=` and
+> `booted` each had two valid answers and neither command complained. Build against one, read the
+> screen of the other, and the app looks like it ignored the change — which is the same
+> false-negative shape as **Step 2.0**, one phase later. This is not an exotic setup; it is what
+> every machine looks like mid-SDK-upgrade.
+
+The script resolves **one** UDID and passes it to every step. It detects rather than assumes:
+scheme from `xcodebuild -list -json`, product newest-by-mtime under DerivedData, bundle ID from
+that product's own `Info.plist`, and it applies **2.3.0**'s `DEVELOPER_DIR` fix itself. A booted
+device outranks a newer shutdown one, because booting a third simulator leaves the developer with
+three. `--shot` writes a screenshot, which is the way to see anything when an Xcode install is
+missing `Contents/Developer/Applications/Simulator.app` and the runtime boots headless.
+
+`run-ios.sh --help` prints all of it. The steps below remain the reference for what it does, and
+the fallback for the cases it declines to guess at.
+
 #### 3A.1 — Select and boot simulator
 
 ```bash
@@ -827,11 +869,18 @@ container, say what is now running that was not before.
 | `$PROJECT_ROOT` resolves to `/` or to a parent directory | You are in a git **worktree**, where `.git` is a file. Use `git rev-parse --show-toplevel` (**2.1**). Every detector below searches the wrong tree, and `dev:launch-kill` would treat the whole machine as owned |
 | `launch.json` / `tasks.json` fails to parse | They are **JSONC** — comments and trailing commas. `json.loads` cannot read them, and stripping `//` corrupts `http://`. Use the string-aware parser in **2.2a**; on failure fall through to filename guessing and SAY SO |
 | `xcodebuild -list` shows few or no schemes | Report "no **shared** schemes", not "no schemes" — unshared ones live in gitignored `xcuserdata/` (**2.3.2**) |
+| The app on the simulator does not show the change you just built | Two runtimes almost certainly carry the same device name, so `-destination 'name=...'` and `simctl … booted` each picked — silently, and possibly differently. Target by **UDID**, or use `scripts/run-ios.sh` (**3A.0**), which resolves one and reuses it |
+| `run-ios.sh` exits 2 with "more than one app scheme" | It refuses to guess where **2.3.2** would. Pass `--scheme NAME`, or fall through to 3A.1–3A.4 |
 
 ## Rules
 
 - NEVER hardcode scheme names, bundle IDs, package names, simulator names, or file paths
 - ALWAYS detect values dynamically from the project files in the current directory tree
+- **On iOS, run `scripts/run-ios.sh` (3A.0) rather than hand-assembling 3A.1–3A.4.** The four
+  commands must agree on one device, and every way they disagree is a silent wrong answer, not an
+  error. Fall through to the prose steps only when the script names a reason it will not guess
+- **Target simulators by UDID, never by name, and never `simctl … booted`.** Both are ambiguous
+  the moment two runtimes carry the same device name — the normal state mid-SDK-upgrade
 - Prefer `.xcworkspace` over `.xcodeproj` when both exist (CocoaPods compatibility)
 - Prefer parsing `project.yml` over `xcodebuild -list` when available (faster, no SPM resolution)
 - Do NOT clean before building unless the user explicitly asks
