@@ -7,8 +7,11 @@ description: >
   Takes the CURRENT screen by default (`simctl io` · `adb screencap` · Chrome DevTools MCP), and
   drives the project's OWN screen-walking automation when it has one (a screenshot UITest scheme,
   a fastlane Snapfile, a Playwright/Cypress spec) for a full ordered, per-locale set.
-  Store mode picks a DEVICE whose native resolution is already an accepted size rather than
-  resizing — resizing is the fallback, never the method, and it never overwrites a source image.
+  Store mode captures natively on the LARGEST device available, then DERIVES every other iPhone
+  App Store slot from that one image — scale to the target width and crop the few pixels of height
+  that overshoot, never `sips -z`, which stretches. A listing exposes slots the skill cannot see,
+  so it covers them all rather than guessing; sources are never overwritten and derived sizes go in
+  their own per-slot directory.
   Trigger on: "take a screenshot", "screenshot the app", "capture the screen", "grab a screenshot
   of the simulator", "app store screenshots", "play store screenshots", "screenshots for the
   listing", "capture every screen", "resize the screenshots", "sort screenshots by language".
@@ -29,7 +32,7 @@ prove. This owns the *mechanics of capture* and nothing else. Phase 11 delegates
 | Token | Meaning | Default |
 |---|---|---|
 | `ios` / `android` / `web` | Restrict to one platform | every platform `launch` 2.2 detects |
-| `store` | Produce store-dimension, locale-sorted assets | plain capture |
+| `store` | Capture native, then derive **every** iPhone slot in Phase 5's table, locale-sorted | plain capture |
 | `flow` / `current` | Force the driven suite / force a single shot | auto (Phase 4) |
 | `dry` | Report the plan, capture nothing | capture |
 | A path | Output directory | `./shots/<platform>/` |
@@ -114,26 +117,47 @@ the fact:
 xcrun simctl launch booted "$BUNDLE_ID" -AppleLanguages "(ar)" -AppleLocale ar_SA
 ```
 
-## Phase 5 — Store mode: pick the DEVICE, do not resize
+## Phase 5 — Store mode: capture the largest natively, DERIVE the rest
 
-**The accepted-size list is not a constant to hard-code — it is a property of the device you
-capture on.** So choose a simulator whose native resolution is already an accepted size and capture
-there. A native capture is correct by construction and needs no post-processing at all.
+**Capture on the biggest device the toolchain offers, then derive every other iPhone slot from that
+one image.** One native capture, one derivation per slot, no second run of the app.
 
-Resizing is the **fallback**, only for images that already exist and cannot be re-captured. When it
-is unavoidable:
+**A listing has SLOTS, not a size.** This is the correction that makes the phase automatic: an
+"older" size is not a retired size, it is a *different slot*, and the one your listing exposes is
+not something you can infer from the device you own. Producing only the size you captured is
+therefore a coin flip on whether it uploads at all.
+
+| Slot | Accepted (portrait) | Native on |
+|---|---|---|
+| 6.9" | `1320×2868` · `1290×2796` | iPhone 17 / 16 Pro Max — **capture here** |
+| 6.5" | `1284×2778` · `1242×2688` | 12–14 Pro Max, XS Max — no longer shipped as simulators |
+| 6.1" | `1206×2622` · `1179×2556` | the non-Max Pro of the same years |
+
+Landscape is each pair transposed. The table is a **starting point that goes stale** — it is Apple's
+list, not yours, so when a slot rejects an upload, believe the slot and add the row.
+
+### Derive by scale-then-crop — never `-z`
 
 ```bash
-sips -g pixelWidth -g pixelHeight "$f"          # read the real size FIRST
+# 1. proportional scale to the target WIDTH — aspect preserved exactly, nothing stretched
+sips --resampleWidth "$W" "$SRC" --out "$OUT/$name"
+# 2. centred crop of the few pixels of height that overshoot. `-c` takes HEIGHT then WIDTH
+sips -c "$H" "$W" "$OUT/$name"
 ```
 
-- **Never overwrite the source.** Write to an output directory. `sips -z` edits in place, and the
-  original is unrecoverable.
-- **Check the aspect ratio before resizing.** `-z H W` forces exact dimensions and will stretch an
-  image whose ratio differs. If the ratio differs by more than ~1%, stop and say so — a distorted
-  screenshot is worse than a missing one.
-- **Never hard-code a target size.** Resolve it from the device, or from the accepted size closest
-  to the source's own aspect ratio.
+Neighbouring iPhone slots differ in aspect by well under 1%, so step 2 removes a handful of rows —
+6 pixels top and bottom on a 2790px image, invisible. `-z H W` would instead force both dimensions
+and stretch the whole frame by that same fraction. **The 1% aspect check still applies**: if the
+delta is larger than that, the two slots are not neighbours and a crop would eat content — stop and
+say so.
+
+- **Never overwrite the source.** Derive into a directory named for the slot
+  (`appstore-6.5-1284x2778/`), so which file is native and which is derived is legible without
+  opening either. `sips` with no `--out` edits in place and the original is unrecoverable.
+- **Derive DOWNWARD only.** Upscaling invents detail and softens type. If the required slot is
+  bigger than anything you can capture, say so — do not quietly enlarge.
+- **Verify the output dimensions after writing**, per slot. A `sips` that silently no-ops leaves a
+  file of the wrong size with a confident name on it.
 
 Then sort into locale folders and preserve ordering — App Store Connect displays by filename, which
 is exactly why the driven suites name tests `test01_…`, `test06_…`. Keep those prefixes.
@@ -142,13 +166,19 @@ is exactly why the driven suites name tests `test01_…`, `test06_…`. Keep tho
 
 ```
 ## shots: <project>
-iOS sim (iPhone 16 Pro Max, 1320×2868 native)  driven suite, 6 screens × ar,en  -> shots/ios/
+iOS sim (iPhone 17 Pro Max, 1320×2868 native)  driven suite, 6 screens × ar,en  -> shots/ios/
+  derived 6.5"  1284×2778  scale+crop 12px  -> shots/ios/appstore-6.5-1284x2778/
+  derived 6.1"  1206×2622  scale+crop  9px  -> shots/ios/appstore-6.1-1206x2622/
 Android (emulator-5554)                        current screen ×1                -> shots/android/
 Web                                            reused :3007, started nothing    -> shots/web/
 
 project.yml: screenshot scheme enabled (diff printed above), xcodegen re-run
 Teardown: simulator left booted (yours) · dev server untouched (already up)
 ```
+
+**Report the derivation, never just the count.** Which size is native and which was resampled is
+the one thing the files cannot say for themselves, and it decides which set to upload when a slot
+complains.
 
 **Stop only what this run started**, by delegating to `dev:launch-kill`. Anything that was already
 up is reported as untouched and never stopped. An unreported leftover is the process still running
@@ -157,10 +187,17 @@ tomorrow.
 ## Never
 
 - **Restart a running app to photograph it.** Reuse it (Phase 3 / `launch` 3F.1).
-- **Overwrite a source image**, or resize one whose aspect ratio does not match.
-- **Hard-code store dimensions.** They change; a baked-in number goes stale silently.
+- **Overwrite a source image.** Derived sizes go in their own per-slot directory.
+- **Resize with `-z`**, which forces both dimensions and stretches. Scale to the width, crop the
+  height (Phase 5) — and only when the aspect delta is under 1%.
+- **Upscale to reach a slot.** Derive downward from the largest native capture, or say you cannot.
+- **Treat Phase 5's size table as authoritative.** It is Apple's list, it goes stale, and this file
+  cannot know when. A slot that rejects an upload outranks the table — believe it, add the row.
+  (This replaces the older *"never hard-code store dimensions"*, which forbade writing the sizes
+  down at all and so left every run to rediscover them, one rejected upload at a time.)
 - **Capture with an implicit target** when several devices are connected.
-- **Claim a screen was captured without checking the file exists and is non-zero.**
+- **Claim a screen was captured without checking the file exists and is non-zero** — and, for a
+  derived file, without re-reading its dimensions.
 
 ## Known limits
 
@@ -168,7 +205,8 @@ tomorrow.
 |---|---|
 | iOS **device** current-screen capture | No `simctl io` equivalent; needs the UITest suite. Simulator only for one-shot |
 | Android locale switching | No clean per-launch flag like iOS; needs a device settings change. Driven suites handle it, one-shot does not |
-| Store-size validation | Offline, the skill cannot know Apple's *current* accepted list. Capturing natively on a modern device sidesteps this; a resize path can only check self-consistency |
+| Store-size validation | Offline, the skill cannot know Apple's *current* accepted list, nor **which slots a given listing exposes** — that is per-app and lives in App Store Connect. Phase 5 answers it by covering every iPhone slot in the table rather than guessing which one is wanted; a slot outside the table still needs one rejected upload to discover |
+| Deriving across device *families* | Only iPhone slots are derived. iPad aspect ratios are nowhere near iPhone's, so the under-1% crop rule refuses them by design — iPad needs its own native capture |
 | Web full-page vs viewport | Chrome DevTools MCP captures the viewport by default; a full-page shot must be asked for explicitly |
 
 ## Scar tissue
@@ -183,10 +221,16 @@ steps were compensating for not running the suite.
 2. `-z` forces exact dimensions, so any source with a different aspect ratio was **silently
    stretched**.
 3. `1284 × 2778` was **hard-coded**; Apple's primary requirement had already moved to 6.9".
+   **Half wrong, corrected 2026-08-11 — see the third entry.** The number was hard-coded, which is a
+   real fault. But it was never a *dead* size: 1284 × 2778 is the 6.5" slot, still accepted, and
+   reading this line as "that size is obsolete" is what later justified deleting the resize step
+   outright and shipping a set that only fitted one slot.
 4. Ordering was lost, though the suite's `test01_…` prefixes existed precisely to preserve it.
 
-Fixed structurally rather than patched: capture natively on a correctly-sized device and the resize
-step — with all three of its bugs — stops existing.
+Fixed structurally rather than patched: capture natively on a correctly-sized device, and the resize
+step — with all three of its bugs — stops existing. **Superseded 2026-08-11:** a native capture is
+still the right *source*, but it cannot be the only output, because no shipping simulator has a
+native 6.5" resolution.
 
 **2026-08-05 — the iOS one-shot path, run for real.** Booted `iPhone 17 Pro Max`, captured with
 `xcrun simctl io booted screenshot`:
@@ -201,5 +245,36 @@ currently-correct asset into an older size. This is the whole redesign in one me
 the device removes the resize step and all three of its bugs at once. Simulator was booted by this
 run and shut down by it.
 
+**2026-08-11 — "pick the device, do not resize" was right about the METHOD and wrong about the
+OUTPUT.** A full five-screen set was captured natively at 1320 × 2868, verified frame by frame, and
+handed over. App Store Connect rejected all five:
+
+> Screenshots dimensions should be: 1242 × 2688px, 2688 × 1242px, 1284 × 2778px or 2778 × 1284px
+
+Those four are the **6.5" slot**, and the listing exposed that slot rather than 6.9". Three things
+follow, and they are why Phase 5 was rewritten rather than amended:
+
+- **A listing has slots, and the skill cannot see them.** Which one a given app exposes lives in App
+  Store Connect. Producing only the size you happened to capture is a coin flip, and the phase had
+  no answer for losing it — the previous text called resizing a fallback "only for images that
+  cannot be re-captured", which reads as *this will not happen to you*.
+- **Re-capturing was not available.** Xcode 27 ships iPhone 17-series and Air only; nothing with a
+  native 6.5" resolution exists to boot. The escape hatch the old phase assumed was gone.
+- **The entry above had told me the size was obsolete**, so deleting the resize step felt like
+  removing dead weight rather than removing the only path to a second slot. A scar that overstates
+  its lesson causes the next incident.
+
+The fix is a **derivation**, not a resize: scale to the target width, crop the ≤12px of height that
+overshoots. Aspect is preserved exactly, no `-z`, source untouched, output in a per-slot directory.
+Measured on the real files — 1320 → 1284 gives 2790, so 6 pixels come off the top and 6 off the
+bottom of a 2868px image. `-z 2778 1284` on the same source stretches the entire frame by 0.42%.
+
+**Deriving is now the default for iPhone, not a fallback**, because covering every slot costs one
+`sips` pair per size and losing the coin flip costs a rejected upload and a round trip.
+
+**Proven 2026-08-11:** the iPhone derivation — five frames scaled 1320→1284 and cropped to
+1284 × 2778, dimensions re-read per file, sources intact at 1320 × 2868, no content clipped.
+
 **Undated, therefore unproven:** every driven-flow path (iOS UITest, Android suite, Playwright), the
-Android one-shot (no device attached at the time), and the locale relaunch.
+Android one-shot (no device attached at the time), the locale relaunch, and the **6.1" row** of
+Phase 5's table — only the 6.5" derivation has been run against a real listing.
