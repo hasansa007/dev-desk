@@ -890,9 +890,23 @@ data volume).
      | cut -d. -f2 | sort -u | grep -vx 'GITHUB_TOKEN'
    # 3. what EXISTS — three scopes, three calls
    gh secret list --json name -q '.[].name'               # repository — THE DEFAULT
-   gh secret list --env <env> --json name -q '.[].name'   # each environment the workflow names
-   gh secret list --org <owner> --json name -q '.[].name' # organization
+   gh api "repos/<owner>/<repo>/environments" -q '.environments[].name' 2>/dev/null   # then, per env:
+   gh secret list --env <env> --json name -q '.[].name'
+   gh api "orgs/<owner>" --silent 2>/dev/null \
+     && gh secret list --org <owner> --json name -q '.[].name' \
+     || echo "owner is a user account — org scope does not apply"
    ```
+
+   **Guard the org call: on a personal repo it 404s.** `gh secret list --org <user>` returns
+   `HTTP 404 .../orgs/<user>/actions/secrets` because a user account has no org secret store — and
+   personal projects are what this pipeline is *for*, so that is the common case, not the edge one.
+   A 404 there means **"this scope does not exist"**, never "the secret is missing"; treat it as the
+   error it is and the gate blocks every promotion on a personal repo. Verified 2026-08-12.
+
+   **An empty repo-scope list is not an auth failure — check the exit code, not the blank.**
+   `gh secret list` prints nothing and exits **0** when the repo genuinely has no secrets. Same
+   output, different meaning, if the token is wrong. Disambiguate before reporting, per *A result is
+   not a claim*.
 
    **`gh secret list` reads repository scope only.** Environment and organization secrets need `-e`
    and `-o` as separate calls. Since a missing name STOPS the promotion, checking one scope turns a

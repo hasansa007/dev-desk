@@ -38,9 +38,9 @@ approves the **release**.
 
 ## The sequence and its guards
 
-**Phase 16, steps 1–5, unchanged** — verify in pre prod, migrations before the merge, never merge
-into a running build, read `git log <prod>..<pre-prod>`, then ask. They are written there and only
-there. This door restates none of them, because it is loaded *alongside* the pipeline, not instead
+**Phase 16, steps 1–6, unchanged** — verify in pre prod, check the release's secrets before anything
+irreversible, migrations before the merge, never merge into a running build, read
+`git log <prod>..<pre-prod>`, then ask. They are written there and only there. This door restates none of them, because it is loaded *alongside* the pipeline, not instead
 of it — and a guard copied here is a guard that will disagree with Phase 16 the first time either is
 edited.
 
