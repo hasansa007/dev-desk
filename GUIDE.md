@@ -195,6 +195,7 @@ skip a judgment — building, architecture, merging, promoting.
 |---|---|
 | Behaviour of any phase | `shared/pipeline.md` — **once**; all 7 entry points read it |
 | A stack-specific addition | `shared/pipeline-{web,ios,android,kmp}.md` — these overlay Phases 10, 11, 14 only |
+| Platform know-how a phase needs **only sometimes** | `shared/<topic>.md`, a **lookup table read on demand** — `prod-secrets-apple.md` is read by Phase 16 step 2 and only when a missing secret matches a name in it. Not an overlay: it modifies no phase, so the phase stays stack-agnostic and costs nothing on repos that never hit it. Reach for this instead of an overlay when the content is *reference*, not *behaviour* |
 | Branch/environment resolution | `shared/entry.md` |
 | A new standalone member | `skills/<name>/SKILL.md` + a row in both family tables. **Only worth it for Phase 0 or a phase ≥ 11** — the rest pass reasoning, which cannot be handed over |
 | A new **tool** (no phase) | Same, but it points at another tool rather than at `pipeline.md` — `launch-kill` reads `launch`'s Phase 2 for discovery. The no-copy rule is the same rule |
