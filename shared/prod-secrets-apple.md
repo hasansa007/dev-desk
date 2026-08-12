@@ -45,9 +45,12 @@ Connect API**, Team Keys.
 Set it as the **base64 of the file's contents**:
 
 ```bash
-base64 -i AuthKey_XXXXXXXXXX.p8 | pbcopy      # macOS; then paste into the secret
-gh secret set ASC_API_KEY < <(base64 -i AuthKey_XXXXXXXXXX.p8)
+[ -s "$P8" ] || { echo "empty or missing: $P8"; exit 1; }
+base64 -i "$P8" | gh secret set ASC_API_KEY --repo <owner>/<repo>
 ```
+
+**The `-s` test is not optional** — `prod-secrets.md` §3 has the reason, and it is the exact failure
+this file's closing section describes.
 
 ## §2 — Distribution certificate (`.p12`)
 
@@ -61,9 +64,13 @@ developer.apple.com → **Certificates, Identifiers & Profiles → Certificates 
 4. `base64 -i cert.p12` is the certificate secret's value:
 
 ```bash
-gh secret set BUILD_CERTIFICATE_BASE64 < <(base64 -i cert.p12)
-gh secret set P12_PASSWORD            # prompts, and the typed value is not echoed
+[ -s cert.p12 ] && base64 -i cert.p12 | gh secret set BUILD_CERTIFICATE_BASE64 --repo <owner>/<repo>
 ```
+
+`P12_PASSWORD` is a value only the developer knows, so **they** run this in their own terminal —
+`gh secret set P12_PASSWORD --repo <owner>/<repo>` prompts and does not echo. An agent must not run
+it: gh prompts only on a TTY and otherwise reads stdin, so from a non-interactive shell it stores an
+**empty** password and exits 0.
 
 A `.p12` exported *without* the private key installs fine and fails at signing — if the disclosure
 triangle beside the certificate shows no key, the export is the wrong one.
@@ -74,7 +81,8 @@ Same portal → **Profiles → +** → **App Store Connect** distribution → pi
 certificate from §2 → download the `.mobileprovision`, then:
 
 ```bash
-gh secret set BUILD_PROVISION_PROFILE_BASE64 < <(base64 -i profile.mobileprovision)
+[ -s profile.mobileprovision ] \
+  && base64 -i profile.mobileprovision | gh secret set BUILD_PROVISION_PROFILE_BASE64 --repo <owner>/<repo>
 ```
 
 A profile is bound to the certificate it was created against: replacing the certificate in §2

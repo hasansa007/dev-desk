@@ -22,7 +22,8 @@ stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the 
 │   ├── entry.md                  workspace + pre-prod/prod branch resolution (read by all)
 │   ├── pipeline.md               ALL the behavior — Phases 0 → 16
 │   ├── pipeline-{web,ios,android,kmp}.md   platform overlays on Phases 10/11/14
-│   └── prod-secrets-apple.md     lookup table — read by Phase 16 step 2, only on a missing secret
+│   ├── prod-secrets.md           Phase 16 step 2's method — read the workflows, diff every scope
+│   └── prod-secrets-apple.md     Apple acquisition steps — read only on a missing secret
 ├── ci/pr-gates.yml               NOT installed — a PR-body check, kept beside the rules it enforces
 ├── hooks/                        4 Claude Code hooks — Phases 1, 3, 11(teardown), 12, 14, 16
 │   └── README.md                 what a hook can enforce, install blocks, the fired.log query

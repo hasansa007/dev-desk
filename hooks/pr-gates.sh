@@ -70,7 +70,7 @@ fi
 PUSH=$(grep -oE '(^|[;&|])[[:space:]]*git[[:space:]]+push[^;&|]*' <<<"$CMD" | head -1)
 if [ -n "$PUSH" ]; then
   if grep -qE 'origin/(main|master):(staging|pre-prod)' <<<"$PUSH"; then
-    ask push-catchup "Documented catch-up (pipeline.md:897) - fast-forwards pre prod to prod. Confirm."
+    ask push-catchup "Documented catch-up (pipeline.md, Phase 16 - 'When the promotion merge auto-deploys') - fast-forwards pre prod to prod. Confirm."
   elif grep -qE '[[:space:]](origin[[:space:]]+)?(main|master|staging)([[:space:]]|$)|:(main|master|staging)([[:space:]]|$)' <<<"$PUSH"; then
     deny push "git push straight onto a protected ref bypasses Phases 12-14.
 Open a PR instead - the docs and review gates live there.
