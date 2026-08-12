@@ -877,12 +877,81 @@ data volume).
 
 1. **Verify in pre prod first.** Run the rows only a deployed environment can answer — the ones
    Phase 11 handed over as unreachable. A green local suite is not pre-prod verification.
-2. **Migrations reach prod BEFORE the promotion merge** — never after, never during. The merge
+2. **Check the release's secrets BEFORE anything irreversible.** The promotion merge IS the release,
+   so a credential the workflow needs and the repo does not have is discovered *by the release* —
+   with prod already moved and nothing able to ship against it. Read the expected names out of the
+   workflow; never ask for them.
+
+   ```bash
+   # 1. the workflow(s) a push to <prod> fires
+   grep -lE "branches:.*\b<prod>\b|^\s*-\s*<prod>\s*$" .github/workflows/*.y*ml
+   # 2. every secret they read — minus the one Actions injects for free
+   grep -ohE 'secrets\.[A-Za-z_][A-Za-z0-9_]*' <those files> \
+     | cut -d. -f2 | sort -u | grep -vx 'GITHUB_TOKEN'
+   # 3. what EXISTS — three scopes, three calls
+   gh secret list --json name -q '.[].name'               # repository — THE DEFAULT
+   gh secret list --env <env> --json name -q '.[].name'   # each environment the workflow names
+   gh secret list --org <owner> --json name -q '.[].name' # organization
+   ```
+
+   **`gh secret list` reads repository scope only.** Environment and organization secrets need `-e`
+   and `-o` as separate calls. Since a missing name STOPS the promotion, checking one scope turns a
+   perfectly good release into a blocked one — report which scopes you checked, per *A result is not
+   a claim*. `GITHUB_TOKEN` is injected by Actions and is never a repo secret: leave it in the
+   expected list and the gate blocks every promotion it will ever see.
+
+   **A release fired by `workflow_dispatch` names no branch**, so the grep above cannot find it —
+   the runbook says which workflow it is; read that one. Say which workflows you swept either way.
+
+   A missing name **stops the promotion**; it is not a warning printed beside the ask at step 6.
+   Apple names get acquisition steps from `shared/prod-secrets-apple.md`, read only on a miss. Every
+   other missing name is reported **by name** — the name alone already answers *"what do I set"*, and
+   omitting it because there is no how-to is how a gate reports less than it knows.
+
+   **Then ASK, per missing secret — the fix happens here, not in a later session.** Reporting a gap
+   and stopping leaves the developer to go and do the thing you already know how to do. Name the
+   repo you would write to (`owner/repo`, per *The resolved repo is a WRITE boundary*), then offer:
+
+   > "`ASC_API_KEY` is missing from all three scopes of `owner/repo`. Steps to create it are above —
+   > once you have the `.p8`, give me the path and I will set it. Or set it yourself and say go."
+
+   **Never ask for the value in chat, and never echo one.** A pasted credential lives in the
+   transcript, in scrollback and in any log of it — permanently, and somewhere it was never meant to
+   be. Ask for a **path** and let the file go straight to GitHub without passing through the
+   conversation:
+
+   ```bash
+   gh secret set ASC_API_KEY < <(base64 -i /path/to/AuthKey_XXXXXXXXXX.p8)   # value never printed
+   gh secret list --json name -q '.[].name' | grep -x ASC_API_KEY            # confirm by NAME only
+   ```
+
+   Setting it is a **write**, so it needs the explicit yes that every write in this pipeline needs —
+   ask per secret, never set a batch on one nod. Re-run the step-2 diff afterwards: the gate reopens
+   only when the sweep comes back clean, not because a `gh secret set` exited 0.
+
+   **It proves presence, never validity — say so in the report.** `gh secret list` cannot read
+   values, by design, so a secret set to the wrong thing passes exactly like a correct one. Claim
+   *"every name the workflow reads exists"*, never *"the release will work"*.
+
+   > **2026-08-12.** Two TestFlight runs had already failed at the signing step before anyone
+   > looked, because the repo had **zero** secrets set — one `gh secret list` would have shown it.
+   > Recovery took a full session: read the workflow to learn what it consumed, discover the
+   > distribution certificate did not exist and had to be created at Apple — then another failure,
+   > because the API key had been set from a copy-pasted placeholder **path**, and the archive died
+   > on `CryptoKit.CryptoKitASN1Error.invalidPEMDocument`: an error naming neither the secret, nor
+   > the step, nor the fact that the file was empty. `base64 --decode` of an unset secret writes an
+   > empty file and exits **0**, so the step consuming it reported success.
+   >
+   > The first failure is the one this step catches. **The last one it does not** — that secret
+   > existed, it was merely wrong. That is the presence-not-validity limit above, and it is why the
+   > report states the limit instead of letting a green check read as a working release.
+
+3. **Migrations reach prod BEFORE the promotion merge** — never after, never during. The merge
    releases code that expects the new schema; a schema arriving second is an outage. Rehearse on
    pre prod, dry-run against prod, then apply, then merge — `supabase` skill for the mechanics.
-3. **Never merge while a build is running.** Two releases racing produce a deployment you cannot
+4. **Never merge while a build is running.** Two releases racing produce a deployment you cannot
    attribute and a rollback that restores the wrong thing.
-4. **Read what is actually in the promotion.** It is a diff of already-reviewed commits, so it
+5. **Read what is actually in the promotion.** It is a diff of already-reviewed commits, so it
    needs no second code review — but it does need `git log <prod>..<pre-prod> --oneline`.
    Anything you did not expect stops the promotion until you know why it is there.
 
@@ -893,10 +962,11 @@ data volume).
    flight and where it is stuck, because an empty promotion nearly always means something never
    reached pre prod. Observed 2026-08-04: an unmerged PR sat at Phase 14 while a promotion was
    attempted.
-5. **The promotion is the developer's call, and it is confirmed HERE, again.** Phase 11's prod
+6. **The promotion is the developer's call, and it is confirmed HERE, again.** Phase 11's prod
    decision approved the WORK; this one approves the RELEASE, and the two are days apart.
-   Present three things — what is in the promotion, what was verified in pre prod, which
-   migrations are already applied — then ask. Never promote autonomously.
+   Present four things — what is in the promotion, what was verified in pre prod, which
+   migrations are already applied, and **which secrets the release reads plus the scopes step 2
+   checked them against** — then ask. Never promote autonomously.
 
 **When the promotion merge auto-deploys:** feature PRs target the pre-prod branch; the
 `<pre-prod> → <prod>` merge RELEASES PROD, so the merge IS the gate. Pre prod drifts behind prod —
