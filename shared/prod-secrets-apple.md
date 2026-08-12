@@ -1,7 +1,7 @@
 # Prod Secrets — Apple acquisition steps
 
-Read by `shared/pipeline.md` → **Phase 16, step 2**, and **only when a missing secret matches a name
-below**. A lookup table, not a phase: it adds no step, gates nothing, and Phase 16 stays
+Read from `shared/prod-secrets.md` §3 (Phase 16, step 2) and **only when a missing secret matches a
+name below**. A lookup table, not a phase: it adds no step, gates nothing, and Phase 16 stays
 stack-agnostic without it. A missing name that matches nothing here is still reported by name.
 
 ## Match on SUBSTRING, never on the exact name
