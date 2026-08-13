@@ -704,6 +704,8 @@ or similar), its promotion flow OVERRIDES the generic sequence — read it rathe
 EITHER direction: some repos reach prod on the merge itself (the merge IS the gate), others need
 a manual workflow_dispatch after merge. Get this wrong and you either reach prod by surprise or
 believe you released when you didn't. Never skip the runbook's pre-prod verification steps.
+**When THIS merge releases prod** — single-branch repo, or a runbook that deploys on it — run
+`shared/prod-secrets.md` before merging: Phase 16 normally hosts it and is skipped here.
 
 **Pre-merge gates (REQUIRED, before any merge)** — both are defined in full above. Run them against
 the final PR diff (`git diff <BASE_BRANCH>...HEAD`); do not re-derive them here:
@@ -877,12 +879,15 @@ data volume).
 
 1. **Verify in pre prod first.** Run the rows only a deployed environment can answer — the ones
    Phase 11 handed over as unreachable. A green local suite is not pre-prod verification.
-2. **Migrations reach prod BEFORE the promotion merge** — never after, never during. The merge
+2. **Check the release's secrets BEFORE anything irreversible** — `shared/prod-secrets.md`, in full.
+   A miss stops the promotion; it is not a warning beside the ask at step 6.
+
+3. **Migrations reach prod BEFORE the promotion merge** — never after, never during. The merge
    releases code that expects the new schema; a schema arriving second is an outage. Rehearse on
    pre prod, dry-run against prod, then apply, then merge — `supabase` skill for the mechanics.
-3. **Never merge while a build is running.** Two releases racing produce a deployment you cannot
+4. **Never merge while a build is running.** Two releases racing produce a deployment you cannot
    attribute and a rollback that restores the wrong thing.
-4. **Read what is actually in the promotion.** It is a diff of already-reviewed commits, so it
+5. **Read what is actually in the promotion.** It is a diff of already-reviewed commits, so it
    needs no second code review — but it does need `git log <prod>..<pre-prod> --oneline`.
    Anything you did not expect stops the promotion until you know why it is there.
 
@@ -893,10 +898,10 @@ data volume).
    flight and where it is stuck, because an empty promotion nearly always means something never
    reached pre prod. Observed 2026-08-04: an unmerged PR sat at Phase 14 while a promotion was
    attempted.
-5. **The promotion is the developer's call, and it is confirmed HERE, again.** Phase 11's prod
+6. **The promotion is the developer's call, and it is confirmed HERE, again.** Phase 11's prod
    decision approved the WORK; this one approves the RELEASE, and the two are days apart.
-   Present three things — what is in the promotion, what was verified in pre prod, which
-   migrations are already applied — then ask. Never promote autonomously.
+   Present four things — what is in the promotion, what was verified in pre prod, migrations
+   applied, and **step 2's sweep with its scopes** — then ask. Never promote autonomously.
 
 **When the promotion merge auto-deploys:** feature PRs target the pre-prod branch; the
 `<pre-prod> → <prod>` merge RELEASES PROD, so the merge IS the gate. Pre prod drifts behind prod —
