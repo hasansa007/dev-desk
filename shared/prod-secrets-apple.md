@@ -52,10 +52,10 @@ Connect API**, Team Keys.
 
 Set it as the **base64 of the file's contents**:
 
-Set it with **`prod-secrets.md` §3's write block, unchanged** — `set -o pipefail`, the `-f`/`-r`/`-s`
-triple, and the non-empty check on the encoded value. Nothing shorter works: two earlier versions of
-that block claimed to prevent an empty write and did not, which is the failure this file's closing
-section describes. Download the `.p8` to `$(mktemp -d)`, never into the repo.
+Set `ASC_API_KEY` (or whatever this repo calls it) against **`prod-secrets.md` §3's requirements** —
+every row, especially the round-trip. Three earlier versions of that block shipped a fixed one-liner
+and all three were wrong, which is the failure this file's closing section describes. Download the
+`.p8` to `$(mktemp -d)`, never into the repo.
 
 ## §2 — Distribution certificate (`.p12`)
 
@@ -66,11 +66,9 @@ developer.apple.com → **Certificates, Identifiers & Profiles → Certificates 
 2. Upload the CSR, download the resulting `.cer`, open it (it lands in the login keychain).
 3. In Keychain Access, select the certificate **together with its private key**, right-click →
    Export → `.p12`, and choose a password. That password is the `P12_PASSWORD` secret.
-4. `base64 -i cert.p12` is the certificate secret's value:
-
-Set `BUILD_CERTIFICATE_BASE64` from the `.p12` with `prod-secrets.md` §3's block. **Not
-`[ -s f ] && …`** — a `&&` chain on a missing file exits 0 and writes nothing, silently, which is the
-opposite of what a guard is for.
+4. The base64 of the `.p12` is the certificate secret's value. Set `BUILD_CERTIFICATE_BASE64` from
+   it against **`prod-secrets.md` §3's requirements** — source path and secret name are yours to
+   supply, and the round-trip check is what proves the encoding survived.
 
 `P12_PASSWORD` is a value only the developer knows, so **they** run this in their own terminal —
 `gh secret set P12_PASSWORD --repo <owner>/<repo>` prompts and does not echo. An agent must not run
@@ -83,9 +81,8 @@ triangle beside the certificate shows no key, the export is the wrong one.
 ## §3 — Provisioning profile
 
 Same portal → **Profiles → +** → **App Store Connect** distribution → pick the App ID and the
-certificate from §2 → download the `.mobileprovision`, then:
-
-then set `BUILD_PROVISION_PROFILE_BASE64` with `prod-secrets.md` §3's block, from `$(mktemp -d)`.
+certificate from §2 → download the `.mobileprovision` to `$(mktemp -d)`, then set
+`BUILD_PROVISION_PROFILE_BASE64` against `prod-secrets.md` §3's requirements.
 
 A profile is bound to the certificate it was created against: replacing the certificate in §2
 invalidates it, and the profile must be regenerated. This is the pair that most often drifts.

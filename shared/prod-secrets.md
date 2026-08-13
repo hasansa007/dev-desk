@@ -23,12 +23,18 @@ workflow, include the secret, and say why — never drop it to keep the sweep qu
 
 ## §1 — Collect the expected names by READING, not grepping
 
-**Read the workflows as they will exist AFTER the merge** — the head/pre-prod ref, never prod's
-current tree. A credential introduced *by this very promotion* is invisible from the prod side, and
-a newly added secret is the most common case there is.
+**Read the workflows as they will exist AFTER the merge** — that is the *merge result*: everything on
+the head ref **plus** anything already on prod that the head lacks. Reading only prod misses a
+credential this promotion introduces, which is the most common case; reading only the head misses a
+workflow hotfixed straight onto prod, and Phase 16 says outright that pre prod drifts behind prod.
+
+List both refs and take the union, then **read the body of each file** — a directory listing is not
+the sweep, it only tells you what to open:
 
 ```bash
 gh api "repos/<owner>/<repo>/contents/.github/workflows?ref=<head-ref>" -q '.[].name'
+gh api "repos/<owner>/<repo>/contents/.github/workflows?ref=<prod>"     -q '.[].name'
+gh api "repos/<owner>/<repo>/contents/.github/workflows/<file>?ref=<ref>" -q '.content' | base64 -d
 ```
 
 ### Which workflows the release can fire
@@ -113,25 +119,25 @@ Then offer to fix it here, naming the repo you would write to and the scopes you
 **Never claim a scope you skipped**, and never ask for a value in chat — a pasted credential lives in
 the transcript, in scrollback, and in any log of either.
 
-### The write — the earlier form of this was broken, twice
+### The write — requirements, not an incantation
 
-```bash
-set -o pipefail                                   # WITHOUT THIS THE REST IS DECORATION
-[ -f "$P8" ] && [ -r "$P8" ] && [ -s "$P8" ] || { echo "not a readable non-empty file: $P8"; exit 1; }
-B64=$(base64 -i "$P8") || { echo "base64 failed on $P8"; exit 1; }
-[ -n "$B64" ] || { echo "encoded to nothing: $P8"; exit 1; }
-printf '%s' "$B64" | gh secret set ASC_API_KEY --repo <owner>/<repo>
-```
+**Write the commands yourself for the shell you are actually in, and satisfy every line below.**
+Three prior versions of this file shipped a specific one-liner as correct and all three were wrong —
+`< <(base64 …)`, then `[ -s ] && … | …`, then a BSD-only `base64 -i`. A fixed recipe here is a
+liability: it cannot know whether it is running against BSD or GNU `base64`, and each rewrite has
+been "verified" by testing a fragment rather than the command that runs.
 
-> **Why every line is load-bearing.** Verified 2026-08-13: a pipeline's exit status is its **last**
-> command's, so `base64 -i /bad/path | gh secret set` exits **0** and writes an **empty** secret —
-> `set -o pipefail` is what makes that fail. `[ -s ]` alone passes on a **directory** and on an
-> **unreadable** file, hence `-f` and `-r`. And `gh secret set` encrypts empty input and exits 0, so
-> the encoded value is checked before it is ever handed over.
->
-> Two earlier versions of this file claimed to prevent the empty write and did not — first with
-> `< <(base64 …)`, then with `[ -s ] &&` plus a pipe. Both were verified by testing `base64` alone
-> rather than the command that actually ran. Do not "simplify" this block.
+| Must hold | Because |
+|---|---|
+| the source is a **regular, readable, non-empty file** | `[ -s ]` alone passes on a directory and on an unreadable file |
+| the encoder's **own** exit status is checked | in a pipeline the status is the *last* command's, so a failed encode is invisible behind `gh` |
+| the encoding is **unwrapped** (single line) | GNU `base64` wraps at 76 columns by default and its `-i` means `--ignore-garbage`, not `--input`; a wrapped value decodes to garbage in the workflow |
+| the encoded value is **non-empty** before it is sent | `gh secret set` encrypts empty input and exits 0 |
+| it **round-trips**: decode the encoding and compare byte-for-byte with the source | this is the only check that catches wrapping, truncation, the wrong flag and an empty encode **on any platform** — make it the one you rely on |
+| the secret name and source path are **parameters** | this block is reused for `.p8`, `.p12` and `.mobileprovision`; a hardcoded name silently writes the wrong secret |
+
+The round-trip is the load-bearing one. If decode(encode(file)) does not equal the file, stop — do
+not set the secret and do not report the name as handled.
 
 **Keep credential files out of the repo.** Write them to `$(mktemp -d)`, never to the working tree —
 a `.p8` or `.p12` sitting beside the code is one `git add -A` from being committed. Remove them when
