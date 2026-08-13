@@ -4,6 +4,14 @@ Read from `shared/prod-secrets.md` §3 (Phase 16, step 2) and **only when a miss
 name below**. A lookup table, not a phase: it adds no step, gates nothing, and Phase 16 stays
 stack-agnostic without it. A missing name that matches nothing here is still reported by name.
 
+## Gate on the REPO first, then the name
+
+`CERT`, `CERTIFICATE`, `P12`, `PRIVATE_KEY`, `PROFILE` and `API_KEY` are not Apple words. Consult
+this table only when the repo is an Apple build — `*.xcodeproj`, `*.xcworkspace`, `Package.swift`,
+`project.yml`, or a `fastlane/` directory. Handing App Store Connect instructions to someone whose
+missing `API_KEY` is a payment provider's is worse than saying nothing, because it reads as
+authoritative.
+
 ## Match on SUBSTRING, never on the exact name
 
 No two repos name these the same — `ASC_API_KEY`, `APP_STORE_CONNECT_PRIVATE_KEY` and
@@ -44,13 +52,10 @@ Connect API**, Team Keys.
 
 Set it as the **base64 of the file's contents**:
 
-```bash
-[ -s "$P8" ] || { echo "empty or missing: $P8"; exit 1; }
-base64 -i "$P8" | gh secret set ASC_API_KEY --repo <owner>/<repo>
-```
-
-**The `-s` test is not optional** — `prod-secrets.md` §3 has the reason, and it is the exact failure
-this file's closing section describes.
+Set it with **`prod-secrets.md` §3's write block, unchanged** — `set -o pipefail`, the `-f`/`-r`/`-s`
+triple, and the non-empty check on the encoded value. Nothing shorter works: two earlier versions of
+that block claimed to prevent an empty write and did not, which is the failure this file's closing
+section describes. Download the `.p8` to `$(mktemp -d)`, never into the repo.
 
 ## §2 — Distribution certificate (`.p12`)
 
@@ -63,9 +68,9 @@ developer.apple.com → **Certificates, Identifiers & Profiles → Certificates 
    Export → `.p12`, and choose a password. That password is the `P12_PASSWORD` secret.
 4. `base64 -i cert.p12` is the certificate secret's value:
 
-```bash
-[ -s cert.p12 ] && base64 -i cert.p12 | gh secret set BUILD_CERTIFICATE_BASE64 --repo <owner>/<repo>
-```
+Set `BUILD_CERTIFICATE_BASE64` from the `.p12` with `prod-secrets.md` §3's block. **Not
+`[ -s f ] && …`** — a `&&` chain on a missing file exits 0 and writes nothing, silently, which is the
+opposite of what a guard is for.
 
 `P12_PASSWORD` is a value only the developer knows, so **they** run this in their own terminal —
 `gh secret set P12_PASSWORD --repo <owner>/<repo>` prompts and does not echo. An agent must not run
@@ -80,10 +85,7 @@ triangle beside the certificate shows no key, the export is the wrong one.
 Same portal → **Profiles → +** → **App Store Connect** distribution → pick the App ID and the
 certificate from §2 → download the `.mobileprovision`, then:
 
-```bash
-[ -s profile.mobileprovision ] \
-  && base64 -i profile.mobileprovision | gh secret set BUILD_PROVISION_PROFILE_BASE64 --repo <owner>/<repo>
-```
+then set `BUILD_PROVISION_PROFILE_BASE64` with `prod-secrets.md` §3's block, from `$(mktemp -d)`.
 
 A profile is bound to the certificate it was created against: replacing the certificate in §2
 invalidates it, and the profile must be regenerated. This is the pair that most often drifts.

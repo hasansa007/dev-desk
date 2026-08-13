@@ -704,6 +704,8 @@ or similar), its promotion flow OVERRIDES the generic sequence — read it rathe
 EITHER direction: some repos reach prod on the merge itself (the merge IS the gate), others need
 a manual workflow_dispatch after merge. Get this wrong and you either reach prod by surprise or
 believe you released when you didn't. Never skip the runbook's pre-prod verification steps.
+**When THIS merge releases prod** — single-branch repo, or a runbook that deploys on it — run
+`shared/prod-secrets.md` before merging: Phase 16 normally hosts it and is skipped here.
 
 **Pre-merge gates (REQUIRED, before any merge)** — both are defined in full above. Run them against
 the final PR diff (`git diff <BASE_BRANCH>...HEAD`); do not re-derive them here:
@@ -877,10 +879,8 @@ data volume).
 
 1. **Verify in pre prod first.** Run the rows only a deployed environment can answer — the ones
    Phase 11 handed over as unreachable. A green local suite is not pre-prod verification.
-2. **Check the release's secrets BEFORE anything irreversible.** The promotion merge IS the release,
-   so a credential the workflows need and the repo lacks is discovered *by the release*, with prod
-   already moved. **Read** (never grep) every workflow a push to `<prod>` reaches, diff their
-   `secrets.*` against each scope, **stop on a miss**. Method and limits: `shared/prod-secrets.md`.
+2. **Check the release's secrets BEFORE anything irreversible** — `shared/prod-secrets.md`, in full.
+   A miss stops the promotion; it is not a warning beside the ask at step 6.
 
 3. **Migrations reach prod BEFORE the promotion merge** — never after, never during. The merge
    releases code that expects the new schema; a schema arriving second is an outage. Rehearse on

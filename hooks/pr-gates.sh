@@ -60,7 +60,7 @@ if grep -qE '(^|[;&|])[[:space:]]*gh[[:space:]]+pr[[:space:]]+merge\b' <<<"$CMD"
   N=$(grep -oE 'gh[[:space:]]+pr[[:space:]]+merge[[:space:]]+[0-9]+' <<<"$CMD" | grep -oE '[0-9]+$')
   BASE=$(cd "$ROOT" 2>/dev/null && gh pr view $N --json baseRefName -q .baseRefName 2>/dev/null)
   case "$BASE" in
-    main|master) ask merge-prod "Phase 16 - this merges into '$BASE', which AUTO-DEPLOYS PROD. Migrations already applied? Pre prod verified? This approves the RELEASE, not the work." ;;
+    main|master) ask merge-prod "Phase 16 - this merges into '$BASE', which AUTO-DEPLOYS PROD. Secrets pre-flight run (shared/prod-secrets.md)? Migrations already applied? Pre prod verified? This approves the RELEASE, not the work." ;;
     "")          ask merge-unknown "Phase 16 - could not read this PR's base branch. Confirm it is not the prod promotion." ;;
     *)           log pass "merge->$BASE" ;;
   esac

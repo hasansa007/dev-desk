@@ -195,7 +195,7 @@ skip a judgment — building, architecture, merging, promoting.
 |---|---|
 | Behaviour of any phase | `shared/pipeline.md` — **once**; all 7 entry points read it |
 | A stack-specific addition | `shared/pipeline-{web,ios,android,kmp}.md` — these overlay Phases 10, 11, 14 only |
-| A phase's **method**, when writing it inline would breach the budget | `shared/<topic>.md` — `prod-secrets.md` holds Phase 16 step 2's commands and failure modes; the step itself is four lines that point at it. The pointer keeps the rule reachable in the pipeline while the mechanics live where they can be long enough to be correct |
+| A gate that belongs to an **event**, not a phase number | `shared/<topic>.md`, with its own *When this runs* table — `prod-secrets.md` binds to the merge that releases production, which is Phase 16 in a two-stage repo and Phase 14 in a single-branch one. Both phases point at it in two lines each. Bolting such a gate to one phase is how it misses the repo shape it was written for; that cost two review passes on 2026-08-12 |
 | Platform know-how a phase needs **only sometimes** | `shared/<topic>.md`, a **lookup table read on demand** — `prod-secrets-apple.md` is read only when a missing secret matches a name in it. Not an overlay: it modifies no phase, so the phase stays stack-agnostic and costs nothing on repos that never hit it. Reach for this instead of an overlay when the content is *reference*, not *behaviour* |
 | Branch/environment resolution | `shared/entry.md` |
 | A new standalone member | `skills/<name>/SKILL.md` + a row in both family tables. **Only worth it for Phase 0 or a phase ≥ 11** — the rest pass reasoning, which cannot be handed over |
