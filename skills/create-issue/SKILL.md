@@ -49,6 +49,9 @@ it becomes an unrunnable row.
 
 ## Guards specific to features
 
+- **State it once.** No preamble, no "currently…", no restating `## What` inside `## Why`. Two
+  sentences that say one thing are one sentence. A `## Done when` row you cannot execute is prose,
+  not a condition.
 - **Escalate rather than cram.** If drafting reveals this is several tasks with different surfaces,
   say so and offer `dev:create-epic` instead. One issue that is secretly three is the shape that
   later gets half-closed — and Phase 0's *one item per invocation* rule exists for exactly this.

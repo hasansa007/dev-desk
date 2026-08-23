@@ -8,6 +8,7 @@ Derived from three operating protocols. These apply across every phase.
 |---|---|---|
 | **Memory Establishment** | Planning Protocol | Maintain `PROJECT_MAP.md` with `TECH_STACK`, `SYSTEM_FLOW`, and `ORPHANS & PENDING`. Read it before acting; update it after. |
 | **Simplicity First** | Planning Protocol | Propose the simplest solution. Reject unnecessary complexity. 50 lines > 200 lines. |
+| **Short Documentation** | Golden Rule | Document in one line, not a paragraph. If a comment restates the code or the types, delete it. If it carries what the signature cannot — precedence, units, a spec quirk — keep it. |
 | **Stop on Ambiguity** | Planning Protocol | If requirements are unclear, do not choose a path silently — stop and ask. |
 | **Prevent Feature Creep** | Planning Protocol | Stick strictly to the requested scope. No additional features. |
 | **Time Awareness** | Planning Protocol | Specify year+month. Search for latest stable versions before deciding. |
@@ -464,12 +465,9 @@ Before touching any file:
 4. Verify no scope creep: is every change strictly required by the ticket?
 
 ### Editing — Surgical Protocol
-- **Touch only what must be touched.** Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect.
-- **Style matching.** Adhere to the code style in the file you are editing, even if you find it imperfect. Consistency > personal preference.
-- **Clean your own mess.** If your change orphans a function, import, type, or parameter — remove it.
-- **Execution simplicity.** If 50 lines can do the job instead of 200, write 50. Do not over-abstract.
-- **No placeholders or TODOs.** Code must be production-ready and complete. Handle real errors; do not leave stubs.
-- **Commitment to flow.** Every single line of code must serve the user journey defined in `SYSTEM_FLOW`. If a line does not, delete it.
+Guiding Principles apply here in full, and `entry.md` always loads them. Beyond them:
+- **No narration.** A comment saying *what* the next block does means the name is wrong — fix the
+  name. Tests carry the case in the name: no docstring, no AAA banners (Short Documentation).
 
 ### Task Execution
 - For complex tasks (3+ files touched): use the `subagent-driven-development` skill to dispatch implementer + reviewer subagents per task
@@ -929,11 +927,15 @@ Context: <what was loaded from Phase 1>
 
 ## Universal Rules
 
-- Do not over-engineer — minimum complexity for the current task (Simplicity First)
+- **Documentation is short, or it becomes debt.** ONE line above a function for what it does plus
+  any rule its signature cannot carry; ONE line above non-obvious logic (workaround, spec quirk,
+  perf trade-off). **Not zero — one.** Out: paragraph headers, `@param`/`@returns` restating the
+  types, per-line narration, Arrange/Act/Assert banners.
+- **Test names ARE the test's documentation** — a failing test prints its name, not your comment.
+  One behaviour per test; if the name needs "and", split it.
 - Do not add comments, docstrings, or type annotations to unchanged code (Touch Only What Must Be Touched)
 - Do not add error handling for impossible cases
 - Do not create helpers for one-time use
-- Follow the language/framework conventions already present in the codebase (Style Matching)
 - DB migrations: always add a new version, never modify existing ones (mechanics: `supabase` skill)
 - **Never `git worktree add` when the IDE opens each worktree in its own window** — it splits the session. Branch IN PLACE in the main checkout, stashing if needed. Confirm the repo's own convention before assuming `using-git-worktrees` applies.
 - If unsure about a convention, read 2–3 existing examples first
@@ -945,5 +947,3 @@ Context: <what was loaded from Phase 1>
 - Never guess ticket/issue content — fetch or ask the user to paste
 - **Discussion before building is Phase 5's gate, and it is not rationed.** Ask as many rounds as the ambiguity actually needs — one thread at a time, plain language, explicit go-ahead. (This replaced an older "exactly ONE round of clarifying questions" rule, which contradicted Phase 5 outright: a budget of one question is a licence to guess the rest.)
 - Keep task granularity at ~1–4 hours each
-- Every edit must be a verifiable goal — define the success condition before and confirm it after (Goal-Oriented Execution)
-- Incomplete features go in `PROJECT_MAP.md` → `ORPHANS & PENDING`, never left silently unfinished (Live Synchronization)
