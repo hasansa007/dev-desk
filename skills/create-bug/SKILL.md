@@ -46,6 +46,8 @@ to verification rows. *"Open a course with 40+ lessons, scroll to lesson 30, pre
 
 ## Guards specific to bugs
 
+- **State it once.** No preamble, no "currently…". `## What happens` is the symptom in a sentence
+  or two, not a narrative — the mechanism lives in `## Steps` and belongs there only once.
 - **A cause you already happen to know is a note, not the report.** Put it under `## Suspected` and
   mark it unverified. Phase 4 reproduces before theorising, and an authoritative-sounding cause in
   the issue body is exactly what makes it skip that.

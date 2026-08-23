@@ -40,6 +40,7 @@ stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the 
     ├── launch/SKILL.md           → /dev:launch     no phase — a TOOL
     ├── launch-kill/SKILL.md      → /dev:launch-kill  no phase — `launch` inverted
     ├── shots/SKILL.md            → /dev:shots      no phase — capture, iOS/Android/web
+    ├── trim/SKILL.md             → /dev:trim       no phase — existing code → the doc budget
     └── issues/SKILL.md           → /dev:issues     no phase — the tracker view; bare /dev routes here
 ```
 
@@ -135,6 +136,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | — | *(no phase)* — build & launch the app | `dev:launch` |
 | — | *(no phase)* — stop this project's servers | `dev:launch-kill` |
 | — | *(no phase)* — capture screens from the running app | `dev:shots` |
+| — | *(no phase)* — bring EXISTING code to the documentation budget | `dev:trim` |
 | — | *(no phase)* — the tracker: current, next, stats | `dev:issues` |
 
 ### Why these phase members and not others

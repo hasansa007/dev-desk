@@ -59,6 +59,9 @@ task at a time, and nobody can point at the commit where it happened.
 
 ## Guards specific to epics
 
+- **State it once.** No preamble, no "currently…", no restating `## Goal` inside `## Why now`. Two
+  sentences that say one thing are one sentence, and a `## Done when` row you cannot execute is
+  prose, not a condition.
 - **Slices never go in the body**, not as prose and not as `- [ ]` lines — even when they seem
   obvious now. Phase 5's decomposition step owns why, and the `sub_issues` mechanics with it.
 - **If it turns out to be one task, file one task.** Say so and use `dev:create-issue`. An epic with

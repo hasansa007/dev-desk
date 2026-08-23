@@ -125,6 +125,7 @@ this pipeline exists to refuse.
 | `dev:docs` | 12 | always only |
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
+| `dev:trim` | — | **nothing** — a tool; it reads the Short Documentation rule and no phase |
 
 **The `dev:create-*` doors take no tier**, which is the one exception to the always-load list above.
 A tier answers *how much process does building this deserve* — filing builds nothing, and Phase 0 is
@@ -176,6 +177,7 @@ fields you inferred rather than resolved.
 | `dev:review` | 15 | a PR number | **loop** ↺ |
 | `dev:prod` | 16 | pre-prod + prod branches | stage |
 | `dev:launch` | — | a project to launch | **tool** |
+| `dev:trim` | — | a repo or a path | **tool** |
 
 **Why these phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning
 lives only in the conversation that produced it — there is no artifact to hand a fresh session.
