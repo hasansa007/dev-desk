@@ -2,7 +2,7 @@
 
 ## Guiding Principles
 
-Derived from three operating protocols. These apply across every phase.
+Derived from three operating protocols, plus rules added since. These apply across every phase.
 
 | Principle | Source | Rule |
 |---|---|---|
@@ -12,7 +12,7 @@ Derived from three operating protocols. These apply across every phase.
 | **Stop on Ambiguity** | Planning Protocol | If requirements are unclear, do not choose a path silently — stop and ask. |
 | **Prevent Feature Creep** | Planning Protocol | Stick strictly to the requested scope. No additional features. |
 | **Time Awareness** | Planning Protocol | Specify year+month. Search for latest stable versions before deciding. |
-| **Goal-Oriented Execution** | Execution Engine | Define success criteria before writing code. Know what "done" looks like. |
+| **Goal-Oriented Execution** | Execution Engine | Define success criteria before writing code, and **confirm them after**. Know what "done" looks like. |
 | **Production-Ready Code** | Execution Engine | No `// TODO`, no placeholders, no stubs. Code must be complete and handle errors. |
 | **Self-Verification** | Execution Engine | Write automated tests. Do not leave a mess. Ensure no regressions. |
 | **Live Synchronization** | Execution Engine | Dynamically update `PROJECT_MAP.md`. Move incomplete features to `ORPHANS & PENDING`. |
@@ -465,9 +465,15 @@ Before touching any file:
 4. Verify no scope creep: is every change strictly required by the ticket?
 
 ### Editing — Surgical Protocol
-Guiding Principles apply here in full, and `entry.md` always loads them. Beyond them:
-- **No narration.** A comment saying *what* the next block does means the name is wrong — fix the
-  name. Tests carry the case in the name: no docstring, no AAA banners (Short Documentation).
+- **Touch only what must be touched.** Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect.
+- **Style matching.** Adhere to the code style in the file you are editing, even if you find it imperfect. Consistency > personal preference.
+- **Clean your own mess.** If your change orphans a function, import, type, or parameter — remove it.
+- **Execution simplicity.** If 50 lines can do the job instead of 200, write 50. Do not over-abstract.
+- **No placeholders or TODOs.** Code must be production-ready and complete. Handle real errors; do not leave stubs.
+- **No narration inside a body.** Running commentary on the next few lines means the name is wrong —
+  fix the name. The one line *above* a function is the budget, not a violation of it. Tests carry
+  the case in the name: no docstring, no AAA banners (Short Documentation).
+- **Commitment to flow.** Every single line of code must serve the user journey defined in `SYSTEM_FLOW`. If a line does not, delete it.
 
 ### Task Execution
 - For complex tasks (3+ files touched): use the `subagent-driven-development` skill to dispatch implementer + reviewer subagents per task
@@ -927,10 +933,12 @@ Context: <what was loaded from Phase 1>
 
 ## Universal Rules
 
-- **Documentation is short, or it becomes debt.** ONE line above a function for what it does plus
-  any rule its signature cannot carry; ONE line above non-obvious logic (workaround, spec quirk,
-  perf trade-off). **Not zero — one.** Out: paragraph headers, `@param`/`@returns` restating the
-  types, per-line narration, Arrange/Act/Assert banners.
+- **Short Documentation — one line, not zero and not a paragraph.** ONE line above a function:
+  what it does, plus any rule its signature cannot carry (precedence, units, ownership). ONE line
+  above non-obvious logic — a workaround, a spec quirk, a perf trade-off. Out: paragraph headers,
+  per-line narration inside a body, Arrange/Act/Assert banners, and `@param`/`@returns` that only
+  restate the types — **unless the repo generates docs from them** (typedoc, sphinx, godoc, Dokka,
+  javadoc), where they are a build artifact and stay.
 - **Test names ARE the test's documentation** — a failing test prints its name, not your comment.
   One behaviour per test; if the name needs "and", split it.
 - Do not add comments, docstrings, or type annotations to unchanged code (Touch Only What Must Be Touched)
