@@ -2,25 +2,24 @@
 name: trim
 description: >
   Brings EXISTING code to the Short Documentation budget — one line, not a paragraph, not zero.
-  Classifies every comment it finds into restates / compressible / carries-what-the-signature-cannot
-  / name-smell, then deletes and compresses only the first two. It NEVER renames and NEVER edits
-  logic: the run is rejected unless the code, with all comments stripped, is byte-identical before
-  and after. Where a comment exists only because the name is bad, the comment STAYS and the rename
-  is reported, because renaming touches call sites and this tool touches none.
-  Reports by default; writing needs `--apply`. Commits per module so a large diff stays reviewable
-  and a bad module reverts alone.
+  Classifies every comment into restates / compressible / carries-what-the-signature-cannot /
+  name-smell, and every undocumented function into needs-a-line, so it enforces BOTH halves of the
+  budget rather than only driving toward zero. It never renames and never edits logic.
+  Two gates per module, both BEFORE that module's commit: the code with all comments stripped must
+  be byte-identical, and every protected comment present before must still be present after — the
+  first proves no logic moved, and only the second can catch a deleted pragma or licence header.
+  Reports by default; writing needs `--apply`.
   Trigger on: "trim the comments", "apply the documentation rule to this repo", "these docstrings
   are too long", "strip the redundant comments", "bring this codebase to the comment budget".
-allowed-tools: [git, rg, grep]
+allowed-tools: [git, rg, grep, sed, npm, pnpm, yarn, pytest, go, cargo, gradle]
 ---
 
 # trim — bring existing code to the documentation budget
 
-A **tool**, not a phase. It maps to no phase number and reads none of `shared/pipeline.md`'s phases.
-
-The rule it applies is **Short Documentation**, defined in `shared/pipeline.md` → Guiding
-Principles, and its budget in Universal Rules. Read it there. Restating it here would give this
-repo two versions of one rule, and the first edit to either makes them disagree.
+A **tool**, not a phase. It maps to no phase number and runs no pipeline phase — but it is not a
+`nothing` loader: it applies **Short Documentation**, so it reads that rule from
+`shared/pipeline.md` (Guiding Principles, and the budget in Universal Rules) before classifying
+anything. Restating the rule here would give this repo two versions of it.
 
 Phase 9 applies that rule to code being written **now**. Nothing applied it to code already on
 disk. That gap is the whole reason this exists.
@@ -31,79 +30,110 @@ disk. That gap is the whole reason this exists.
 |---|---|---|
 | A path (`app/lib`) | Scope to that subtree | Whole repo |
 | `--apply` | Write the changes | **Report only** |
-| `--rename` | Print the rename backlog in full rather than a count | Count |
+| `--rename` | Print the name-smell backlog in full | A count (Phase 6) |
 
-**Report is the default and whole-repo is the scope** — those two facts are chosen together. A bare
-invocation that rewrote every file in the repo would be a destructive default, and the scope is
-exactly what makes it destructive.
+Report is the default **because** whole-repo is the scope: a bare invocation that rewrote every
+file would be a destructive default, and the scope is what makes it destructive.
 
 ## Phase 2 — Never touch
 
-Things shaped like comments that are **load-bearing**. Removing any of these changes behaviour or
-breaks a build, and each one looks exactly like the prose this tool deletes:
+Things shaped like comments that are **load-bearing**. Each looks exactly like the prose this tool
+deletes, and removing any changes behaviour or breaks a build:
 
 - **Pragmas and directives** — `eslint-disable`, `@ts-expect-error`, `# noqa`, `# type:`,
   `//go:build`, `#pragma`, `# pylint:`, `@SuppressWarnings`
-- **License and copyright headers**
-- **Generated files, vendored trees, and anything `.gitignore`d** — never edit what a build rewrites
-- **Comment-shaped text inside string literals** — a `//` in a URL or a `#` in a regex is not a comment
+- **Licence and copyright headers**
+- **Generated files, vendored trees, anything `.gitignore`d** — never edit what a build rewrites
+- **Comment-shaped text inside string literals** — a `//` in a URL, a `#` in a regex
 - **Doc-generation input.** If the repo configures typedoc, sphinx, godoc, Dokka or javadoc, those
-  docstrings are a **build artifact**, not decoration. Detect the config, exclude by default, and
-  say that you did — deleting them silently changes a published site.
+  docstrings are a **build artifact**. Exclude by default and say so — deleting them silently
+  changes a published site. Universal Rules carries the same carve-out for code being written.
+
+This list is Phase 5's check-2 inventory. It is not advisory.
 
 ## Phase 3 — Classify, never sweep
 
-A regex pass is the wrong instrument: the rule **keeps** the line that carries what the signature
-cannot. Every comment lands in exactly one bucket, and only the first two are ever written.
+A regex pass is the wrong instrument: the rule **keeps** the line carrying what the signature
+cannot, and that is a judgment. Five buckets, because the budget has two edges:
 
 | Bucket | Test | Action |
 |---|---|---|
-| **RESTATES** | Says what the code or the types already say — `@param repo: string`, `// fetch the branches`, an Arrange/Act/Assert banner | delete |
+| **RESTATES** | Says what the code or types already say — `@param repo: string`, an AAA banner | delete |
 | **COMPRESSIBLE** | A paragraph that says one thing | collapse to one line |
-| **CARRIES** | Precedence, units, a spec quirk, a workaround, a perf trade-off — anything the reader cannot recover from the signature | **keep, untouched** |
-| **NAME-SMELL** | The comment exists only because the name is bad | **keep the comment, change nothing**, report the rename |
+| **CARRIES** | Precedence, units, a spec quirk, a workaround, a perf trade-off | **keep, untouched** |
+| **NAME-SMELL** | The comment exists only because the name is bad | **keep it, change nothing**, report the rename |
+| **UNDOCUMENTED** | A function whose signature cannot carry its contract and has no line at all | **propose** the missing line |
 
-**NAME-SMELL is kept, not fixed.** The rule says fix the name — but a rename touches call sites,
-and this tool's safety rests entirely on touching none. Half the rule applied safely beats the whole
-rule applied to a diff nobody can verify. The backlog is the other half's input, not its output.
+**UNDOCUMENTED is why this is not a comment-stripper.** The budget is one line, *not zero*; a tool
+with only the first four buckets moves every repo toward zero and calls that success. Under
+`--apply` a proposed line is written only where the contract is genuinely unrecoverable from the
+signature — never as a blanket pass.
 
-## Phase 4 — Apply
+**NAME-SMELL is kept, not fixed.** The rule says fix the name, but a rename touches call sites and
+this tool's safety rests on touching none. Half the rule applied safely beats the whole rule
+applied to a diff nobody can verify.
 
-Only with `--apply`.
+## Phase 4 — Order of operations
 
-- **Commit per module** — one commit per directory, each carrying its own counts. The tool cannot
-  know how large the diff is until it has run, so it slices at every size rather than deciding
-  after the fact. A bad module reverts alone; a reviewer walks commits, not 100 files.
-- The repo is a **write boundary** (`shared/entry.md`): name `owner/repo` and the branch before the
-  first commit, and work on a new branch, never the main line.
+Preconditions, before anything is read:
 
-## Phase 5 — Falsification — the check that makes the diff trustworthy
+1. `git status --porcelain` is **empty**. A dirty tree means an unrelated edit gets swept into a
+   commit labelled comment-only, and Phase 5 then compares against a baseline that was never trim's.
+2. The repo is a write boundary (`shared/entry.md`): name `owner/repo`, cut a new branch.
+3. Record the project's test and lint commands. No lint command is a **reported gap**, not a pass —
+   check 2's whole hazard class fails lint, never tests.
 
-The tool claims to touch only comments. That claim is **mechanically checkable**, so check it:
+Then, **per module, in this order**:
 
 ```
-strip_all_comments(before) == strip_all_comments(after)    # per file, byte-identical
+classify → apply → CHECK 1 → CHECK 2 → lint + tests → commit that module
 ```
 
-Any byte of difference means it edited logic. **Reject the run** — do not report it with a caveat.
+Nothing is committed before its own gates pass. A module that fails a gate is **reverted in the
+worktree and reported**, and the run stops — the earlier modules stay committed and reviewable,
+which is what commit-per-module is for.
 
-Second gate: the test suite is green **before and after**. A comment-only diff that turns a suite
-red means something load-bearing was removed — a pragma, a directive, a doc-generation input — and
-Phase 2 has a hole. Report which check failed rather than the aggregate.
+**Never classify more than one module at a time.** Per-comment judgment across a whole repo does
+not fit one context; a classifier that runs out mid-module and keeps going degrades toward *delete*,
+which is the one failure mode that looks like success. If a module cannot be finished, **stop and
+say which module and how far it got**. Never fall back to a pattern match.
 
-If the repo has no test suite, say so; a missing suite is a reported gap, not a silent pass.
+## Phase 5 — The two gates
+
+They answer different questions, and neither can do the other's job.
+
+```
+CHECK 1 — CODE UNTOUCHED     strip_all_comments(before) == strip_all_comments(after)
+CHECK 2 — PROTECTED INTACT   every Phase 2 comment present before is present after
+```
+
+**Check 1 proves no logic moved.** Any byte of difference means the tool edited code. Stop.
+
+**Check 1 can never prove a comment survived** — deleting comments is the operation it exists to
+permit. Delete an `eslint-disable`, a `# noqa` or a licence header and both sides strip
+*identically*, so check 1 goes green on exactly the five categories Phase 2 calls load-bearing.
+**Check 2 is the only gate that sees this**, which is why Phase 2's list is an inventory rather than
+advice, and why lint runs alongside the tests: a removed pragma fails lint and no test.
+
+Comment-stripping must be **string-aware**. A naive strip corrupts `http://` and any regex holding
+a `#` — the same defect `dev:launch` 2.2a documents for JSONC. A stripper that cannot prove itself
+string-aware makes check 1 worthless in both directions.
+
+If the repo has no test suite, say so. A missing suite is a reported gap, not a silent pass.
 
 ## Phase 6 — Report
 
-State what was scanned, what changed, what was **kept and why**, and the rename backlog as a count.
+State what was scanned, what changed, what was **kept and why**, and what was **proposed**.
 
-The kept list is the part worth reading: it is the evidence the tool exercised judgment rather than
-matching a pattern. A run that keeps nothing at all is a **finding about the run**, not a clean
-result — the budget is one line, not zero, so a repo with zero comments carrying precedence, units
-or a workaround is more likely a classifier that collapsed to "delete everything".
+The name-smell backlog prints as a count, or in full when `--rename` was passed.
+
+The kept list is the part worth reading — it is the evidence judgment happened rather than pattern
+matching. A run that keeps nothing is a **finding about the run**: the budget is one line, not zero,
+so a repo with no comment carrying precedence, units or a workaround is likelier a classifier that
+collapsed to "delete everything" than a repo that had none.
 
 ## Next — ask, never stop flat
 
 - Report only → offer `--apply`, naming the branch it would cut.
 - Applied → the branch is unreviewed. `/code-review` on the diff, then `dev:pre-prod` for the PR.
-- Renames flagged → offer `dev:create-issue` so the backlog becomes an issue instead of scrollback.
+- Name-smells found → offer `dev:create-issue` so the backlog becomes an issue, not scrollback.

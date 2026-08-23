@@ -116,6 +116,7 @@ The work already exists and you want a single stage:
 | *"run the app"* / *"launch on simulator"* | `/dev:launch` |
 | *"kill the dev server"* / *"free the port"* | `/dev:launch-kill` — stops what `launch` started, in this worktree only |
 | *"screenshot the app"* / *"app store screenshots"* | `/dev:shots` — captures iOS/Android/web; drives the project's own suite when it has one |
+| *"trim the comments"* / *"these docstrings are too long"* | `/dev:trim` — existing code to the doc budget; reports unless `--apply` |
 | *"what should I work on?"* / nothing at all | `/dev:issues` — the tracker board, read-only. This is what bare `/dev` now does |
 
 **Starting mid-pipeline never leaves you stranded.** Whichever one you invoke, it finishes by naming
@@ -180,11 +181,19 @@ standalone members start at 11 and not earlier, and why an epic cannot resume mi
 **4. Ceremony is the failure mode, not sloppiness.** *A slow pipeline that gets skipped protects
 nothing.* Every addition must earn the tier it lands in. Prefer conditional over mandatory.
 
-> **Budget: `shared/pipeline.md` stays under 950 lines** (949 at 2026-08-13). Not a style
+> **Budget: `shared/pipeline.md` stays under 975 lines** (957 at 2026-08-23). Not a style
 > preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
 > than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
-> `wc -l shared/pipeline.md` before you write. The number is deliberately close to current: this
+> `wc -l shared/pipeline.md` before you write. The number stays deliberately close to current: this
 > file grew 593 → 938 without ever losing a rule, and an unstated ceiling is not a ceiling.
+>
+> **2026-08-23 — raised 950 → 975, because the cheaper move was worse.** Staying under 950 for the
+> Short Documentation rule was done by emptying Phase 9's Surgical Protocol into a pointer at the
+> Guiding Principles table. Review found this optimised the line count while degrading exactly what
+> the count is a proxy for: Phase 9 is the most-read phase in the file, and two relocated rules were
+> strictly weaker at the destination — `Clean your own mess` lost *parameter*, `Commitment to flow`
+> lost the actionable *delete it*. The bullets were restored and the ceiling moved instead.
+> **Relocating a rule away from its point of use is not a deletion**, and does not pay for one.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.

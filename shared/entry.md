@@ -125,7 +125,7 @@ this pipeline exists to refuse.
 | `dev:docs` | 12 | always only |
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
-| `dev:trim` | — | **nothing** — a tool; it reads the Short Documentation rule and no phase |
+| `dev:trim` | — | **Guiding Principles + Universal Rules only** — it applies Short Documentation, so it must read it |
 
 **The `dev:create-*` doors take no tier**, which is the one exception to the always-load list above.
 A tier answers *how much process does building this deserve* — filing builds nothing, and Phase 0 is
