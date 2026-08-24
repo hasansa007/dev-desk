@@ -181,7 +181,7 @@ standalone members start at 11 and not earlier, and why an epic cannot resume mi
 **4. Ceremony is the failure mode, not sloppiness.** *A slow pipeline that gets skipped protects
 nothing.* Every addition must earn the tier it lands in. Prefer conditional over mandatory.
 
-> **Budget: `shared/pipeline.md` stays under 960 lines** (957 at 2026-08-24). Not a style
+> **Budget: `shared/pipeline.md` stays at or under 958 lines** (957 at 2026-08-24). Not a style
 > preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
 > than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
 > `wc -l shared/pipeline.md` before you write. The number stays deliberately close to current: this
@@ -196,10 +196,13 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > lost the actionable *delete it*. The bullets were restored and the ceiling moved instead.
 > **Relocating a rule away from its point of use is not a deletion**, and does not pay for one.
 >
-> **2026-08-24 — corrected 975 → 960.** Raising by 25 to absorb 8 left 18 free lines, so the
+> **2026-08-24 — corrected 975 → 958.** Raising by 25 to absorb 8 left 18 free lines, so the
 > deletion-pays-for-addition gate would not have fired again for a long time, and the precedent set
 > was *raise the ceiling* — available to every future addition. A ceiling with slack is not a
-> ceiling. Take the smallest raise that admits the change, or take none.
+> ceiling. Take the smallest raise that admits the change, or take none. **960 was itself too
+> loose** and was corrected to 958 in the same branch: at 957 the smallest admitting ceiling is
+> 958, and 3 free lines would have let the next three additions land without paying anything.
+> `ci/pr-gates.yml` now recomputes this rather than trusting the integer written here.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.

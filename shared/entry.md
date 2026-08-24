@@ -126,9 +126,9 @@ this pipeline exists to refuse.
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
 | `dev:launch-kill` | — | **nothing** — a tool; it reads `dev:launch`'s discovery, not this pipeline |
-| `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and Phase 3 |
-| `dev:issues` | — | **nothing** — a read-only board; Right-Size on a board is the ceremony this pipeline refuses |
-| `dev:trim` | — | **Guiding Principles + Universal Rules** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
+| `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
+| `dev:issues` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
+| `dev:trim` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
 
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
 are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the

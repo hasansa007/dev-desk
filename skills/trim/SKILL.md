@@ -5,13 +5,13 @@ description: >
   Classifies every comment into restates / compressible / carries-what-the-signature-cannot /
   name-smell, and every undocumented function into needs-a-line, so it enforces BOTH halves of the
   budget rather than only driving toward zero. It never renames and never edits logic.
-  Two gates per module, both BEFORE that module's commit: the code with all comments stripped must
-  be byte-identical, and every protected comment present before must still be present after — the
+  Two gates per module, both BEFORE that module's commit: the code with comments AND docstrings
+  stripped must be byte-identical, and every protected comment present before must still be present after — the
   first proves no logic moved, and only the second can catch a deleted pragma or licence header.
   Reports by default; writing needs `--apply`.
   Trigger on: "trim the comments", "apply the documentation rule to this repo", "these docstrings
   are too long", "strip the redundant comments", "bring this codebase to the comment budget".
-allowed-tools: [git, rg, grep, python3, npm, pnpm, yarn, eslint, pytest, ruff, flake8, pylint, mypy, go, cargo, gradle, mvn]
+allowed-tools: [git, rg, grep, python3, make, npx, node, bash, npm, pnpm, yarn, pytest, go, cargo, gradle, mvn]
 ---
 
 # trim — bring existing code to the documentation budget
@@ -49,11 +49,14 @@ deletes, and removing any changes behaviour or breaks a build:
   docstrings are a **build artifact**. Exclude by default and say so — deleting them silently
   changes a published site. Universal Rules carries the same carve-out for code being written.
 
-**Three of these five are gated; two are scoping.** The pragmas, the licence headers and the
-doc-generation blocks are comments, so they are check-2's inventory and a missing one fails the run.
-Generated/vendored trees and comment-shaped text inside string literals are **not** comments — no
-gate can see them go, so they are enforced by never being visited. Skip them in discovery; a gate
-will not save you.
+**Three of these five are gated; two are scoping.** The pragmas and the licence headers are comments, so they are
+check-2's inventory and a missing one fails the run. **Doc-generation input is excluded in
+discovery, not gated** — a sphinx or javadoc docstring is a string expression, so check 2 (comments)
+cannot see it and check 1 strips it from both sides. Never visited is the only protection it has.
+Generated/vendored trees and comment-shaped text inside string literals are **not** comments, so
+check 2 cannot see them. A vendored tree is caught by nothing at all — skip it in discovery. A
+mangled string literal *is* caught, by CHECK 1, but **only if the stripper is string-aware**: that
+requirement is what turns check 1 into this class's guard, which is why it is not optional.
 
 ## Phase 3 — Classify, never sweep
 
@@ -79,25 +82,33 @@ applied to a diff nobody can verify.
 
 ## Phase 4 — Order of operations
 
+**A module is one directory of source files, not a package and not a file.** Take the deepest
+directory that directly contains source, and never recurse into a child in the same pass. It is the
+unit of classification, gating and commits in **both** modes, which is why it is defined here and
+not inside the write path. It has to stay small so that one module's classification fits in one
+context — the constraint *Never classify more than one module at a time* rests on.
+
 **Without `--apply` — the default — nothing is written.** No branch is cut, no file is edited, no
 commit is made, and a dirty worktree is not an obstacle, because classification is a read. Run
 Phase 3 over each module in turn, then go straight to Phase 6 and offer `--apply`. Everything below
 is `--apply`'s path, not the tool's.
 
-Preconditions, checked only under `--apply`:
+Preconditions, checked only under `--apply`, **in this order**:
 
-1. `git status --porcelain` is **empty**. A dirty tree means an unrelated edit gets swept into a
-   commit labelled comment-only, and Phase 5 then compares against a baseline that was never trim's.
-2. The repo is a write boundary (`shared/entry.md`): name `owner/repo`, cut a new branch.
-3. Record the project's test and lint commands, and **run both now**. Green before is what makes
-   red after mean something; without that baseline a pre-existing failure gets reported as a
-   pragma this tool deleted. A red baseline is a **stop**, not a caveat. No lint command is a
-   **reported gap**, not a pass — check 2's whole hazard class fails lint, never tests.
+1. Record the project's test and lint commands **as the project states them** — a `make lint`, a
+   `./scripts/lint`, an `npx tsc`, a `golangci-lint`. Enumerating linters per ecosystem needs a new
+   entry forever; running the recorded command is the mechanism. Then **run both now**. Green
+   before is what makes red after mean something; without that baseline a pre-existing failure gets
+   reported as a pragma this tool deleted. A red baseline is a **stop**, not a caveat. No lint
+   command is a **reported gap**, not a pass — check 2's hazard class fails lint, never tests.
+2. `git status --porcelain` is **empty** — checked *after* step 1, because test and lint runs write
+   caches and coverage files. A dirty tree means an unrelated edit gets swept into a commit labelled
+   comment-only, and Phase 5 then compares against a baseline that was never trim's.
+3. The repo is a write boundary (`shared/entry.md`): name `owner/repo`, cut a new branch.
 
-**A module is one directory of source files, not a package and not a file.** Take the deepest
-directory that directly contains source, and never recurse into a child directory in the same pass.
-The unit has to stay small for the same reason the next rule exists: the whole point is that one
-module's classification fits in one context.
+**Steps 1 and 2 are reads and come before step 3 deliberately.** A baseline that stops the run must
+stop it before a branch exists, or the one case the stop was written for — a repo whose suite is
+already red — leaves an orphan branch behind.
 
 Then, **per module, in this order**:
 
@@ -119,7 +130,8 @@ say which module and how far it got**. Never fall back to a pattern match.
 They answer different questions, and neither can do the other's job.
 
 ```
-CHECK 1 — CODE UNTOUCHED     strip_all_comments(before) == strip_all_comments(after)
+CHECK 1 — CODE UNTOUCHED     strip_docs(before) == strip_docs(after)
+                             strip_docs = comments + docstrings (see below)
 CHECK 2 — PROTECTED INTACT   every Phase 2 comment present before is present after
 ```
 
