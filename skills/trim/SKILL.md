@@ -75,7 +75,12 @@ applied to a diff nobody can verify.
 
 ## Phase 4 — Order of operations
 
-Preconditions, before anything is read:
+**Without `--apply` — the default — nothing is written.** No branch is cut, no file is edited, no
+commit is made, and a dirty worktree is not an obstacle, because classification is a read. Run
+Phase 3 over each module in turn, then go straight to Phase 6 and offer `--apply`. Everything below
+is `--apply`'s path, not the tool's.
+
+Preconditions, checked only under `--apply`:
 
 1. `git status --porcelain` is **empty**. A dirty tree means an unrelated edit gets swept into a
    commit labelled comment-only, and Phase 5 then compares against a baseline that was never trim's.
