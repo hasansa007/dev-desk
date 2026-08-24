@@ -35,14 +35,18 @@ scheme names, bundle IDs, package names, simulator names, or file paths.
 |---|---|---|
 | `ios` / `android` / `web` | Platform | Auto-detect from project files |
 | `sim` / `simulator` / `emulator` | Target: simulator/emulator | iOS: simulator; Android: emulator if no device connected |
-| `device` / `phone` | Target: physical device | — |
+| `device` / `phone` | Target: physical device. `phone` is an alias of `device` — it is **not** a device class | — |
+| `iphone` / `ipad` | iOS device CLASS. Orthogonal to `sim` / `device`: the class says *which family*, those say *simulator or hardware* | `iphone` |
 | `debug` / `release` | Build configuration (mobile only) | `debug` |
 | Bare integer (e.g. `8080`) | Web server port | First free port in 8000–8999 |
-| Anything else in quotes or multi-word | Device/simulator name OR HTML entry filename | iOS: latest iPhone sim; Android: first available; Web: auto-detected entry |
+| Anything else in quotes or multi-word | Device/simulator name OR HTML entry filename — matched case-insensitively, substring allowed (**3A.1**) | iOS: latest iPhone sim; Android: first available; Web: auto-detected entry |
 
 Examples:
 - `/dev:launch` — auto-detect platform, run on simulator/emulator/browser
 - `/dev:launch ios device` — iOS on physical device, debug
+- `/dev:launch ios ipad` — iOS on an iPad simulator
+- `/dev:launch ios ipad device` — iOS on a connected physical iPad
+- `/dev:launch ios "ipad air"` — substring, case-insensitive: matches `iPad Air 13-inch (M4)`
 - `/dev:launch android` — Android on emulator, debug
 - `/dev:launch ios sim "iPhone 16 Pro"` — iOS on named simulator
 - `/dev:launch android release` — Android release build on emulator/device
@@ -337,7 +341,29 @@ This is preferred because it is instant — no SPM package resolution.
 xcodebuild -list $XCODE_FLAG "$XCODE_FILE" 2>/dev/null
 ```
 
-Pick the app scheme: exclude names ending with `Tests`, `UITests`, or containing `Widget`, `Screenshot`, `Watch`, `Extension`, `Clip`. Prefer the scheme matching the project/workspace filename.
+Pick the app scheme, **declaration first**:
+
+1. **`productType` from the pbxproj.** Build `target → productType` from every `project.pbxproj` under
+   the root (excluding `Pods/`, `Carthage/`, `.build/`, `DerivedData/`), resolve each scheme to its
+   target — the `BlueprintName` in a shared `.xcscheme` if there is one, else the scheme's own name,
+   which is what Xcode's autocreated schemes use — and keep only targets declaring **exactly**
+   `com.apple.product-type.application`. Exactly, because `com.apple.product-type.application.watchapp2`
+   starts with the same string and is not the app to launch on an iPhone.
+2. **The name blocklist, only if step 1 read nothing** — an absent or unparseable pbxproj, or a scheme
+   whose target is not found. Exclude names ending with `Tests`, `UITests`, or containing `Widget`,
+   `Screenshot`, `Watch`, `Extension`, `Clip`. Prefer the scheme matching the project/workspace filename.
+
+The blocklist stays, because it is the only thing that can drop a `Tests` scheme — a Tests scheme
+builds the app target, so the declaration calls it an application. But it must not go FIRST: it
+matches names that say what a target **is**, and most extensions are named for what they **do**.
+`SonicPlayerShare` matches nothing in it, so a project with one share extension counted two app
+schemes and refused to run at all.
+
+> **`xcodebuild -showBuildSettings` is deliberately not in this ladder**, despite being the most direct
+> read. Measured at **1.9 s per scheme**, and it prints the settings of *every* target the scheme
+> builds — for `SonicPlayerShare` it emitted `PRODUCT_TYPE = app-extension` *and* `PRODUCT_TYPE =
+> application`, because the scheme builds the host app too. A `grep | head -1` against that output is a
+> coin toss. Against the 1130-scheme project below it is also over half an hour.
 
 **Exclude dependency schemes first** (`Pods/`, `Carthage/`, `.build/`, `DerivedData/`) — CocoaPods
 and SPM generate one per dependency and none of them is the app.
@@ -614,10 +640,33 @@ the fallback for the cases it declines to guess at.
 xcrun simctl list devices available
 ```
 
-Selection priority (when no name specified):
-1. Latest iPhone Pro Max
-2. Latest iPhone Pro
-3. Any available iPhone
+**One matcher, four rungs.** Whatever the user typed — a class, a name, a UDID — goes through the
+same ladder, everything compared lowered. Stop at the first rung that matches anything:
+
+1. UDID, exact.
+2. Name, exact.
+3. Name, prefix.
+4. Name, substring.
+
+`iphone` and `ipad` need no branch of their own — they are rung 4 against a whole family. `ipad air`
+is rung 4 against two devices; `iPhone 17 Pro` is rung 2 against one per runtime. No argument means
+`iphone` fed through the same ladder: same behaviour as before, one code path.
+
+Rank whatever that rung returned and take the max:
+
+```
+(booted, runtime_version, tier, inches, name)
+```
+
+- **booted first** — booting a third simulator to run on it is slower and leaves the developer with three.
+- **tier** — `Pro Max` 3 › `Pro` 2 › `Air` 1 › rest 0, computed on the name with any `(…)` stripped:
+  the chip in parentheses lies about the tier, and `iPad mini (A17 Pro)` is not a Pro.
+- **inches** — the integer in `13-inch` / `11-inch`, else 0. Only iPads carry one; it breaks the Pro
+  tie, larger wins — matching the existing Pro Max preference for phones.
+
+**If nothing matches, list the available names.** An absence is a claim and needs its search path
+(Step 2.0, rule 2). A whole-name case-SENSITIVE compare once answered "no such device" to `ipad` on
+a machine holding twelve of them — the absence was really a spelling.
 
 ```bash
 xcrun simctl boot "$SIM_NAME" 2>/dev/null || true
@@ -665,6 +714,9 @@ xcrun devicectl list devices 2>&1
 
 Display the results as a formatted table showing Name, State (connected/unavailable), and Model. Then:
 
+- If `iphone` / `ipad` was given, filter the listing by name to that family FIRST — the class token
+  means the same thing here as in **3A.1**. Without this it would silently mean nothing when combined
+  with `device`, and a token that lies is worse than one that is absent
 - If a specific device name was provided in arguments, match it
 - Otherwise, **automatically pick the first device with State = `connected`** — no need to ask
 - If NO devices are connected: "No physical iOS device connected. Connect a device and try again, or use `/dev:launch ios sim`."
@@ -963,7 +1015,7 @@ container, say what is now running that was not before.
 | `launch.json` / `tasks.json` fails to parse | They are **JSONC** — comments and trailing commas. `json.loads` cannot read them, and stripping `//` corrupts `http://`. Use the string-aware parser in **2.2a**; on failure fall through to filename guessing and SAY SO |
 | `xcodebuild -list` shows few or no schemes | Report "no **shared** schemes", not "no schemes" — unshared ones live in gitignored `xcuserdata/` (**2.3.2**) |
 | The app on the simulator does not show the change you just built | Two runtimes almost certainly carry the same device name, so `-destination 'name=...'` and `simctl … booted` each picked — silently, and possibly differently. Target by **UDID**, or use `scripts/run-ios.sh` (**3A.0**), which resolves one and reuses it |
-| `run-ios.sh` exits 2 with "more than one app scheme" | It refuses to guess where **2.3.2** would. Pass `--scheme NAME`, or fall through to 3A.1–3A.4 |
+| `run-ios.sh` exits 2 with "more than one app scheme" | Now fires only when 2+ targets genuinely declare `com.apple.product-type.application` (**2.3.2**) — extensions and test targets no longer reach it. That case is ambiguous in fact and worth the question. Pass `--scheme NAME`, or fall through to 3A.1–3A.4 |
 | `run-android.sh` exits 2 with "no module applies the Android application plugin" | It prints the regex it matched and whether a version catalog was found. A catalog project whose alias is unusual needs `--module :name` |
 | `run-android.sh` exits 2 with "more than one Android application module" | It refuses to guess where **2.4.1** would pick the first. Pass `--module :name` |
 | The Android app installs but the change is missing | Gradle's `install*` task fans out to every connected device, and `adb install` exits 0 while printing `Failure`. Use **3C.0**, which targets one serial and reads adb's stdout as the status |
