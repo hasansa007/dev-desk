@@ -11,7 +11,7 @@ description: >
   Reports by default; writing needs `--apply`.
   Trigger on: "trim the comments", "apply the documentation rule to this repo", "these docstrings
   are too long", "strip the redundant comments", "bring this codebase to the comment budget".
-allowed-tools: [git, rg, grep, sed, npm, pnpm, yarn, pytest, go, cargo, gradle]
+allowed-tools: [git, rg, grep, python3, npm, pnpm, yarn, eslint, pytest, ruff, flake8, pylint, mypy, go, cargo, gradle, mvn]
 ---
 
 # trim — bring existing code to the documentation budget
@@ -49,7 +49,11 @@ deletes, and removing any changes behaviour or breaks a build:
   docstrings are a **build artifact**. Exclude by default and say so — deleting them silently
   changes a published site. Universal Rules carries the same carve-out for code being written.
 
-This list is Phase 5's check-2 inventory. It is not advisory.
+**Three of these five are gated; two are scoping.** The pragmas, the licence headers and the
+doc-generation blocks are comments, so they are check-2's inventory and a missing one fails the run.
+Generated/vendored trees and comment-shaped text inside string literals are **not** comments — no
+gate can see them go, so they are enforced by never being visited. Skip them in discovery; a gate
+will not save you.
 
 ## Phase 3 — Classify, never sweep
 
@@ -85,8 +89,15 @@ Preconditions, checked only under `--apply`:
 1. `git status --porcelain` is **empty**. A dirty tree means an unrelated edit gets swept into a
    commit labelled comment-only, and Phase 5 then compares against a baseline that was never trim's.
 2. The repo is a write boundary (`shared/entry.md`): name `owner/repo`, cut a new branch.
-3. Record the project's test and lint commands. No lint command is a **reported gap**, not a pass —
-   check 2's whole hazard class fails lint, never tests.
+3. Record the project's test and lint commands, and **run both now**. Green before is what makes
+   red after mean something; without that baseline a pre-existing failure gets reported as a
+   pragma this tool deleted. A red baseline is a **stop**, not a caveat. No lint command is a
+   **reported gap**, not a pass — check 2's whole hazard class fails lint, never tests.
+
+**A module is one directory of source files, not a package and not a file.** Take the deepest
+directory that directly contains source, and never recurse into a child directory in the same pass.
+The unit has to stay small for the same reason the next rule exists: the whole point is that one
+module's classification fits in one context.
 
 Then, **per module, in this order**:
 
@@ -119,6 +130,13 @@ permit. Delete an `eslint-disable`, a `# noqa` or a licence header and both side
 *identically*, so check 1 goes green on exactly the five categories Phase 2 calls load-bearing.
 **Check 2 is the only gate that sees this**, which is why Phase 2's list is an inventory rather than
 advice, and why lint runs alongside the tests: a removed pragma fails lint and no test.
+
+**A docstring is not a comment.** In Python, and in any language whose doc lives in a string
+expression, the one allowed line sits *inside* the function and is part of the AST. So CHECK 1 is
+defined over **comments and docstrings** there, not comments alone — strip both from each side, or
+collapsing the docstring this tool exists to collapse trips the gate it must pass. Phase 2's
+string-literal exclusion means *incidental* `//` and `#` inside ordinary strings, never the
+docstring itself. A language where this split is unclear is one to report and skip, not guess at.
 
 Comment-stripping must be **string-aware**. A naive strip corrupts `http://` and any regex holding
 a `#` — the same defect `dev:launch` 2.2a documents for JSONC. A stripper that cannot prove itself

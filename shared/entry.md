@@ -125,7 +125,16 @@ this pipeline exists to refuse.
 | `dev:docs` | 12 | always only |
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
-| `dev:trim` | — | **Guiding Principles + Universal Rules only** — it applies Short Documentation, so it must read it |
+| `dev:launch-kill` | — | **nothing** — a tool; it reads `dev:launch`'s discovery, not this pipeline |
+| `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and Phase 3 |
+| `dev:issues` | — | **nothing** — a read-only board; Right-Size on a board is the ceremony this pipeline refuses |
+| `dev:trim` | — | **Guiding Principles + Universal Rules** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
+
+**A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
+are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the
+ceremony GUIDE principle 4 refuses. That is why every tool row above reads `nothing` — except
+`dev:trim`, which is a tool that **applies a rule**, and a rule it has not read is a rule it will
+improvise. Read what you consume; name it in the row.
 
 **The `dev:create-*` doors take no tier**, which is the one exception to the always-load list above.
 A tier answers *how much process does building this deserve* — filing builds nothing, and Phase 0 is
@@ -177,6 +186,9 @@ fields you inferred rather than resolved.
 | `dev:review` | 15 | a PR number | **loop** ↺ |
 | `dev:prod` | 16 | pre-prod + prod branches | stage |
 | `dev:launch` | — | a project to launch | **tool** |
+| `dev:launch-kill` | — | a project to stop | **tool** |
+| `dev:shots` | — | a running app | **tool** |
+| `dev:issues` | — | the repo's tracker | **tool** |
 | `dev:trim` | — | a repo or a path | **tool** |
 
 **Why these phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning

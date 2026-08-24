@@ -181,11 +181,12 @@ standalone members start at 11 and not earlier, and why an epic cannot resume mi
 **4. Ceremony is the failure mode, not sloppiness.** *A slow pipeline that gets skipped protects
 nothing.* Every addition must earn the tier it lands in. Prefer conditional over mandatory.
 
-> **Budget: `shared/pipeline.md` stays under 975 lines** (957 at 2026-08-23). Not a style
+> **Budget: `shared/pipeline.md` stays under 960 lines** (957 at 2026-08-24). Not a style
 > preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
 > than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
 > `wc -l shared/pipeline.md` before you write. The number stays deliberately close to current: this
-> file grew 593 → 938 without ever losing a rule, and an unstated ceiling is not a ceiling.
+> file grew 593 → 938 on rules alone, and an unstated ceiling is not a ceiling. It has since lost
+> rules — see the note below — which is the reason the gap is kept tight rather than comfortable.
 >
 > **2026-08-23 — raised 950 → 975, because the cheaper move was worse.** Staying under 950 for the
 > Short Documentation rule was done by emptying Phase 9's Surgical Protocol into a pointer at the
@@ -194,6 +195,11 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > strictly weaker at the destination — `Clean your own mess` lost *parameter*, `Commitment to flow`
 > lost the actionable *delete it*. The bullets were restored and the ceiling moved instead.
 > **Relocating a rule away from its point of use is not a deletion**, and does not pay for one.
+>
+> **2026-08-24 — corrected 975 → 960.** Raising by 25 to absorb 8 left 18 free lines, so the
+> deletion-pays-for-addition gate would not have fired again for a long time, and the precedent set
+> was *raise the ceiling* — available to every future addition. A ceiling with slack is not a
+> ceiling. Take the smallest raise that admits the change, or take none.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.
