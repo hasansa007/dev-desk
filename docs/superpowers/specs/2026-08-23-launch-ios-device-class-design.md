@@ -1,7 +1,7 @@
 # `dev:launch` — say which iOS device class, and stop counting extensions as apps
 
 **Date:** 2026-08-23
-**Status:** approved, not yet implemented
+**Status:** implemented — `run-ios.sh` 2026-08-24, `SKILL.md` 2026-08-24 (all three rows of the Files table below)
 **Touches:** `skills/launch/scripts/run-ios.sh`, `skills/launch/SKILL.md`
 
 ---
