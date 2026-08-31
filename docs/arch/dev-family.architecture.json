@@ -288,7 +288,7 @@
         {
           "path": "shared/pipeline.md",
           "line": 110,
-          "end_line": 916,
+          "end_line": 946,
           "label": "Phases 0-16"
         },
         {
@@ -299,8 +299,8 @@
         },
         {
           "path": "shared/pipeline.md",
-          "line": 935,
-          "end_line": 958,
+          "line": 965,
+          "end_line": 988,
           "label": "Universal Rules"
         }
       ]
@@ -446,8 +446,8 @@
         },
         {
           "path": "shared/pipeline.md",
-          "line": 526,
-          "end_line": 624,
+          "line": 556,
+          "end_line": 654,
           "label": "Phase 11"
         }
       ],
@@ -473,8 +473,8 @@
         },
         {
           "path": "shared/pipeline.md",
-          "line": 625,
-          "end_line": 676,
+          "line": 655,
+          "end_line": 706,
           "label": "Phase 12"
         }
       ],
@@ -500,8 +500,8 @@
         },
         {
           "path": "shared/pipeline.md",
-          "line": 697,
-          "end_line": 829,
+          "line": 727,
+          "end_line": 859,
           "label": "Phase 14"
         }
       ],
@@ -527,8 +527,8 @@
         },
         {
           "path": "shared/pipeline.md",
-          "line": 874,
-          "end_line": 916,
+          "line": 904,
+          "end_line": 946,
           "label": "Phase 16"
         },
         {
@@ -558,8 +558,8 @@
         },
         {
           "path": "shared/pipeline.md",
-          "line": 830,
-          "end_line": 873,
+          "line": 860,
+          "end_line": 903,
           "label": "Phase 15"
         }
       ],
