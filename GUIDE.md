@@ -117,6 +117,7 @@ The work already exists and you want a single stage:
 | *"kill the dev server"* / *"free the port"* | `/dev:launch-kill` — stops what `launch` started, in this worktree only |
 | *"screenshot the app"* / *"app store screenshots"* | `/dev:shots` — captures iOS/Android/web; drives the project's own suite when it has one |
 | *"trim the comments"* / *"these docstrings are too long"* | `/dev:trim` — existing code to the doc budget; reports unless `--apply` |
+| *"what's wrong with this app"* / *"the architecture is inconsistent"* | `/dev:survey` — finds bugs and drift, verifies each, files the confirmed |
 | *"what should I work on?"* / nothing at all | `/dev:issues` — the tracker board, read-only. This is what bare `/dev` now does |
 
 **Starting mid-pipeline never leaves you stranded.** Whichever one you invoke, it finishes by naming
