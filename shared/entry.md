@@ -135,9 +135,10 @@ this pipeline exists to refuse.
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
 are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the
 ceremony GUIDE principle 4 refuses. That is why every tool row above reads `nothing` — except
-`dev:trim` and `dev:survey`. `trim` **applies a rule**, and a rule it has not read is a rule it will
-improvise; `survey` **fans out wider than any phase does**, so the one section a tool would normally
-skip — Right-Size — is the one it most needs. Read what you consume; name it in the row, and let the
+`dev:trim`, `dev:survey` and `dev:arch`. `trim` **applies a rule**, and a rule it has not read is a
+rule it will improvise; `survey` **fans out wider than any phase does**, so the one section a tool
+would normally skip — Right-Size — is the one it most needs; `arch` **refuses targets**, and
+Simplicity First is the rule it refuses them with. Read what you consume; name it in the row, and let the
 row disagree with the default when the door earns it.
 
 **The `dev:create-*` doors take no tier**, which is the one exception to the always-load list above.
