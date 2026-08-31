@@ -129,6 +129,7 @@ this pipeline exists to refuse.
 | `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
 | `dev:issues` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
 | `dev:trim` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
+| `dev:survey` | — | **Guiding Principles + Universal Rules + Phase 0** — it files, so it needs Phase 0; it skips Right-Size, having no phase to size |
 
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
 are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the
@@ -190,6 +191,7 @@ fields you inferred rather than resolved.
 | `dev:shots` | — | a running app | **tool** |
 | `dev:issues` | — | the repo's tracker | **tool** |
 | `dev:trim` | — | a repo or a path | **tool** |
+| `dev:survey` | — | an existing app | **tool** → feeds Phase 0 |
 
 **Why these phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning
 lives only in the conversation that produced it — there is no artifact to hand a fresh session.
