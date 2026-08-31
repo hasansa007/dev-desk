@@ -12,7 +12,7 @@ description: >
   Trigger on: "what's wrong with this app", "find the bugs in this codebase", "survey the code",
   "audit the architecture", "is this MVVM or clean", "the architecture is inconsistent",
   "what should we fix", "review the whole app".
-allowed-tools: [git, gh, rg, grep]
+allowed-tools: [git, gh, rg, grep, Write, Agent]   # Write: the report. Agent: one surveyor per flow.
 ---
 
 # survey — read the app, report what is wrong, file the confirmed
@@ -30,8 +30,8 @@ The output is a report and, on confirmation, issues. `/dev #N` does the work aft
 |---|---|---|
 | (nothing) | every flow it can discover | this |
 | A flow name (`checkout`) | that flow only | all |
-| `--arch` | the architecture pass only, no bug hunt | both |
-| `--bugs` | the bug pass only | both |
+| `--arch` | Phase 6 only — skip Phases 4 and 5 entirely | both |
+| `--bugs` | Phases 4 and 5 only — skip Phase 6 | both |
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
@@ -45,8 +45,10 @@ tracker has made the board worse. One call, as `dev:issues` Phase 3 does it:
 gh issue list --state open --limit 200 --json number,title,labels
 ```
 
-Match candidates against these by symptom, not by title string. A duplicate is reported as
-*already tracked as #N*, never filed again.
+Match on **the file path a finding names plus its symptom**, not on title similarity — two issues
+about `cart.ts` losing state are the same bug under different words, and two about different files
+are not the same bug under the same words. When the match is uncertain, file nothing and report it
+as **possible duplicate of #N**: a wrong merge hides a real bug, and a wrong split costs one close.
 
 ## Phase 3 — Discover the flows from evidence
 
@@ -68,8 +70,8 @@ flows, because the difference changes what a finding means.
 
 ## Phase 4 — Fan out, one surveyor per flow
 
-Dispatch one agent per flow (`superpowers:dispatching-parallel-agents`). **One flow per agent, never
-two.** A whole codebase does not fit one context, and a surveyor that runs out mid-flow does not
+**Skipped under `--arch`.** Otherwise dispatch one agent per flow
+(`superpowers:dispatching-parallel-agents`). **One flow per agent, never two.** A whole codebase does not fit one context, and a surveyor that runs out mid-flow does not
 announce it — it just returns fewer findings, which reads exactly like a clean flow.
 
 Each surveyor returns, per finding: the symptom, the file and line, the **mechanism** that produces
@@ -98,7 +100,8 @@ checking — the same tell as `dev:trim`'s "a run that keeps nothing".
 
 ## Phase 6 — The architecture pass — count before recommending
 
-Separate from the bug hunt, and it produces **an ADR or an epic, never a pile of bug issues**.
+**Skipped under `--bugs`.** Separate from the bug hunt, and it produces **an ADR or an epic, never
+a pile of bug issues**.
 
 1. **Name what is actually there, with counts.** *"11 screens: 7 MVVM, 3 MVC, 1 TCA"* — measured by
    reading them, and say how you counted.
@@ -143,8 +146,10 @@ Ask before filing anything. Then, for the confirmed set:
 - **Every filed issue names the files it touches**, and two issues touching the same file are marked
   as blocking. That is what makes them startable in parallel — `dev:issues` Phase 5 can then order
   them instead of guessing.
-- **Cap the filing and say so.** A survey that files thirty issues has produced a backlog nobody
-  reads. Offer the top ones by cost, name the number held back, and leave the rest in the report.
+- **File at most 10 per run, and name what was held.** `dev:issues` shows the top 2–3 of NEXT, so
+  ten is already more board than anyone reads at once; thirty is a backlog that gets skipped
+  wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim
+  that can be argued with. The rest stay in the report, which is why the report is written first.
 
 ## Never
 
