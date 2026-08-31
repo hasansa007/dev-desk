@@ -205,6 +205,17 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
   diagram says what the code is wired to do, never what production actually did.
 - **Never draw from memory of a codebase.** Re-read at the commit you are pinning to.
 - **Say which commit.** The artifact is only as true as the SHA it was built from.
+- **Re-pin after a squash or rebase merge.** Both rewrite history, so the SHA the artifact was
+  delivered at stops being reachable and a fresh clone fails `repository-evidence/revision-unavailable`.
+  It keeps validating on the machine that built it, because the orphaned object is still in `.git`
+  until `gc` — so this passes locally and breaks for everyone else. Re-pin to the merge commit,
+  **verify the trees match first**, then re-`deliver`:
+  ```bash
+  git rev-parse <branch-tip>^{tree}   # must equal
+  git rev-parse <merge-commit>^{tree} # this one
+  ```
+  Identical trees mean the merge commit holds byte-for-byte what was read, so advancing the pin
+  states no new claim. **Different trees mean re-read** — the merge changed something.
 
 ## Never
 
