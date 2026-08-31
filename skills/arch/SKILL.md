@@ -148,13 +148,38 @@ scoped to what can be proven, and stated out loud where it cannot.
 **Resolve the commit before reading anything, and pin to that:**
 
 ```bash
-git -C <repo> rev-parse HEAD        # the full 40-char SHA meta.repository needs
-git -C <repo> status --porcelain    # must be EMPTY
+SHA=$(git -C <repo> rev-parse HEAD)   # record it ONCE, before opening any file
+git -C <repo> status --porcelain      # must be EMPTY
 ```
 
-A dirty tree is the one failure the validator cannot catch: you read line 160 in the working file,
-the pinned blob is 40 lines shorter, and the range still validates — against different bytes than
-you read. Commit or stash first, or pin to a commit whose blobs are what you actually opened.
+A dirty tree is one failure the validator cannot catch: you read line 160 in the working file, the
+pinned blob is 40 lines shorter, and the range still validates — against different bytes than you
+read. Commit or stash first, or pin to a commit whose blobs are what you actually opened.
+
+**`status --porcelain` does NOT cover the other half, and this is the one that has actually bitten.**
+It reports whether the tree is dirty, never whether **HEAD is still the commit you resolved**. A
+branch switch, a `pull`, a `reset`, another agent, or the developer working in a second terminal all
+move HEAD while leaving `status` perfectly empty. Both checks then pass, and every pin resolves —
+against a commit whose files you never opened.
+
+So re-assert it **immediately before `validate`**, not only at the start:
+
+```bash
+[ "$(git -C <repo> rev-parse HEAD)" = "$SHA" ] || echo "HEAD MOVED — every read is void"
+git -C <repo> status --porcelain      # still empty
+```
+
+**If HEAD moved, re-READ. Do not re-pin.** Bumping the SHA to the new HEAD makes the artifact
+validate and is a lie: the line numbers came from files you opened at the old commit. Re-pinning is
+only ever legitimate when the cited paths are byte-identical — see the pin rule under *Rules*.
+
+> **2026-08-31 — how this was found.** A run resolved `gh-14-dev-arch@98f9216`, read the skills, and
+> was about to pin. Between the first read and the pin the repo moved to `main@4209057`.
+> `status --porcelain` was empty at both ends. `shared/entry.md` was 272 lines in the tree and 241 at
+> the SHA about to be pinned; `skills/survey/SKILL.md` 290 vs 161. A citation of line 244 would have
+> validated green against a 241-line file at the *other* commit, or failed for a reason that looked
+> like a typo. Caught by hand, by comparing `git show <sha>:<file> | wc -l` against the worktree —
+> which is the check this section now requires.
 
 The pin is proven, not trusted: a line past end-of-file, a path absent at that commit, and an
 unknown SHA each fail with their own rule code — `repository-evidence/line-out-of-range`,
@@ -204,6 +229,8 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
 - **Never claim runtime behaviour.** Reach, routes, and roles are *authored* relationships. The
   diagram says what the code is wired to do, never what production actually did.
 - **Never draw from memory of a codebase.** Re-read at the commit you are pinning to.
+- **Re-assert HEAD before validating.** Resolving the SHA once at the start proves nothing if the
+  branch moves while you read. A clean `status` does not mean a still HEAD.
 - **Say which commit.** The artifact is only as true as the SHA it was built from.
 - **Pin to a commit that is already on the base branch when you can.** A squash or rebase merge
   rewrites the branch's commits, so a pin to the branch tip becomes unreachable and a fresh clone
