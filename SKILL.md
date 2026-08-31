@@ -121,6 +121,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:launch-kill` | — | a project to stop | "kill the dev server", "free the port" — `launch` inverted |
 | `dev:shots` | — | a running app | "screenshot the app", "app store screenshots" — capture, iOS/Android/web |
 | `dev:trim` | — | a repo or a path | "trim the comments" — existing code to the doc budget; reports unless `--apply` |
+| `dev:arch` | — | a system to draw | "draw the architecture", "map this system" — verifiable diagram; renders via Archify |
 | `dev:survey` | — | an existing app | "what's wrong with this app" — finds bugs + architectural drift, files the confirmed |
 | `dev:issues` | — | the repo's tracker | "what should I work on?" — read-only board; **bare `/dev` routes here** |
 

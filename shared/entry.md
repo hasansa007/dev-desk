@@ -129,6 +129,7 @@ this pipeline exists to refuse.
 | `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
 | `dev:issues` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
 | `dev:trim` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
+| `dev:arch` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size; it consumes Simplicity First, which is what lets it REFUSE a diagram the target does not need |
 | `dev:survey` | — | **Guiding Principles + Universal Rules + Right-Size** — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
 
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
@@ -152,6 +153,13 @@ It belongs in this repo because it is the pipeline's only **personal-skill** dep
 else the pipeline calls (`superpowers:*`, `/code-review`, `security-review`, `frontend-design`,
 `supabase`, `feature-dev:*`) is a plugin that installs anywhere. `dev:launch` is the one that would
 simply be missing after a clone, taking mobile verification down with it.
+
+**`dev:arch` is the family's one THIRD-PARTY dependency, and a different category again.** It renders
+through [Archify](https://github.com/tt-a1i/archify) — an external MIT package, not an Anthropic
+plugin and not a personal skill — and it does not degrade: without Archify the door stops rather than
+falling back to an unvalidated picture, because the validator is the entire reason to prefer it over
+a hand-drawn SVG. That coupling is deliberate and it is the skill's largest risk; it is written down
+in that skill's *Known limits* rather than left for a reader to discover.
 
 `dev:docs` reads `PROJECT_MAP.md` as its *subject*, not as context load — checking whether it is
 current is the job, not the preparation.
@@ -193,6 +201,7 @@ fields you inferred rather than resolved.
 | `dev:shots` | — | a running app | **tool** |
 | `dev:issues` | — | the repo's tracker | **tool** |
 | `dev:trim` | — | a repo or a path | **tool** |
+| `dev:arch` | — | a system to draw | **tool** |
 | `dev:survey` | — | an existing app | **tool** → feeds Phase 0 |
 
 **Why these phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning

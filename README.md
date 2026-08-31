@@ -88,6 +88,11 @@ else the pipeline reaches for — `superpowers:*`, `/code-review`, `security-rev
 the one that would simply be missing after a clone, taking mobile verification down with it and
 leaving nothing to explain why.
 
+`dev:arch` is a third category and the only one of its kind here: it depends on
+[Archify](https://github.com/tt-a1i/archify), an external MIT package. It does not degrade — without
+Archify the door stops rather than drawing something unvalidated, since the validator is the whole
+reason to prefer it over a hand-authored SVG.
+
 ---
 
 ## Installing
