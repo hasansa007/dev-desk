@@ -17,7 +17,9 @@
 # This resolves ONE device UDID and hands the same one to every step.
 #
 #   run-ios.sh                            # newest booted iPhone, else the newest available one
+#   run-ios.sh ipad                       # a device CLASS — the same ladder over iPads
 #   run-ios.sh "iPhone 17 Pro Max"        # a device by name — newest runtime wins if it repeats
+#   run-ios.sh "ipad air"                 # any substring of a name, case-insensitive
 #   run-ios.sh <UDID>                     # exactly that device
 #   run-ios.sh --scheme App               # when the project has more than one app scheme
 #   run-ios.sh --root path/to/repo        # project root, if not the current git worktree
@@ -110,52 +112,113 @@ if [[ -z "$XCODE_FILE" ]]; then
 fi
 
 # --- Scheme ------------------------------------------------------------------------------------
+# Two filters, cheap one first. The name blocklist drops tests and the extensions that are named
+# for what they are; the pbxproj DECLARATION drops the ones named for what they do — a share
+# extension called `AppShare` matches nothing in the list, so a project with one used to report two
+# app schemes and refuse to run. Step 2.0 rule 3: read the statement, do not infer it from a name.
+PICK_SCHEME=$(cat <<'PY'
+import json, os, re, sys
+
+root = sys.argv[1] if len(sys.argv) > 1 else "."
+try:
+    container = json.load(sys.stdin)
+except Exception:
+    container = {}
+container = container.get("project") or container.get("workspace") or {}
+schemes = container.get("schemes", [])
+
+if not schemes:
+    # "no SHARED schemes", never "no schemes": unshared ones live in gitignored xcuserdata/, so a
+    # fresh clone legitimately lists none while the project has plenty. Different facts.
+    sys.stderr.write("run-ios.sh: no shared app scheme in this project.\n")
+    sys.stderr.write("  Unshared schemes live in gitignored xcuserdata/ and are invisible here. Pass --scheme NAME.\n")
+    sys.exit(1)
+
+SKIP = {"Pods", "Carthage", ".build", "DerivedData", "node_modules", ".git"}
+
+def walk():
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in SKIP]
+        yield dirpath, filenames
+
+def read(path):
+    try:
+        return open(path, encoding="utf-8", errors="replace").read()
+    except OSError:
+        return ""
+
+# 1 — the name blocklist. Correct about tests, which no product type can distinguish: a Tests
+# scheme BUILDS the app target, so the declaration below would call it an app scheme.
+def plausible(s):
+    if s.endswith(("Tests", "UITests")):
+        return False
+    return not any(k in s for k in ("Widget", "Screenshot", "Watch", "Extension", "Clip"))
+
+survivors = [s for s in schemes if plausible(s)] or schemes
+
+if len(survivors) > 1:
+    # 2 — the declaration: target -> productType, from every pbxproj that is not a dependency's.
+    product_type = {}
+    for dirpath, filenames in walk():
+        if "project.pbxproj" not in filenames:
+            continue
+        text = read(os.path.join(dirpath, "project.pbxproj"))
+        parts = re.split(r"isa = (\w+);", text)
+        for i in range(1, len(parts) - 1, 2):
+            if parts[i] != "PBXNativeTarget":
+                continue
+            body = parts[i + 1]          # runs to the next object, whatever its indentation
+            pt = re.search(r'\bproductType = "([^"]+)";', body)
+            if not pt:
+                continue
+            names = re.findall(r'^\s*name = (?:"([^"]*)"|([^;\n]+));\s*$', body[:pt.start()], re.M)
+            if names:
+                last = names[-1]
+                product_type[last[0] or last[1]] = pt.group(1)
+
+    # A scheme's target is its BlueprintName where a .xcscheme declares one, else its own name,
+    # which is what Xcode's autocreated schemes use.
+    blueprints = {}
+    for dirpath, filenames in walk():
+        if os.path.basename(dirpath) != "xcschemes":
+            continue
+        for fn in filenames:
+            if fn.endswith(".xcscheme"):
+                found = re.findall(r'BlueprintName = "([^"]+)"', read(os.path.join(dirpath, fn)))
+                blueprints.setdefault(fn[:-len(".xcscheme")], []).extend(found)
+
+    # Exactly this string. `com.apple.product-type.application.watchapp2` starts with it and is not
+    # the app to launch on an iPhone.
+    apps = [s for s in survivors
+            if any(product_type.get(t) == "com.apple.product-type.application"
+                   for t in [s] + blueprints.get(s, []))]
+    if apps:
+        survivors = apps
+
+if len(survivors) == 1:
+    print(survivors[0])
+    sys.exit(0)
+
+sys.stderr.write("run-ios.sh: more than one app scheme — pass --scheme NAME.\n")
+sys.stderr.write("  candidates: %s\n" % ", ".join(survivors))
+sys.exit(1)
+PY
+)
+
 if [[ -n "$SCHEME_ARG" ]]; then
   SCHEME="$SCHEME_ARG"
 else
-  SCHEME=""
-  ALL_SCHEMES=""
-  SCHEME_COUNT=0
-  while IFS= read -r candidate; do
-    [[ -z "$candidate" ]] && continue
-    SCHEME_COUNT=$((SCHEME_COUNT + 1))
-    [[ -z "$SCHEME" ]] && SCHEME="$candidate"
-    ALL_SCHEMES="${ALL_SCHEMES:+$ALL_SCHEMES, }$candidate"
-  done < <(xcodebuild -list -json $XCODE_FLAG "$XCODE_FILE" 2>/dev/null | python3 -c '
-import json, sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    sys.exit(0)
-container = d.get("project") or d.get("workspace") or {}
-for s in container.get("schemes", []):
-    if s.endswith(("Tests", "UITests")):
-        continue
-    if any(k in s for k in ("Widget", "Screenshot", "Watch", "Extension", "Clip")):
-        continue
-    print(s)
-')
-
-  if [[ "$SCHEME_COUNT" -eq 0 ]]; then
-    # "no SHARED schemes", never "no schemes": unshared ones live in gitignored xcuserdata/, so a
-    # fresh clone legitimately lists none while the project has plenty. Different facts.
-    echo "run-ios.sh: no shared app scheme in $XCODE_FILE." >&2
-    echo "  Unshared schemes live in gitignored xcuserdata/ and are invisible here. Pass --scheme NAME." >&2
-    exit 2
-  elif [[ "$SCHEME_COUNT" -gt 1 ]]; then
-    echo "run-ios.sh: more than one app scheme — pass --scheme NAME." >&2
-    echo "  candidates: $ALL_SCHEMES" >&2
-    exit 2
-  fi
+  SCHEME="$(xcodebuild -list -json $XCODE_FLAG "$XCODE_FILE" 2>/dev/null | python3 -c "$PICK_SCHEME" "$PROJECT_ROOT")" || exit 2
 fi
 
 # --- Device ------------------------------------------------------------------------------------
-# A booted device outranks a newer shutdown one: booting a third simulator to run on it is slower
-# and leaves the developer with three.
+# One matcher, four rungs, so `ipad` needs no code of its own — it is a substring match against a
+# family. A booted device outranks a newer shutdown one: booting a third simulator to run on it is
+# slower and leaves the developer with three.
 PICK_DEVICE=$(cat <<'PY'
 import json, re, sys
 
-want = sys.argv[1] if len(sys.argv) > 1 else ""
+want = (sys.argv[1] if len(sys.argv) > 1 else "").strip()
 data = json.load(sys.stdin)
 
 def runtime_version(identifier):
@@ -180,19 +243,33 @@ if not candidates:
     sys.stderr.write("run-ios.sh: no available iOS simulators.\n")
     sys.exit(1)
 
-if want:
-    matches = [c for c in candidates if c["udid"] == want] or \
-              [c for c in candidates if c["name"] == want]
-    if not matches:
-        sys.stderr.write("run-ios.sh: no available simulator named or identified by %r.\n" % want)
-        sys.exit(1)
-    pick = max(matches, key=lambda c: c["version"])
-else:
-    phones = [c for c in candidates if c["name"].startswith("iPhone")] or candidates
-    def rank(c):
-        tier = 2 if "Pro Max" in c["name"] else 1 if "Pro" in c["name"] else 0
-        return (c["booted"], c["version"], tier)
-    pick = max(phones, key=rank)
+# The ladder. Stop at the first rung that matches anything. `iphone` and `ipad` are rung 4 against
+# a whole family; `iPhone 17 Pro` is rung 2 against one device per runtime. Everything is compared
+# lowered, because a whole-name case-SENSITIVE compare answered "no such device" to `ipad` on a
+# machine holding twelve of them — an absence that was really a spelling.
+needle = (want or "iPhone").lower()
+matches = ([c for c in candidates if c["udid"].lower() == needle]
+        or [c for c in candidates if c["name"].lower() == needle]
+        or [c for c in candidates if c["name"].lower().startswith(needle)]
+        or [c for c in candidates if needle in c["name"].lower()])
+
+if not matches and not want:
+    matches = candidates          # no iPhone at all: run on whatever this machine has
+
+if not matches:
+    # Step 2.0 rule 2 — absence is a claim, and a claim needs its search path attached.
+    sys.stderr.write("run-ios.sh: no available iOS simulator matches %r.\n" % want)
+    sys.stderr.write("  available: %s\n" % ", ".join(sorted({c["name"] for c in candidates})))
+    sys.exit(1)
+
+def rank(c):
+    # The chip goes in parentheses and lies about the tier: "iPad mini (A17 Pro)" is not a Pro.
+    base = re.sub(r"\s*\([^)]*\)", "", c["name"])
+    tier = 3 if "Pro Max" in base else 2 if "Pro" in base else 1 if "Air" in base else 0
+    inches = re.search(r"(\d+)-inch", base)
+    return (c["booted"], c["version"], tier, int(inches.group(1)) if inches else 0, base)
+
+pick = max(matches, key=rank)
 
 print("\t".join([
     pick["udid"],
