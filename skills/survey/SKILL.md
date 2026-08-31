@@ -97,6 +97,21 @@ ranked by cost. Everything downstream reads "flow" as "flow or fallback unit".
 not fit one context, and a surveyor that runs out mid-flow does not announce it — it just returns
 fewer findings, which reads exactly like a clean flow.
 
+**Live progress is `/tasks`, not something this skill prints.** The harness already shows every
+running subagent with its elapsed time and token count, live and continuously — a snapshot printed
+between dispatches would be strictly worse. **Name the flow in each agent's task description**
+(`survey: checkout`) so that view is readable at a glance instead of six identical rows, and point
+the developer at `/tasks` when you declare the fan-out.
+
+**What `/tasks` cannot show, and this skill must record**, per surveyor as it returns:
+
+- **the finding count** — `/tasks` knows an agent finished, not what it concluded
+- **done-with-nothing vs died** — both leave no findings, and they mean opposite things. A crashed
+  surveyor read as a clean flow is the failure mode this whole phase exists to prevent
+- **duration, tokens and tool calls at completion** — `/tasks` shows them live and they are gone
+  once the run ends; Phase 7 reconciles the estimate against them, and unrecorded, the estimate can
+  never get better
+
 **Declare the fan-out and get a word before spending it** (Right-Size, `shared/pipeline.md`): *"18
 flows → 18 surveyors, then ~2 checkers per finding. Go, or narrow it?"* This is the family's largest
 fan-out — 60 routes is 60 surveyors and can be 300 checkers — and Right-Size forbids opening one on
@@ -120,6 +135,12 @@ skill can file. A count is checked by recounting from the file list, independent
 Every finding gets **two independent checkers, each prompted to refute it**, and each must open the
 named file and its callers rather than reasoning from the finding's own text. Two, not one: a
 single checker that agrees produces a confirmation indistinguishable from a rubber stamp.
+
+**Checkers are the larger spend, and they scale on findings, not on flows.** Two per finding
+means a flow returning 5 findings costs 10 checkers — so the total is not knowable at Phase 4 and
+the declared estimate is a floor, not a bound. Say so when declaring it, report checker progress the
+same way as surveyors, and **stop and re-ask if the checker count passes twice the declared
+estimate** rather than spending through it silently.
 
 **Checkers never see each other's verdict**, and **disagreement resolves to PLAUSIBLE, never to
 CONFIRMED** — the safe verdict is the one that holds the finding out of the tracker, since a wrong
@@ -192,8 +213,40 @@ Flows: <n>, from <where they were declared>       Scope: <all | flow | --arch>
 Actual: <counts, and how counted>   Recommend: <the majority pattern>   Cost of doing nothing: <…>
 - <drift item> → <the move>
 
-## ALREADY TRACKED (n)    Refuted and dropped: <n>
+## ALREADY TRACKED (n)
+
+## COST
+Declared <shape>  ·  Actual <agents, wall, tokens, calls>  ·  Overrun <what and why, or none>
+<per-flow table: findings, duration, tokens, calls — FAILED rows included>
 ```
+
+### The `## COST` section — reconcile the estimate, or it never improves
+
+Right-Size makes this skill declare a fan-out before spending it. Declaring without ever reporting
+the actual is half a rule: the next run's estimate is then guesswork with a track record it cannot
+read.
+
+```
+## COST
+Declared   6 surveyors + ~2 checkers per finding  (floor: 12 agents)
+Actual     6 surveyors + 14 checkers = 20 agents · 7m04s wall · 412k tokens · 231 tool calls
+Overrun    +2 agents — one flow returned 5 findings where the floor assumed 2
+
+Per flow          findings   duration   tokens   calls
+  auth                   2      1m12s      38k      14
+  checkout               0        52s      21k       9
+  account                1      1m41s      47k      19
+  admin                  5      2m03s      61k      27   ← the overrun
+  build              FAILED     0m14s       3k       2   ← died, NOT clean
+  export                 0      1m08s      29k      11
+```
+
+- **A failed surveyor is a row, not a silence.** `FAILED` and `0 findings` mean opposite things and
+  a missing row means neither. Whatever a dead flow leaves behind, it is not evidence of clean code.
+- **Wall time is not the sum of the durations** when agents run concurrently. Report both: the sum
+  is what it cost, the wall is what it felt like.
+- **Run inline with no fan-out and this section says so**, with no per-agent figures invented. A
+  sequential run has no per-agent data, and a plausible-looking table is worse than its absence.
 
 ## Phase 8 — Offer to file, shaped for parallel work
 
