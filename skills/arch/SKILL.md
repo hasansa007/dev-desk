@@ -33,14 +33,25 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
 | `architecture` · `workflow` · `sequence` · `dataflow` · `lifecycle` | force the type | pick it from Phase 4's table |
 | `--showcase` | pass `--quality showcase` to `validate` and `deliver` | `--quality standard` |
 | `--open` | pass `--open` to `deliver` | off |
-| `--out <path>` | where the HTML lands | `$SCRATCH/<name>.html` |
+| `--out <path>` | where the HTML lands | `docs/arch/<name>.html` in the invoked repo |
+| `--scratch` | keep it out of the tree — a throwaway look | off |
 
-**`$SCRATCH` is the session scratch directory named in the environment** — never a path inside the
-target repository, and never invented. If no scratch directory is defined, ask for `--out` rather
-than guessing a location.
+**The artifact lands in the repo it was drawn from, next to its IR.** Write BOTH
+`docs/arch/<name>.architecture.json` and `docs/arch/<name>.html` — the JSON is what `dev:docs` re-validates
+later, and an HTML with no IR beside it cannot be checked by anything.
 
-**Nothing is written into the repository by default.** A diagram committed to a repo becomes
-`dev:docs`'s problem forever — see *Known limits*. Landing one is a deliberate, separate act.
+**This is only safe because the pins are re-checkable.** An evidenced architecture diagram is not
+prose: `archify validate <type> <ir> --repo-root .` re-runs every pin at the current commit and fails
+loudly when a cited file or line has moved. That is why `dev:docs` can own it — see *Known limits*
+for what that check still cannot catch.
+
+**Write into `$SCRATCH` instead — never a guessed path in the tree — when:**
+
+- `--scratch` was passed, or the diagram is a throwaway look at someone else's code
+- **the target is not the invoked repo.** `docs/arch/` means *this* repo's `docs/arch/`; a diagram of
+  another checkout does not land here. Draw it to `$SCRATCH` and say so
+- the diagram is one of the four **unevidenced** types — nothing can re-check it, so it must not sit
+  in the tree wearing the same authority as an evidenced one
 
 ## Phase 2 — Resolve the renderer
 
@@ -186,7 +197,9 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
 
 ## Rules
 
-- **Never write into the repository without being asked.** Default output is the scratch dir.
+- **Never write a diagram of ANOTHER repo into this one.** `docs/arch/` is for the invoked repo's own
+  system; anything else goes to `$SCRATCH`.
+- **Never land an artifact without its IR.** The `.json` beside the `.html` is what keeps it honest.
 - **Never present an unvalidated diagram.** If `deliver` did not pass, there is no artifact.
 - **Never claim runtime behaviour.** Reach, routes, and roles are *authored* relationships. The
   diagram says what the code is wired to do, never what production actually did.
@@ -207,7 +220,7 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
 | Evidence is `architecture`-only | `--repo-root` is refused on the other four types. They can be drawn but never proven, so they carry a spoken caveat where architecture carries a guarantee. Verified 2026-08-31 against Archify 2.16.0 |
 | `guide` cannot say "I don't know" | It falls back to `architecture` + `confidence: low` for anything it fails to keyword-match, which is indistinguishable from a real recommendation. Pick the type yourself when confidence is low |
 | Exports drop the evidence | Repository evidence is embedded for the Semantic Passport and Node Finder only. A PNG or SVG pulled out of the viewer carries none of it, so the image is not the artifact — the HTML is |
-| Diagram rot is worse than prose rot | A picture reads as authoritative long after it stops being true. Any artifact committed to a repo needs an owner in `dev:docs`; until that exists, keep output out of the tree |
+| Diagram rot is caught late, not never | A picture reads as authoritative long after it stops being true, so `dev:docs` re-validates every committed IR against the current commit and fails when a pin no longer resolves. That catches a MOVED file or line — it cannot catch a diagram whose pins all still resolve while the shape it draws is wrong. Structural rot still needs a human. Owner added 2026-08-31 |
 | The validator checks form, not truth | Schema, layout, routes and clearance all pass on a diagram that describes the wrong system. Phase 5 is the only thing standing between the two |
 | Upstream is young | Archify was created 2026-04-15. Popular is not audited; nobody in this family has read its source |
 | Its README is partly a funnel | It carries sponsor referral links. Read the technical claims on their merits |
