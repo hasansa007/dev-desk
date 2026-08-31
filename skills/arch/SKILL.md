@@ -186,9 +186,9 @@ checked, because it was — for form. Every node was still just an assertion. Th
 exists, and it is the single thing to get right if any of the rest is rewritten.
 
 **2026-08-31, later the same day — the first run that actually used evidence found three defects in
-the text above.** An architecture map of a real eleven-stage pipeline
-(`hasansa007/studyhub-deploy` at `4cb7c05`), 12 components, every one pinned and verified:
-`9/9 artifact checks`, `sha256 b539a7135671`, **two** validate cycles rather than eight — because
+the text above.** An architecture map of a real eleven-stage build pipeline in another repository,
+12 components, every one pinned to a verified commit: `9/9 artifact checks`,
+`sha256 b539a7135671`, **two** validate cycles rather than eight — because
 the one failing edge was deleted and its fact moved to a card, which is this skill's own advice and
 had never been tried.
 
