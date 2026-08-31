@@ -13,7 +13,7 @@ description: >
   Trigger on: "draw the architecture", "map this system", "diagram the pipeline", "show me how
   this fits together", "architecture diagram", "sequence diagram", "data flow diagram",
   "visualize the codebase", "make a diagram for the deck".
-allowed-tools: [node, git, rg, gh]
+allowed-tools: [node, npx, git, rg, curl, unzip]
 ---
 
 # arch — draw the system, and prove the drawing
@@ -31,9 +31,13 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
 |---|---|---|
 | A target (`the build pipeline`, `web/app/lib`, a description) | what to draw | required |
 | `architecture` · `workflow` · `sequence` · `dataflow` · `lifecycle` | force the type | pick it from Phase 4's table |
-| `--showcase` | the strict quality profile, for a deck | `standard` |
-| `--open` | open the artifact when it passes | off |
-| `--out <path>` | where the HTML lands | the repo's scratch dir, never the repo |
+| `--showcase` | pass `--quality showcase` to `validate` and `deliver` | `--quality standard` |
+| `--open` | pass `--open` to `deliver` | off |
+| `--out <path>` | where the HTML lands | `$SCRATCH/<name>.html` |
+
+**`$SCRATCH` is the session scratch directory named in the environment** — never a path inside the
+target repository, and never invented. If no scratch directory is defined, ask for `--out` rather
+than guessing a location.
 
 **Nothing is written into the repository by default.** A diagram committed to a repo becomes
 `dev:docs`'s problem forever — see *Known limits*. Landing one is a deliberate, separate act.
@@ -43,15 +47,26 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
 Archify is a **hard dependency** and this skill does not pretend otherwise. Resolve it in this
 order and stop at the first hit:
 
-1. An `archify` directory already extracted under the scratch dir
-2. A global install (`npx skills` put it in the agent's skill directory)
-3. Fetch `archify.zip` from the repo and extract it into the scratch dir
+1. `~/.claude/skills/archify/` — a previous install
+2. An `archify` directory already extracted under `$SCRATCH`
+3. Fetch and extract, then **say the version you got**
 
 ```bash
-node <archify>/bin/archify.mjs doctor
+export ARCHIFY_UPDATE_CHECK_DISABLED=1              # every invocation, see below
+# only if 1 and 2 both miss:
+curl -sSL -o "$SCRATCH/archify.zip" https://github.com/tt-a1i/archify/archive/refs/heads/main.zip
+unzip -q -o "$SCRATCH/archify.zip" -d "$SCRATCH"
+ARCHIFY=<the archify/ directory inside the extracted tree>
+node "$ARCHIFY/bin/archify.mjs" doctor
+node -e 'console.log(require("./package.json").version)' # RECORD this in the handoff
 ```
 
-**Export `ARCHIFY_UPDATE_CHECK_DISABLED=1` on every invocation.** Upstream performs a periodic
+The fetch is an unpinned branch archive over an unauthenticated download, and this skill's whole
+premise is proof — so the version is **recorded, not assumed**. Behaviour here is verified against
+**2.16.0**; if `doctor` reports another major, say so before trusting the receipt format or
+`--repo-root` semantics.
+
+**`ARCHIFY_UPDATE_CHECK_DISABLED=1` on every invocation.** Upstream performs a periodic
 update-reminder GET; it is documented and disableable, and a skill that runs it silently on the
 developer's behalf has made a networking decision that is not its to make.
 
@@ -74,10 +89,11 @@ restate the obvious.
 
 ## Phase 4 — Pick the type, then read the code
 
-Ask the renderer rather than guessing — it answers with a confidence level and says what to include:
+**Pick the type from the table below.** `guide` exists and may be consulted, but it is not the
+default and its answer is not authoritative:
 
 ```bash
-node <archify>/bin/archify.mjs guide "<one sentence describing the system>"
+node "$ARCHIFY/bin/archify.mjs" guide "<one sentence describing the system>"
 ```
 
 **`guide` is keyword-matched, and `architecture` + `confidence: low` is its NO-MATCH fallback, not
@@ -114,7 +130,20 @@ scoped to what can be proven, and stated out loud where it cannot.
   between the picture and a reader who assumes it was checked, because nothing in the artifact
   itself will say so.
 - A description-only diagram (no repository) is legitimate, and must be **labelled as such** in
-  the artifact's own cards.
+  the artifact's own cards. **Precedence:** "no repository" means no repository was given — it is
+  never a way out of evidencing an architecture diagram of code you can read. If a repo is in
+  scope, the first bullet governs and a component you cannot evidence is refused.
+
+**Resolve the commit before reading anything, and pin to that:**
+
+```bash
+git -C <repo> rev-parse HEAD        # the full 40-char SHA meta.repository needs
+git -C <repo> status --porcelain    # must be EMPTY
+```
+
+A dirty tree is the one failure the validator cannot catch: you read line 160 in the working file,
+the pinned blob is 40 lines shorter, and the range still validates — against different bytes than
+you read. Commit or stash first, or pin to a commit whose blobs are what you actually opened.
 
 The pin is proven, not trusted: a line past end-of-file, a path absent at that commit, and an
 unknown SHA each fail with their own rule code — `repository-evidence/line-out-of-range`,
@@ -125,17 +154,29 @@ other four types, only the spoken caveat does.
 ## Phase 6 — Author, validate, repair, deliver
 
 ```bash
-node <archify>/bin/archify.mjs validate <type> <ir.json>
-node <archify>/bin/archify.mjs deliver  <type> <ir.json> <out.html>
+node "$ARCHIFY/bin/archify.mjs" validate architecture <ir.json> --repo-root <repo>
+node "$ARCHIFY/bin/archify.mjs" deliver  architecture <ir.json> <out.html> --repo-root <repo>
+# the other four types take neither --repo-root nor evidence:
+node "$ARCHIFY/bin/archify.mjs" validate <type> <ir.json>
 ```
+
+**`--repo-root` is what makes the evidence checked.** Omit it and Archify never opens the repo, no
+`repository-evidence/*` rule can fire, and the run still prints `N/N artifact checks` — the exact
+"looked checked, was only checked for form" artifact this skill exists to prevent. If the receipt
+came from a run without `--repo-root`, it is not evidence of anything but layout.
 
 The validator returns machine-readable repairs — a stable rule code, the exact subject, measured
 evidence, and the supported repair controls. Apply them; do not guess.
 
 **The repair loop is capped at 8 cycles.** At the cap, do not keep tuning geometry — **simplify the
-diagram**. The renderer's own guidance is the right instinct: *supporting detail belongs in cards,
-not in more edges*. Deleting a node and moving its fact to a card is a better diagram, not a
+diagram**: delete a node and move its fact to a card. That is the renderer's own guidance
+(*supporting detail belongs in cards, not in more edges*) and it produces a better diagram, not a
 compromise.
+
+**Simplifying gets 2 further cycles, and then the run STOPS.** Report the last validator output,
+say which nodes were already dropped, and hand back no artifact — never loop toward an empty
+diagram, and never end silently. Ten total cycles with nothing to show is a real answer: this target
+does not fit one picture, and it should be split or drawn at a coarser grain.
 
 **Default `quality_profile: "standard"`.** `composition/label-route-clearance` is `showcase`-only
 and strict; on a dense diagram it costs cycles without changing what the reader learns. `--showcase`
@@ -171,6 +212,27 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
 | Upstream is young | Archify was created 2026-04-15. Popular is not audited; nobody in this family has read its source |
 | Its README is partly a funnel | It carries sponsor referral links. Read the technical claims on their merits |
 | Layout is hand-tuned | Passing `showcase` on a dense diagram means the agent adjusting pixel offsets against a validator. That is the cost, and it is why `standard` is the default |
+
+## Next — ask, never stop flat
+
+This door returns an artifact, and an artifact nobody decides about is a file in a temp directory.
+So close by naming the decision (`entry.md` → *Never end silently*):
+
+> "Delivered `<path>` — `N/N artifact checks`, `<profile>`, `sha256 <…>`, pinned to `<sha>`.
+> Nothing was written into the repo. Landing it there makes it `dev:docs`'s to keep current — want
+> it committed, or left here?"
+
+Say the commit, and say what is **not** proven: an architecture diagram carries evidence, the other
+four types carry only your word.
+
+## Undated, therefore unproven
+
+Exercised once, on 2026-08-31: `architecture`, `standard`, evidence with `--repo-root`, the
+tamper-refusal codes, and the repair-by-simplification rule.
+
+**Never run:** `--showcase`, `--open`, `--out`, the fetch-and-extract path in Phase 2, the Phase 3
+refusal gate, the 10-cycle stop, and the four non-architecture diagram types. They are written from
+the schema and the CLI's own help, not from a run — treat the first use of each as its own trial.
 
 ## Scar tissue
 

@@ -33,7 +33,7 @@ so it is defined once there and never duplicated here.
 |---|---|
 | **Nothing at all** | **`dev:issues`** — the tracker view, then ask which to start |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
-| A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `trim`, `survey` | **Confirm the handoff** — see the guard below |
+| A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `trim`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
 
 ### The empty-input row is a guard, not a convenience
@@ -56,7 +56,7 @@ a **feature name**: `/dev run` would branch `feature/run` and start building a f
 
 Before routing to Generic, STOP if the argument is:
 
-- **a family name** — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `trim`, `survey`, with or without the
+- **a family name** — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `trim`, `survey`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
 - **a single word with no verb and no object** (`deploy`, `test`, `fix`). Far likelier a mistyped
