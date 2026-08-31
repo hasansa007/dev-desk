@@ -3,11 +3,12 @@ name: arch
 description: >
   Draws a VERIFIABLE diagram of a system — architecture, workflow, sequence, data flow, or
   lifecycle — where every node points at real code at a real commit, and hands back one
-  self-contained HTML file plus PNG/SVG exports.
+  self-contained HTML file whose viewer can export PNG/SVG.
   Renders through Archify (https://github.com/tt-a1i/archify): this skill authors typed JSON IR,
   Archify compiles and validates it deterministically. The validator checks that a diagram is
-  well-FORMED; this skill is what makes it TRUE — evidence-backed nodes are mandatory here, not
-  optional, because a picture is trusted more than prose precisely because it looks checked.
+  well-FORMED; this skill is what makes it TRUE — evidence-backed nodes are mandatory wherever the
+  renderer can prove them, because a picture is trusted more than prose precisely because it looks
+  checked.
   Declines to draw a target too small to need a diagram.
   Trigger on: "draw the architecture", "map this system", "diagram the pipeline", "show me how
   this fits together", "architecture diagram", "sequence diagram", "data flow diagram",
@@ -29,7 +30,7 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
 | Token | Meaning | Default |
 |---|---|---|
 | A target (`the build pipeline`, `web/app/lib`, a description) | what to draw | required |
-| `architecture` · `workflow` · `sequence` · `dataflow` · `lifecycle` | force the type | ask Archify's `guide` |
+| `architecture` · `workflow` · `sequence` · `dataflow` · `lifecycle` | force the type | pick it from Phase 4's table |
 | `--showcase` | the strict quality profile, for a deck | `standard` |
 | `--open` | open the artifact when it passes | off |
 | `--out <path>` | where the HTML lands | the repo's scratch dir, never the repo |
@@ -79,8 +80,11 @@ Ask the renderer rather than guessing — it answers with a confidence level and
 node <archify>/bin/archify.mjs guide "<one sentence describing the system>"
 ```
 
-**Treat low confidence as the signal it is.** A description that produces `confidence: low` is
-usually one that names two different questions at once; split it and ask again.
+**`guide` is keyword-matched, and `architecture` + `confidence: low` is its NO-MATCH fallback, not
+a recommendation.** `xyzzy` returns byte-identical output to a textbook lifecycle question. Read
+`low` as *"the renderer did not recognise this"* and pick the type from the table below yourself.
+Do not split the question and re-ask: both halves come back with the same fallback, so the loop
+cannot converge.
 
 | Type | Answers |
 |---|---|
@@ -94,18 +98,29 @@ Then read the real code. Every node and every edge comes from something you have
 stage list from the orchestrator, the model from the config, the lane from the queue table. A node
 you cannot point at is a node that does not go in.
 
-## Phase 5 — Evidence is mandatory here
+## Phase 5 — Evidence wherever the renderer can prove it
 
-Archify supports evidence-backed nodes — each pinned to a file and line range at one commit,
-rendered with an `SRC n` mark — and treats it as opt-in. **This skill does not.**
+Archify's repository evidence — each node pinned to a file and line range at one commit and checked
+against a real Git object — is **`architecture`-only**. The other four types reject `--repo-root`
+outright: *"--repo-root is currently supported for architecture diagrams only."* So the rule is
+scoped to what can be proven, and stated out loud where it cannot.
 
-- Every node carries its evidence, pinned to **one commit SHA**, not a branch
-- A node that cannot be evidenced is **refused, not drawn** — say which one and why
+- **`architecture` — evidence is MANDATORY.** Every component carries `sources` (1–3 entries, repo
+  relative POSIX paths, optional line ranges), pinned through `meta.repository` to one **full
+  40-character SHA**, never a branch. A component that cannot be evidenced is **refused, not
+  drawn** — say which one and why. Validate and deliver with `--repo-root`, or nothing is checked.
+- **`workflow` · `sequence` · `dataflow` · `lifecycle` — evidence is UNAVAILABLE.** Draw them, and
+  **say in the handoff that the diagram is unevidenced.** That sentence is the only thing standing
+  between the picture and a reader who assumes it was checked, because nothing in the artifact
+  itself will say so.
 - A description-only diagram (no repository) is legitimate, and must be **labelled as such** in
-  the artifact's own cards, so nobody reads it as checked
+  the artifact's own cards.
 
-Without this rule the output is a prettier version of whatever the agent asserted, and it will be
-believed more readily than the prose it replaced. This is the rule that makes the door worth having.
+The pin is proven, not trusted: a line past end-of-file, a path absent at that commit, and an
+unknown SHA each fail with their own rule code — `repository-evidence/line-out-of-range`,
+`/file-missing`, `/revision-unavailable`. Verification is local, so a **private** repository works.
+That is what makes an evidenced architecture diagram worth more than the prose it replaced; on the
+other four types, only the spoken caveat does.
 
 ## Phase 6 — Author, validate, repair, deliver
 
@@ -148,6 +163,9 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
 
 | | |
 |---|---|
+| Evidence is `architecture`-only | `--repo-root` is refused on the other four types. They can be drawn but never proven, so they carry a spoken caveat where architecture carries a guarantee. Verified 2026-08-31 against Archify 2.16.0 |
+| `guide` cannot say "I don't know" | It falls back to `architecture` + `confidence: low` for anything it fails to keyword-match, which is indistinguishable from a real recommendation. Pick the type yourself when confidence is low |
+| Exports drop the evidence | Repository evidence is embedded for the Semantic Passport and Node Finder only. A PNG or SVG pulled out of the viewer carries none of it, so the image is not the artifact — the HTML is |
 | Diagram rot is worse than prose rot | A picture reads as authoritative long after it stops being true. Any artifact committed to a repo needs an owner in `dev:docs`; until that exists, keep output out of the tree |
 | The validator checks form, not truth | Schema, layout, routes and clearance all pass on a diagram that describes the wrong system. Phase 5 is the only thing standing between the two |
 | Upstream is young | Archify was created 2026-04-15. Popular is not audited; nobody in this family has read its source |
@@ -165,5 +183,28 @@ a card, which is the renderer's own advice and produced the better diagram.
 
 The artifact passed `9/9 artifact checks` and **had no evidence backing at all**. It looked
 checked, because it was — for form. Every node was still just an assertion. That gap is why Phase 5
-is not optional in this skill, and it is the single thing to get right if any of the rest is
-rewritten.
+exists, and it is the single thing to get right if any of the rest is rewritten.
+
+**2026-08-31, later the same day — the first run that actually used evidence found three defects in
+the text above.** An architecture map of a real eleven-stage pipeline
+(`hasansa007/studyhub-deploy` at `4cb7c05`), 12 components, every one pinned and verified:
+`9/9 artifact checks`, `sha256 b539a7135671`, **two** validate cycles rather than eight — because
+the one failing edge was deleted and its fact moved to a card, which is this skill's own advice and
+had never been tried.
+
+What the run overturned:
+
+- **Evidence is `architecture`-only.** Phase 1 offered five types and Phase 5 made evidence
+  mandatory for all of them, so four of the five would have been undrawable: Phase 5 forbade an
+  unevidenced node and Phase 2 forbade falling back. The `opt-in` claim came from an upstream README
+  sentence that scopes it to architecture, read as if it were general. **Nobody caught it because
+  the trial above never evidenced anything.**
+- **`guide`'s `confidence: low` is a no-match fallback**, not a weak recommendation, and the old
+  advice — *split the question and ask again* — cannot converge, because both halves return the
+  same fallback. `xyzzy` scores identically to a well-formed lifecycle question.
+- **`PNG/SVG exports` overstated the handoff.** They are a viewer button, and per upstream's own
+  schema notes they carry no repository evidence.
+
+What the run *confirmed*, and is worth keeping: the verification is real, not decorative. A line
+past end-of-file, a path absent at the commit and an unknown SHA are each refused with a distinct
+rule code, and because the check runs against a local clone it works on a **private** repository.
