@@ -43,6 +43,7 @@ ADR is part of the diff.
 | a new/changed env var, migration or runbook step | the release/ops doc |
 | a new module, flow or entry point | `PROJECT_MAP.md` (`TECH_STACK` / `SYSTEM_FLOW`) |
 | work deliberately deferred | `ORPHANS & PENDING` — not a memory of it |
+| a moved/renamed/deleted file that any `docs/arch/*.json` cites | the diagram — re-pin it, or delete it |
 
 ## The check that actually fails things
 
@@ -59,15 +60,47 @@ describing a rail the dialog no longer has. One mention had been fixed, three ha
 sweep is indistinguishable from a complete one from the outside**, so the pass criterion is the
 reread, not the edit.
 
+## Committed diagrams — the one doc check that is mechanical
+
+`dev:arch` lands evidenced architecture diagrams in `docs/arch/` as a `.html` beside the
+`.architecture.json` that produced it. Every component in that IR is pinned to a file and line range
+at one commit, so unlike prose, a stale diagram can be **detected by running something**.
+
+For each `docs/arch/*.json` in the repo — not only the ones this branch touched, because any diff can
+move a file some other diagram cites:
+
+```bash
+export ARCHIFY_UPDATE_CHECK_DISABLED=1
+for ir in docs/arch/*.architecture.json; do
+  node <archify>/bin/archify.mjs validate architecture "$ir" --repo-root . || echo "STALE: $ir"
+done
+```
+
+A `repository-evidence/*` failure means the diagram cites code that has moved, been renamed, or been
+deleted by this branch. **That fails the gate.** The fix is to re-pin and re-`deliver` at the new
+commit, or to delete the diagram — never to leave it citing a file that is gone.
+
+**Update `meta.repository.revision` to the branch's own commit when you re-pin.** A diagram whose
+pins resolve only against an old SHA is a diagram nobody has re-read.
+
+**What this cannot catch, and you must still eyeball:** every pin can resolve while the diagram is
+wrong. A node deleted from the system, an edge that no longer exists, a lane that was merged — all
+leave the cited files exactly where they were. The command proves the diagram still points at real
+code; only a person can say it still draws the real shape. So when a branch changes the ARCHITECTURE
+rather than just moving files, open the HTML and look at it.
+
 ## Output
 
 Either the list of ADRs and docs updated in this branch, or the explicit line:
 
 > none needed — checked: no price/limit, no decision-with-alternative, no env/migration,
-> no new module, no deferred work, no doc made stale
+> no new module, no deferred work, no doc made stale, no `docs/arch/` diagram invalidated
 
 Either way, state the reread: *"reread §X and §Y in full — N claims corrected"*, or *"reread §X in
 full — still accurate"*. An unstated reread did not happen.
+
+If the repo has any `docs/arch/*.architecture.json`, state the diagram result too — *"N/N diagrams
+re-validated at `<sha>`"*, or which one went stale and what was done. Say when there are none.
 
 A PR without a `## DOCS` section is not ready to merge.
 
