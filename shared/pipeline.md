@@ -303,6 +303,36 @@ How to run it:
 - **Propose, then wait.** "Go ahead" is a specific thing the developer says. Inferring it from
   their interest in the topic is how unrequested work gets built.
 
+### Ask for THEIR approach before you show yours (REQUIRED)
+
+Approving a plan and understanding it are different things, and only one of them is checked by
+"go ahead". This step checks the other, because the developer has said the point of the pipeline is
+to build their model of the system rather than to hand them a finished one.
+
+**Order matters and is not negotiable:**
+
+1. State the problem and the constraints you found in Phase 4 — the mechanism, what the code already
+   does, what cannot change. Plain language.
+2. **Ask how they would approach it. Then stop and wait.**
+3. Only after they answer, give your approach and **diff the two out loud**: where you agree, where
+   you differ, what their version would cost that theirs might not have priced in. **If theirs is
+   better, take it and say so.**
+4. Print the alternatives line either way — `rejected: <option> — <why it lost>` per line, or
+   `alternatives considered: none — one correct form`. Printed even when empty: that line is how
+   they audit whether something was presented as mechanical when it was actually a decision.
+
+**Showing your plan first defeats this entirely.** A plan on screen is an anchor; what comes back is
+a reaction to it, not an independent approach, and no amount of asking afterwards recovers what was
+lost. This is the single easiest step in the pipeline to perform the form of while destroying the
+substance — the tell is a message that contains both the question and your answer.
+
+**`just do it` skips it, immediately and without argument.** Both this and Phase 8's decomposition
+are stop-gates, not persuasion.
+
+Feeds Phase 7: the approach that survives this is the one the plan is written from, and the
+`rejected:` lines become the ADR's alternatives at Phase 12 rather than being reconstructed from
+memory after the merge.
+
 ### Decomposition — when this is several tasks (conditional)
 
 **When:** the work spans several branches, surfaces or sessions — whether or not it arrived labelled

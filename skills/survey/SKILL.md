@@ -44,7 +44,7 @@ and Right-Size the Process**. Right-Size is not optional here despite this being
 fan-out rule, and Phases 4 and 5 are the largest fan-out in the family.
 
 **A survey that files a bug already in the tracker has made the board worse.** Dedupe runs at
-Phase 8, once findings name files — **searched per path, never as a bulk list**:
+Phase 9, once findings name files — **searched per path, never as a bulk list**:
 
 ```bash
 gh issue list --repo <owner/repo> --state open --search "<path> in:title,body" \
@@ -183,8 +183,8 @@ State the cost of doing nothing, or the recommendation is a preference.
 ## Phase 7 — Write the report
 
 **Under a flag, the sections whose source phase was skipped are omitted, never left empty.**
-`--arch` skips Phases 4-5, so the report carries ARCHITECTURE only and Phase 8 files no bugs;
-`--bugs` skips Phase 6, so there is no ARCHITECTURE section and nothing for Phase 8 to raise as an
+`--arch` skips Phases 4-5, so the report carries ARCHITECTURE only and Phase 9 files no bugs;
+`--bugs` skips Phase 6, so there is no ARCHITECTURE section and nothing for Phase 9 to raise as an
 epic. An empty CONFIRMED reads as *nothing found*, which is a different and much worse claim than
 *not looked for*.
 
@@ -248,7 +248,36 @@ Per flow          findings   duration   tokens   calls
 - **Run inline with no fan-out and this section says so**, with no per-agent figures invented. A
   sequential run has no per-agent data, and a plausible-looking table is worse than its absence.
 
-## Phase 8 — Offer to file, shaped for parallel work
+## Phase 8 — Walk it through, one finding at a time (BEFORE the filing offer)
+
+**The developer's stated purpose for this gate: build their own model of the system, not receive
+one.** A finding they can restate is worth more than three they approved. So this phase is not a
+summary — it asks first and answers second, on **every** confirmed finding.
+
+For each, in order:
+
+1. **State the mechanism and the constraints. Then STOP.** No fix, no recommendation, not even a
+   hint of direction. The moment a proposed answer is on screen, whatever they say next is a
+   reaction to it rather than their own reasoning, and the gate has produced nothing.
+2. **Ask how they would handle it.** Wait for a real answer.
+3. **Then give yours, and diff the two explicitly** — name where they agree, where they differ, and
+   what each choice costs. If theirs is better, say so plainly and take it.
+4. **Print the alternatives line either way:**
+   - `alternatives considered: none — one correct form` for a mechanical finding, or
+   - `rejected: <option> — <why it lost>`, one line each, for a real fork.
+
+**That line is the audit.** It is how the developer sees whether a decision was presented as
+mechanical when it was not — so it is printed even when it is empty, and *especially* then.
+
+**`just do it` skips the current finding immediately.** No re-asking, no friction, no second
+attempt at persuasion. A gate that argues with a skip is a gate that gets routed around.
+
+**Never batch.** One finding, one answer, one diff. A list of five questions gets one answer about
+the last one.
+
+---
+
+## Phase 9 — Offer to file, shaped for parallel work
 
 Ask before filing anything. Then, for the confirmed set:
 
@@ -275,6 +304,8 @@ Ask before filing anything. Then, for the confirmed set:
 
 - **Never implement.** Not a fix, not a rename, not an obvious one-liner. Suggest only.
 - **Never file a PLAUSIBLE finding**, and never file without asking.
+- **Never show the fix before asking for theirs.** Phase 8 is worthless the instant an answer is
+  visible; anchoring is not undone by asking politely afterwards.
 - **Never invent a flow, a finding, or a count.** An honest *"this flow is clean"* is a result;
   `shared/entry.md`'s *a result is not a claim* applies to every number in the report.
 - **Never recommend an architecture the codebase does not already mostly use.**
@@ -284,7 +315,7 @@ Ask before filing anything. Then, for the confirmed set:
 
 `shared/entry.md` → *Never end silently* applies here as to every sibling.
 
-Report written → offer the filing, naming the branch it would cut. Filed → name the first issue by
+Report written → **walk the findings through (Phase 8)** → offer the filing, naming the branch it would cut. Filed → name the first issue by
 cost and hand to `/dev #N`. **Nothing found → say so plainly, name what was covered and what was
 not, and offer `dev:issues`** — a clean survey is a real answer, but the board may still hold work,
 and stopping at "nothing" makes the developer remember there is somewhere else to look.

@@ -101,6 +101,38 @@ A `repository-evidence/*` failure means the diagram cites code this branch moved
 gate probes a copy and leaves it alone. Advancing it without re-reading converts the one honest thing
 the artifact carries into a false claim.
 
+### The probe misses a pure line SHIFT — check touched files separately
+
+A pin that still RESOLVES can still be wrong. Insert 30 lines near the top of a cited file and every
+range below it slides down: the file exists, the lines exist, `validate` returns `ok`, and the pins
+now quote different code. Observed 2026-08-31 — a 30-line insert at `shared/pipeline.md:306` moved
+six cited ranges and the probe stayed green.
+
+Compare against the **working tree**, not `$BASE...HEAD`. The three-dot form only sees committed
+work, so running the gate before committing reports "no cited file touched" while the file sits
+modified on disk — verified the same day, on this very check.
+
+So run the cheap set-intersection too, and treat any overlap as **re-read required**:
+
+```bash
+BASE=$(git merge-base origin/main HEAD)
+git diff --name-only "$BASE" > /tmp/touched   # bare $BASE, NOT $BASE...HEAD —
+                                              # ...HEAD misses uncommitted work
+python3 - <<'EOF'
+import json,glob
+touched=set(open('/tmp/touched').read().split())
+for ir in glob.glob('docs/arch/*.architecture.json'):
+    cited={s['path'] for c in json.load(open(ir))['components'] for s in c['sources']}
+    hit=sorted(cited & touched)
+    print(f"{ir}: {'RE-READ ' + ', '.join(hit) if hit else 'no cited file touched'}")
+EOF
+```
+
+**A hit is not automatically a failure** — the branch may have changed a file the diagram cites in a
+region it does not cite. It means *a human opens those ranges and confirms they still say what the
+node claims*, then re-`deliver`s if they moved. Unlike the probe, this cannot be automated away,
+because "does line 556 still start Phase 11" is a question about meaning.
+
 **What this cannot catch, and you must still eyeball:** every pin can resolve while the diagram is
 wrong. A node deleted from the system, an edge that no longer exists, a lane that was merged — all
 leave the cited files exactly where they were. The command proves the diagram still points at real
