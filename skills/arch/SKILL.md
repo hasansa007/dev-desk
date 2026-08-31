@@ -205,17 +205,25 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
   diagram says what the code is wired to do, never what production actually did.
 - **Never draw from memory of a codebase.** Re-read at the commit you are pinning to.
 - **Say which commit.** The artifact is only as true as the SHA it was built from.
-- **Re-pin after a squash or rebase merge.** Both rewrite history, so the SHA the artifact was
-  delivered at stops being reachable and a fresh clone fails `repository-evidence/revision-unavailable`.
-  It keeps validating on the machine that built it, because the orphaned object is still in `.git`
-  until `gc` — so this passes locally and breaks for everyone else. Re-pin to the merge commit,
-  **verify the trees match first**, then re-`deliver`:
+- **Pin to a commit that is already on the base branch when you can.** A squash or rebase merge
+  rewrites the branch's commits, so a pin to the branch tip becomes unreachable and a fresh clone
+  fails `repository-evidence/revision-unavailable`. It keeps validating on the machine that built it,
+  because the orphaned object survives in `.git` until `gc` — green locally, broken for everyone else.
+  - **Branch does NOT touch any cited path** → pin to the base branch's HEAD. It survives every merge
+    strategy, because it is already an ancestor. Nothing to do afterwards.
+  - **Branch DOES touch a cited path** → the correct pin cannot exist until the merge lands. Deliver
+    against the branch, then **re-pin as a follow-up** once merged.
+- **Before advancing a pin, compare the CITED PATHS — never the whole tree.** The artifact lives in
+  `docs/arch/`, so committing it guarantees the trees differ; a whole-tree check therefore says
+  "re-read" every single time and gets ignored, which is worse than no check.
   ```bash
-  git rev-parse <branch-tip>^{tree}   # must equal
-  git rev-parse <merge-commit>^{tree} # this one
+  git diff --name-only <old-pin> HEAD          # what actually moved
+  # intersect that with the IR's source paths — empty means the pin may advance
   ```
-  Identical trees mean the merge commit holds byte-for-byte what was read, so advancing the pin
-  states no new claim. **Different trees mean re-read** — the merge changed something.
+  **Empty intersection means the new commit holds byte-for-byte the code that was read**, so
+  advancing the pin states no new claim. **A non-empty intersection means re-read those ranges** —
+  and re-read them for LINE SHIFTS too, not just deletions: an insert above a cited range moves it
+  while `validate` stays green.
 
 ## Never
 
