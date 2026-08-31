@@ -66,22 +66,40 @@ reread, not the edit.
 `.architecture.json` that produced it. Every component in that IR is pinned to a file and line range
 at one commit, so unlike prose, a stale diagram can be **detected by running something**.
 
-For each `docs/arch/*.json` in the repo — not only the ones this branch touched, because any diff can
-move a file some other diagram cites:
+**Validating the IR as it is pinned proves nothing.** Its `meta.repository.revision` names a commit
+that still exists, and the cited files still exist *at that commit*, so the check passes forever no
+matter what the branch did. Verified 2026-08-31: renaming a cited file and re-running `validate` on
+the committed IR returned `ok`. The revision must be bumped to the branch's HEAD **first** — only
+then does the same rename return `repository-evidence/file-missing`.
+
+Probe a COPY. Never rewrite the committed IR's revision to make a check pass:
 
 ```bash
 export ARCHIFY_UPDATE_CHECK_DISABLED=1
+HEAD_SHA=$(git rev-parse HEAD)
 for ir in docs/arch/*.architecture.json; do
-  node <archify>/bin/archify.mjs validate architecture "$ir" --repo-root . || echo "STALE: $ir"
+  probe=$(mktemp)          # bare mktemp — a ".json" suffix breaks the template on macOS
+  python3 -c "import json,sys;d=json.load(open(sys.argv[1]));\
+d['meta']['repository']['revision']=sys.argv[2];json.dump(d,open(sys.argv[3],'w'))" "$ir" "$HEAD_SHA" "$probe"
+  node <archify>/bin/archify.mjs validate architecture "$probe" --repo-root . >/dev/null 2>&1 \
+    && echo "OK: $ir" || echo "STALE: $ir"
+  rm -f "$probe"
 done
 ```
 
-A `repository-evidence/*` failure means the diagram cites code that has moved, been renamed, or been
-deleted by this branch. **That fails the gate.** The fix is to re-pin and re-`deliver` at the new
-commit, or to delete the diagram — never to leave it citing a file that is gone.
+Run it three ways before trusting it — this loop was checked against a clean tree, against a cited
+file renamed, and against the rename reverted, returning **OK / STALE / OK**.
 
-**Update `meta.repository.revision` to the branch's own commit when you re-pin.** A diagram whose
-pins resolve only against an old SHA is a diagram nobody has re-read.
+Run it over every `docs/arch/*.architecture.json` in the repo — not only the ones this branch
+touched, because any diff can move a file some other diagram cites.
+
+A `repository-evidence/*` failure means the diagram cites code this branch moved, renamed or deleted.
+**That fails the gate.** Fix it by re-reading the system at the new commit and re-running `dev:arch`
+— which legitimately advances the pin — or by deleting the diagram. Never by editing the SHA in place.
+
+**The committed pin records the commit at which someone actually read the code**, which is why the
+gate probes a copy and leaves it alone. Advancing it without re-reading converts the one honest thing
+the artifact carries into a false claim.
 
 **What this cannot catch, and you must still eyeball:** every pin can resolve while the diagram is
 wrong. A node deleted from the system, an edge that no longer exists, a lane that was merged — all
