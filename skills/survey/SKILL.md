@@ -35,24 +35,34 @@ The output is a report and, on confirmation, issues. `/dev #N` does the work aft
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
-`shared/entry.md` for repo resolution — the resolved repo is the boundary, for reading and for
-filing.
+Read `~/Developer/skills/dev-skill/shared/entry.md` — **the absolute path, because this skill runs
+inside somebody else's repo**, where a bare `shared/entry.md` resolves to a file that does not
+exist. The resolved repo is the boundary, for reading, for writing and for filing.
 
-**Then fetch the open issues before surveying anything.** A survey that files a bug already in the
-tracker has made the board worse. One call, as `dev:issues` Phase 3 does it:
+Also read `~/Developer/skills/dev-skill/shared/pipeline.md` → **Guiding Principles, Universal Rules,
+and Right-Size the Process**. Right-Size is not optional here despite this being a tool: it owns the
+fan-out rule, and Phases 4 and 5 are the largest fan-out in the family.
+
+**A survey that files a bug already in the tracker has made the board worse.** Dedupe runs at
+Phase 8, once findings name files — **searched per path, never as a bulk list**:
 
 ```bash
-gh issue list --state open --limit 200 --json number,title,labels
+gh issue list --repo <owner/repo> --state open --search "<path> in:title,body" \
+  --json number,title,body
 ```
 
-**A tracker past 200 is truncated, and a truncated dedupe list files duplicates without knowing.**
-`dev:issues` states this limit; so does this. If the count comes back at the limit, say the dedupe
-is partial and treat every near-match as *possible duplicate* rather than as new.
+**Why per-path and not `--limit 200`.** The match key is the file path plus the symptom, and both
+live in the **body** — which `--json number,title,labels` does not return at all, so a bulk list
+cannot dedupe even in principle. Searching also has no 200-issue ceiling to silently truncate
+behind, which `shared/entry.md`'s *scope limiter* rule forbids relying on. `--repo` is explicit
+because the surveyed repo is the resolved one, not whatever `cwd` points at.
 
-Match on **the file path a finding names plus its symptom**, not on title similarity — two issues
-about `cart.ts` losing state are the same bug under different words, and two about different files
-are not the same bug under the same words. When the match is uncertain, file nothing and report it
-as **possible duplicate of #N**: a wrong merge hides a real bug, and a wrong split costs one close.
+**If `gh` errors or the repo has Issues disabled, say so and stop.** An empty result and a failed
+query must never render the same — `dev:issues` Phase 3's rule, and the reason it exists is that a
+failed dedupe files every finding as new.
+
+When a match is uncertain, file nothing and report **possible duplicate of #N**: a wrong merge hides
+a real bug, a wrong split costs one close.
 
 ## Phase 3 — Discover the flows from evidence
 
@@ -71,15 +81,27 @@ for is one you invented, and every finding under it inherits that.
 
 If nothing declares flows, say so and fall back to **one directory below the source root** — the
 same unit `dev:trim` uses, and for the same reason: it has to be small enough that one surveyor's
-pass fits one context. Label the results **modules, not flows**; a finding under a module says
+pass fits one context.
+
+**Enumerate with `git ls-files`, never with a directory walk.** Tracked files only means build
+output, vendored trees and anything `.gitignore`d are excluded *by construction* — `node_modules`,
+`dist`, `.next`, `Pods`, `target` — rather than by a blocklist that needs a new entry per ecosystem
+forever. A surveyor auditing compiled assets burns a whole agent to find nothing. Label the results **modules, not flows**; a finding under a module says
 *this code is wrong*, a finding under a flow says *a user hits this*, and only the second can be
 ranked by cost. Everything downstream reads "flow" as "flow or fallback unit".
 
 ## Phase 4 — Fan out, one surveyor per flow
 
 **Skipped under `--arch`.** Otherwise dispatch one agent per flow
-(`superpowers:dispatching-parallel-agents`). **One flow per agent, never two.** A whole codebase does not fit one context, and a surveyor that runs out mid-flow does not
-announce it — it just returns fewer findings, which reads exactly like a clean flow.
+(`superpowers:dispatching-parallel-agents`). **One flow per agent, never two.** A whole codebase does
+not fit one context, and a surveyor that runs out mid-flow does not announce it — it just returns
+fewer findings, which reads exactly like a clean flow.
+
+**Declare the fan-out and get a word before spending it** (Right-Size, `shared/pipeline.md`): *"18
+flows → 18 surveyors, then ~2 checkers per finding. Go, or narrow it?"* This is the family's largest
+fan-out — 60 routes is 60 surveyors and can be 300 checkers — and Right-Size forbids opening one on
+the developer's behalf and reporting the bill afterwards. **Above 12 flows, propose a narrowing
+first** rather than asking them to approve a number they have no way to price.
 
 Each surveyor returns, per finding: the symptom, the file and line, the **mechanism** that produces
 it, and what it expected instead.
@@ -91,6 +113,10 @@ vibe.
 
 ## Phase 5 — Verify adversarially, before anything is filed
 
+**Never skipped.** `--arch` skips the bug *hunt*, not the verification: Phase 6's counts and drift
+items are findings too, and an epic proposing the wrong target pattern is the costliest thing this
+skill can file. A count is checked by recounting from the file list, independently.
+
 Every finding gets **two independent checkers, each prompted to refute it**, and each must open the
 named file and its callers rather than reasoning from the finding's own text. Two, not one: a
 single checker that agrees produces a confirmation indistinguishable from a rubber stamp.
@@ -99,18 +125,23 @@ single checker that agrees produces a confirmation indistinguishable from a rubb
 CONFIRMED** — the safe verdict is the one that holds the finding out of the tracker, since a wrong
 CONFIRMED costs a close and a wrong PLAUSIBLE costs a line in a report.
 
-This is not ceremony: three `/code-review` rounds on this repo in one day returned 15, 15 and 15
-findings, and the ones that held up did so because each was checked against the code rather than
-against how plausible it sounded.
+This is not ceremony. **2026-08-23/24:** three review rounds over one skill returned 15, 15 and 15
+findings; what separated the real ones was being checked against code rather than against how
+plausible they sounded, and a fourth round still found more.
 
 | Verdict | Meaning | Fate |
 |---|---|---|
 | **CONFIRMED** | the checker reproduced the reasoning against the code and could not refute it | eligible to file |
 | **PLAUSIBLE** | it may be real; the checker could not confirm it from the code alone | **held in the report with the reason**, never filed |
-| **REFUTED** | the code does not do what the finding claims | dropped, and say how many were dropped |
+| **REFUTED** | the code does not do what the finding claims | **listed in the report**, one line each, with the refutation |
 
-**Report the refuted count.** A run that refutes nothing is a run whose checker was agreeing, not
-checking — the same tell as `dev:trim`'s "a run that keeps nothing".
+**Refuted findings are listed, not just counted.** A checker told to refute will sometimes refute a
+real bug, and a bare count leaves that unauditable and makes the next run re-derive it from scratch.
+The report carries the symptom and the refutation so a human can overturn it.
+
+A run that refutes **nothing** is a run whose checkers were agreeing rather than checking — the same
+tell as `dev:trim`'s "a run that keeps nothing". A run that refutes **almost everything** is the
+opposite failure, and the list is what makes it visible.
 
 ## Phase 6 — The architecture pass — count before recommending
 
@@ -136,10 +167,15 @@ State the cost of doing nothing, or the recommendation is a preference.
 epic. An empty CONFIRMED reads as *nothing found*, which is a different and much worse claim than
 *not looked for*.
 
-`docs/survey/<YYYY-MM-DD>.md`, or `<date>-2.md` if that file already exists — two runs in one day are usually a
+`docs/survey/<YYYY-MM-DD>.md`, and `<date>-<HHMM>.md` for every later run that day — two runs in one day are usually a
 narrowed re-run, and overwriting the wider one loses the held PLAUSIBLE set. The file is the
 artifact that makes the run reviewable and re-runnable; filing is a separate step, so nothing
 reaches the tracker unread. Create `docs/survey/` if the repo has no `docs/`, and say that you did.
+
+**Writing the report is a write, and the write boundary applies** (`shared/entry.md` rule 3): name
+`owner/repo`, and **cut a branch before creating the file** rather than dropping a tracked file onto
+whatever branch the developer is standing on. This is the one phase that is not read-only, and it
+must not be described as if it were.
 
 ```
 # Survey — <repo> — <date>
@@ -166,12 +202,17 @@ Ask before filing anything. Then, for the confirmed set:
 - Bugs → `dev:create-bug`, one per finding, mechanism carried into `## Steps` intact.
 - Architecture → `dev:create-epic` for the drift, or an ADR when it is a decision rather than work.
   **`dev:docs` owns ADRs** — their numbering and location are its rules, not this skill's. Hand it over rather than inventing a path.
-- **Every filed issue names the files it touches.** Two issues touching one file are **conflicting,
-  not blocking** — say so in both, and let whoever starts second rebase. Blocking is reserved for a
-  real dependency: finding B's fix is not applicable until A's has landed. Calling every shared file
-  a block would serialise a whole codebase behind its utils module, which is the opposite of what
-  this list is for. `dev:issues` Phase 5 orders on real blocks; conflicts are a warning, not an
-  order.
+- **Touched files go in `## Scope`** — `dev:create-bug`'s existing field for *where it bites*. Do
+  not invent a `touches:` field: per `GUIDE.md`, a per-type template field belongs to the
+  `dev:create-*` member, not to a caller asserting one from outside.
+- **Two issues touching one file are conflicting, not blocking.** Say so in both `## Scope` lines
+  and let whoever starts second rebase. Blocking is a real dependency — B's fix does not apply until
+  A's has landed — and it is directional, which "same file" never tells you. Calling every shared
+  file a block serialises a codebase behind its utils module, the opposite of what this list is for.
+- **Set a priority label on each filed issue, from the cost ranking.** `dev:issues` Phase 5 orders
+  NEXT by `P1 → P2 → P3`, then slice, then oldest `updatedAt` — ten issues filed the same minute
+  share a timestamp, so without labels the order it shows is arbitrary and this phase's ranking dies
+  in the report. If the repo has no priority labels, say so: the ranking then lives only here.
 - **File at most 10 per run, and name what was held.** `dev:issues` shows the top 2–3 of NEXT, so
   ten is already more board than anyone reads at once; thirty is a backlog that gets skipped
   wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim
@@ -188,5 +229,9 @@ Ask before filing anything. Then, for the confirmed set:
 
 ## Next — ask, never stop flat
 
-Report written → offer the filing. Filed → name the first issue and hand to `/dev #N`.
-Nothing found → say so plainly and stop; a clean survey is an answer.
+`shared/entry.md` → *Never end silently* applies here as to every sibling.
+
+Report written → offer the filing, naming the branch it would cut. Filed → name the first issue by
+cost and hand to `/dev #N`. **Nothing found → say so plainly, name what was covered and what was
+not, and offer `dev:issues`** — a clean survey is a real answer, but the board may still hold work,
+and stopping at "nothing" makes the developer remember there is somewhere else to look.

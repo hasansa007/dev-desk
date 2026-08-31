@@ -129,13 +129,15 @@ this pipeline exists to refuse.
 | `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
 | `dev:issues` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
 | `dev:trim` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
-| `dev:survey` | — | **Guiding Principles + Universal Rules + Phase 0** — it files, so it needs Phase 0; it skips Right-Size, having no phase to size |
+| `dev:survey` | — | **Guiding Principles + Universal Rules + Right-Size** — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
 
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
 are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the
 ceremony GUIDE principle 4 refuses. That is why every tool row above reads `nothing` — except
-`dev:trim`, which is a tool that **applies a rule**, and a rule it has not read is a rule it will
-improvise. Read what you consume; name it in the row.
+`dev:trim` and `dev:survey`. `trim` **applies a rule**, and a rule it has not read is a rule it will
+improvise; `survey` **fans out wider than any phase does**, so the one section a tool would normally
+skip — Right-Size — is the one it most needs. Read what you consume; name it in the row, and let the
+row disagree with the default when the door earns it.
 
 **The `dev:create-*` doors take no tier**, which is the one exception to the always-load list above.
 A tier answers *how much process does building this deserve* — filing builds nothing, and Phase 0 is
