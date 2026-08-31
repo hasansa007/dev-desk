@@ -62,7 +62,7 @@ listening, reuse it and start nothing.* Restarting the developer's app to photog
 failure this design forecloses.
 
 Phase 11 should delegate its evidence capture to `dev:shots` rather than restate the commands.
-That edit is **not** made: `shared/pipeline.md` sits at 938 of its 950-line budget, and `GUIDE.md`
+That edit is **not** made: `shared/pipeline.md` sits at 957 against a 958-line budget, so `GUIDE.md`
 requires an addition there to name its deletion. The delegation is documented here and in the tool
 until a deletion pays for it.
 

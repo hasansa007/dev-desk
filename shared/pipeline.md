@@ -8,7 +8,7 @@ Derived from three operating protocols, plus rules added since. These apply acro
 |---|---|---|
 | **Memory Establishment** | Planning Protocol | Maintain `PROJECT_MAP.md` with `TECH_STACK`, `SYSTEM_FLOW`, and `ORPHANS & PENDING`. Read it before acting; update it after. |
 | **Simplicity First** | Planning Protocol | Propose the simplest solution. Reject unnecessary complexity. 50 lines > 200 lines. |
-| **Short Documentation** | Golden Rule | Document in one line, not a paragraph. If a comment restates the code or the types, delete it. If it carries what the signature cannot — precedence, units, a spec quirk — keep it. |
+| **Short Documentation** | Golden Rule | One line, **not zero and not a paragraph**. Delete a comment that restates the code or the types; keep one carrying what the signature cannot — precedence, units, a spec quirk. `@param`/`@returns` stay where the repo generates docs from them. |
 | **Stop on Ambiguity** | Planning Protocol | If requirements are unclear, do not choose a path silently — stop and ask. |
 | **Prevent Feature Creep** | Planning Protocol | Stick strictly to the requested scope. No additional features. |
 | **Time Awareness** | Planning Protocol | Specify year+month. Search for latest stable versions before deciding. |
@@ -16,10 +16,10 @@ Derived from three operating protocols, plus rules added since. These apply acro
 | **Production-Ready Code** | Execution Engine | No `// TODO`, no placeholders, no stubs. Code must be complete and handle errors. |
 | **Self-Verification** | Execution Engine | Write automated tests. Do not leave a mess. Ensure no regressions. |
 | **Live Synchronization** | Execution Engine | Dynamically update `PROJECT_MAP.md`. Move incomplete features to `ORPHANS & PENDING`. |
-| **Commitment to Flow** | Execution Engine | Every line of code must serve the user journey. Refer back to `SYSTEM_FLOW`. |
-| **Surgical Editing** | Surgical Editing Protocol | Touch only what must be touched. Do not reformat adjacent code or rephrase old comments. |
+| **Commitment to Flow** | Execution Engine | Every line of code must serve the user journey defined in `SYSTEM_FLOW`. If a line does not, delete it. |
+| **Surgical Editing** | Surgical Editing Protocol | Touch only what must be touched. Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect — `dev:trim --apply` excepted, per Universal Rules. |
 | **Style Matching** | Surgical Editing Protocol | Adhere to current code style, even if you find it imperfect. |
-| **Clean Your Own Mess** | Surgical Editing Protocol | If your edit orphans a function, import, or type — remove it. |
+| **Clean Your Own Mess** | Surgical Editing Protocol | If your edit orphans a function, import, type, or parameter — remove it. |
 | **Impact Analysis** | Surgical Editing Protocol | Read `PROJECT_MAP.md`. Accurately identify all affected files before editing. |
 | **Architectural Integrity** | Surgical Editing Protocol | DRY. Reuse shared/core components. Add logging where behavior is non-trivial. |
 
@@ -465,7 +465,7 @@ Before touching any file:
 4. Verify no scope creep: is every change strictly required by the ticket?
 
 ### Editing — Surgical Protocol
-- **Touch only what must be touched.** Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect.
+- **Touch only what must be touched.** Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect (`dev:trim --apply` excepted, per Universal Rules).
 - **Style matching.** Adhere to the code style in the file you are editing, even if you find it imperfect. Consistency > personal preference.
 - **Clean your own mess.** If your change orphans a function, import, type, or parameter — remove it.
 - **Execution simplicity.** If 50 lines can do the job instead of 200, write 50. Do not over-abstract.
@@ -941,7 +941,7 @@ Context: <what was loaded from Phase 1>
   javadoc), where they are a build artifact and stay.
 - **Test names ARE the test's documentation** — a failing test prints its name, not your comment.
   One behaviour per test; if the name needs "and", split it.
-- Do not add comments, docstrings, or type annotations to unchanged code (Touch Only What Must Be Touched)
+- Do not add, rephrase or reformat comments and docstrings on unchanged code (Touch Only What Must Be Touched). **The one exception is `dev:trim --apply`**, whose whole job is the budget and which gates every write; it covers adding a line and collapsing one, because both are otherwise banned here
 - Do not add error handling for impossible cases
 - Do not create helpers for one-time use
 - DB migrations: always add a new version, never modify existing ones (mechanics: `supabase` skill)
