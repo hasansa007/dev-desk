@@ -35,7 +35,7 @@ log deny "$BR"
 cat >&2 <<EOF
 Phase 3 — first WRITE while still on '$BR' ($(basename "$ROOT")).
 
-  Bug:     cut it now  ->  git checkout -b gh-<N>-<slug>
+  Bug:     cut it now  ->  git switch -c gh-<N>-<slug> --no-track origin/<pre-prod>
   Feature: cut it AFTER Phase 5's go-ahead, not before.
 
 override: touch "$ROOT/.claude/hooks-off"   (logged)

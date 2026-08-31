@@ -64,7 +64,7 @@ listening, reuse it and start nothing.* Restarting the developer's app to photog
 failure this design forecloses.
 
 Phase 11 should delegate its evidence capture to `dev:shots` rather than restate the commands.
-That edit is **not** made: `shared/pipeline.md` sits at 957 against a 958-line budget, so `GUIDE.md`
+That edit is **not** made: `shared/pipeline.md` sits at 958 against a 958-line budget, so `GUIDE.md`
 requires an addition there to name its deletion. The delegation is documented here and in the tool
 until a deletion pays for it.
 
@@ -182,7 +182,8 @@ Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-
   unfinished diff.
 - **One pipeline, many doors.** Members never copy `shared/pipeline.md`; they point into it.
 - **The resolved repo is a write boundary.** Name the target `owner/repo` and branch *before* acting,
-  never write outside the resolved repo without an explicit yes naming it, and always cut a branch so
+  never write outside the resolved repo without an explicit yes naming it, and always cut a branch —
+  from the resolved pre-prod branch, not from what is checked out — so
   there is something reviewable before anything lands. Defined once in `shared/entry.md`.
 - **A result is not a claim.** Say what a command's output *means* and what bounds it — scope
   limiters, values carrying two meanings, a substituted predicate — not just where you looked.

@@ -253,7 +253,8 @@ yes — to both of you. For a bug the objection does not apply: you reproduced i
 never the question, only the approach.
 
 If the branch already exists (a resumed task, or the developer cut it), say so and move on — this
-is a rule about not pre-committing, not about rejecting work in progress.
+is about not pre-committing, not rejecting work in progress. **But check its base:** a branch cut
+from another in-flight branch carries its commits into your PR. Mechanics and scar in `entry.md`.
 
 ---
 

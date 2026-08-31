@@ -183,7 +183,7 @@ standalone members start at 11 and not earlier, and why an epic cannot resume mi
 **4. Ceremony is the failure mode, not sloppiness.** *A slow pipeline that gets skipped protects
 nothing.* Every addition must earn the tier it lands in. Prefer conditional over mandatory.
 
-> **Budget: `shared/pipeline.md` stays at or under 958 lines** (957 at 2026-08-24). Not a style
+> **Budget: `shared/pipeline.md` stays at or under 958 lines** (958 at 2026-08-31). Not a style
 > preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
 > than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
 > `wc -l shared/pipeline.md` before you write. The number stays deliberately close to current: this
@@ -230,7 +230,8 @@ they point, never duplicate.
 
 - **The four always-stop gates.** They are the difference between a workflow and an autopilot.
 - **The write boundary** (`shared/entry.md`). Name the target `owner/repo` before acting; never write
-  outside the resolved repo without an explicit yes naming it; always cut a branch. Paid for on
+  outside the resolved repo without an explicit yes naming it; always cut a branch, from the
+  resolved pre-prod branch and not from what is checked out. Paid for on
   2026-08-06 — a read-only version of this rule existed and did not stop two PRs being merged into
   another repo on a two-word instruction. **A boundary that only governs reads is not a boundary.**
 - **The result-domain rule** (`shared/entry.md`). Say what an output *means* and what bounds it, not
