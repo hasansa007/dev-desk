@@ -41,6 +41,7 @@ stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the 
     ├── launch-kill/SKILL.md      → /dev:launch-kill  no phase — `launch` inverted
     ├── shots/SKILL.md            → /dev:shots      no phase — capture, iOS/Android/web
     ├── trim/SKILL.md             → /dev:trim       no phase — existing code → the doc budget
+    ├── arch/SKILL.md             → /dev:arch       no phase — a verifiable diagram, via Archify
     ├── survey/SKILL.md           → /dev:survey     no phase — read the app, file what is wrong
     └── issues/SKILL.md           → /dev:issues     no phase — the tracker view; bare /dev routes here
 ```
@@ -87,6 +88,11 @@ else the pipeline reaches for — `superpowers:*`, `/code-review`, `security-rev
 `frontend-design`, `supabase`, `feature-dev:*` — is a plugin that installs anywhere. `dev:launch` is
 the one that would simply be missing after a clone, taking mobile verification down with it and
 leaving nothing to explain why.
+
+`dev:arch` is a third category and the only one of its kind here: it depends on
+[Archify](https://github.com/tt-a1i/archify), an external MIT package. It does not degrade — without
+Archify the door stops rather than drawing something unvalidated, since the validator is the whole
+reason to prefer it over a hand-authored SVG.
 
 ---
 
@@ -138,6 +144,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | — | *(no phase)* — stop this project's servers | `dev:launch-kill` |
 | — | *(no phase)* — capture screens from the running app | `dev:shots` |
 | — | *(no phase)* — bring EXISTING code to the documentation budget | `dev:trim` |
+| — | *(no phase)* — draw a verifiable diagram of a system | `dev:arch` |
 | — | *(no phase)* — survey an existing app, file the confirmed findings | `dev:survey` |
 | — | *(no phase)* — the tracker: current, next, stats | `dev:issues` |
 
