@@ -43,9 +43,35 @@ commit, branch, push, PR or merge:
 2. **Never write to a repo other than the resolved one without an explicit yes** naming that repo.
    Authorization to fix something is not authorization to fix it *anywhere*.
 3. **Work on a NEW BRANCH, never directly on the main line**, so there is a reviewable object before
-   anything lands — and **cut that branch from the resolved base, not from whatever is checked
-   out.** A branch cut from another in-flight branch carries its commits into your PR. Mechanics
-   and the scar: `pipeline.md` Phase 3, *Cut it from the BASE*.
+   anything lands — and **cut it from the pre-prod branch resolved above, not from whatever is
+   checked out.**
+
+A branch cut from another unmerged branch inherits that branch's commits, and they become part of
+your diff, your PR and your review. Nothing warns you: the name is right, the tests pass, and
+`git status` reports the branch you are **on**, never the one you came **from**.
+
+```bash
+git fetch origin
+git log --oneline origin/<pre-prod>..HEAD          # empty = you are AT the base; anything = you are not
+git switch -c <name> --no-track origin/<pre-prod>  # --no-track matters, see below
+```
+
+**`--no-track` is not optional.** Without it the new branch's upstream is the *base*, and git's first
+suggestion for a bare `git push` becomes `git push origin HEAD:<pre-prod>` — which lands your commits
+on the pre-prod branch and skips Phases 12 and 13 entirely. With it, git suggests
+`--set-upstream origin <name>`, which is what you want. Verified on git 2.50.1.
+
+**When the dependency is real** — an epic's slice that needs its sibling's unmerged code — cut from
+that branch deliberately, say so in the PR body, and target the PR at it. The rule forbids the
+*accidental* dependency, not the chosen one.
+
+> **2026-08-31 — two doors, one base, and a PR that carried the wrong one.** A branch for a new door
+> was cut while another door's branch was checked out, so it inherited that door's commit. The cost
+> arrived at the PR: the diff carried the other work, so the PR was targeted at *that* branch to keep
+> it readable — then that branch moved, the PR went `CONFLICTING`, and the repair was a rebase, a
+> conflict resolution, a force-push and a retarget. One `--no-track` cut from the base would have
+> avoided all of it. **Two branches from one base are independent; a branch from a branch is a
+> dependency nobody agreed to.**
 
 > **2026-08-05 → 06 — read-boundary written, write-boundary missing.** A boundary rule was added to
 > `dev:issues` after it rendered another repo's board — read-only, and the user still had to ask
