@@ -43,7 +43,9 @@ commit, branch, push, PR or merge:
 2. **Never write to a repo other than the resolved one without an explicit yes** naming that repo.
    Authorization to fix something is not authorization to fix it *anywhere*.
 3. **Work on a NEW BRANCH, never directly on the main line**, so there is a reviewable object before
-   anything lands.
+   anything lands — and **cut that branch from the resolved base, not from whatever is checked
+   out.** A branch cut from another in-flight branch carries its commits into your PR. Mechanics
+   and the scar: `pipeline.md` Phase 3, *Cut it from the BASE*.
 
 > **2026-08-05 → 06 — read-boundary written, write-boundary missing.** A boundary rule was added to
 > `dev:issues` after it rendered another repo's board — read-only, and the user still had to ask

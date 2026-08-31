@@ -255,6 +255,37 @@ never the question, only the approach.
 If the branch already exists (a resumed task, or the developer cut it), say so and move on — this
 is a rule about not pre-committing, not about rejecting work in progress.
 
+### Cut it from the BASE, never from another in-flight branch
+
+The table above says *when*. This says **from what**: the pre-prod branch resolved in `entry.md`,
+freshly fetched — never from whatever happens to be checked out.
+
+A branch cut from another unmerged branch inherits that branch's commits, and every one of them
+becomes part of your diff, your PR and your review. Nothing warns you: the name is right, the
+commits are right, the tests pass. `git status` shows the branch you are on, never the branch you
+came from.
+
+**State the base by name, and cut from it explicitly:**
+
+```bash
+git fetch origin
+git rev-parse --abbrev-ref HEAD             # what you are ON is not necessarily the base
+git checkout -b <name> origin/<pre-prod>    # from the BASE, not from HEAD
+```
+
+> **2026-08-31 — two doors, one base, and a PR that carried the wrong one.** A branch for a new
+> door was cut while another new door's branch was checked out, so it inherited that door's commit.
+> The cost arrived at the PR: the diff carried the other door's work, so the PR was opened against
+> *that* branch to keep the diff readable. Then that branch moved underneath it, the PR went
+> `CONFLICTING`, and repairing it took a rebase, a conflict resolution, a force-push and a
+> retarget — to reach the state one `git checkout -b <name> origin/main` would have produced at the
+> start.
+>
+> **Two branches from the same base are independent and fine. A branch from a branch is a
+> dependency nobody agreed to.** When work is already in flight, the checked-out branch is the most
+> likely thing to cut from and the least likely to be right — so this rule matters *most* exactly
+> when it is easiest to skip.
+
 ---
 
 ## Phase 4 — Investigation
