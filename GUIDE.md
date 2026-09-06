@@ -65,38 +65,29 @@ here costs a sentence; disagreeing after Phase 9 costs the branch.
 
 ## It runs straight through — and stops at four moments
 
-It never asks *"shall I continue?"* between phases. It reports what each one did and moves on. But
-these four are decisions, not steps, and it always stops at them:
+It never asks *"shall I continue?"* between phases. It reports what each one did and moves on. Four
+are decisions rather than steps, and it always stops at them — marked `── ask you ──` below. If it
+stops anywhere else, something is wrong, and it will say what.
 
-| | Stops to ask |
-|---|---|
-| **Phase 5** | should this be built, and shaped this way? |
-| **Phase 6** | which architecture? (only when there are genuinely different options) |
-| **Phase 14** | merge this to pre prod? |
-| **Phase 16** | promote to production? |
-
-If it stops anywhere else, something is wrong — an ambiguity, a failed check — and it will say so.
-
-## What happens between the questions
-
-You do not need to memorise these. It announces each as it goes.
+You do not need to memorise the rest; it announces each as it goes.
 
 ```
 0     file it — only from /dev:create-*, never inside a /dev run
 1–2   load project context, detect the stack
 3     name the branch (cut at the first write, not before)
 4     investigate — for a bug: reproduce it BEFORE theorising
-5     ── DISCUSS ── ask you ── (and SPLIT it here, if it's several tasks) ──
-6     architecture options, if there are real ones ── ask you ──
+5     ── ask you ── should this be built, and shaped this way?
+                    (and SPLIT it here, if it's several tasks)
+6     ── ask you ── which architecture? only when the options are genuinely different
 7–8   write the plan, break it into tasks
 9     implement — small commits, one logical change each
 10    pre-PR checks
 11    VERIFY — drives the real app, evidence per row, cleans up after itself
-12    DOCS — are the ADRs and PROJECT_MAP still true?      (11 chains into 12 automatically)
+12    DOCS — are the ADRs and PROJECT_MAP still true?   (11 chains into 12 automatically)
 13    code review + security pass on Deep
-14    ── PR → merge → PRE PROD ── ask you ───────
+14    ── ask you ── merge to PRE PROD?
 15    review feedback loops back into 14
-16    ── PROMOTE TO PROD ── ask you ─────────────
+16    ── ask you ── promote to PRODUCTION?
 ```
 
 ## When you only need one part
@@ -204,22 +195,17 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > ceiling. Take the smallest raise that admits the change, or take none. **960 was itself too
 > loose** and was corrected to 958 in the same branch: at 957 the smallest admitting ceiling is
 > 958, and 3 free lines would have let the next three additions land without paying anything.
-> `ci/pr-gates.yml` now recomputes this rather than trusting the integer written here.>
-> **2026-09-06 — raised 958 → 988, because no deletion was available that would not degrade.** The
-> walkthrough gate (Phase 5, *"ask for THEIR approach before you show yours"*) added 30 lines. The
-> deletion the README has long named — Phase 11 delegating capture to `dev:shots` — does not pay for
-> it: `dev:shots` owns the capture *commands*, but Phase 11 only points at them in two lines. The
-> 27-line teardown block looked like the other candidate and is not one — `dev:launch-kill` does not
-> cover the MCP-launched Chrome, so that rule lives nowhere else, and Phase 11 is its point of use.
-> Per 2026-08-23, relocating it would not have paid either. So: the smallest raise that admits the
-> change, and zero slack — the next addition pays again.
+> `ci/pr-gates.yml` now recomputes this rather than trusting the integer written here.
 >
-> **The breach was silent for four PRs, and that is the worse half.** `ci/pr-gates.yml` carries the
-> `line-budget` job that recomputes all of this, and the note above says it "now recomputes this
-> rather than trusting the integer written here" — but the file was never installed, so nothing ran.
-> The job is now installed on its own at `.github/workflows/line-budget.yml`. The reason the rest of
-> `pr-gates.yml` stays out of this repo — its `required-sections` job would fail every PR here, since
-> these are not `/dev` pipeline runs — does not apply to this job, which reads only the two files.
+> **2026-09-06 — raised 958 → 988.** No deletion was available that would not degrade. The one the
+> README had long named — Phase 11 delegating capture to `dev:shots` — does not pay: `dev:shots` owns
+> the capture *commands*, Phase 11 only points at them in two lines. The 27-line teardown block is
+> not a candidate either: `dev:launch-kill` does not cover the MCP-launched Chrome, so that rule
+> lives nowhere else and Phase 11 is its point of use.
+>
+> **The breach ran silent for four PRs, which is the worse half.** The line above claimed
+> `ci/pr-gates.yml` recomputes this; that file had never been installed. Its `line-budget` job now
+> runs on its own at `.github/workflows/line-budget.yml`.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.
@@ -314,9 +300,8 @@ Honest, as of 2026-08-04:
 - **New-project path barely tested.** The `ARCHITECTURE.md`-absent branch and both MASTER_PROMPTs
   have never run.
 - **The gate log has a mechanism but no data.** `## PIPELINE`'s `Gates:` line was added 2026-08-04
-  to fix this; until ~20 PRs carry it, pruning is still guesswork. It is also self-reported — a run
-  that skips a phase *and* omits it from `Skipped:` is invisible, same as before. This buys
-  visibility, not enforcement.
+  to fix this; until ~20 PRs carry it, pruning is still guesswork. This buys visibility, not
+  enforcement — see the self-reporting limit in the last bullet.
 - **`dev:pre-prod`, `dev:review`, `dev:prod` — and where they CAN be exercised.** As of 2026-08-05
   `dev:pre-prod` has run end to end once, on a two-stage repo: branch → PR → gates → merge to the
   pre-prod branch. `dev:review` and the `pre-prod → prod` half of `dev:prod` still never have.
@@ -334,7 +319,8 @@ Honest, as of 2026-08-04:
   mechanical **where they touch a tool call**. That qualifier is the whole limit: a hook checks
   presence of state at a tool boundary, so Phases 4–8 are unreachable by construction, on the same
   seam that gives them no `dev-*` door. Pipe-tested only, **zero real runs**; `hooks/README.md`
-  separates the three dated fixes from the undated design. A GitHub Actions check also exists at
-  `ci/pr-gates.yml`, deliberately **not installed** — `hooks/pr-gates.sh` supersedes it locally
-  (earlier, no infra, no false failures on this repo's own PRs) and it should be deleted once ~10
-  real PRs carry `fired.log` evidence, not before.
+  separates the three dated fixes from the undated design. `ci/pr-gates.yml`'s `required-sections` job stays
+  **uninstalled** — `hooks/pr-gates.sh` supersedes it locally, and it would fail every PR here since
+  these are not `/dev` runs. Its `line-budget` job **is** installed, at
+  `.github/workflows/line-budget.yml` (2026-09-06): it reads three files and compares three numbers,
+  so none of that reasoning applies to it. That is the repo's only mechanical PR check.

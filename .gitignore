@@ -1,1 +1,4 @@
 .DS_Store
+
+# Working artifacts — diagrams, ADRs, survey reports. Local, not tracked.
+docs/

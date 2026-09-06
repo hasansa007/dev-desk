@@ -39,54 +39,23 @@ ADR is part of the diff.
 | If the diff contains… | Then update… |
 |---|---|
 | a changed price, limit, cap or plan | the monetization/pricing doc — every number AND why it is that number |
-| a decision with a rejected alternative | a new ADR in `docs/adr/` — including the alternative and why it lost |
+| a decision with a rejected alternative | the PR body and commit message — including the alternative and why it lost |
 | a new/changed env var, migration or runbook step | the release/ops doc |
 | a new module, flow or entry point | `PROJECT_MAP.md` (`TECH_STACK` / `SYSTEM_FLOW`) |
 | work deliberately deferred | `ORPHANS & PENDING` — not a memory of it |
-| a moved/renamed/deleted file that any `docs/arch/*.json` cites | the diagram — re-pin it, or delete it |
+| a moved/renamed/deleted file that any tracked diagram IR cites | the diagram — re-pin it, or delete it |
 
-## Where ADRs live — this skill owns it
+## Where ADRs live
 
-`skills/survey/SKILL.md` delegates here explicitly: *"`dev:docs` owns ADRs — their numbering and
-location are its rules, not this skill's."* So they are stated here, once.
+**Undecided, and that is a real gap.** `skills/survey/SKILL.md` delegates here — *"`dev:docs` owns
+ADRs, their numbering and location are its rules"* — and this skill has never answered it. A
+convention in `docs/adr/` was written on 2026-09-06 and reverted the same day when `docs/` became
+git-ignored: an ADR nobody can read from a clone is not a record.
 
-`docs/adr/NNNN-kebab-title.md`, four digits, monotonic. `docs/adr/README.md` is the index, one line
-per ADR, updated in the same commit.
-
-**Allocate the number by reading the directory, never from memory:**
-
-```bash
-ls docs/adr/[0-9]*.md | tail -1        # the highest that exists; the next one is +1
-```
-
-Guessing it is the same defect class as the three wrong line counts that forced the CI budget check
-(`GUIDE.md`, 2026-08-23/24) — a number asserted rather than measured.
-
-The shape:
-
-```markdown
-# NNNN — <the decision, as a statement, not a topic>
-
-Status:  Accepted | Superseded by NNNN | Reversed
-Date:    YYYY-MM-DD
-Commit:  <sha>  ·  PR #N
-
-## Context      what forced it, and what was true before
-## Decision     what we do now — present tense
-## Rejected     each losing option, and WHY it lost
-## Consequences what this costs, and what it forecloses
-## Evidence     the output or observation that settled it
-```
-
-- **An ADR with an empty `## Rejected` is a note, not an ADR.** If nothing lost there was no
-  decision; put it in the skill file instead.
-- **Never edit a landed ADR's `## Decision`.** Supersede it with a new one and update the old
-  `Status:`. The wrong turn is the value — editing it away leaves the next reader to re-propose the
-  option that already lost.
-- **`## Evidence` is not optional.** *A result is not a claim* applies here as everywhere: an ADR
-  asserting a tradeoff it never measured is the thing this gate refuses elsewhere.
-- **Squash merges delete commit-message rationale.** Two of this repo's own decisions survived only
-  in PR bodies, which are not in the clone. That is what the directory is for.
+Until it is decided, a decision with a rejected alternative goes in the **PR body** and the **commit
+message**, and the losing options go with it. Be aware of what that costs: a squash merge rewrites
+the commit, so the rationale then survives only on the forge — two of this repo's own decisions were
+lost that way.
 
 ## The check that actually fails things
 
@@ -103,97 +72,39 @@ describing a rail the dialog no longer has. One mention had been fixed, three ha
 sweep is indistinguishable from a complete one from the outside**, so the pass criterion is the
 reread, not the edit.
 
-## Committed diagrams — the one doc check that is mechanical
+## Committed diagrams
 
-`dev:arch` lands evidenced architecture diagrams in `docs/arch/` as a `.html` beside the
-`.architecture.json` that produced it. Every component in that IR is pinned to a file and line range
-at one commit, so unlike prose, a stale diagram can be **detected by running something**.
+`dev:arch` writes to `$SCRATCH` and nothing lands in the tree by default, so there is normally
+nothing here to check.
 
-**Validating the IR as it is pinned proves nothing.** Its `meta.repository.revision` names a commit
-that still exists, and the cited files still exist *at that commit*, so the check passes forever no
-matter what the branch did. Verified 2026-08-31: renaming a cited file and re-running `validate` on
-the committed IR returned `ok`. The revision must be bumped to the branch's HEAD **first** — only
-then does the same rename return `repository-evidence/file-missing`.
-
-Probe a COPY. Never rewrite the committed IR's revision to make a check pass:
+**If a diagram is ever landed at a tracked path**, it comes with an `.architecture.json` beside it,
+and this gate re-validates that IR against the branch's HEAD — not against the revision the IR names,
+which always passes because the pinned commit still exists. Probe a copy:
 
 ```bash
-export ARCHIFY_UPDATE_CHECK_DISABLED=1
-HEAD_SHA=$(git rev-parse HEAD)
-for ir in docs/arch/*.architecture.json; do
-  probe=$(mktemp)          # bare mktemp — a ".json" suffix breaks the template on macOS
-  python3 -c "import json,sys;d=json.load(open(sys.argv[1]));\
-d['meta']['repository']['revision']=sys.argv[2];json.dump(d,open(sys.argv[3],'w'))" "$ir" "$HEAD_SHA" "$probe"
-  node <archify>/bin/archify.mjs validate architecture "$probe" --repo-root . >/dev/null 2>&1 \
-    && echo "OK: $ir" || echo "STALE: $ir"
-  rm -f "$probe"
-done
+probe=$(mktemp)   # bare mktemp — a ".json" suffix breaks the template on macOS
+python3 -c "import json,sys;d=json.load(open(sys.argv[1]));\
+d['meta']['repository']['revision']=sys.argv[2];json.dump(d,open(sys.argv[3],'w'))" \
+  "$ir" "$(git rev-parse HEAD)" "$probe"
+node <archify>/bin/archify.mjs validate architecture "$probe" --repo-root . || echo "STALE: $ir"
 ```
 
-Run it three ways before trusting it — this loop was checked against a clean tree, against a cited
-file renamed, and against the rename reverted, returning **OK / STALE / OK**.
-
-Run it over every `docs/arch/*.architecture.json` in the repo — not only the ones this branch
-touched, because any diff can move a file some other diagram cites.
-
-A `repository-evidence/*` failure means the diagram cites code this branch moved, renamed or deleted.
-**That fails the gate.** Fix it by re-reading the system at the new commit and re-running `dev:arch`
-— which legitimately advances the pin — or by deleting the diagram. Never by editing the SHA in place.
-
-**The committed pin records the commit at which someone actually read the code**, which is why the
-gate probes a copy and leaves it alone. Advancing it without re-reading converts the one honest thing
-the artifact carries into a false claim.
-
-### The probe misses a pure line SHIFT — check touched files separately
-
-A pin that still RESOLVES can still be wrong. Insert 30 lines near the top of a cited file and every
-range below it slides down: the file exists, the lines exist, `validate` returns `ok`, and the pins
-now quote different code. Observed 2026-08-31 — a 30-line insert at `shared/pipeline.md:306` moved
-six cited ranges and the probe stayed green.
-
-Compare against the **working tree**, not `$BASE...HEAD`. The three-dot form only sees committed
-work, so running the gate before committing reports "no cited file touched" while the file sits
-modified on disk — verified the same day, on this very check.
-
-So run the cheap set-intersection too, and treat any overlap as **re-read required**:
-
-```bash
-BASE=$(git merge-base origin/main HEAD)
-git diff --name-only "$BASE" > /tmp/touched   # bare $BASE, NOT $BASE...HEAD —
-                                              # ...HEAD misses uncommitted work
-python3 - <<'EOF'
-import json,glob
-touched=set(open('/tmp/touched').read().split())
-for ir in glob.glob('docs/arch/*.architecture.json'):
-    cited={s['path'] for c in json.load(open(ir))['components'] for s in c['sources']}
-    hit=sorted(cited & touched)
-    print(f"{ir}: {'RE-READ ' + ', '.join(hit) if hit else 'no cited file touched'}")
-EOF
-```
-
-**A hit is not automatically a failure** — the branch may have changed a file the diagram cites in a
-region it does not cite. It means *a human opens those ranges and confirms they still say what the
-node claims*, then re-`deliver`s if they moved. Unlike the probe, this cannot be automated away,
-because "does line 556 still start Phase 11" is a question about meaning.
-
-**What this cannot catch, and you must still eyeball:** every pin can resolve while the diagram is
-wrong. A node deleted from the system, an edge that no longer exists, a lane that was merged — all
-leave the cited files exactly where they were. The command proves the diagram still points at real
-code; only a person can say it still draws the real shape. So when a branch changes the ARCHITECTURE
-rather than just moving files, open the HTML and look at it.
+That catches a moved or deleted file. It **cannot** catch a pure line shift — an insert above a cited
+range moves it while every pin still resolves — so also intersect the IR's source paths with
+`git diff --name-only "$(git merge-base origin/main HEAD)"` and re-read any that appear.
 
 ## Output
 
 Either the list of ADRs and docs updated in this branch, or the explicit line:
 
 > none needed — checked: no price/limit, no decision-with-alternative, no env/migration,
-> no new module, no deferred work, no doc made stale, no `docs/arch/` diagram invalidated
+> no new module, no deferred work, no doc made stale
 
 Either way, state the reread: *"reread §X and §Y in full — N claims corrected"*, or *"reread §X in
 full — still accurate"*. An unstated reread did not happen.
 
-If the repo has any `docs/arch/*.architecture.json`, state the diagram result too — *"N/N diagrams
-re-validated at `<sha>`"*, or which one went stale and what was done. Say when there are none.
+If the repo tracks any diagram IR, state the result too — *"N/N diagrams re-validated at `<sha>`"* —
+or say there are none.
 
 A PR without a `## DOCS` section is not ready to merge.
 

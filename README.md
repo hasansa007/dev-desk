@@ -17,17 +17,15 @@ exists and only that stage is needed, and seven are **tools** that map to no pha
 The phase table below is the *reference*. This is the **journey** — what to type, in what order, and
 what each door needs before it will do anything.
 
-![The dev family, in the order you use it](docs/arch/dev-journey.gif)
+![The dev family, in the order you use it](assets/dev-journey.gif)
 
 > The path lights up in the order you walk it: `survey` → file → pick → build → verify → docs →
 > `/code-review` → pre prod → prod. Dashed edges are the ones that are never part of a straight run —
 > the Phase 15 loop back into 14, and the tools.
 >
-> Drawn by `/dev:arch` and evidence-backed: every box is pinned to a file and line range at one
-> commit and verified against a real Git object. The interactive version is
-> [`docs/arch/dev-journey.html`](docs/arch/dev-journey.html) — open it to click a node and see its
-> source. [`docs/arch/dev-family.html`](docs/arch/dev-family.html) is the structural map of the same
-> family: every door, its kind, and what it loads.
+> Drawn by `/dev:arch`, which pins every box to a file and line range at one commit and verifies it
+> against a real Git object. Regenerate the explorable HTML — click a node, see its source — with
+> `/dev:arch the dev family`. It writes to the scratch dir; `docs/` is git-ignored here.
 
 | # | You type | When | It needs | It gives you |
 |---|---|---|---|---|
@@ -97,11 +95,8 @@ asks. **Nothing ever chains into a merge or a promotion** — those are decision
 │   ├── pipeline-{web,ios,android,kmp}.md   platform overlays on Phases 10/11/14
 │   ├── prod-secrets.md           the releasing merge's secrets gate — Phase 16, or 14 if single-branch
 │   └── prod-secrets-apple.md     Apple acquisition steps — read only on a missing secret
-├── docs/
-│   ├── adr/                      decision records — owned by dev:docs; README.md is the index
-│   ├── arch/                     evidenced diagrams — .html beside the .architecture.json
-│   │                             that produced it; dev:docs re-validates both before any merge
-│   └── survey/                   dev:survey reports, one per run, written before anything is filed
+├── assets/dev-journey.gif        the diagram above
+├── docs/                         GIT-IGNORED — local working artifacts (survey reports, diagrams)
 ├── ci/pr-gates.yml               NOT installed — a PR-body check, kept beside the rules it enforces
 ├── hooks/                        4 Claude Code hooks — Phases 1, 3, 11(teardown), 12, 14, 16
 │   └── README.md                 what a hook can enforce, install blocks, the fired.log query
@@ -127,50 +122,32 @@ asks. **Nothing ever chains into a merge or a promotion** — those are decision
 Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
 `shared/`, once.
 
-### `dev:launch`, `dev:launch-kill` and `dev:shots` — members of a different kind
+### `dev:launch`, `dev:launch-kill` and `dev:shots` — a different kind
 
-The other eight are **phases** (three filing, five staged); these three are **tools**. They map to no
-phase number and read none of the pipeline — one detects the project and launches it
-(`/dev:launch ios sim`, `/dev:launch android emulator`, `/dev:launch web`), one stops what it
-started, one captures screens from it. Phases 4 and 11 call `launch` for mobile targets, and it is
-equally useful alone on a throwaway prototype.
+The phase members are doors into `shared/pipeline.md`. These three are **tools**: no phase number, no
+preamble. Three verbs on one noun — start it, stop it, shoot it — and the latter two are doors into
+`launch`, not copies. `shots` reads `launch` 2.1–2.6 and Phase 3, which is how it inherits the rule
+that matters for a capture: *if a server is already listening, reuse it and start nothing.*
 
-They are three verbs on one noun — start it, stop it, shoot it — and the latter two are **doors into
-`launch`**, not copies of it. `shots` reads `launch` 2.1–2.6 for discovery and Phase 3 to get the app
-up, which is how it inherits the rule that matters most for a capture: *if a server is already
-listening, reuse it and start nothing.* Restarting the developer's app to photograph it is the
-failure this design forecloses.
+`launch-kill` adds the **boundary**: it proves a process belongs to *this worktree* by its cwd before
+touching it, then kills the tree from the top so the launch script's traps fire. Killing the port
+holder alone orphans everything the script started — three `worker.py` processes were found leaked
+that way on 2026-08-05, one per dev session. The line `launch` used to print,
+`lsof -ti:<PORT> | xargs kill`, is that bug.
 
-Phase 11 should delegate its evidence capture to `dev:shots` rather than restate the commands.
-That edit is **not** made: `shared/pipeline.md` sits at 988 against a 988-line budget, so `GUIDE.md`
+Not named `run`: Claude Code ships a built-in `run` skill, and `dev:run` would read as a flavour of
+it. It lives here because it is the pipeline's only **personal-skill** dependency — everything else
+(`superpowers:*`, `/code-review`, `frontend-design`, `supabase`) installs anywhere; this one would
+simply be missing after a clone, taking mobile verification with it.
+
+`dev:arch` is a third category: it depends on [Archify](https://github.com/tt-a1i/archify), an
+external MIT package, and does not degrade — without it the door stops rather than drawing something
+unvalidated.
+
+Phase 11 should delegate its evidence capture to `dev:shots` rather than restate the commands. That
+edit is **not** made: `shared/pipeline.md` sits at 988 against a 988-line budget, so `GUIDE.md`
 requires an addition there to name its deletion. The delegation is documented here and in the tool
 until a deletion pays for it.
-
-`launch-kill` is a **door into `launch`**, exactly as the phase members are doors into
-`shared/pipeline.md`: it points at `launch` 2.1 / 2.5.3 / 2.6.2 / 2.6.3 for project root, ports and
-the launch script, and restates none of it. Two copies of port resolution drift, and a drift here
-kills the wrong port. Discovery bugs get fixed in `launch`, once — which is how `2.1`'s worktree bug
-(`[ -d "$dir/.git" ]` is false when `.git` is a file) got fixed for both at the same time.
-
-What it adds is the **boundary**. It proves a process belongs to *this worktree* by its cwd before
-touching it, and kills the tree from the top so the launch script's traps fire. Killing the port
-holder alone orphans every background process the script started: three `worker.py` processes were
-found leaked that way on 2026-08-05, one per dev session, all still polling the same local queue.
-The line `launch` used to print — `lsof -ti:<PORT> | xargs kill` — is that bug.
-
-The name is deliberately **not** `run`: Claude Code ships a built-in `run` skill, and a member
-called `dev:run` reads as a namespaced flavour of it rather than a different tool.
-
-It belongs in this repo because it is the pipeline's only **personal-skill** dependency. Everything
-else the pipeline reaches for — `superpowers:*`, `/code-review`, `security-review`,
-`frontend-design`, `supabase`, `feature-dev:*` — is a plugin that installs anywhere. `dev:launch` is
-the one that would simply be missing after a clone, taking mobile verification down with it and
-leaving nothing to explain why.
-
-`dev:arch` is a third category and the only one of its kind here: it depends on
-[Archify](https://github.com/tt-a1i/archify), an external MIT package. It does not degrade — without
-Archify the door stops rather than drawing something unvalidated, since the validator is the whole
-reason to prefer it over a hand-authored SVG.
 
 ---
 

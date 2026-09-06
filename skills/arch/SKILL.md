@@ -33,25 +33,16 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
 | `architecture` · `workflow` · `sequence` · `dataflow` · `lifecycle` | force the type | pick it from Phase 4's table |
 | `--showcase` | pass `--quality showcase` to `validate` and `deliver` | `--quality standard` |
 | `--open` | pass `--open` to `deliver` | off |
-| `--out <path>` | where the HTML lands | `docs/arch/<name>.html` in the invoked repo |
-| `--scratch` | keep it out of the tree — a throwaway look | off |
+| `--out <path>` | where the HTML lands | `$SCRATCH/<name>.html` |
 
-**The artifact lands in the repo it was drawn from, next to its IR.** Write BOTH
-`docs/arch/<name>.architecture.json` and `docs/arch/<name>.html` — the JSON is what `dev:docs` re-validates
-later, and an HTML with no IR beside it cannot be checked by anything.
+**`$SCRATCH` is the session scratch directory named in the environment** — never a path inside the
+target repository, and never invented. If no scratch directory is defined, ask for `--out` rather
+than guessing a location.
 
-**This is only safe because the pins are re-checkable.** An evidenced architecture diagram is not
-prose: `archify validate <type> <ir> --repo-root .` re-runs every pin at the current commit and fails
-loudly when a cited file or line has moved. That is why `dev:docs` can own it — see *Known limits*
-for what that check still cannot catch.
-
-**Write into `$SCRATCH` instead — never a guessed path in the tree — when:**
-
-- `--scratch` was passed, or the diagram is a throwaway look at someone else's code
-- **the target is not the invoked repo.** `docs/arch/` means *this* repo's `docs/arch/`; a diagram of
-  another checkout does not land here. Draw it to `$SCRATCH` and say so
-- the diagram is one of the four **unevidenced** types — nothing can re-check it, so it must not sit
-  in the tree wearing the same authority as an evidenced one
+**Nothing is written into the repository by default**, and `docs/` is git-ignored here, so a path
+under it is NOT a way to land one — it produces an untracked file that looks committed. Landing an
+artifact is a deliberate act with an explicit `--out` to a tracked path, and it makes that artifact
+someone's to keep current.
 
 ## Phase 2 — Resolve the renderer
 
@@ -222,9 +213,9 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
 
 ## Rules
 
-- **Never write a diagram of ANOTHER repo into this one.** `docs/arch/` is for the invoked repo's own
-  system; anything else goes to `$SCRATCH`.
-- **Never land an artifact without its IR.** The `.json` beside the `.html` is what keeps it honest.
+- **Never write into the repository without being asked.** Default output is the scratch dir.
+- **Never land an artifact without its IR.** The `.json` beside the `.html` is what keeps it honest —
+  an HTML alone cannot be re-validated by anything.
 - **Never present an unvalidated diagram.** If `deliver` did not pass, there is no artifact.
 - **Never claim runtime behaviour.** Reach, routes, and roles are *authored* relationships. The
   diagram says what the code is wired to do, never what production actually did.
@@ -241,8 +232,8 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
   - **Branch DOES touch a cited path** → the correct pin cannot exist until the merge lands. Deliver
     against the branch, then **re-pin as a follow-up** once merged.
 - **Before advancing a pin, compare the CITED PATHS — never the whole tree.** The artifact lives in
-  `docs/arch/`, so committing it guarantees the trees differ; a whole-tree check therefore says
-  "re-read" every single time and gets ignored, which is worse than no check.
+  the repo alongside the code, so committing it guarantees the trees differ; a whole-tree check
+  therefore says "re-read" every single time and gets ignored, which is worse than no check.
   ```bash
   git diff --name-only <old-pin> HEAD          # what actually moved
   # intersect that with the IR's source paths — empty means the pin may advance
