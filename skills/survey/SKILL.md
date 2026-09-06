@@ -193,6 +193,11 @@ narrowed re-run, and overwriting the wider one loses the held PLAUSIBLE set. The
 artifact that makes the run reviewable and re-runnable; filing is a separate step, so nothing
 reaches the tracker unread. Create `docs/survey/` if the repo has no `docs/`, and say that you did.
 
+**Check whether the repo tracks it** — `git check-ignore -q docs/` — and say which answer you got. If
+`docs/` is ignored the report is a local working file: still written, still read before anything is
+filed, but not in the clone, so the branch-cutting rule above does not apply to it and a reader
+should not be sent looking for it in the repo.
+
 **Writing the report is a write, and the write boundary applies** (`shared/entry.md` rule 3): name
 `owner/repo`, and **cut a branch before creating the file** rather than dropping a tracked file onto
 whatever branch the developer is standing on. This is the one phase that is not read-only, and it

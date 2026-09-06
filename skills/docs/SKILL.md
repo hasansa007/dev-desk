@@ -87,6 +87,12 @@ Commit:  <sha>  ·  PR #N
   asserting a tradeoff it never measured is the thing this gate refuses elsewhere.
 - **Squash merges delete commit-message rationale.** Two of this repo's own decisions survived only
   in PR bodies, which are not in the clone. That is what the directory is for.
+- **Check that the repo tracks `docs/` before relying on the ADR as a shared record.**
+  `git check-ignore -q docs/` — if it is ignored, the ADR exists on one machine only: not in a clone,
+  not visible to a reviewer, gone with the checkout. That is a legitimate choice, but it changes what
+  the ADR is for. When it holds, put the losing options in the **PR body** as well, since that
+  becomes the only shared copy.
+
 
 ## The check that actually fails things
 

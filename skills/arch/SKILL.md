@@ -47,6 +47,13 @@ for what that check still cannot catch.
 
 **Write into `$SCRATCH` instead — never a guessed path in the tree — when:**
 
+- **the repo does not TRACK `docs/`.** Check before writing, in whatever repo you were invoked in:
+  ```bash
+  git check-ignore -q docs/ && echo "docs/ is ignored here — use \$SCRATCH"
+  ```
+  A path under an ignored directory produces an untracked file that **looks** committed: `deliver`
+  reports a path, the developer sees a green receipt, and nothing is in the diff. Say which it was.
+
 - `--scratch` was passed, or the diagram is a throwaway look at someone else's code
 - **the target is not the invoked repo.** `docs/arch/` means *this* repo's `docs/arch/`; a diagram of
   another checkout does not land here. Draw it to `$SCRATCH` and say so
