@@ -183,7 +183,7 @@ standalone members start at 11 and not earlier, and why an epic cannot resume mi
 **4. Ceremony is the failure mode, not sloppiness.** *A slow pipeline that gets skipped protects
 nothing.* Every addition must earn the tier it lands in. Prefer conditional over mandatory.
 
-> **Budget: `shared/pipeline.md` stays at or under 958 lines** (958 at 2026-08-31). Not a style
+> **Budget: `shared/pipeline.md` stays at or under 988 lines** (988 at 2026-09-06). Not a style
 > preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
 > than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
 > `wc -l shared/pipeline.md` before you write. The number stays deliberately close to current: this
@@ -204,7 +204,22 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > ceiling. Take the smallest raise that admits the change, or take none. **960 was itself too
 > loose** and was corrected to 958 in the same branch: at 957 the smallest admitting ceiling is
 > 958, and 3 free lines would have let the next three additions land without paying anything.
-> `ci/pr-gates.yml` now recomputes this rather than trusting the integer written here.
+> `ci/pr-gates.yml` now recomputes this rather than trusting the integer written here.>
+> **2026-09-06 — raised 958 → 988, because no deletion was available that would not degrade.** The
+> walkthrough gate (Phase 5, *"ask for THEIR approach before you show yours"*) added 30 lines. The
+> deletion the README has long named — Phase 11 delegating capture to `dev:shots` — does not pay for
+> it: `dev:shots` owns the capture *commands*, but Phase 11 only points at them in two lines. The
+> 27-line teardown block looked like the other candidate and is not one — `dev:launch-kill` does not
+> cover the MCP-launched Chrome, so that rule lives nowhere else, and Phase 11 is its point of use.
+> Per 2026-08-23, relocating it would not have paid either. So: the smallest raise that admits the
+> change, and zero slack — the next addition pays again.
+>
+> **The breach was silent for four PRs, and that is the worse half.** `ci/pr-gates.yml` carries the
+> `line-budget` job that recomputes all of this, and the note above says it "now recomputes this
+> rather than trusting the integer written here" — but the file was never installed, so nothing ran.
+> The job is now installed on its own at `.github/workflows/line-budget.yml`. The reason the rest of
+> `pr-gates.yml` stays out of this repo — its `required-sections` job would fail every PR here, since
+> these are not `/dev` pipeline runs — does not apply to this job, which reads only the two files.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.
