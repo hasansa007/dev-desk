@@ -97,8 +97,11 @@ asks. **Nothing ever chains into a merge or a promotion** — those are decision
 │   ├── pipeline-{web,ios,android,kmp}.md   platform overlays on Phases 10/11/14
 │   ├── prod-secrets.md           the releasing merge's secrets gate — Phase 16, or 14 if single-branch
 │   └── prod-secrets-apple.md     Apple acquisition steps — read only on a missing secret
-├── docs/arch/                    evidenced diagrams — .html beside the .architecture.json
-│                                 that produced it; dev:docs re-validates both before any merge
+├── docs/
+│   ├── adr/                      decision records — owned by dev:docs; README.md is the index
+│   ├── arch/                     evidenced diagrams — .html beside the .architecture.json
+│   │                             that produced it; dev:docs re-validates both before any merge
+│   └── survey/                   dev:survey reports, one per run, written before anything is filed
 ├── ci/pr-gates.yml               NOT installed — a PR-body check, kept beside the rules it enforces
 ├── hooks/                        4 Claude Code hooks — Phases 1, 3, 11(teardown), 12, 14, 16
 │   └── README.md                 what a hook can enforce, install blocks, the fired.log query
