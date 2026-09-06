@@ -3,12 +3,81 @@
 A personal development workflow for Claude Code: take a GitHub issue or a plain description from
 "what should this do?" all the way to production, without skipping the gates that matter.
 
-`/dev` is the full run. Three `/dev:create-*` members file the work item before it starts; five more
-are doors into the same pipeline at later phases, for when the work already exists and only that
-stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the app.
+`/dev` is the full run. **Fifteen members** sit around it: three `/dev:create-*` file the work item
+before it starts, five are doors into the same pipeline at later phases for when the work already
+exists and only that stage is needed, and seven are **tools** that map to no phase at all.
 
 > **New here? Read [GUIDE.md](GUIDE.md).** Part 1 is what to type and what it will ask you;
 > Part 2 is how to change it and what not to. This README is the repo's own structure.
+
+---
+
+## The order you actually use it in
+
+The phase table below is the *reference*. This is the **journey** — what to type, in what order, and
+what each door needs before it will do anything.
+
+![The dev family, in the order you use it](docs/arch/dev-journey.png)
+
+> Drawn by `/dev:arch` and evidence-backed: every box is pinned to a file and line range at one
+> commit and verified against a real Git object. The interactive version is
+> [`docs/arch/dev-journey.html`](docs/arch/dev-journey.html) — open it to click a node and see its
+> source. [`docs/arch/dev-family.html`](docs/arch/dev-family.html) is the structural map of the same
+> family: every door, its kind, and what it loads.
+
+| # | You type | When | It needs | It gives you |
+|---|---|---|---|---|
+| 1 | `/dev:survey` | you don't know what's wrong yet | a repo | a report, then confirmed issues |
+| 2 | `/dev:create-issue` · `-bug` · `-epic` | you already know | a description | an issue number |
+| 3 | `/dev:issues` *(or bare `/dev`)* | the board is stocked | nothing | what's next, ranked |
+| 4 | `/dev #N` | you picked one | an issue number | a branch, a plan, the code |
+| 5 | `/dev:verify` | the code exists | a branch | evidence per row → **chains to 6** |
+| 6 | `/dev:docs` | before any merge | a diff | the PR's `## DOCS` section |
+| 7 | `/code-review` | before any merge | a diff | findings — **not a `dev:` door** |
+| 8 | `/dev:pre-prod` | gates are green | a branch | a PR, merged to pre prod |
+| 9 | `/dev:prod` | pre prod is verified | both branches | production |
+
+**Steps 1–3 happen before any branch exists.** They take a description and produce an issue number —
+nothing durable is being worked on yet, which is why they can run in any session.
+
+**Step 4 is the only one that plans.** Phases 1–10 pass *reasoning* between each other, and reasoning
+lives only in the conversation that produced it. That is why there is no door into Phase 6 — there
+would be nothing to hand it.
+
+**Steps 5–9 each take a durable artifact** — a branch, a diff, a PR number — which is exactly what
+makes them independently invocable. Enter at 5 on Monday and at 8 on Friday; neither needs the other
+still in context.
+
+### Data flow — what moves between the doors
+
+```
+description ──▶ dev:create-*  ──▶ issue #N ──▶ dev #N ──▶ branch ──▶ dev:verify   ──▶ evidence
+                                                              │                        │
+repo ──▶ dev:survey ──▶ report ──▶ (confirmed only) ──────────┘                        ▼
+                                                                        diff ──▶ dev:docs ──▶ ## DOCS
+                                                                                          │
+                                             PR #  ◀── dev:pre-prod ◀── /code-review ◀─────┘
+                                               │
+                        dev:review ◀───────────┘   (loops BACK to 14, never forward)
+                                               │
+                                               ▼
+                                    pre prod ──▶ dev:prod ──▶ production
+```
+
+Each arrow is a **durable handoff**. Nothing in that chain requires the previous door's conversation
+to still exist — which is the whole reason the family is doors rather than one long run.
+
+### The tools, which sit outside all of it
+
+`dev:launch` · `dev:launch-kill` · `dev:shots` · `dev:arch` · `dev:trim` · `dev:issues` · `dev:survey`
+map to **no phase** and run none of the pipeline. Call them whenever. Phases 4 and 11 call `launch`
+for mobile targets; `shots` and `launch-kill` are doors into `launch`'s discovery, not copies of it.
+
+### The one automatic hop, and the ones that never are
+
+`dev:verify` (11) → `dev:docs` (12) is the **only** pair that chains without asking: same diff, both
+read-only, and their outputs are the two halves of one PR body. Everywhere else the run stops and
+asks. **Nothing ever chains into a merge or a promotion** — those are decisions, not steps.
 
 ---
 
@@ -24,6 +93,8 @@ stage is needed — plus `/dev:launch`, a tool the pipeline calls to launch the 
 │   ├── pipeline-{web,ios,android,kmp}.md   platform overlays on Phases 10/11/14
 │   ├── prod-secrets.md           the releasing merge's secrets gate — Phase 16, or 14 if single-branch
 │   └── prod-secrets-apple.md     Apple acquisition steps — read only on a missing secret
+├── docs/arch/                    evidenced diagrams — .html beside the .architecture.json
+│                                 that produced it; dev:docs re-validates both before any merge
 ├── ci/pr-gates.yml               NOT installed — a PR-body check, kept beside the rules it enforces
 ├── hooks/                        4 Claude Code hooks — Phases 1, 3, 11(teardown), 12, 14, 16
 │   └── README.md                 what a hook can enforce, install blocks, the fired.log query
@@ -128,7 +199,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | 2 | Tech Stack & Discovery — stack detect, conditional explorer fan-out | |
 | 3 | Git Branch Naming | |
 | 4 | Investigation — evidence ladder, reproduce before theorising | |
-| **5** | **Discuss Before Building** — plain-language, explicit go-ahead; conditional UI discussion **and epic decomposition** | |
+| **5** | **Discuss Before Building** — plain-language, explicit go-ahead; **asks for YOUR approach before showing its own**; conditional UI discussion **and epic decomposition** | |
 | 6 | Architecture Alternatives — 3 forced-different biases, losers recorded | |
 | 7 | Plan Output — written to `specs/` | |
 | 8 | Task Breakdown | |
