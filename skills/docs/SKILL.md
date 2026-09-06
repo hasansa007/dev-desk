@@ -39,23 +39,52 @@ ADR is part of the diff.
 | If the diff contains… | Then update… |
 |---|---|
 | a changed price, limit, cap or plan | the monetization/pricing doc — every number AND why it is that number |
-| a decision with a rejected alternative | the PR body and commit message — including the alternative and why it lost |
+| a decision with a rejected alternative | a new ADR in `docs/adr/` — plus the alternative and why it lost in the PR body |
 | a new/changed env var, migration or runbook step | the release/ops doc |
 | a new module, flow or entry point | `PROJECT_MAP.md` (`TECH_STACK` / `SYSTEM_FLOW`) |
 | work deliberately deferred | `ORPHANS & PENDING` — not a memory of it |
 | a moved/renamed/deleted file that any tracked diagram IR cites | the diagram — re-pin it, or delete it |
 
-## Where ADRs live
+## Where ADRs live — this skill owns it
 
-**Undecided, and that is a real gap.** `skills/survey/SKILL.md` delegates here — *"`dev:docs` owns
-ADRs, their numbering and location are its rules"* — and this skill has never answered it. A
-convention in `docs/adr/` was written on 2026-09-06 and reverted the same day when `docs/` became
-git-ignored: an ADR nobody can read from a clone is not a record.
+`skills/survey/SKILL.md` delegates here explicitly: *"`dev:docs` owns ADRs — their numbering and
+location are its rules, not this skill's."* So they are stated here, once.
 
-Until it is decided, a decision with a rejected alternative goes in the **PR body** and the **commit
-message**, and the losing options go with it. Be aware of what that costs: a squash merge rewrites
-the commit, so the rationale then survives only on the forge — two of this repo's own decisions were
-lost that way.
+`docs/adr/NNNN-kebab-title.md`, four digits, monotonic. `docs/adr/README.md` is the index, one line
+per ADR. **Allocate the number by reading the directory, never from memory:**
+
+```bash
+ls docs/adr/[0-9]*.md | tail -1        # the highest that exists; the next one is +1
+```
+
+Guessing it is the same defect class as the three wrong line counts that forced the CI budget check
+(`GUIDE.md`, 2026-08-23/24) — a number asserted rather than measured.
+
+```markdown
+# NNNN — <the decision, as a statement, not a topic>
+
+Status:  Accepted | Superseded by NNNN | Reversed
+Date:    YYYY-MM-DD
+Commit:  <sha>  ·  PR #N
+
+## Context      what forced it, and what was true before
+## Decision     what we do now — present tense
+## Rejected     each losing option, and WHY it lost
+## Consequences what this costs, and what it forecloses
+## Evidence     the output or observation that settled it
+```
+
+- **An ADR with an empty `## Rejected` is a note, not an ADR.** If nothing lost there was no
+  decision; put it in the skill file instead.
+- **Never edit a landed ADR's `## Decision`.** Supersede it with a new one and update the old
+  `Status:`. The wrong turn is the value — editing it away leaves the next reader to re-propose the
+  option that already lost.
+- **`## Evidence` is not optional.** *A result is not a claim* applies here as everywhere.
+
+**Put the losing options in the PR body as well.** The ADR carries the depth; the PR body is what a
+reviewer reads and what survives when the repo does not track `docs/` — check with
+`git check-ignore -q docs/` and say which record you are relying on. A squash merge rewrites the
+commit, so a rationale that lives only in a commit message is one merge from gone.
 
 ## The check that actually fails things
 
@@ -72,14 +101,20 @@ describing a rail the dialog no longer has. One mention had been fixed, three ha
 sweep is indistinguishable from a complete one from the outside**, so the pass criterion is the
 reread, not the edit.
 
-## Committed diagrams
+## Committed diagrams — the one doc check that is mechanical
 
-`dev:arch` writes to `$SCRATCH` and nothing lands in the tree by default, so there is normally
-nothing here to check.
+`dev:arch` lands evidenced architecture diagrams in `docs/arch/` as a `.html` beside the
+`.architecture.json` that produced it. Every component in that IR is pinned to a file and line range
+at one commit, so unlike prose, a stale diagram can be **detected by running something**. Run this
+over every `docs/arch/*.architecture.json` in the repo — not only those the branch touched, because
+any diff can move a file some other diagram cites. If the repo tracks none, say so.
 
-**If a diagram is ever landed at a tracked path**, it comes with an `.architecture.json` beside it,
-and this gate re-validates that IR against the branch's HEAD — not against the revision the IR names,
-which always passes because the pinned commit still exists. Probe a copy:
+**Validating the IR as it is pinned proves nothing.** Its `meta.repository.revision` names a commit
+that still exists, and the cited files still exist *at that commit*, so it passes forever no matter
+what the branch did. Verified 2026-08-31: renaming a cited file and re-running `validate` on the
+committed IR returned `ok`. Bump the revision to HEAD **first** — only then does the same rename
+return `repository-evidence/file-missing`. Probe a COPY; never rewrite the committed IR to make a
+check pass:
 
 ```bash
 probe=$(mktemp)   # bare mktemp — a ".json" suffix breaks the template on macOS

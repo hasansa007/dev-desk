@@ -33,16 +33,24 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
 | `architecture` · `workflow` · `sequence` · `dataflow` · `lifecycle` | force the type | pick it from Phase 4's table |
 | `--showcase` | pass `--quality showcase` to `validate` and `deliver` | `--quality standard` |
 | `--open` | pass `--open` to `deliver` | off |
-| `--out <path>` | where the HTML lands | `$SCRATCH/<name>.html` |
+| `--out <path>` | where the HTML lands | `docs/arch/<name>.html` in the invoked repo |
+| `--scratch` | keep it out of the tree — a throwaway look | off |
 
-**`$SCRATCH` is the session scratch directory named in the environment** — never a path inside the
-target repository, and never invented. If no scratch directory is defined, ask for `--out` rather
-than guessing a location.
+**The artifact lands in the repo it was drawn from, next to its IR.** Write BOTH
+`docs/arch/<name>.architecture.json` and `docs/arch/<name>.html` — the JSON is what `dev:docs`
+re-validates later, and an HTML with no IR beside it cannot be checked by anything.
 
-**Nothing is written into the repository by default**, and `docs/` is git-ignored here, so a path
-under it is NOT a way to land one — it produces an untracked file that looks committed. Landing an
-artifact is a deliberate act with an explicit `--out` to a tracked path, and it makes that artifact
-someone's to keep current.
+**This is only safe because the pins are re-checkable.** `archify validate <type> <ir> --repo-root .`
+re-runs every pin at the current commit and fails loudly when a cited file or line has moved.
+
+**Write into `$SCRATCH` instead — never a guessed path in the tree — when:**
+
+- `--scratch` was passed, or the diagram is a throwaway look at someone else's code
+- **the target is not the invoked repo.** `docs/arch/` means *this* repo's `docs/arch/`
+- the diagram is one of the four **unevidenced** types — nothing can re-check it, so it must not sit
+  in the tree wearing the same authority as an evidenced one
+- **the repo does not track `docs/`.** Check before writing (`git check-ignore -q docs/`); if it is
+  ignored, a path under it produces an untracked file that looks committed. Say so and use `$SCRATCH`
 
 ## Phase 2 — Resolve the renderer
 
@@ -213,9 +221,9 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
 
 ## Rules
 
-- **Never write into the repository without being asked.** Default output is the scratch dir.
-- **Never land an artifact without its IR.** The `.json` beside the `.html` is what keeps it honest —
-  an HTML alone cannot be re-validated by anything.
+- **Never write a diagram of ANOTHER repo into this one.** `docs/arch/` is for the invoked repo's own
+  system; anything else goes to `$SCRATCH`.
+- **Never land an artifact without its IR.** The `.json` beside the `.html` is what keeps it honest.
 - **Never present an unvalidated diagram.** If `deliver` did not pass, there is no artifact.
 - **Never claim runtime behaviour.** Reach, routes, and roles are *authored* relationships. The
   diagram says what the code is wired to do, never what production actually did.

@@ -193,10 +193,9 @@ narrowed re-run, and overwriting the wider one loses the held PLAUSIBLE set. The
 artifact that makes the run reviewable and re-runnable; filing is a separate step, so nothing
 reaches the tracker unread. Create `docs/survey/` if the repo has no `docs/`, and say that you did.
 
-**In this repo `docs/` is git-ignored, so the report is a LOCAL working file, not a committed one.**
-Say so when you write it: a reader who assumes it is in the clone will go looking for it and find
-nothing. Nothing changes about writing it — the report still exists before anything is filed, which
-is the point — but the branch-cutting rule above does not apply to a path nothing tracks.
+**If the repo git-ignores `docs/`, the report is a local working file, not a committed one** — check
+(`git check-ignore -q docs/`) and say which it is. Writing it is unchanged either way; the
+branch-cutting rule above only applies when the path is actually tracked.
 
 **Writing the report is a write, and the write boundary applies** (`shared/entry.md` rule 3): name
 `owner/repo`, and **cut a branch before creating the file** rather than dropping a tracked file onto
@@ -288,8 +287,8 @@ Ask before filing anything. Then, for the confirmed set:
 
 - Bugs → `dev:create-bug`, one per finding, mechanism carried into `## Steps` intact.
 - Architecture → `dev:create-epic` for the drift, or an ADR when it is a decision rather than work.
-  **`dev:docs` owns ADRs** — hand it over rather than inventing a path. Be aware it has not yet
-  decided one: as of 2026-09-06 that skill records decisions in the PR body and commit message.
+  **`dev:docs` owns ADRs** — their numbering and location are its rules, not this skill's. Hand it
+  over rather than inventing a path.
 - **Touched files go in `## Scope`** — `dev:create-bug`'s existing field for *where it bites*. Do
   not invent a `touches:` field: per `GUIDE.md`, a per-type template field belongs to the
   `dev:create-*` member, not to a caller asserting one from outside.
