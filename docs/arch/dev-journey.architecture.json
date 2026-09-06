@@ -1,0 +1,531 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "dev — the order you use it in",
+    "subtitle": "survey → file → pick → build → verify → ship → promote",
+    "quality_profile": "standard",
+    "viewBox": [
+      1360,
+      830
+    ],
+    "output": "dev-journey.html",
+    "repository": {
+      "url": "https://github.com/hasansa007/dev-skill",
+      "revision": "450239e595ede7f68428b233753392432d1c8362"
+    },
+    "animation": "trace"
+  },
+  "components": [
+    {
+      "id": "survey",
+      "type": "cloud",
+      "label": "1 · dev:survey",
+      "sublabel": "what is wrong?",
+      "pos": [
+        40,
+        130
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/survey/SKILL.md",
+          "label": "the door"
+        }
+      ],
+      "tag": "no phase"
+    },
+    {
+      "id": "create",
+      "type": "frontend",
+      "label": "2 · dev:create-*",
+      "sublabel": "file it",
+      "pos": [
+        360,
+        130
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/create-issue/SKILL.md",
+          "label": "issue"
+        },
+        {
+          "path": "skills/create-bug/SKILL.md",
+          "label": "bug"
+        },
+        {
+          "path": "skills/create-epic/SKILL.md",
+          "label": "epic"
+        }
+      ],
+      "tag": "Phase 0"
+    },
+    {
+      "id": "issues",
+      "type": "cloud",
+      "label": "3 · dev:issues",
+      "sublabel": "what next?",
+      "pos": [
+        680,
+        130
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/issues/SKILL.md",
+          "label": "the tracker view"
+        }
+      ],
+      "tag": "read-only"
+    },
+    {
+      "id": "dev",
+      "type": "frontend",
+      "label": "4 · /dev #N",
+      "sublabel": "Phases 1 – 10",
+      "pos": [
+        680,
+        310
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "SKILL.md",
+          "line": 26,
+          "end_line": 104,
+          "label": "Entry 1-2 routing"
+        },
+        {
+          "path": "shared/pipeline.md",
+          "line": 172,
+          "end_line": 555,
+          "label": "Phases 1-10"
+        }
+      ],
+      "tag": "plan + build"
+    },
+    {
+      "id": "verify",
+      "type": "frontend",
+      "label": "5 · dev:verify",
+      "sublabel": "does it work?",
+      "pos": [
+        360,
+        310
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/verify/SKILL.md",
+          "label": "the door"
+        },
+        {
+          "path": "shared/pipeline.md",
+          "line": 556,
+          "end_line": 654,
+          "label": "Phase 11"
+        }
+      ],
+      "tag": "Phase 11"
+    },
+    {
+      "id": "docs",
+      "type": "frontend",
+      "label": "6 · dev:docs",
+      "sublabel": "ADRs current?",
+      "pos": [
+        40,
+        310
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/docs/SKILL.md",
+          "label": "the door"
+        },
+        {
+          "path": "shared/pipeline.md",
+          "line": 655,
+          "end_line": 706,
+          "label": "Phase 12"
+        }
+      ],
+      "tag": "Phase 12"
+    },
+    {
+      "id": "codereview",
+      "type": "external",
+      "label": "7 · /code-review",
+      "sublabel": "not a door",
+      "pos": [
+        40,
+        490
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "shared/pipeline.md",
+          "line": 707,
+          "end_line": 726,
+          "label": "Phase 13 — run it"
+        }
+      ],
+      "tag": "Phase 13"
+    },
+    {
+      "id": "preprod",
+      "type": "frontend",
+      "label": "8 · dev:pre-prod",
+      "sublabel": "PR → pre prod",
+      "pos": [
+        360,
+        490
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/pre-prod/SKILL.md",
+          "label": "the door"
+        },
+        {
+          "path": "shared/pipeline.md",
+          "line": 727,
+          "end_line": 859,
+          "label": "Phase 14"
+        }
+      ],
+      "tag": "Phase 14"
+    },
+    {
+      "id": "prod",
+      "type": "security",
+      "label": "9 · dev:prod",
+      "sublabel": "promote",
+      "pos": [
+        680,
+        490
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/prod/SKILL.md",
+          "label": "the door"
+        },
+        {
+          "path": "shared/pipeline.md",
+          "line": 904,
+          "end_line": 946,
+          "label": "Phase 16"
+        },
+        {
+          "path": "shared/prod-secrets.md",
+          "label": "secrets gate"
+        }
+      ],
+      "tag": "Phase 16"
+    },
+    {
+      "id": "review",
+      "type": "frontend",
+      "label": "dev:review",
+      "sublabel": "PR comments",
+      "pos": [
+        360,
+        670
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/review/SKILL.md",
+          "label": "the door"
+        },
+        {
+          "path": "shared/pipeline.md",
+          "line": 860,
+          "end_line": 903,
+          "label": "Phase 15"
+        }
+      ],
+      "tag": "Phase 15 ↺"
+    },
+    {
+      "id": "arch",
+      "type": "cloud",
+      "label": "dev:arch",
+      "sublabel": "draw it",
+      "pos": [
+        1000,
+        130
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/arch/SKILL.md",
+          "line": 1,
+          "end_line": 60,
+          "label": "target + renderer"
+        }
+      ],
+      "tag": "tool"
+    },
+    {
+      "id": "launch",
+      "type": "cloud",
+      "label": "dev:launch",
+      "sublabel": "run the app",
+      "pos": [
+        1000,
+        310
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/launch/SKILL.md",
+          "label": "the door"
+        }
+      ],
+      "tag": "tool"
+    },
+    {
+      "id": "shots",
+      "type": "cloud",
+      "label": "dev:shots",
+      "sublabel": "capture it",
+      "pos": [
+        1000,
+        490
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/shots/SKILL.md",
+          "label": "the door"
+        }
+      ],
+      "tag": "tool"
+    },
+    {
+      "id": "trim",
+      "type": "cloud",
+      "label": "dev:trim",
+      "sublabel": "doc budget",
+      "pos": [
+        1000,
+        670
+      ],
+      "size": [
+        280,
+        80
+      ],
+      "sources": [
+        {
+          "path": "skills/trim/SKILL.md",
+          "label": "the door"
+        }
+      ],
+      "tag": "tool"
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Discover & file — before any branch exists",
+      "wraps": [
+        "survey",
+        "create",
+        "issues"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Build — one branch, Phases 1-12",
+      "wraps": [
+        "dev",
+        "verify",
+        "docs"
+      ]
+    },
+    {
+      "kind": "security-group",
+      "label": "Ship — gates, then pre prod, then production",
+      "wraps": [
+        "codereview",
+        "preprod",
+        "prod",
+        "review"
+      ]
+    },
+    {
+      "kind": "region",
+      "label": "Tools — no phase, call any time",
+      "wraps": [
+        "arch",
+        "launch",
+        "shots",
+        "trim"
+      ]
+    }
+  ],
+  "connections": [
+    {
+      "id": "survey-create",
+      "from": "survey",
+      "to": "create",
+      "label": "files confirmed only",
+      "labelDy": -34
+    },
+    {
+      "id": "create-issues",
+      "from": "create",
+      "to": "issues",
+      "label": "lands on the board",
+      "labelDy": -34
+    },
+    {
+      "id": "issues-dev",
+      "from": "issues",
+      "to": "dev",
+      "label": "pick one",
+      "variant": "emphasis",
+      "labelDy": 60
+    },
+    {
+      "id": "dev-verify",
+      "from": "dev",
+      "to": "verify",
+      "label": "branch exists",
+      "labelDy": -34
+    },
+    {
+      "id": "verify-docs",
+      "from": "verify",
+      "to": "docs",
+      "label": "11 → 12 · chains",
+      "variant": "emphasis",
+      "labelDy": -34
+    },
+    {
+      "id": "docs-cr",
+      "from": "docs",
+      "to": "codereview",
+      "label": "12 → 13 · asks",
+      "labelDy": 60
+    },
+    {
+      "id": "cr-preprod",
+      "from": "codereview",
+      "to": "preprod",
+      "label": "13 → 14",
+      "labelDy": -34
+    },
+    {
+      "id": "preprod-prod",
+      "from": "preprod",
+      "to": "prod",
+      "label": "a separate decision",
+      "variant": "security",
+      "labelDy": -34
+    },
+    {
+      "id": "review-preprod",
+      "from": "review",
+      "to": "preprod",
+      "label": "↺ 15 → 14",
+      "variant": "dashed"
+    },
+    {
+      "id": "dev-launch",
+      "from": "dev",
+      "to": "launch",
+      "label": "Phases 4 · 11",
+      "variant": "dashed",
+      "labelDy": -34
+    },
+    {
+      "id": "launch-shots",
+      "from": "launch",
+      "to": "shots",
+      "label": "its discovery",
+      "variant": "dashed",
+      "labelDy": 26
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Where to start",
+      "items": [
+        "No idea what's wrong → dev:survey",
+        "Already know → dev:create-* files it",
+        "Board already stocked → dev:issues, or bare /dev"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "What each door needs",
+      "items": [
+        "survey · create-* — a description. No branch yet",
+        "dev #N — an issue number. Cuts the branch",
+        "verify · pre-prod — a branch · docs — a diff · review — a PR number"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "The only automatic hop",
+      "items": [
+        "verify (11) → docs (12) chains without asking",
+        "Everything else stops and asks",
+        "Nothing ever chains into a merge or a promotion"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Phase 13 is not a door",
+      "items": [
+        "/code-review is a plugin, not a dev:* member",
+        "It is 20 lines that say run it — so run it",
+        "dev:prod is the only door that reaches production"
+      ]
+    }
+  ]
+}
