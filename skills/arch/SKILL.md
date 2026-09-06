@@ -58,7 +58,7 @@ for what that check still cannot catch.
 Archify is a **hard dependency** and this skill does not pretend otherwise. Resolve it in this
 order and stop at the first hit:
 
-1. `~/.claude/skills/archify/` — a previous install
+1. `~/Developer/skills/archify/` — the local internal renderer install
 2. An `archify` directory already extracted under `$SCRATCH`
 3. Fetch and extract, then **say the version you got**
 
