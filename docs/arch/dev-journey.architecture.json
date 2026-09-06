@@ -12,8 +12,9 @@
     "output": "dev-journey.html",
     "repository": {
       "url": "https://github.com/hasansa007/dev-skill",
-      "revision": "38a44a97ad282ef114ecb02b2a9da2c86afc4ce1"
-    }
+      "revision": "450239e595ede7f68428b233753392432d1c8362"
+    },
+    "animation": "trace"
   },
   "components": [
     {

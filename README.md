@@ -17,8 +17,12 @@ exists and only that stage is needed, and seven are **tools** that map to no pha
 The phase table below is the *reference*. This is the **journey** — what to type, in what order, and
 what each door needs before it will do anything.
 
-![The dev family, in the order you use it](docs/arch/dev-journey.png)
+![The dev family, in the order you use it](docs/arch/dev-journey.gif)
 
+> The path lights up in the order you walk it: `survey` → file → pick → build → verify → docs →
+> `/code-review` → pre prod → prod. Dashed edges are the ones that are never part of a straight run —
+> the Phase 15 loop back into 14, and the tools.
+>
 > Drawn by `/dev:arch` and evidence-backed: every box is pinned to a file and line range at one
 > commit and verified against a real Git object. The interactive version is
 > [`docs/arch/dev-journey.html`](docs/arch/dev-journey.html) — open it to click a node and see its
