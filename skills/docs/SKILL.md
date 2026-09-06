@@ -39,11 +39,54 @@ ADR is part of the diff.
 | If the diff contains… | Then update… |
 |---|---|
 | a changed price, limit, cap or plan | the monetization/pricing doc — every number AND why it is that number |
-| a decision with a rejected alternative | a new ADR — including the alternative and why it lost |
+| a decision with a rejected alternative | a new ADR in `docs/adr/` — including the alternative and why it lost |
 | a new/changed env var, migration or runbook step | the release/ops doc |
 | a new module, flow or entry point | `PROJECT_MAP.md` (`TECH_STACK` / `SYSTEM_FLOW`) |
 | work deliberately deferred | `ORPHANS & PENDING` — not a memory of it |
 | a moved/renamed/deleted file that any `docs/arch/*.json` cites | the diagram — re-pin it, or delete it |
+
+## Where ADRs live — this skill owns it
+
+`skills/survey/SKILL.md` delegates here explicitly: *"`dev:docs` owns ADRs — their numbering and
+location are its rules, not this skill's."* So they are stated here, once.
+
+`docs/adr/NNNN-kebab-title.md`, four digits, monotonic. `docs/adr/README.md` is the index, one line
+per ADR, updated in the same commit.
+
+**Allocate the number by reading the directory, never from memory:**
+
+```bash
+ls docs/adr/[0-9]*.md | tail -1        # the highest that exists; the next one is +1
+```
+
+Guessing it is the same defect class as the three wrong line counts that forced the CI budget check
+(`GUIDE.md`, 2026-08-23/24) — a number asserted rather than measured.
+
+The shape:
+
+```markdown
+# NNNN — <the decision, as a statement, not a topic>
+
+Status:  Accepted | Superseded by NNNN | Reversed
+Date:    YYYY-MM-DD
+Commit:  <sha>  ·  PR #N
+
+## Context      what forced it, and what was true before
+## Decision     what we do now — present tense
+## Rejected     each losing option, and WHY it lost
+## Consequences what this costs, and what it forecloses
+## Evidence     the output or observation that settled it
+```
+
+- **An ADR with an empty `## Rejected` is a note, not an ADR.** If nothing lost there was no
+  decision; put it in the skill file instead.
+- **Never edit a landed ADR's `## Decision`.** Supersede it with a new one and update the old
+  `Status:`. The wrong turn is the value — editing it away leaves the next reader to re-propose the
+  option that already lost.
+- **`## Evidence` is not optional.** *A result is not a claim* applies here as everywhere: an ADR
+  asserting a tradeoff it never measured is the thing this gate refuses elsewhere.
+- **Squash merges delete commit-message rationale.** Two of this repo's own decisions survived only
+  in PR bodies, which are not in the clone. That is what the directory is for.
 
 ## The check that actually fails things
 
