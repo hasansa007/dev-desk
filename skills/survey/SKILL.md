@@ -274,8 +274,11 @@ For each, in order:
 **That line is the audit.** It is how the developer sees whether a decision was presented as
 mechanical when it was not — so it is printed even when it is empty, and *especially* then.
 
-**`just do it` skips the current finding immediately.** No re-asking, no friction, no second
-attempt at persuasion. A gate that argues with a skip is a gate that gets routed around.
+**`just do it` skips the current finding. `just do it all` skips the rest of the phase.** No
+re-asking, no friction, no second attempt at persuasion — and the bulk form matters here more than
+anywhere: this is the family's widest fan-out, so a 20-finding survey without it costs 20 separate
+escapes, which is the ceremony GUIDE principle 4 refuses. `shared/pipeline.md` Phase 5 gives the
+whole-step scope by default because it gates ONE plan; this phase gates N findings, so it needs both. A gate that argues with a skip is a gate that gets routed around.
 
 **Never batch.** One finding, one answer, one diff. A list of five questions gets one answer about
 the last one.

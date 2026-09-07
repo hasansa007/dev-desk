@@ -1,4 +1,4 @@
 .DS_Store
 
 # Local working artifacts — ADRs, diagrams, survey reports. Kept on disk, not tracked.
-docs/
+/docs/

@@ -33,7 +33,7 @@ so it is defined once there and never duplicated here.
 |---|---|
 | **Nothing at all** | **`dev:issues`** — the tracker view, then ask which to start |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
-| A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `comment-budget`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
+| A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
 
 ### The empty-input row is a guard, not a convenience
@@ -59,6 +59,10 @@ Before routing to Generic, STOP if the argument is:
 - **a family name** — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `comment-budget`, `survey`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
+- **a RENAMED family name.** `trim` is still the advertised trigger (*"trim the comments"*) after the
+  door became `comment-budget` on 2026-09-07, so `/dev trim` must map, not fall through:
+  *"`/dev trim` isn't a subcommand — did you mean `/dev:comment-budget`?"* A rename that drops the
+  old name from this guard while leaving it in the triggers turns it into a feature title.
 - **a single word with no verb and no object** (`deploy`, `test`, `fix`). Far likelier a mistyped
   command than a feature brief.
 

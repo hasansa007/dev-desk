@@ -25,6 +25,19 @@ or a plain description), and returns one artifact. It never edits code and never
 a running UI. This is the only door that draws the **shape** of a system — the thing prose serves
 worst, and the thing someone needs when onboarding, reviewing a design, or presenting the work.
 
+## Phase 0 — Load the contract
+
+1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it — **the absolute path, because
+   this skill runs inside somebody else's repo.** It resolves the repo and defines the **write
+   boundary**, which this door needs more than most: it is the only tool that writes a ~750 KB file
+   into the tree by default.
+2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → **Guiding Principles + Universal Rules**
+   only. A tool runs no phase, so Right-Size has nothing to size; Simplicity First is what lets
+   Phase 3 refuse a diagram.
+
+**Name `owner/repo` before writing, and cut a branch.** `dev:survey` requires that for one markdown
+report; this door lands two files and one of them is three-quarters of a megabyte.
+
 ## Phase 1 — Arguments
 
 | Token | Meaning | Default |
@@ -65,9 +78,17 @@ for what that check still cannot catch.
 Archify is a **hard dependency** and this skill does not pretend otherwise. Resolve it in this
 order and stop at the first hit:
 
-1. `~/Developer/skills/archify/` — the local internal renderer install
-2. An `archify` directory already extracted under `$SCRATCH`
-3. Fetch and extract, then **say the version you got**
+1. `~/.claude/skills/archify/` — a skills-dir install, the shape README's Installing section uses
+2. `~/Developer/skills/archify/` — a checkout under the developer's own tree
+3. An `archify` directory already extracted under `$SCRATCH`
+4. Fetch and extract, then **say the version you got**
+
+**Try both; neither is guaranteed, and they are not the same shape.** On the authoring machine
+(2026-09-07) `~/.claude/skills/` holds only *symlinks* — `dev` and `study` — pointing at
+`~/Developer/skills/`, and archify is a plain 7.3 MB checkout at rung 2 with no symlink at rung 1.
+A machine that installed archify the way README installs this family would be the reverse. Naming
+only one rung sends the other machine to the network fallback, re-downloading an unpinned
+`main.zip` every session.
 
 ```bash
 export ARCHIFY_UPDATE_CHECK_DISABLED=1              # every invocation, see below
