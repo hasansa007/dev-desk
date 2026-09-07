@@ -19,6 +19,9 @@ No two repos name these the same — `ASC_API_KEY`, `APP_STORE_CONNECT_PRIVATE_K
 column, case-insensitively, and prefer the most specific hit: `ASC_KEY_ID` is the Key ID, not the
 key. An exact-name table would miss most repos and report a credential it could have explained.
 
+**Every cell in the first column is a LITERAL SUBSTRING, never a regex.** `FASTLANE_.*PASSWORD`
+sat here until 2026-09-07 and matched nothing — no real secret name contains the characters `.*`.
+
 | Name contains | What it is | Where it comes from |
 |---|---|---|
 | `ISSUER` | App Store Connect Issuer ID (one per team) | Integrations page header — §1 |
@@ -30,7 +33,7 @@ key. An exact-name table would miss most repos and report a credential it could 
 | `KEYCHAIN_PASSWORD` | temp keychain the runner creates | **you invent it** — any string; not from Apple |
 | `TEAM_ID` | 10-character team identifier | developer.apple.com → Membership details |
 | `MATCH_PASSWORD` | fastlane match repo passphrase | set when `match init` ran; not re-issuable — §4 |
-| `APPLICATION_SPECIFIC`, `FASTLANE_.*PASSWORD` | app-specific password for an Apple ID | appleid.apple.com → Sign-In and Security → App-Specific Passwords |
+| `APPLICATION_SPECIFIC`, `APP_SPECIFIC` | app-specific password for an Apple ID | appleid.apple.com → Sign-In and Security → App-Specific Passwords |
 
 ---
 

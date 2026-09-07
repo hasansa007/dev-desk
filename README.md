@@ -127,32 +127,25 @@ asks. **Nothing ever chains into a merge or a promotion** — those are decision
 Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
 `shared/`, once.
 
-### `dev:launch`, `dev:launch-kill` and `dev:shots` — a different kind
+### Three tools of a different kind
 
-The phase members are doors into `shared/pipeline.md`. These three are **tools**: no phase number, no
-preamble. Three verbs on one noun — start it, stop it, shoot it — and the latter two are doors into
-`launch`, not copies. `shots` reads `launch` 2.1–2.6 and Phase 3, which is how it inherits the rule
-that matters most for a capture: *if a server is already listening, reuse it and start nothing.*
+The phase members are doors into `shared/pipeline.md`. `dev:launch`, `dev:launch-kill` and
+`dev:shots` are **tools**: no phase number, no preamble. Three verbs on one noun — start it, stop it,
+shoot it — and the latter two are doors into `launch`, not copies. That is how `shots` inherits the
+rule that matters for a capture: *if a server is already listening, reuse it and start nothing.*
 
-`launch-kill` adds the **boundary**: it proves a process belongs to *this worktree* by its cwd before
-touching it, then kills the tree from the top so the launch script's traps fire. Killing the port
-holder alone orphans everything the script started — three `worker.py` processes were found leaked
-that way on 2026-08-05, one per dev session. The line `launch` used to print,
-`lsof -ti:<PORT> | xargs kill`, is that bug.
+`launch-kill` adds the **boundary** — it proves a process belongs to *this worktree* before touching
+it, then kills the tree from the top so the launch script's traps fire. The leaked-`worker.py`
+incident that forced this is in [`skills/launch-kill/SKILL.md`](skills/launch-kill/SKILL.md).
 
-Not named `run`: Claude Code ships a built-in `run` skill, so `dev:run` would read as a flavour of
-it. It lives here because it is the pipeline's only **personal-skill** dependency — everything else
-(`superpowers:*`, `/code-review`, `frontend-design`, `supabase`) installs anywhere; this one would
-simply be missing after a clone, taking mobile verification with it.
+Not named `run`: Claude Code ships a built-in `run` skill. `dev:launch` lives here because it is the
+pipeline's only **personal-skill** dependency — everything else installs anywhere; this one would
+simply be missing after a clone. [`dev:arch`](skills/arch/SKILL.md) is a third category: it depends
+on [Archify](https://github.com/tt-a1i/archify) and stops rather than drawing something unvalidated.
 
-Phase 11 should delegate its evidence capture to `dev:shots` rather than restate the commands. That
-edit is **not** made: `shared/pipeline.md` sits at 995 against a 995-line budget, so `GUIDE.md`
-requires an addition there to name its deletion. The delegation is documented here and in the tool
-until a deletion pays for it.
-
-`dev:arch` is a third category: it depends on [Archify](https://github.com/tt-a1i/archify), an
-external MIT package, and does not degrade — without it the door stops rather than drawing something
-unvalidated, since the validator is the whole reason to prefer it over a hand-authored SVG.
+Phase 11 should delegate its capture to `dev:shots` rather than restate the commands. That edit is
+**not** made: `shared/pipeline.md` sits at 995 against a 995-line budget, so `GUIDE.md` requires an
+addition there to name its deletion.
 
 ---
 
@@ -210,17 +203,13 @@ about registration — check `claude plugin list` and the session's skill list.
 
 ### Why these phase members and not others
 
-Phases 1–8 pass **reasoning** between each other, and reasoning lives only in the conversation that
-produced it — there is no artifact to hand a fresh session. From Phase 11 on, every phase takes
-something durable (a branch, a diff, a PR number), which is exactly what makes it independently
-invocable.
+Phases 1–8 pass **reasoning**, which lives only in the conversation that produced it. From Phase 11
+on, every phase takes something durable — a branch, a diff, a PR number — which is what makes it
+independently invocable. Phase 0 qualifies from the other side: it runs *before* any reasoning
+exists. Phase 13 is deliberately absent — it is twenty lines that mostly say "run `/code-review`".
 
-Phase 0 qualifies from the other side of that seam: it runs *before* any reasoning exists, takes
-only a description, and produces an issue number. Nothing to hand over, because nothing has been
-worked out yet.
-
-Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-review`", so run
-`/code-review`.
+Fuller version, with the four other design ideas:
+[GUIDE.md → The five ideas the design turns on](GUIDE.md#the-five-ideas-the-design-turns-on).
 
 ---
 
@@ -241,14 +230,12 @@ Phase 13 is deliberately absent: it is twenty lines that mostly say "run `/code-
 - **Docs before merge.** A price, limit, decision or env var that changed without its ADR is an
   unfinished diff.
 - **One pipeline, many doors.** Members never copy `shared/pipeline.md`; they point into it.
-- **The resolved repo is a write boundary.** Name the target `owner/repo` and branch *before* acting,
-  never write outside the resolved repo without an explicit yes naming it, and always cut a branch —
-  from the resolved pre-prod branch, not from what is checked out — so
-  there is something reviewable before anything lands. Defined once in `shared/entry.md`.
-- **A result is not a claim.** Say what a command's output *means* and what bounds it — scope
-  limiters, values carrying two meanings, a substituted predicate — not just where you looked.
-  `dev:launch` 2.0 rule 2 catches the empty result; this catches the plausible non-empty one that
-  answered a narrower question. Defined once in `shared/entry.md`.
+- **The resolved repo is a write boundary.** Name the target `owner/repo` and branch *before* acting;
+  cut the branch from the resolved pre-prod branch, not from what is checked out.
+- **A result is not a claim.** Say what a command's output *means* and what bounds it — not just
+  where you looked. Catches the plausible non-empty result that answered a narrower question.
+
+Both are defined once in [`shared/entry.md`](shared/entry.md), which every door reads.
 
 ---
 
