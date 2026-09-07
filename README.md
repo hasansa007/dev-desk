@@ -31,7 +31,7 @@ what each door needs before it will do anything.
 | # | You type | When | It needs | It gives you |
 |---|---|---|---|---|
 | 1 | `/dev:survey` | you don't know what's wrong yet | a repo | a report, then confirmed issues — each naming the run in `## Suspected`, which Phase 4 reads |
-| 2 | `/dev:create-issue` · `-bug` · `-epic` | you already know | a description | an issue number |
+| 2 | `/dev:create-issue` · `/dev:create-bug` · `/dev:create-epic` | you already know | a description | an issue number |
 | 3 | `/dev:issues` *(or bare `/dev`)* | the board is stocked | nothing | what's next, ranked |
 | 4 | `/dev #N` | you picked one | an issue number | a branch, a plan, the code |
 | 5 | `/dev:verify` | the code exists | a branch | evidence per row → **chains to 6** |
@@ -54,21 +54,13 @@ still in context.
 ### Data flow — what moves between the doors
 
 ```
-description ──▶ dev:create-*  ──▶ issue #N ──▶ dev #N ──▶ branch ──▶ dev:verify   ──▶ evidence
-                                                              │                        │
-repo ──▶ dev:survey ──▶ report ──▶ (confirmed only) ──────────┘                        ▼
-                                                                        diff ──▶ dev:docs ──▶ ## DOCS
-                                                                                          │
-                                             PR #  ◀── dev:pre-prod ◀── /code-review ◀─────┘
-                                               │
-                        dev:review ◀───────────┘   (loops BACK to 14, never forward)
-                                               │
-                                               ▼
-                                    pre prod ──▶ dev:prod ──▶ production
+description ─▶ issue #N ─▶ branch ─▶ diff ─▶ PR # ─▶ pre prod ─▶ production
 ```
 
-Each arrow is a **durable handoff**. Nothing in that chain requires the previous door's conversation
-to still exist — which is the whole reason the family is doors rather than one long run.
+Each step is a **durable handoff**, which is the whole reason the family is doors rather than one
+long run: nothing in that chain needs the previous door's conversation to still exist. `dev:survey`
+enters at the front (a repo → a report → confirmed issues); `dev:review` is the one arrow that goes
+backwards, looping a PR into Phase 14 and never forward.
 
 ### The tools, which sit outside all of it
 
@@ -106,22 +98,8 @@ asks. **Nothing ever chains into a merge or a promotion** — those are decision
 ├── hooks/                        4 Claude Code hooks — Phases 1, 3, 11(teardown), 12, 14, 16
 │   └── README.md                 what a hook can enforce, install blocks, the fired.log query
 ├── web/  mobile/                 architecture + feature prompts (conditional)
-└── skills/
-    ├── create-bug/SKILL.md       → /dev:create-bug    Phase 0
-    ├── create-issue/SKILL.md     → /dev:create-issue  Phase 0
-    ├── create-epic/SKILL.md      → /dev:create-epic   Phase 0
-    ├── verify/SKILL.md           → /dev:verify     Phase 11
-    ├── docs/SKILL.md             → /dev:docs       Phase 12
-    ├── pre-prod/SKILL.md         → /dev:pre-prod   Phase 14
-    ├── review/SKILL.md           → /dev:review     Phase 15  ↺
-    ├── prod/SKILL.md             → /dev:prod       Phase 16
-    ├── launch/SKILL.md           → /dev:launch     no phase — a TOOL
-    ├── launch-kill/SKILL.md      → /dev:launch-kill  no phase — `launch` inverted
-    ├── shots/SKILL.md            → /dev:shots      no phase — capture, iOS/Android/web
-    ├── comment-budget/SKILL.md   → /dev:comment-budget  no phase — existing code → the doc budget
-    ├── arch/SKILL.md             → /dev:arch       no phase — a verifiable diagram, via Archify
-    ├── survey/SKILL.md           → /dev:survey     no phase — read the app, file what is wrong
-    └── issues/SKILL.md           → /dev:issues     no phase — the tracker view; bare /dev routes here
+└── skills/                       one directory per door — every door, its phase and
+                                  what it takes is in **The pipeline** below
 ```
 
 Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
@@ -151,24 +129,21 @@ addition there to name its deletion.
 
 ## Installing
 
-This is a **skills-dir plugin**: a plugin living directly in `~/.claude/skills/`, with no
-marketplace and no `~/.claude/plugins/cache/`. One symlink installs the whole family.
+A **skills-dir plugin** — it lives directly in `~/.claude/skills/`, no marketplace, no plugin cache.
+One symlink installs the whole family.
 
 ```bash
 ln -sfn ~/Developer/skills/dev-skill  ~/.claude/skills/dev
 ```
 
-It auto-loads next session as `dev@skills-dir`; `/reload-plugins` loads it immediately. Members
-then invoke as `/dev:verify`, `/dev:launch`, and so on — **the namespace comes from
-`.claude-plugin/plugin.json`, not from the directory names**, which is why the members are called
-`verify` and `launch` rather than `dev-verify` and `dev-launch`.
+Auto-loads next session as `dev@skills-dir`; `/reload-plugins` loads it now.
 
-Without that manifest the same tree registers **nothing**: plain skill discovery is flat
-(`~/.claude/skills/<name>/SKILL.md`, exactly one level) and would never look inside `skills/`.
-The manifest is the single file that turns a nested directory into a namespace.
+**The namespace comes from `.claude-plugin/plugin.json`, not from directory names** — which is why
+the members are `verify` and `launch`, not `dev-verify` and `dev-launch`. Without that manifest the
+same tree registers **nothing**: plain skill discovery is flat and never looks inside `skills/`.
 
 **Verify against the loaded skill list, not the filesystem.** A `SKILL.md` on disk proves nothing
-about registration — check `claude plugin list` and the session's skill list.
+about registration — check `claude plugin list`.
 
 ---
 
