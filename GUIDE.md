@@ -268,6 +268,40 @@ they point, never duplicate.
    where the rule is already written. An addition that removes nothing pays a permanent tax on every
    future task.
 
+## `docs/` is not in the clone — and switching branches deletes it
+
+This repo git-ignores `docs/`, so ADRs (`docs/adr/`), diagrams (`docs/arch/`) and survey reports
+(`docs/survey/`) live on one machine and are not on GitHub. That is a choice **here**; the skills
+themselves write into `docs/` in whatever repo they run in, and check `git check-ignore -q docs/`
+before doing so.
+
+> **The trap, and it has already fired once.** `git rm --cached` untracks a file and leaves it on
+> disk — but a later `git checkout` or `git pull` that moves you from a commit where `docs/` **was**
+> tracked to one where it is not will **delete those files**. Being git-ignored does not protect
+> them; that only applies to files Git was never tracking. On 2026-09-07 the untracking merge
+> succeeded and the very next `checkout main && pull` removed 13 of 14 files, silently, in the
+> command that reported success.
+>
+> **Recover them from the last commit that tracked them:**
+>
+> ```bash
+> git restore --source=89102eb --worktree -- docs/
+> ```
+>
+> `--worktree` restores the files without re-staging them, so they stay untracked. `89102eb` is the
+> last commit on `main` where `docs/` was tracked. To find it again without that SHA, locate the
+> commit that DELETED them and take its **parent** — the deleting commit itself no longer has the
+> files:
+>
+> ```bash
+> git restore --source="$(git log -1 --format=%H --diff-filter=D -- docs/adr)^" --worktree -- docs/
+> ```
+
+**Anything under `docs/` you want other people to have must be copied somewhere tracked.** The
+journey GIF is the worked example: it lives at `assets/dev-journey.gif` precisely so the README still
+renders on GitHub. A decision's losing options belong in the **PR body** for the same reason — see
+`dev:docs`.
+
 ## Known gaps
 
 Honest, as of 2026-08-04:
