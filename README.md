@@ -96,12 +96,13 @@ asks. **Nothing ever chains into a merge or a promotion** — those are decision
 │   ├── pipeline-{web,ios,android,kmp}.md   platform overlays on Phases 10/11/14
 │   ├── prod-secrets.md           the releasing merge's secrets gate — Phase 16, or 14 if single-branch
 │   └── prod-secrets-apple.md     Apple acquisition steps — read only on a missing secret
-├── docs/
-│   ├── adr/                      decision records — owned by dev:docs; README.md is the index
-│   ├── arch/                     evidenced diagrams — .html beside the .architecture.json
-│   │                             that produced it; dev:docs re-validates both before any merge
-│   └── survey/                   dev:survey reports, one per run, written before anything is filed
-├── ci/pr-gates.yml               NOT installed — a PR-body check, kept beside the rules it enforces
+├── assets/dev-journey.gif        the map above — tracked, so the README renders
+├── docs/                         GIT-IGNORED here. dev:docs writes adr/, dev:arch writes arch/,
+│                                 dev:survey writes survey/ — local only, see GUIDE.md to recover
+├── .github/workflows/
+│   └── line-budget.yml           the repo's ONLY mechanical PR check — recomputes the GUIDE ceiling
+├── ci/pr-gates.yml               required-sections job NOT installed (PRs here are not /dev runs);
+│                                 its line-budget job IS, above
 ├── hooks/                        4 Claude Code hooks — Phases 1, 3, 11(teardown), 12, 14, 16
 │   └── README.md                 what a hook can enforce, install blocks, the fired.log query
 ├── web/  mobile/                 architecture + feature prompts (conditional)
@@ -182,7 +183,7 @@ about registration — check `claude plugin list` and the session's skill list.
 
 | Phase | | Sibling |
 |---|---|---|
-| **0** | **Filing** — draft, resolve real labels, create. Standalone only; a `/dev` run never reaches it | `dev:create-*` |
+| **0** | **Filing** — draft, resolve real labels, create. Standalone only; a `/dev` run never reaches it. `dev:survey` files through these | `dev:create-*` |
 | 1 | Context Load — `PROJECT_MAP.md`, `ARCHITECTURE.md`, existing spec | |
 | 2 | Tech Stack & Discovery — stack detect, conditional explorer fan-out | |
 | 3 | Git Branch Naming | |
@@ -204,7 +205,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | — | *(no phase)* — capture screens from the running app | `dev:shots` |
 | — | *(no phase)* — bring EXISTING code to the documentation budget | `dev:trim` |
 | — | *(no phase)* — draw a verifiable diagram of a system | `dev:arch` |
-| — | *(no phase)* — survey an existing app, file the confirmed findings | `dev:survey` |
+| — | *(no phase)* — survey an existing app, file the confirmed findings. **Feeds Phase 0** via `dev:create-*`, and Phase 4 reads the provenance it writes | `dev:survey` |
 | — | *(no phase)* — the tracker: current, next, stats | `dev:issues` |
 
 ### Why these phase members and not others
