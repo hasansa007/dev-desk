@@ -97,31 +97,16 @@ Phase 11 should delegate capture to `dev:shots`; that edit waits on a deletion t
 
 ## Installing
 
-In your CLI, run:
-
 ```bash
 git clone https://github.com/hasansa007/dev-skill.git && dev-skill/install.sh
 ```
 
-That links it into **every** agent CLI on the machine — Claude Code, Codex, Antigravity — skipping
-the ones that are not installed. Already cloned? Just `./install.sh`. Safe to re-run.
+Links it into every agent CLI on the machine — Claude Code, Codex, Antigravity — skipping any that
+are not installed. Re-run any time. Reload the CLI afterwards, and check the loaded skill list
+rather than the filesystem.
 
-*(The repo is private, so the clone needs access — `gh auth login`, or `gh repo clone
-hasansa007/dev-skill`.)*
-
-```
-  claude       linked  ~/.claude/skills/dev
-  codex        linked  ~/.codex/skills/dev
-  antigravity  not found — skipped
-```
-
-Then reload: `/reload-skills` in Claude Code, or restart the CLI. **Check the loaded skill list, not
-the filesystem** — a `SKILL.md` on disk proves nothing about registration.
-
-<sub>The script never creates a config tree for an absent CLI, never overwrites a real directory, and
-reads antigravity's path from `~/.gemini/config/skills.json` rather than guessing. Under Claude Code
-the namespace comes from `.claude-plugin/plugin.json`. What transfers to other CLIs:
-[GUIDE.md](GUIDE.md#running-it-on-another-cli).</sub>
+Private repo, so the clone needs `gh auth login`. What the script does and what transfers to each
+CLI: [GUIDE.md](GUIDE.md#running-it-on-another-cli).
 
 ---
 

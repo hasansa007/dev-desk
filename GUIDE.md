@@ -315,6 +315,16 @@ renders on GitHub. A decision's losing options belong in the **PR body** for the
 
 ## Running it on another CLI
 
+`install.sh` links this repo into every CLI on the machine that uses the `skills/<name>/SKILL.md`
+convention. It never creates a config tree for a CLI that is absent, never overwrites a real
+directory, is safe to re-run, and reads antigravity's registered path from
+`~/.gemini/config/skills.json` rather than guessing it — `~/.gemini/config/skills/` exists and looks
+right, and is inert.
+
+Under Claude Code the namespace comes from `.claude-plugin/plugin.json`, which is why the members are
+`verify` and `launch` rather than `dev-verify`.
+
+
 **The workflow is portable; the packaging is Claude Code's.** `shared/` is 1757 lines of plain
 markdown and **14 of the 15 doors declare shell binaries only** — `git`, `gh`, `rg`, `xcodebuild`,
 `adb`, `lsof`. Nothing there calls an agent API.
