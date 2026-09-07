@@ -13,6 +13,9 @@ allowed-tools: [gh, git]
 
 GitHub issues, features and bugs for personal projects.
 
+The rules below are CLI-agnostic — plain markdown over `git` and `gh`. Only the invocation
+(`/dev:<door>`), the `.claude-plugin` namespace and `hooks/` are Claude Code's.
+
 ---
 
 ## Workspace Config

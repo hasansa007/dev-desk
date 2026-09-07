@@ -22,6 +22,10 @@ There is one command you need:
 /dev <issue number, issue URL, or a plain description>
 ```
 
+> **On another CLI**, the slash command is the only part that does not carry over. Point the agent
+> at `SKILL.md` for the routing and `shared/pipeline.md` for the phases — see README's *Using it
+> from another CLI* for what transfers and what needs substituting.
+
 ```
 /dev #496
 /dev https://github.com/you/repo/issues/496
@@ -308,6 +312,36 @@ before doing so.
 journey GIF is the worked example: it lives at `assets/dev-journey.gif` precisely so the README still
 renders on GitHub. A decision's losing options belong in the **PR body** for the same reason — see
 `dev:docs`.
+
+## Running it on another CLI
+
+**The workflow is portable; the packaging is Claude Code's.** `shared/` is 1757 lines of plain
+markdown and **14 of the 15 doors declare shell binaries only** — `git`, `gh`, `rg`, `xcodebuild`,
+`adb`, `lsof`. Nothing there calls an agent API.
+
+The exception is real and worth naming: **`dev:survey` declares `Read`, `Write` and `Agent`**, and
+its Phase 4 fans out one surveyor per flow. A CLI without subagents can still run it — sequentially,
+one flow at a time — but that is a different cost profile, not a drop-in.
+
+To run it under Copilot CLI, Codex, Gemini CLI or anything else that reads markdown and can run
+`git` and `gh`:
+
+| Works as-is | Needs substituting |
+|---|---|
+| `shared/pipeline.md` — Phases 0–16, the whole behaviour | **Invocation.** `/dev:verify` is a Claude Code slash command; elsewhere, point the agent at `skills/verify/SKILL.md` |
+| `shared/entry.md` — repo, branch and boundary resolution | **Install.** `.claude-plugin/plugin.json` and `~/.claude/skills/` are how Claude Code namespaces this; other CLIs have their own |
+| `shared/pipeline-{web,ios,android,kmp}.md` overlays | **`hooks/`** — four Claude Code hook events. Nothing else fires them |
+| Every `skills/*/SKILL.md` procedure | **Two required sub-skills:** `superpowers:systematic-debugging` (Phase 4) and `superpowers:brainstorming` (Phase 5) |
+
+**Optional dependencies degrade rather than break** — `/code-review` (Phase 13), `security-review`
+(Deep tier), `frontend-design`, `feature-dev:*`, `chrome-devtools` (Phase 11 web verification). The
+pipeline names each one and says what it is for, so a substitute slots in; the two above are named
+as REQUIRED and a run that skips them skips a gate.
+
+`dev:arch` needs [Archify](https://github.com/tt-a1i/archify) on any CLI — that dependency is not
+Claude Code's.
+
+---
 
 ## Known gaps
 
