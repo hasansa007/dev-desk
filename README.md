@@ -1,6 +1,6 @@
 # dev-skill
 
-A personal development workflow for Claude Code: take a GitHub issue or a plain description from
+A personal development workflow for coding agents: take a GitHub issue or a plain description from
 "what should this do?" all the way to production, without skipping the gates that matter.
 
 `/dev` is the full run. **Fifteen members** sit around it: three `/dev:create-*` file the work item
@@ -51,99 +51,62 @@ would be nothing to hand it.
 makes them independently invocable. Enter at 5 on Monday and at 8 on Friday; neither needs the other
 still in context.
 
-### Data flow — what moves between the doors
+### What moves between the doors
 
 ```
 description ─▶ issue #N ─▶ branch ─▶ diff ─▶ PR # ─▶ pre prod ─▶ production
 ```
 
-Each step is a **durable handoff**, which is the whole reason the family is doors rather than one
-long run: nothing in that chain needs the previous door's conversation to still exist. `dev:survey`
-enters at the front (a repo → a report → confirmed issues); `dev:review` is the one arrow that goes
-backwards, looping a PR into Phase 14 and never forward.
+Each step is a **durable handoff** — nothing needs the previous door's conversation to still exist,
+which is why the family is doors rather than one long run. `dev:survey` enters at the front;
+`dev:review` is the one arrow that goes backwards, looping a PR into Phase 14.
 
-### The tools, which sit outside all of it
-
-`dev:launch` · `dev:launch-kill` · `dev:shots` · `dev:arch` · `dev:comment-budget` · `dev:issues` · `dev:survey`
-map to **no phase** and run none of the pipeline. Call them whenever. Phases 4 and 11 call `launch`
-for mobile targets; `shots` and `launch-kill` are doors into `launch`'s discovery, not copies of it.
-
-### The one automatic hop, and the ones that never are
-
-`dev:verify` (11) → `dev:docs` (12) is the **only** pair that chains without asking: same diff, both
-read-only, and their outputs are the two halves of one PR body. Everywhere else the run stops and
-asks. **Nothing ever chains into a merge or a promotion** — those are decisions, not steps.
+`verify` (11) → `docs` (12) is the **only** pair that chains without asking — same diff, both
+read-only, two halves of one PR body. Nothing ever chains into a merge or a promotion. The seven
+tools map to no phase and can be called any time.
 
 ---
 
 ## Layout
 
 ```
-~/Developer/skills/dev-skill/            ← this repo IS the `dev` plugin
-├── .claude-plugin/plugin.json    name: dev · skills: ["./"]
-├── SKILL.md                      name: dev — the full run; entry routing + family table
-├── shared/
-│   ├── entry.md                  workspace + pre-prod/prod branch resolution (read by all)
-│   ├── pipeline.md               ALL the behavior — Phases 0 → 16
-│   ├── pipeline-{web,ios,android,kmp}.md   platform overlays on Phases 10/11/14
-│   ├── prod-secrets.md           the releasing merge's secrets gate — Phase 16, or 14 if single-branch
-│   └── prod-secrets-apple.md     Apple acquisition steps — read only on a missing secret
-├── assets/dev-journey.gif        the map above — tracked, so the README renders
-├── docs/                         GIT-IGNORED here. dev:docs writes adr/, dev:arch writes arch/,
-│                                 dev:survey writes survey/ — local only, see GUIDE.md to recover
-├── .github/workflows/
-│   └── line-budget.yml           the repo's ONLY mechanical PR check — recomputes the GUIDE ceiling
-├── ci/pr-gates.yml               required-sections job NOT installed (PRs here are not /dev runs);
-│                                 its line-budget job IS, above
-├── hooks/                        4 Claude Code hooks — Phases 1, 3, 11(teardown), 12, 14, 16
-│   └── README.md                 what a hook can enforce, install blocks, the fired.log query
-├── web/  mobile/                 architecture + feature prompts (conditional)
-└── skills/                       one directory per door — every door, its phase and
-                                  what it takes is in **The pipeline** below
+shared/           ALL the behaviour — pipeline.md is Phases 0-16, entry.md is repo and
+                  branch resolution, plus platform overlays and the prod-secrets tables
+skills/           one directory per door; each points into shared/, none copies it
+SKILL.md          the full run — entry routing + family table
+install.sh        links this repo into every agent CLI on the machine
+assets/           the map above, tracked so the README renders
+docs/             GIT-IGNORED — ADRs, diagrams and survey reports stay local
+hooks/  ci/  .github/workflows/    4 Claude Code hooks; line-budget.yml is the only
+                  mechanical PR check. web/ and mobile/ hold conditional prompts
 ```
 
-Every phase skill reads `shared/pipeline.md`. **None of them copies it.** Behavior changes go in
-`shared/`, once.
+**Behaviour changes go in `shared/`, once.** That is the whole structure: one pipeline, many doors.
 
-### Three tools of a different kind
+### Tools, not phases
 
-The phase members are doors into `shared/pipeline.md`. `dev:launch`, `dev:launch-kill` and
-`dev:shots` are **tools**: no phase number, no preamble. Three verbs on one noun — start it, stop it,
-shoot it — and the latter two are doors into `launch`, not copies. That is how `shots` inherits the
-rule that matters for a capture: *if a server is already listening, reuse it and start nothing.*
+`dev:launch` · [`dev:launch-kill`](skills/launch-kill/SKILL.md) · `dev:shots` map to no phase and
+read none of the pipeline — three verbs on one noun, and the latter two are doors into `launch`
+rather than copies of it. [`dev:arch`](skills/arch/SKILL.md) is the only third-party dependency
+([Archify](https://github.com/tt-a1i/archify)) and stops rather than drawing something unvalidated.
 
-`launch-kill` adds the **boundary** — it proves a process belongs to *this worktree* before touching
-it, then kills the tree from the top so the launch script's traps fire. The leaked-`worker.py`
-incident that forced this is in [`skills/launch-kill/SKILL.md`](skills/launch-kill/SKILL.md).
-
-Not named `run`: Claude Code ships a built-in `run` skill. `dev:launch` lives here because it is the
-pipeline's only **personal-skill** dependency — everything else installs anywhere; this one would
-simply be missing after a clone. [`dev:arch`](skills/arch/SKILL.md) is a third category: it depends
-on [Archify](https://github.com/tt-a1i/archify) and stops rather than drawing something unvalidated.
-
-Phase 11 should delegate its capture to `dev:shots` rather than restate the commands. That edit is
-**not** made: `shared/pipeline.md` sits at 995 against a 995-line budget, so `GUIDE.md` requires an
-addition there to name its deletion.
+Phase 11 should delegate capture to `dev:shots`; that edit waits on a deletion to pay for it, since
+`shared/pipeline.md` sits at 995 against a 995-line budget.
 
 ---
 
 ## Installing
 
-A **skills-dir plugin** — it lives directly in `~/.claude/skills/`, no marketplace, no plugin cache.
-One symlink installs the whole family.
-
 ```bash
-ln -sfn ~/Developer/skills/dev-skill  ~/.claude/skills/dev
+git clone https://github.com/hasansa007/dev-skill.git && dev-skill/install.sh
 ```
 
-Auto-loads next session as `dev@skills-dir`; `/reload-plugins` loads it now.
+Links it into every agent CLI on the machine — Claude Code, Codex, Antigravity — skipping any that
+are not installed. Re-run any time. Reload the CLI afterwards, and check the loaded skill list
+rather than the filesystem.
 
-**The namespace comes from `.claude-plugin/plugin.json`, not from directory names** — which is why
-the members are `verify` and `launch`, not `dev-verify` and `dev-launch`. Without that manifest the
-same tree registers **nothing**: plain skill discovery is flat and never looks inside `skills/`.
-
-**Verify against the loaded skill list, not the filesystem.** A `SKILL.md` on disk proves nothing
-about registration — check `claude plugin list`.
+Private repo, so the clone needs `gh auth login`. What the script does and what transfers to each
+CLI: [GUIDE.md](GUIDE.md#running-it-on-another-cli).
 
 ---
 
@@ -190,27 +153,19 @@ Fuller version, with the four other design ideas:
 
 ## Design rules
 
-- **Right-size first.** Every task is triaged Light / Standard / Deep before starting, and the tier
-  is stated. Light is the default. *A slow pipeline that gets skipped protects nothing.*
-- **It runs straight through; there is no mode question.** Phases 5, 6, 14 and 16 stop regardless —
-  those are decisions, not steps. Running automatically skips the ceremony, never the judgment.
-- **Never end silently.** Wherever a run stops — the last phase, a gate, a blocker — it names the
-  next phase and asks. Entering at Phase 12 never leaves you guessing what followed it.
-- **Skipping leaves a trace.** Every PR carries `## PIPELINE`: tier, what ran, what was skipped and
-  **why**, and what each gate caught. It is also the only record of whether a rule ever earned its
-  place, which is what makes rules removable.
-- **Pre prod ≠ prod.** Phase 14 reaches pre prod only. Promotion is Phase 16, needs its own
-  confirmation, and never happens autonomously.
-- **Evidence before assertions.** No "should work" — run it, read the output, paste what it printed.
-- **Docs before merge.** A price, limit, decision or env var that changed without its ADR is an
-  unfinished diff.
-- **One pipeline, many doors.** Members never copy `shared/pipeline.md`; they point into it.
-- **The resolved repo is a write boundary.** Name the target `owner/repo` and branch *before* acting;
-  cut the branch from the resolved pre-prod branch, not from what is checked out.
-- **A result is not a claim.** Say what a command's output *means* and what bounds it — not just
-  where you looked. Catches the plausible non-empty result that answered a narrower question.
+- **Right-size first** — Light / Standard / Deep, stated before starting. Light is the default.
+- **It runs straight through.** Only Phases 5, 6, 14 and 16 stop; those are decisions, not steps.
+- **Never end silently.** Every stop names the next phase and asks.
+- **Skipping leaves a trace** — `## PIPELINE` in the PR says what was skipped and *why*.
+- **Pre prod ≠ prod.** Phase 14 reaches pre prod; promotion is Phase 16 and never autonomous.
+- **Evidence before assertions.** Run it, read the output, paste what it printed.
+- **Docs before merge.** A number or decision changed without its ADR is an unfinished diff.
+- **One pipeline, many doors.** Members point into `shared/pipeline.md`; they never copy it.
+- **The repo is a write boundary**, and **a result is not a claim** — both defined once in
+  [`shared/entry.md`](shared/entry.md), which every door reads.
 
-Both are defined once in [`shared/entry.md`](shared/entry.md), which every door reads.
+Why each exists, with the incident behind it:
+[GUIDE.md → The five ideas the design turns on](GUIDE.md#the-five-ideas-the-design-turns-on).
 
 ---
 
