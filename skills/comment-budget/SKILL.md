@@ -16,6 +16,22 @@ allowed-tools: [git, rg, grep, python3, make, npx, node, bash, npm, pnpm, yarn, 
 
 # comment-budget — bring existing code to the documentation budget
 
+**Scope — and why the name says "comment".** This door governs **comments and docstrings**, but they
+are not equally protected, and the name follows the protection rather than the surface area.
+
+| | Gate | In scope |
+|---|---|---|
+| **Comments** | check 2 keeps a full inventory — a deleted pragma or licence header **fails the run** | always |
+| **Docstrings** | **no gate.** A docstring is a string expression, so check 2 cannot see it and check 1 strips it from both sides | only when the repo does NOT generate docs from them |
+
+Where a repo configures sphinx, typedoc, godoc, Dokka or javadoc, docstrings are a build artifact,
+**excluded in discovery**, and never visited — which is their only protection. There the door really
+is a comment door. Everywhere else docstrings are in scope and carry the same one-line budget, with
+*"these docstrings are too long"* routing here.
+
+**Say which case the repo is in before touching anything.** Getting it wrong in the doc-generating
+direction silently changes a published site, and no gate will catch it.
+
 A **tool**, not a phase. It maps to no phase number and runs no pipeline phase — but it is not a
 `nothing` loader: it applies **Short Documentation**, so it reads that rule from
 `shared/pipeline.md` (Guiding Principles, and the budget in Universal Rules) before classifying
