@@ -97,29 +97,31 @@ Phase 11 should delegate capture to `dev:shots`; that edit waits on a deletion t
 
 ## Installing
 
-One script. It links this repo into every agent CLI on the machine that uses the
-`skills/<name>/SKILL.md` convention, skips the ones that are not installed, and is safe to re-run.
+In your CLI, run:
 
 ```bash
-./install.sh
+git clone https://github.com/hasansa007/dev-skill.git && dev-skill/install.sh
 ```
+
+That links it into **every** agent CLI on the machine — Claude Code, Codex, Antigravity — skipping
+the ones that are not installed. Already cloned? Just `./install.sh`. Safe to re-run.
+
+*(The repo is private, so the clone needs access — `gh auth login`, or `gh repo clone
+hasansa007/dev-skill`.)*
+
 ```
   claude       linked  ~/.claude/skills/dev
   codex        linked  ~/.codex/skills/dev
   antigravity  not found — skipped
-
-done: 2 installed, 0 already linked, 1 skipped
 ```
 
-It never creates a config tree for a CLI that is absent, never overwrites a real directory, and
-reads antigravity's registered path from `~/.gemini/config/skills.json` rather than guessing it.
+Then reload: `/reload-skills` in Claude Code, or restart the CLI. **Check the loaded skill list, not
+the filesystem** — a `SKILL.md` on disk proves nothing about registration.
 
-Then reload — `/reload-skills` in Claude Code, or restart the CLI. **Verify against the loaded skill
-list, not the filesystem:** a `SKILL.md` on disk proves nothing about registration.
-
-Under Claude Code the namespace comes from `.claude-plugin/plugin.json`, which is why the members are
-`verify` and `launch` rather than `dev-verify`. What transfers to other CLIs and what needs
-substituting: [GUIDE.md → Running it on another CLI](GUIDE.md#running-it-on-another-cli).
+<sub>The script never creates a config tree for an absent CLI, never overwrites a real directory, and
+reads antigravity's path from `~/.gemini/config/skills.json` rather than guessing. Under Claude Code
+the namespace comes from `.claude-plugin/plugin.json`. What transfers to other CLIs:
+[GUIDE.md](GUIDE.md#running-it-on-another-cli).</sub>
 
 ---
 
