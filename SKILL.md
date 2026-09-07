@@ -33,7 +33,7 @@ so it is defined once there and never duplicated here.
 |---|---|
 | **Nothing at all** | **`dev:issues`** — the tracker view, then ask which to start |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
-| A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `trim`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
+| A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `comment-budget`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
 
 ### The empty-input row is a guard, not a convenience
@@ -56,7 +56,7 @@ a **feature name**: `/dev run` would branch `feature/run` and start building a f
 
 Before routing to Generic, STOP if the argument is:
 
-- **a family name** — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `trim`, `survey`, `arch`, with or without the
+- **a family name** — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `comment-budget`, `survey`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
 - **a single word with no verb and no object** (`deploy`, `test`, `fix`). Far likelier a mistyped
@@ -120,7 +120,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:launch` | — | a project to launch | "run the app" — a TOOL, not a phase |
 | `dev:launch-kill` | — | a project to stop | "kill the dev server", "free the port" — `launch` inverted |
 | `dev:shots` | — | a running app | "screenshot the app", "app store screenshots" — capture, iOS/Android/web |
-| `dev:trim` | — | a repo or a path | "trim the comments" — existing code to the doc budget; reports unless `--apply` |
+| `dev:comment-budget` | — | a repo or a path | "trim the comments" — existing code to the doc budget; reports unless `--apply` |
 | `dev:arch` | — | a system to draw | "draw the architecture", "map this system" — verifiable diagram; renders via Archify |
 | `dev:survey` | — | an existing app | "what's wrong with this app" — finds bugs + architectural drift, files the confirmed |
 | `dev:issues` | — | the repo's tracker | "what should I work on?" — read-only board; **bare `/dev` routes here** |

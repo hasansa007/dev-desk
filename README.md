@@ -72,7 +72,7 @@ to still exist — which is the whole reason the family is doors rather than one
 
 ### The tools, which sit outside all of it
 
-`dev:launch` · `dev:launch-kill` · `dev:shots` · `dev:arch` · `dev:trim` · `dev:issues` · `dev:survey`
+`dev:launch` · `dev:launch-kill` · `dev:shots` · `dev:arch` · `dev:comment-budget` · `dev:issues` · `dev:survey`
 map to **no phase** and run none of the pipeline. Call them whenever. Phases 4 and 11 call `launch`
 for mobile targets; `shots` and `launch-kill` are doors into `launch`'s discovery, not copies of it.
 
@@ -118,7 +118,7 @@ asks. **Nothing ever chains into a merge or a promotion** — those are decision
     ├── launch/SKILL.md           → /dev:launch     no phase — a TOOL
     ├── launch-kill/SKILL.md      → /dev:launch-kill  no phase — `launch` inverted
     ├── shots/SKILL.md            → /dev:shots      no phase — capture, iOS/Android/web
-    ├── trim/SKILL.md             → /dev:trim       no phase — existing code → the doc budget
+    ├── comment-budget/SKILL.md   → /dev:comment-budget  no phase — existing code → the doc budget
     ├── arch/SKILL.md             → /dev:arch       no phase — a verifiable diagram, via Archify
     ├── survey/SKILL.md           → /dev:survey     no phase — read the app, file what is wrong
     └── issues/SKILL.md           → /dev:issues     no phase — the tracker view; bare /dev routes here
@@ -203,7 +203,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | — | *(no phase)* — build & launch the app | `dev:launch` |
 | — | *(no phase)* — stop this project's servers | `dev:launch-kill` |
 | — | *(no phase)* — capture screens from the running app | `dev:shots` |
-| — | *(no phase)* — bring EXISTING code to the documentation budget | `dev:trim` |
+| — | *(no phase)* — bring EXISTING code to the documentation budget | `dev:comment-budget` |
 | — | *(no phase)* — draw a verifiable diagram of a system | `dev:arch` |
 | — | *(no phase)* — survey an existing app, file the confirmed findings. **Feeds Phase 0** via `dev:create-*`, and Phase 4 reads the provenance it writes | `dev:survey` |
 | — | *(no phase)* — the tracker: current, next, stats | `dev:issues` |

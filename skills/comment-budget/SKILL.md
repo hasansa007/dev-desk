@@ -1,5 +1,5 @@
 ---
-name: trim
+name: comment-budget
 description: >
   Brings EXISTING code to the Short Documentation budget — one line, not a paragraph, not zero.
   Classifies every comment into restates / compressible / carries-what-the-signature-cannot /
@@ -14,7 +14,23 @@ description: >
 allowed-tools: [git, rg, grep, python3, make, npx, node, bash, npm, pnpm, yarn, pytest, go, cargo, gradle, mvn]
 ---
 
-# trim — bring existing code to the documentation budget
+# comment-budget — bring existing code to the documentation budget
+
+**Scope — and why the name says "comment".** This door governs **comments and docstrings**, but they
+are not equally protected, and the name follows the protection rather than the surface area.
+
+| | Gate | In scope |
+|---|---|---|
+| **Comments** | check 2 keeps a full inventory — a deleted pragma or licence header **fails the run** | always |
+| **Docstrings** | **no gate.** A docstring is a string expression, so check 2 cannot see it and check 1 strips it from both sides | only when the repo does NOT generate docs from them |
+
+Where a repo configures sphinx, typedoc, godoc, Dokka or javadoc, docstrings are a build artifact,
+**excluded in discovery**, and never visited — which is their only protection. There the door really
+is a comment door. Everywhere else docstrings are in scope and carry the same one-line budget, with
+*"these docstrings are too long"* routing here.
+
+**Say which case the repo is in before touching anything.** Getting it wrong in the doc-generating
+direction silently changes a published site, and no gate will catch it.
 
 A **tool**, not a phase. It maps to no phase number and runs no pipeline phase — but it is not a
 `nothing` loader: it applies **Short Documentation**, so it reads that rule from
@@ -103,7 +119,7 @@ Preconditions, checked only under `--apply`, **in this order**:
    command is a **reported gap**, not a pass — check 2's hazard class fails lint, never tests.
 2. `git status --porcelain` is **empty** — checked *after* step 1, because test and lint runs write
    caches and coverage files. A dirty tree means an unrelated edit gets swept into a commit labelled
-   comment-only, and Phase 5 then compares against a baseline that was never trim's.
+   comment-only, and Phase 5 then compares against a baseline that was never this skill's.
 3. The repo is a write boundary (`shared/entry.md`): name `owner/repo`, cut a new branch.
 
 **Steps 1 and 2 are reads and come before step 3 deliberately.** A baseline that stops the run must
