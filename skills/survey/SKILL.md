@@ -80,7 +80,7 @@ Find them from what the repo declares, never from imagination —
 for is one you invented, and every finding under it inherits that.
 
 If nothing declares flows, say so and fall back to **one directory below the source root** — the
-same unit `dev:trim` uses, and for the same reason: it has to be small enough that one surveyor's
+same unit `dev:comment-budget` uses, and for the same reason: it has to be small enough that one surveyor's
 pass fits one context.
 
 **Enumerate with `git ls-files`, never with a directory walk.** Tracked files only means build
@@ -161,7 +161,7 @@ real bug, and a bare count leaves that unauditable and makes the next run re-der
 The report carries the symptom and the refutation so a human can overturn it.
 
 A run that refutes **nothing** is a run whose checkers were agreeing rather than checking — the same
-tell as `dev:trim`'s "a run that keeps nothing". A run that refutes **almost everything** is the
+tell as `dev:comment-budget`'s "a run that keeps nothing". A run that refutes **almost everything** is the
 opposite failure, and the list is what makes it visible.
 
 ## Phase 6 — The architecture pass — count before recommending

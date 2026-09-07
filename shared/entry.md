@@ -156,14 +156,14 @@ this pipeline exists to refuse.
 | `dev:launch-kill` | — | **nothing** — a tool; it reads `dev:launch`'s discovery, not this pipeline |
 | `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
 | `dev:issues` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
-| `dev:trim` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
+| `dev:comment-budget` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
 | `dev:arch` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size; it consumes Simplicity First, which is what lets it REFUSE a diagram the target does not need |
 | `dev:survey` | — | **Guiding Principles + Universal Rules + Right-Size** — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
 
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
 are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the
 ceremony GUIDE principle 4 refuses. That is why every tool row above reads `nothing` — except
-`dev:trim`, `dev:survey` and `dev:arch`. `trim` **applies a rule**, and a rule it has not read is a
+`dev:comment-budget`, `dev:survey` and `dev:arch`. `comment-budget` **applies a rule**, and a rule it has not read is a
 rule it will improvise; `survey` **fans out wider than any phase does**, so the one section a tool
 would normally skip — Right-Size — is the one it most needs; `arch` **refuses targets**, and
 Simplicity First is the rule it refuses them with. Read what you consume; name it in the row, and let the
@@ -229,7 +229,7 @@ fields you inferred rather than resolved.
 | `dev:launch-kill` | — | a project to stop | **tool** |
 | `dev:shots` | — | a running app | **tool** |
 | `dev:issues` | — | the repo's tracker | **tool** |
-| `dev:trim` | — | a repo or a path | **tool** |
+| `dev:comment-budget` | — | a repo or a path | **tool** |
 | `dev:arch` | — | a system to draw | **tool** |
 | `dev:survey` | — | an existing app | **tool** → feeds Phase 0 |
 

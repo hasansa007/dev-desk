@@ -107,7 +107,7 @@ The work already exists and you want a single stage:
 | *"run the app"* / *"launch on simulator"* | `/dev:launch` |
 | *"kill the dev server"* / *"free the port"* | `/dev:launch-kill` — stops what `launch` started, in this worktree only |
 | *"screenshot the app"* / *"app store screenshots"* | `/dev:shots` — captures iOS/Android/web; drives the project's own suite when it has one |
-| *"trim the comments"* / *"these docstrings are too long"* | `/dev:trim` — existing code to the doc budget; reports unless `--apply` |
+| *"trim the comments"* / *"these docstrings are too long"* | `/dev:comment-budget` — existing code to the doc budget; reports unless `--apply` |
 | *"draw the architecture"* / *"map this system"* | `/dev:arch` — a diagram whose every node is pinned to verified code; needs Archify |
 | *"what's wrong with this app"* / *"the architecture is inconsistent"* | `/dev:survey` — finds bugs and drift, verifies each, files the confirmed |
 | *"what should I work on?"* / nothing at all | `/dev:issues` — the tracker board, read-only. This is what bare `/dev` now does |

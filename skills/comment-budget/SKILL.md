@@ -1,5 +1,5 @@
 ---
-name: trim
+name: comment-budget
 description: >
   Brings EXISTING code to the Short Documentation budget — one line, not a paragraph, not zero.
   Classifies every comment into restates / compressible / carries-what-the-signature-cannot /
@@ -14,7 +14,7 @@ description: >
 allowed-tools: [git, rg, grep, python3, make, npx, node, bash, npm, pnpm, yarn, pytest, go, cargo, gradle, mvn]
 ---
 
-# trim — bring existing code to the documentation budget
+# comment-budget — bring existing code to the documentation budget
 
 A **tool**, not a phase. It maps to no phase number and runs no pipeline phase — but it is not a
 `nothing` loader: it applies **Short Documentation**, so it reads that rule from
@@ -103,7 +103,7 @@ Preconditions, checked only under `--apply`, **in this order**:
    command is a **reported gap**, not a pass — check 2's hazard class fails lint, never tests.
 2. `git status --porcelain` is **empty** — checked *after* step 1, because test and lint runs write
    caches and coverage files. A dirty tree means an unrelated edit gets swept into a commit labelled
-   comment-only, and Phase 5 then compares against a baseline that was never trim's.
+   comment-only, and Phase 5 then compares against a baseline that was never this skill's.
 3. The repo is a write boundary (`shared/entry.md`): name `owner/repo`, cut a new branch.
 
 **Steps 1 and 2 are reads and come before step 3 deliberately.** A baseline that stops the run must

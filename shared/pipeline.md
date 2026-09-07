@@ -17,7 +17,7 @@ Derived from three operating protocols, plus rules added since. These apply acro
 | **Self-Verification** | Execution Engine | Write automated tests. Do not leave a mess. Ensure no regressions. |
 | **Live Synchronization** | Execution Engine | Dynamically update `PROJECT_MAP.md`. Move incomplete features to `ORPHANS & PENDING`. |
 | **Commitment to Flow** | Execution Engine | Every line of code must serve the user journey defined in `SYSTEM_FLOW`. If a line does not, delete it. |
-| **Surgical Editing** | Surgical Editing Protocol | Touch only what must be touched. Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect — `dev:trim --apply` excepted, per Universal Rules. |
+| **Surgical Editing** | Surgical Editing Protocol | Touch only what must be touched. Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect — `dev:comment-budget --apply` excepted, per Universal Rules. |
 | **Style Matching** | Surgical Editing Protocol | Adhere to current code style, even if you find it imperfect. |
 | **Clean Your Own Mess** | Surgical Editing Protocol | If your edit orphans a function, import, type, or parameter — remove it. |
 | **Impact Analysis** | Surgical Editing Protocol | Read `PROJECT_MAP.md`. Accurately identify all affected files before editing. |
@@ -503,7 +503,7 @@ Before touching any file:
 4. Verify no scope creep: is every change strictly required by the ticket?
 
 ### Editing — Surgical Protocol
-- **Touch only what must be touched.** Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect (`dev:trim --apply` excepted, per Universal Rules).
+- **Touch only what must be touched.** Do not reformat adjacent code, rephrase old comments, or fix style you find imperfect (`dev:comment-budget --apply` excepted, per Universal Rules).
 - **Style matching.** Adhere to the code style in the file you are editing, even if you find it imperfect. Consistency > personal preference.
 - **Clean your own mess.** If your change orphans a function, import, type, or parameter — remove it.
 - **Execution simplicity.** If 50 lines can do the job instead of 200, write 50. Do not over-abstract.
@@ -979,7 +979,7 @@ Context: <what was loaded from Phase 1>
   javadoc), where they are a build artifact and stay.
 - **Test names ARE the test's documentation** — a failing test prints its name, not your comment.
   One behaviour per test; if the name needs "and", split it.
-- Do not add, rephrase or reformat comments and docstrings on unchanged code (Touch Only What Must Be Touched). **The one exception is `dev:trim --apply`**, whose whole job is the budget and which gates every write; it covers adding a line and collapsing one, because both are otherwise banned here
+- Do not add, rephrase or reformat comments and docstrings on unchanged code (Touch Only What Must Be Touched). **The one exception is `dev:comment-budget --apply`**, whose whole job is the budget and which gates every write; it covers adding a line and collapsing one, because both are otherwise banned here
 - Do not add error handling for impossible cases
 - Do not create helpers for one-time use
 - DB migrations: always add a new version, never modify existing ones (mechanics: `supabase` skill)
