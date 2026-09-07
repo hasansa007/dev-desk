@@ -287,6 +287,12 @@ the last one.
 Ask before filing anything. Then, for the confirmed set:
 
 - Bugs → `dev:create-bug`, one per finding, mechanism carried into `## Steps` intact.
+- **Name this run in `## Suspected`, and say what the verdict does NOT cover:** *"found by
+  `dev:survey` <date>; two checkers confirmed the mechanism against the code — not reproduced at
+  runtime."* That field is already the unverified one, which is exactly the right strength. Phase 4
+  reads it to start its evidence ladder at layer 3 instead of layer 1, and to know it must still run
+  layers 3–5. Without the line the issue is indistinguishable from a hand-written one and the
+  adversarial verification is spent twice.
 - Architecture → `dev:create-epic` for the drift, or an ADR when it is a decision rather than work.
   **`dev:docs` owns ADRs** — their numbering and location are its rules, not this skill's. Hand it over rather than inventing a path.
 - **Touched files go in `## Scope`** — `dev:create-bug`'s existing field for *where it bites*. Do
