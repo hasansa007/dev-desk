@@ -7,7 +7,7 @@ description: >
   Trigger when the user says "are the docs updated", "check the ADRs", "docs gate", "did we write
   this decision down", "is PROJECT_MAP current", or before merging anything that changed a number
   or a decision.
-allowed-tools: [gh, git]
+allowed-tools: [gh, git, python3, node, mktemp]
 ---
 
 # Dev — Docs & Decisions Gate
@@ -16,7 +16,12 @@ Standalone entry into **Phase 12 — Docs & Decisions Gate** of the dev pipeline
 
 ## Input
 
-A branch, or any diff: `git diff <BASE_BRANCH>...HEAD`.
+A branch, or any diff.
+
+**Use the two-dot form against the base — `git diff <BASE_BRANCH>` — not `<BASE_BRANCH>...HEAD`.**
+Three dots only sees committed work, so running this gate before committing reports a clean diff
+while the files sit modified on disk. Verified 2026-08-31; the same trap is spelled out under the
+cited-file check below.
 
 ## Run
 
@@ -127,11 +132,14 @@ Probe a COPY. Never rewrite the committed IR's revision to make a check pass:
 export ARCHIFY_UPDATE_CHECK_DISABLED=1
 HEAD_SHA=$(git rev-parse HEAD)
 for ir in docs/arch/*.architecture.json; do
+  [ -e "$ir" ] || { echo "no diagrams tracked"; break; }   # an unmatched glob stays literal in bash
   probe=$(mktemp)          # bare mktemp — a ".json" suffix breaks the template on macOS
   python3 -c "import json,sys;d=json.load(open(sys.argv[1]));\
 d['meta']['repository']['revision']=sys.argv[2];json.dump(d,open(sys.argv[3],'w'))" "$ir" "$HEAD_SHA" "$probe"
-  node <archify>/bin/archify.mjs validate architecture "$probe" --repo-root . >/dev/null 2>&1 \
-    && echo "OK: $ir" || echo "STALE: $ir"
+  # Resolve <archify> with dev:arch Phase 2's ladder; a literal placeholder here fails as
+  # "STALE" and inverts the gate. Separate the exit codes: 1 is a real staleness failure.
+  node "$ARCHIFY/bin/archify.mjs" validate architecture "$probe" --repo-root . >/dev/null 2>&1
+  case $? in 0) echo "OK: $ir";; 1) echo "STALE: $ir";; *) echo "ERROR (not staleness): $ir";; esac
   rm -f "$probe"
 done
 ```
@@ -164,8 +172,12 @@ modified on disk — verified the same day, on this very check.
 So run the cheap set-intersection too, and treat any overlap as **re-read required**:
 
 ```bash
-BASE=$(git merge-base origin/main HEAD)
-git diff --name-only "$BASE" > /tmp/touched   # bare $BASE, NOT $BASE...HEAD —
+# Resolve the base the way shared/entry.md does — NOT hardcoded origin/main. A repo whose
+# pre-prod branch is master/develop, or with no origin, yields an empty BASE, and `git diff ""`
+# then fails while the redirect has already truncated the file: every diagram reports clean.
+BASE=$(git merge-base "origin/$PRE_PROD" HEAD) || { echo "cannot resolve base — gate not run"; exit 1; }
+[ -n "$BASE" ] || { echo "empty base — gate not run"; exit 1; }
+git diff --name-only "$BASE" > "$TOUCHED"     # bare $BASE, NOT $BASE...HEAD —
                                               # ...HEAD misses uncommitted work
 python3 - <<'EOF'
 import json,glob

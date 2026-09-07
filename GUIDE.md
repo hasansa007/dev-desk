@@ -207,7 +207,7 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > `ci/pr-gates.yml` recomputes this; that file had never been installed. Its `line-budget` job now
 > runs on its own at `.github/workflows/line-budget.yml`.
 
-> **2026-09-07 — raised 988 → 995.** Phase 4 gained six lines telling it that a `dev:survey`-filed
+> **2026-09-07 — raised 988 → 995 (seven lines, measured).** Phase 4 gained six lines telling it that a `dev:survey`-filed
 > issue arrives with ladder layers 1–2 already done adversarially, and that layers 3–5 must run
 > anyway because survey checks code and never runs the app. No deletion was available: Phase 13 is
 > the standing candidate and is not one — under the "run /code-review" line it carries the

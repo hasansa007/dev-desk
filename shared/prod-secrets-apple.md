@@ -19,8 +19,10 @@ No two repos name these the same — `ASC_API_KEY`, `APP_STORE_CONNECT_PRIVATE_K
 column, case-insensitively, and prefer the most specific hit: `ASC_KEY_ID` is the Key ID, not the
 key. An exact-name table would miss most repos and report a credential it could have explained.
 
-**Every cell in the first column is a LITERAL SUBSTRING, never a regex.** `FASTLANE_.*PASSWORD`
-sat here until 2026-09-07 and matched nothing — no real secret name contains the characters `.*`.
+**Each comma-separated fragment in the first column is a LITERAL SUBSTRING, never a regex** — test
+the fragments one at a time, not the cell as a whole. A parenthetical like *(not `_PASSWORD`)* is an
+exclusion for the reader, not a fragment to search for. `FASTLANE_.*PASSWORD` sat here until
+2026-09-07 and matched nothing: no real secret name contains the characters `.*`.
 
 | Name contains | What it is | Where it comes from |
 |---|---|---|

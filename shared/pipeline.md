@@ -333,8 +333,8 @@ a reaction to it, not an independent approach, and no amount of asking afterward
 lost. This is the single easiest step in the pipeline to perform the form of while destroying the
 substance — the tell is a message that contains both the question and your answer.
 
-**`just do it` skips it, immediately and without argument.** Both this and Phase 8's decomposition
-are stop-gates, not persuasion.
+**`just do it` skips it, immediately and without argument.** Both this and Phase 5's own
+decomposition subsection are stop-gates, not persuasion.
 
 Feeds Phase 7: the approach that survives this is the one the plan is written from, and the
 `rejected:` lines become the ADR's alternatives at Phase 12 rather than being reconstructed from
