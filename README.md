@@ -95,40 +95,31 @@ Phase 11 should delegate capture to `dev:shots`; that edit waits on a deletion t
 
 ---
 
-## Running it on another CLI
+## Installing
 
-The workflow is portable; only the packaging is Claude Code's. `./install.sh` links it into every
-agent CLI on the machine that uses the `skills/<name>/SKILL.md` convention:
-
-```
-$ ./install.sh
-  claude       already linked, unchanged
-  codex        linked  ~/.codex/skills/dev
-  antigravity  not found — skipped
-```
-
-What transfers and what needs substituting:
-[GUIDE.md → Running it on another CLI](GUIDE.md#running-it-on-another-cli).
-
----
-
-## Installing under Claude Code
-
-A **skills-dir plugin** — it lives directly in `~/.claude/skills/`, no marketplace, no plugin cache.
-One symlink installs the whole family.
+One script. It links this repo into every agent CLI on the machine that uses the
+`skills/<name>/SKILL.md` convention, skips the ones that are not installed, and is safe to re-run.
 
 ```bash
-ln -sfn ~/Developer/skills/dev-skill  ~/.claude/skills/dev
+./install.sh
+```
+```
+  claude       linked  ~/.claude/skills/dev
+  codex        linked  ~/.codex/skills/dev
+  antigravity  not found — skipped
+
+done: 2 installed, 0 already linked, 1 skipped
 ```
 
-Auto-loads next session as `dev@skills-dir`; `/reload-plugins` loads it now.
+It never creates a config tree for a CLI that is absent, never overwrites a real directory, and
+reads antigravity's registered path from `~/.gemini/config/skills.json` rather than guessing it.
 
-**The namespace comes from `.claude-plugin/plugin.json`, not from directory names** — which is why
-the members are `verify` and `launch`, not `dev-verify` and `dev-launch`. Without that manifest the
-same tree registers **nothing**: plain skill discovery is flat and never looks inside `skills/`.
+Then reload — `/reload-skills` in Claude Code, or restart the CLI. **Verify against the loaded skill
+list, not the filesystem:** a `SKILL.md` on disk proves nothing about registration.
 
-**Verify against the loaded skill list, not the filesystem.** A `SKILL.md` on disk proves nothing
-about registration — check `claude plugin list`.
+Under Claude Code the namespace comes from `.claude-plugin/plugin.json`, which is why the members are
+`verify` and `launch` rather than `dev-verify`. What transfers to other CLIs and what needs
+substituting: [GUIDE.md → Running it on another CLI](GUIDE.md#running-it-on-another-cli).
 
 ---
 
