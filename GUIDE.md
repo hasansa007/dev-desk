@@ -174,7 +174,7 @@ standalone members start at 11 and not earlier, and why an epic cannot resume mi
 **4. Ceremony is the failure mode, not sloppiness.** *A slow pipeline that gets skipped protects
 nothing.* Every addition must earn the tier it lands in. Prefer conditional over mandatory.
 
-> **Budget: `shared/pipeline.md` stays at or under 988 lines** (988 at 2026-09-06). Not a style
+> **Budget: `shared/pipeline.md` stays at or under 995 lines** (995 at 2026-09-07). Not a style
 > preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
 > than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
 > `wc -l shared/pipeline.md` before you write. The number stays deliberately close to current: this
@@ -206,6 +206,13 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > **The breach ran silent for four PRs, which is the worse half.** The line above claimed
 > `ci/pr-gates.yml` recomputes this; that file had never been installed. Its `line-budget` job now
 > runs on its own at `.github/workflows/line-budget.yml`.
+
+> **2026-09-07 — raised 988 → 995.** Phase 4 gained six lines telling it that a `dev:survey`-filed
+> issue arrives with ladder layers 1–2 already done adversarially, and that layers 3–5 must run
+> anyway because survey checks code and never runs the app. No deletion was available: Phase 13 is
+> the standing candidate and is not one — under the "run /code-review" line it carries the
+> spec-compliance check, the Deep-tier security triggers and the verdict handling, so cutting it is
+> the 2026-08-23 failure exactly. Smallest raise, zero slack.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.

@@ -30,7 +30,7 @@ what each door needs before it will do anything.
 
 | # | You type | When | It needs | It gives you |
 |---|---|---|---|---|
-| 1 | `/dev:survey` | you don't know what's wrong yet | a repo | a report, then confirmed issues |
+| 1 | `/dev:survey` | you don't know what's wrong yet | a repo | a report, then confirmed issues — each naming the run in `## Suspected`, which Phase 4 reads |
 | 2 | `/dev:create-issue` · `-bug` · `-epic` | you already know | a description | an issue number |
 | 3 | `/dev:issues` *(or bare `/dev`)* | the board is stocked | nothing | what's next, ranked |
 | 4 | `/dev #N` | you picked one | an issue number | a branch, a plan, the code |
@@ -145,7 +145,7 @@ it. It lives here because it is the pipeline's only **personal-skill** dependenc
 simply be missing after a clone, taking mobile verification with it.
 
 Phase 11 should delegate its evidence capture to `dev:shots` rather than restate the commands. That
-edit is **not** made: `shared/pipeline.md` sits at 988 against a 988-line budget, so `GUIDE.md`
+edit is **not** made: `shared/pipeline.md` sits at 995 against a 995-line budget, so `GUIDE.md`
 requires an addition there to name its deletion. The delegation is documented here and in the tool
 until a deletion pays for it.
 
@@ -186,7 +186,7 @@ about registration — check `claude plugin list` and the session's skill list.
 | 1 | Context Load — `PROJECT_MAP.md`, `ARCHITECTURE.md`, existing spec | |
 | 2 | Tech Stack & Discovery — stack detect, conditional explorer fan-out | |
 | 3 | Git Branch Naming | |
-| 4 | Investigation — evidence ladder, reproduce before theorising | |
+| 4 | Investigation — evidence ladder, reproduce before theorising; a `dev:survey` issue starts at layer 3, never skips 3–5 | |
 | **5** | **Discuss Before Building** — plain-language, explicit go-ahead; **asks for YOUR approach before showing its own**; conditional UI discussion **and epic decomposition** | |
 | 6 | Architecture Alternatives — 3 forced-different biases, losers recorded | |
 | 7 | Plan Output — written to `specs/` | |
