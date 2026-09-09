@@ -97,7 +97,41 @@ src/
 - **Migrations reach prod BEFORE the promotion merge**, never after — the merge releases code that
   expects the new schema.
 
-### 10. Risks
+### 10. New-Project Bootstrap
+
+When setting up a new Next.js project for the first time:
+
+#### Path Validation & Project Structure
+- **Validate the project root path before any file operations** — check it exists and is writable before creating directories or files
+- **Use `path.resolve()` to normalize all paths** — prevents issues with relative paths, symlinks, and trailing slashes
+- **Verify parent directory exists before creating nested structures** — failing early prevents partial directory creation
+- Never assume default locations (`~/projects`, `/Users/...`) — always resolve from the actual working directory
+
+#### Bootstrap Sequence
+1. **Validate target directory** — must exist, must be empty or explicitly confirmed for overwrite, must be writable
+2. **Create core directories in dependency order:**
+   ```
+   src/app/           ← create first (Next.js requires this)
+   src/components/ui/ ← then UI base components
+   src/lib/           ← then shared utilities
+   ```
+3. **Initialize config files** — `next.config.js`, `tailwind.config.js`, `tsconfig.json` with project-specific settings
+4. **Install dependencies** — `package.json` first, then `npm install` (or equivalent)
+5. **Verify bootstrap succeeded** — check all expected directories and files exist before reporting success
+
+#### Common Bootstrap Failures
+- **Invalid path passed to bootstrap** — always resolve and validate before use; error message must show the invalid path
+- **Partial directory creation** — if any step fails, report exactly which directories were created and which failed
+- **Silent path resolution failures** — never fall back to current directory silently; make path resolution explicit and loud
+- **Missing parent directories** — bootstrap should fail fast if the target parent doesn't exist, not attempt to create it
+
+#### Anti-Patterns
+- **Do not create directories outside the project root** — bootstrap is scoped to one project; paths that escape it are bugs
+- **Do not skip path validation "to save time"** — invalid paths detected at file-write time have already created partial state
+- **Do not use process.cwd() as the project root** — the working directory is NOT the project being bootstrapped; resolve the target explicitly
+- **Do not suppress ENOENT errors during bootstrap** — a missing directory during setup is a validation failure, not something to work around
+
+### 11. Risks
 - **Server/client boundary confusion** — component marked `"use client"` that imports a server-only module (crashes at runtime)
 - **Over-fetching on server** — fetching more data than the component renders
 - **State sync issues** — mixing URL state, React state, and server state for the same value
