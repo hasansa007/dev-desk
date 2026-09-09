@@ -1,0 +1,141 @@
+{
+  "session_number": 8,
+  "timestamp": "2026-09-09T21:00:49.367351+00:00",
+  "subtasks_completed": [
+    "subtask-2-1"
+  ],
+  "discoveries": {
+    "file_insights": [
+      {
+        "file": "test-projects/ROOT_CAUSE_WEB.md",
+        "type": "analysis_document",
+        "key_findings": [
+          "Identified 5 critical gaps preventing MASTER_PROMPT bootstrap from working in new projects",
+          "Missing automatic trigger when ARCHITECTURE.md is absent",
+          "Asymmetric pipeline design: PROJECT_MAP.md has fallback creation logic but ARCHITECTURE.md does not",
+          "MASTER_PROMPT content is generated correctly but never persisted to disk",
+          "Pipeline Phase 1 checks for ARCHITECTURE.md but provides no mechanism to create it"
+        ],
+        "evidence_provided": "Line-by-line citations from SKILL.md, pipeline.md, MASTER_PROMPT.md with specific line numbers and quoted text",
+        "scope": "New project bootstrap path validation for web stack (Next.js, React, Vue)"
+      }
+    ],
+    "patterns_discovered": [
+      {
+        "pattern": "Documentation-Implementation Gap",
+        "description": "SKILL.md declares automatic behavior ('Apply only when ARCHITECTURE.md is missing') but pipeline implementation has no trigger for this condition",
+        "evidence": "SKILL.md line 155 vs pipeline.md lines 176-189 have no MASTER_PROMPT invocation logic"
+      },
+      {
+        "pattern": "Asymmetric Error Handling",
+        "description": "Related files are handled inconsistently: PROJECT_MAP.md has explicit fallback creation logic ('create it in Phase 7') while ARCHITECTURE.md lacks any creation mechanism",
+        "evidence": "pipeline.md line 189 (PROJECT_MAP fallback) vs line 177 (ARCHITECTURE.md no fallback)"
+      },
+      {
+        "pattern": "Implicit vs Explicit Instructions",
+        "description": "MASTER_PROMPT documentation says 'Pin decisions in ARCHITECTURE.md' but never explicitly states 'CREATE the file' or 'WRITE to disk'",
+        "evidence": "web/MASTER_PROMPT.md line 3 uses passive voice; reproductions show content generated but not written to filesystem"
+      },
+      {
+        "pattern": "Unvalidated Bootstrap Path",
+        "description": "New-project bootstrap workflow has never been tested end-to-end in the actual system despite being documented",
+        "evidence": "documentation/WORKFLOW.md line 80 acknowledges: 'New-project path barely tested'"
+      }
+    ],
+    "gotchas_discovered": [
+      {
+        "gotcha": "Content Generation vs File Persistence Decoupling",
+        "description": "Test project reproductions (nextjs-new, ios-new, android-new) proved MASTER_PROMPT generates high-quality architecture content but never creates ARCHITECTURE.md on disk. Content only existed in manual REPRODUCTION.md files.",
+        "implication": "System architecture appears correct but automated file creation/invocation is missing entirely"
+      },
+      {
+        "gotcha": "Pipeline Phase 1 Design Flaw",
+        "description": "Phase 1 explicitly checks for ARCHITECTURE.md but has no fallback behavior when absent, violating the 'Memory Establishment' principle (pipeline.md Guiding Principles line 9)",
+        "implication": "Pipeline would continue without architecture documentation on new projects, causing downstream phases to fail or produce suboptimal results"
+      },
+      {
+        "gotcha": "No Grep Results for MASTER_PROMPT in Pipeline",
+        "description": "Searching 995 lines of pipeline.md yielded zero MASTER_PROMPT references despite SKILL.md declaring it as automatic",
+        "implication": "Invocation mechanism was never implemented in the automation layer"
+      },
+      {
+        "gotcha": "Ambiguous File Creation Intent",
+        "description": "MASTER_PROMPT header is unclear whether it should: (a) generate text for manual file creation, (b) write ARCHITECTURE.md automatically, or (c) provide interactive template",
+        "implication": "Claude instances invoking MASTER_PROMPT have no clear signal on whether to write files or return descriptions"
+      }
+    ],
+    "approach_outcome": {
+      "status": "SUCCESS",
+      "methodology": [
+        "Document inspection: Examined SKILL.md, pipeline.md, MASTER_PROMPT.md for contradictions",
+        "Pattern comparison: Contrasted working PROJECT_MAP.md fallback logic with non-working ARCHITECTURE.md approach",
+        "Reproduction testing: Created three test projects (nextjs-new, ios-new, android-new) and manually invoked MASTER_PROMPT",
+        "Evidence collection: Gathered line-by-line citations and diff outputs to support each finding"
+      ],
+      "key_achievement": "Identified root cause is not WHAT MASTER_PROMPT generates (quality is excellent) but WHEN and HOW it gets invoked and persisted",
+      "confidence_level": "HIGH \u2014 reproductions validated content generation works; only invocation automation and file persistence are missing"
+    },
+    "recommendations": [
+      {
+        "priority": "CRITICAL",
+        "fix_id": "Fix 1",
+        "title": "Add Bootstrap Trigger to Pipeline Phase 2",
+        "location": "shared/pipeline.md Phase 2",
+        "action": "Add new step after stack detection: If ARCHITECTURE.md missing, apply appropriate MASTER_PROMPT variant and write result to disk",
+        "rationale": "Phase 2 already detects stack; bootstrap trigger should follow naturally"
+      },
+      {
+        "priority": "HIGH",
+        "fix_id": "Fix 2",
+        "title": "Make File Creation Explicit in MASTER_PROMPT",
+        "location": "web/MASTER_PROMPT.md header section",
+        "action": "Replace ambiguous 'Pin decisions in ARCHITECTURE.md' with explicit 'Create ARCHITECTURE.md at repo root containing:' plus structured template",
+        "rationale": "Removes ambiguity about whether Claude should write files or return descriptions"
+      },
+      {
+        "priority": "HIGH",
+        "fix_id": "Fix 3",
+        "title": "Add ARCHITECTURE.md Fallback to Phase 1",
+        "location": "shared/pipeline.md Phase 1 line 177",
+        "action": "Change 'Check for ARCHITECTURE.md' to 'Check for ARCHITECTURE.md; if absent, flag for creation in Phase 2'",
+        "rationale": "Makes expectations explicit and sets up Phase 2 bootstrap trigger"
+      },
+      {
+        "priority": "MEDIUM",
+        "fix_id": "Fix 4",
+        "title": "Update SKILL.md to Clarify Automatic Bootstrap",
+        "location": "SKILL.md line 155",
+        "action": "Distinguish between automatic bootstrap (pipeline Phase 2) vs manual re-architecture (user-initiated)",
+        "rationale": "Removes confusion about whether users must manually 'apply' MASTER_PROMPT"
+      },
+      {
+        "priority": "MEDIUM",
+        "fix_id": "Validation Plan",
+        "title": "Test Bootstrap Across All Supported Stacks",
+        "scope": "Next.js 14, React (Vite), Vue 3, iOS (Swift), Android (Kotlin), KMP",
+        "success_criteria": [
+          "ARCHITECTURE.md exists after Phase 2",
+          "File contains stack-appropriate decisions",
+          "Pipeline continues to Phase 3+ without manual intervention",
+          "Existing projects (with ARCHITECTURE.md) skip bootstrap cleanly"
+        ]
+      },
+      {
+        "priority": "FOLLOW-UP",
+        "action": "Repeat root cause analysis for mobile MASTER_PROMPT (subtask-2-2)",
+        "reason": "Same bootstrap patterns likely apply to iOS/Android/KMP stacks"
+      }
+    ],
+    "subtask_id": "subtask-2-1",
+    "session_num": 8,
+    "success": true,
+    "changed_files": [
+      "test-projects/ROOT_CAUSE_WEB.md"
+    ]
+  },
+  "what_worked": [
+    "Implemented subtask: subtask-2-1"
+  ],
+  "what_failed": [],
+  "recommendations_for_next_session": []
+}

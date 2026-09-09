@@ -1,0 +1,39 @@
+{
+  "files_to_modify": {
+    "web": [
+      "web/MASTER_PROMPT.md"
+    ],
+    "mobile": [
+      "mobile/MASTER_PROMPT.md"
+    ],
+    "shared": [
+      "shared/pipeline.md"
+    ]
+  },
+  "files_to_reference": {
+    "pipeline_patterns": "shared/pipeline.md",
+    "web_master": "web/MASTER_PROMPT.md",
+    "web_feature": "web/FEATURE_PROMPT.md",
+    "mobile_master": "mobile/MASTER_PROMPT.md",
+    "entry_point": "shared/entry.md"
+  },
+  "patterns": {
+    "master_prompt_usage": "MASTER_PROMPTs are used 'once per project' to lock architecture, conventions, and AI usage rules. They should generate ARCHITECTURE.md at the repo root.",
+    "pipeline_expectation": "Pipeline Phase 1 expects to read PROJECT_MAP.md and ARCHITECTURE.md before starting. If absent, it should create PROJECT_MAP.md in Phase 7.",
+    "bootstrap_requirement": "New projects without existing ARCHITECTURE.md need the MASTER_PROMPT to generate it gracefully, not fail."
+  },
+  "existing_implementations": {
+    "description": "The MASTER_PROMPTs mention creating ARCHITECTURE.md but don't have explicit instructions for the new-project path when these files don't exist yet.",
+    "relevant_files": [
+      "web/MASTER_PROMPT.md",
+      "mobile/MASTER_PROMPT.md",
+      "shared/pipeline.md"
+    ],
+    "gap_identified": "The new-project bootstrap flow has never been tested. The pipeline expects files that don't exist in new projects."
+  },
+  "investigation_scope": {
+    "web_stacks_to_test": ["Next.js", "React", "Vue"],
+    "mobile_stacks_to_test": ["iOS (Swift)", "Android (Kotlin)", "KMP (iOS + Android)"],
+    "test_approach": "Create minimal test projects for each stack, run MASTER_PROMPTs, identify failures, document issues, then fix"
+  }
+}
