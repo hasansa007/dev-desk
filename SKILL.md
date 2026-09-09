@@ -36,7 +36,7 @@ so it is defined once there and never duplicated here.
 |---|---|
 | **Nothing at all** | **`dev:issues`** — the tracker view, then ask which to start |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
-| A bare family name — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
+| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
 
 ### The empty-input row is a guard, not a convenience
@@ -59,7 +59,7 @@ a **feature name**: `/dev run` would branch `feature/run` and start building a f
 
 Before routing to Generic, STOP if the argument is:
 
-- **a family name** — `run`, `prod`, `pre-prod`, `verify`, `docs`, `review`, `comment-budget`, `survey`, `arch`, with or without the
+- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `verify`, `docs`, `review`, `comment-budget`, `survey`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
 - **a RENAMED family name.** `trim` is still the advertised trigger (*"trim the comments"*) after the
@@ -124,6 +124,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:pre-prod` | 14 | a branch | "PR and merge this to pre prod" |
 | `dev:review` | 15 ↺ | a PR number | "changes requested" — loops back to 14 |
 | `dev:prod` | 16 | pre-prod + prod branches | "promote to production" |
+| `dev:rollback` | 16 ↺ | a broken commit or release | "rollback production" — classifies change, proposes recovery, pauses for approval |
 | `dev:launch` | — | a project to launch | "run the app" — a TOOL, not a phase |
 | `dev:launch-kill` | — | a project to stop | "kill the dev server", "free the port" — `launch` inverted |
 | `dev:shots` | — | a running app | "screenshot the app", "app store screenshots" — capture, iOS/Android/web |

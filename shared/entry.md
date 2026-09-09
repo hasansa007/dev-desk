@@ -152,6 +152,7 @@ this pipeline exists to refuse.
 | `dev:review` | 15 | always + Phase 1 |
 | `dev:docs` | 12 | always only |
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
+| `dev:rollback` | 16 ↺ | always + Phase 1 — plus classification and dual-branch sync |
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
 | `dev:launch-kill` | — | **nothing** — a tool; it reads `dev:launch`'s discovery, not this pipeline |
 | `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
@@ -225,6 +226,7 @@ fields you inferred rather than resolved.
 | `dev:pre-prod` | 14 | a branch | stage |
 | `dev:review` | 15 | a PR number | **loop** ↺ |
 | `dev:prod` | 16 | pre-prod + prod branches | stage |
+| `dev:rollback` | 16 ↺ | a broken commit or release | recovery |
 | `dev:launch` | — | a project to launch | **tool** |
 | `dev:launch-kill` | — | a project to stop | **tool** |
 | `dev:shots` | — | a running app | **tool** |
