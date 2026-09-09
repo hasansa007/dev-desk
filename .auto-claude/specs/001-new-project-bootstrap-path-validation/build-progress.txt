@@ -136,9 +136,27 @@ All root cause analyses completed for web, mobile, and pipeline.
    - Renumbered Risks section from 10 to 11
    - Follows same style and structure as existing sections
 
+✅ subtask-3-2: Add new-project bootstrap instructions to mobile MASTER_PROMPT ← JUST COMPLETED
+   - Updated mobile/MASTER_PROMPT.md with comprehensive "New Project Bootstrap" section
+   - Added coverage for all three mobile variants:
+     * Common Bootstrap Steps (applies to all variants)
+     * Variant A Bootstrap (iOS-only with Swift/SwiftUI)
+     * Variant B Bootstrap (Android-only with Kotlin/Compose)
+     * Variant C Bootstrap (iOS + Android + KMP)
+   - Each variant includes:
+     * Complete file structure templates
+     * Detailed bootstrap checklists
+     * Claude Code integration patterns from day 1
+     * Architecture decision documentation guidance
+   - Variant C includes critical parity safeguards:
+     * Shared specifications to prevent platform drift
+     * Coordinated development rules
+     * Bridge pattern (Native Adapter → KMP Port)
+     * Parity validation steps
+   - Follows same style and structure as web MASTER_PROMPT
+
 ### Pending Subtasks:
 
-🔜 subtask-3-2: Add new-project bootstrap instructions to mobile MASTER_PROMPT
 🔜 subtask-3-3: Update pipeline Phase 1 to handle missing ARCHITECTURE.md gracefully
 
 All ROOT_CAUSE analyses provide clear fix specifications for remaining implementations.

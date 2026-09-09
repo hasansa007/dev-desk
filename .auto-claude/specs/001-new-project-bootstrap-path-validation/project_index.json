@@ -1,0 +1,54 @@
+{
+  "project_type": "monorepo",
+  "services": {
+    "dev-skill": {
+      "path": ".",
+      "tech_stack": ["markdown", "bash", "claude-code-skills"],
+      "port": null,
+      "dev_command": null,
+      "test_command": null
+    },
+    "web": {
+      "path": "./web",
+      "tech_stack": ["nextjs", "typescript", "react"],
+      "port": null,
+      "dev_command": null,
+      "test_command": null,
+      "description": "Web MASTER_PROMPT and FEATURE_PROMPT templates"
+    },
+    "mobile": {
+      "path": "./mobile",
+      "tech_stack": ["swift", "kotlin", "ios", "android", "kmp"],
+      "port": null,
+      "dev_command": null,
+      "test_command": null,
+      "description": "Mobile MASTER_PROMPT and FEATURE_PROMPT templates"
+    },
+    "shared": {
+      "path": "./shared",
+      "tech_stack": ["markdown"],
+      "port": null,
+      "dev_command": null,
+      "test_command": null,
+      "description": "Shared pipeline documentation and entry points"
+    }
+  },
+  "infrastructure": {
+    "docker": false,
+    "database": null,
+    "ci_cd": "github-actions"
+  },
+  "conventions": {
+    "skills_location": ".claude/skills",
+    "master_prompts": ["web/MASTER_PROMPT.md", "mobile/MASTER_PROMPT.md"],
+    "feature_prompts": ["web/FEATURE_PROMPT.md", "mobile/FEATURE_PROMPT.md"],
+    "pipeline": "shared/pipeline.md",
+    "documentation_style": "markdown"
+  },
+  "supported_stacks": {
+    "web": ["Next.js", "React", "Vue"],
+    "mobile_ios": ["Swift", "SwiftUI"],
+    "mobile_android": ["Kotlin", "Jetpack Compose"],
+    "mobile_kmp": ["iOS + Android + KMP"]
+  }
+}
