@@ -48,6 +48,7 @@ Bare `/dev` shows current issues and suggested next work. Examples use Claude Co
 | `/dev:pre-prod` | A branch ready for delivery | PR preparation, review gates, and an approved merge |
 | `/dev:review` | A PR with feedback | Addressed feedback and a return to the merge stage |
 | `/dev:prod` | Verified pre-production work | Production checks and an approved promotion |
+| `/dev:rollback` | A broken production release | Change classification, safe revert with dual-branch sync, and audit trail |
 
 A full `/dev` run includes these stages. You can also invoke them independently for an existing branch, diff, or PR. Verification continues into documentation checks; merges and production promotion require approval. Code review uses the separate `/code-review` integration.
 

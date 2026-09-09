@@ -15,14 +15,20 @@ Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE
 Survey writes provenance into each issue's `## Suspected` section. Its code inspection does not replace runtime verification.
 
 ## Continue delivery
-
+ 
 ```text
 /dev:verify
 /dev:docs
+/dev:pre-prod
 /dev:review https://github.com/you/repo/pull/123
+/dev:prod
+/dev:rollback
+/dev:rollback <sha>
 ```
 
 These commands let you resume from durable work across sessions. A full `/dev` run already includes the delivery stages; you do not need to call each command manually.
+
+`/dev:rollback` classifies the broken promotion (code-only vs migration), proposes a safe revert with dual-branch sync, and pauses for human approval before executing.
 
 `/code-review` is a separate integration used during review. It is not a member of the `dev` command family.
 
