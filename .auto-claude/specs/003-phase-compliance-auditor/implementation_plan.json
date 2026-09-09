@@ -1,0 +1,161 @@
+{
+  "feature": "Phase Compliance Auditor",
+  "workflow_type": "feature",
+  "workflow_rationale": "Build a mechanical check that cross-references self-reported ## PIPELINE sections against actual execution evidence (file edits, git operations, test runs) to detect hidden skips and append a ## COMPLIANCE audit report to PRs.",
+  "phases": [
+    {
+      "id": "phase-1-core-engine",
+      "name": "Core Auditor Skill & Execution Engine",
+      "type": "implementation",
+      "description": "Create skills/audit/SKILL.md and scripts/compliance_auditor.py implementing phase evidence detection, cross-referencing, and ## COMPLIANCE report generation.",
+      "depends_on": [],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "description": "Create skills/audit/SKILL.md defining the /dev:audit door, phase artifact signatures, zero-artifact phase handling, and PR compliance workflow",
+          "service": "core",
+          "files_to_modify": [],
+          "files_to_create": [
+            "skills/audit/SKILL.md"
+          ],
+          "patterns_from": [
+            "skills/rollback/SKILL.md",
+            "skills/verify/SKILL.md",
+            "shared/pipeline.md"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "test -f skills/audit/SKILL.md && echo 'OK'",
+            "expected": "OK"
+          },
+          "status": "completed"
+        },
+        {
+          "id": "subtask-1-2",
+          "description": "Create scripts/compliance_auditor.py to parse ## PIPELINE sections, analyze git/test/file evidence, identify matched/unmatched/hidden skips, and output ## COMPLIANCE blocks",
+          "service": "core",
+          "files_to_modify": [],
+          "files_to_create": [
+            "scripts/compliance_auditor.py"
+          ],
+          "patterns_from": [
+            "test-projects/rollback/test_rollback_engine.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "python3 scripts/compliance_auditor.py --help && echo 'OK'",
+            "expected": "OK"
+          },
+          "status": "completed"
+        }
+      ],
+      "status": "completed"
+    },
+    {
+      "id": "phase-2-integration",
+      "name": "Door Registration & Documentation",
+      "type": "implementation",
+      "description": "Register dev:audit across shared/entry.md, SKILL.md, README.md, documentation/COMMANDS.md, and documentation/WORKFLOW.md.",
+      "depends_on": [
+        "phase-1-core-engine"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-2-1",
+          "description": "Register audit in shared/entry.md (family table, loading table) and SKILL.md (input routing, family name guard, sibling table)",
+          "service": "entry",
+          "files_to_modify": [
+            "shared/entry.md",
+            "SKILL.md"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "shared/entry.md",
+            "SKILL.md"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -q 'audit' shared/entry.md && grep -q 'audit' SKILL.md && echo 'OK'",
+            "expected": "OK"
+          },
+          "status": "completed"
+        },
+        {
+          "id": "subtask-2-2",
+          "description": "Document /dev:audit in README.md, documentation/COMMANDS.md, and documentation/WORKFLOW.md",
+          "service": "docs",
+          "files_to_modify": [
+            "README.md",
+            "documentation/COMMANDS.md",
+            "documentation/WORKFLOW.md"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "documentation/COMMANDS.md",
+            "documentation/WORKFLOW.md"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "grep -q 'dev:audit' README.md && grep -q 'dev:audit' documentation/COMMANDS.md && echo 'OK'",
+            "expected": "OK"
+          },
+          "status": "completed"
+        }
+      ],
+      "status": "completed"
+    },
+    {
+      "id": "phase-3-validation",
+      "name": "Validation Suite & Verification",
+      "type": "testing",
+      "description": "Create automated test suite validating honest runs, hidden skip detection, declared skips, zero-artifact phase false-positive prevention, and PR report generation.",
+      "depends_on": [
+        "phase-2-integration"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-3-1",
+          "description": "Implement test-projects/compliance/test_compliance_auditor.py covering all compliance scenarios with synthetic and real repo traces",
+          "service": "test",
+          "files_to_modify": [],
+          "files_to_create": [
+            "test-projects/compliance/test_compliance_auditor.py"
+          ],
+          "patterns_from": [
+            "test-projects/rollback/test_rollback_engine.py"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "python3 test-projects/compliance/test_compliance_auditor.py && echo 'OK'",
+            "expected": "OK"
+          },
+          "status": "completed"
+        },
+        {
+          "id": "subtask-3-2",
+          "description": "Create comprehensive validation report in test-projects/compliance/COMPLIANCE_VALIDATION.md",
+          "service": "test",
+          "files_to_modify": [],
+          "files_to_create": [
+            "test-projects/compliance/COMPLIANCE_VALIDATION.md"
+          ],
+          "patterns_from": [
+            "test-projects/rollback/ROLLBACK_VALIDATION.md"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "test -f test-projects/compliance/COMPLIANCE_VALIDATION.md && echo 'OK'",
+            "expected": "OK"
+          },
+          "status": "completed"
+        }
+      ],
+      "status": "completed"
+    }
+  ],
+  "status": "completed",
+  "planStatus": "completed"
+}
