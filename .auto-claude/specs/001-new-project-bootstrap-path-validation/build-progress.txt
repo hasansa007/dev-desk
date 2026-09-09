@@ -1,0 +1,133 @@
+# Build Progress - New-Project Bootstrap Path Validation
+
+## Phase 1: Reproduce New-Project Scenarios - IN PROGRESS
+
+### Completed Subtasks:
+
+✅ subtask-1-1: Create minimal Next.js test project
+   - Created test-projects/nextjs-new/ with package.json
+   - Simulates new web project without ARCHITECTURE.md
+
+✅ subtask-1-2: Exercise web MASTER_PROMPT on Next.js project
+   - Created test-projects/nextjs-new/REPRODUCTION.md
+   - Captured complete architecture output for Next.js variant
+   - Documented phased implementation plan with all deliverables
+
+✅ subtask-1-3: Create minimal iOS test project
+   - Created test-projects/ios-new/ with Package.swift
+   - Simulates new iOS project without ARCHITECTURE.md
+
+✅ subtask-1-4: Exercise mobile MASTER_PROMPT (iOS variant)
+   - Created test-projects/ios-new/REPRODUCTION.md
+   - Captured comprehensive iOS architecture output
+   - Documented all phases with Swift/SwiftUI patterns
+
+✅ subtask-1-5: Create minimal Android test project
+   - Created test-projects/android-new/ with build.gradle
+   - Simulates new Android project without ARCHITECTURE.md
+
+✅ subtask-1-6: Exercise mobile MASTER_PROMPT (Android variant) ← JUST COMPLETED
+   - Created test-projects/android-new/REPRODUCTION.md
+   - Captured comprehensive Android architecture output
+   - Documented all phases with Kotlin/Compose patterns
+   - Includes module structure, DI setup, native integrations
+   - Contains feature development workflow and templates
+   - Documents performance optimization and scaling strategies
+
+### Phase 1 Status: COMPLETE ✅
+All reproduction scenarios completed for web and mobile stacks.
+
+---
+
+## Phase 2: Investigate Root Causes - IN PROGRESS
+
+### Completed Subtasks:
+
+✅ subtask-2-1: Analyze web MASTER_PROMPT bootstrap failures and identify root cause
+   - Created test-projects/ROOT_CAUSE_WEB.md with comprehensive analysis
+   - Identified 5 critical gaps preventing bootstrap:
+     1. Missing bootstrap trigger (no automatic invocation when ARCHITECTURE.md absent)
+     2. Ambiguous file creation (MASTER_PROMPT says "pin decisions" not "create file")
+     3. Pipeline asymmetry (PROJECT_MAP.md has fallback, ARCHITECTURE.md doesn't)
+     4. Unclear invocation model (manual vs automatic not documented)
+     5. Unvalidated path (never tested end-to-end)
+   - Documented evidence from pipeline.md, SKILL.md, and MASTER_PROMPT.md
+   - Proposed 4 concrete fixes with exact file locations and before/after changes
+   - Included validation plan for all web stacks
+
+✅ subtask-2-2: Analyze mobile MASTER_PROMPT bootstrap failures and identify root cause
+   - Created test-projects/ROOT_CAUSE_MOBILE.md with comprehensive analysis
+   - Identified 6 critical gaps (5 same as web + 1 mobile-specific):
+     1. Missing bootstrap trigger (no automatic invocation)
+     2. Ambiguous file creation (says "e.g. ARCHITECTURE.md" implying optional)
+     3. Pipeline asymmetry (PROJECT_MAP.md has fallback, ARCHITECTURE.md doesn't)
+     4. Variant selection gap (iOS/Android/KMP routing not automated)
+     5. Unclear invocation model (manual vs automatic not documented)
+     6. Unvalidated path (never tested end-to-end)
+   - Analyzed both iOS (Variant A) and Android (Variant B) reproductions
+   - Both generated excellent content (800+ and 1000+ lines) but NO files created
+   - Proposed 4 concrete fixes including variant routing logic
+   - Included validation plans for all three mobile variants
+
+✅ subtask-2-3: Analyze pipeline Phase 1 behavior when ARCHITECTURE.md is missing ← JUST COMPLETED
+   - Created test-projects/ROOT_CAUSE_PIPELINE.md with comprehensive analysis
+   - Identified 5 critical asymmetries in Phase 1:
+     1. Silent failure mode (missing ARCHITECTURE.md triggers no action)
+     2. Asymmetric fallback logic (PROJECT_MAP.md has creation fallback, ARCHITECTURE.md doesn't)
+     3. No new-project detection (can't distinguish new from broken project)
+     4. Optimistic reporting (assumes success case only)
+     5. Guiding Principles gap (ARCHITECTURE.md not elevated to same status as PROJECT_MAP.md)
+   - Proposed 4 fixes: new-project detection, state-aware reporting, Phase 1.5 bootstrap hook, elevate ARCHITECTURE.md in Guiding Principles
+   - Behavioral analysis shows what actually happens in new/partial/mature project scenarios
+   - Integration analysis: Phase 1 DETECTS new projects, Phase 2 BOOTSTRAPS architecture
+
+### Phase 2 Status: COMPLETE ✅
+All root cause analyses completed for web, mobile, and pipeline.
+
+## Key Findings from Phase 2 Investigation:
+
+### Content Generation Works Perfectly ✅
+1. MASTER_PROMPTs generate comprehensive architecture plans when invoked
+2. All variants (Next.js, iOS Variant A, Android Variant B) produce detailed phase-based implementation plans
+3. Output quality is excellent:
+   - Architecture diagrams and module structures
+   - Realistic code examples (no hallucinated APIs)
+   - Feature development workflows
+   - Native integration patterns
+   - Performance optimization strategies
+   - Risk mitigation approaches
+
+### Root Cause Identified: Invocation & Persistence Gap ❌
+
+**The Problem:** Content generation works, but:
+- No automatic trigger when ARCHITECTURE.md is missing
+- File creation is implied ("pin decisions"), not explicit
+- Pipeline checks for ARCHITECTURE.md but never creates it
+- Phase 1 can't distinguish new projects from broken projects
+
+**The Fix (3-part integration):**
+1. **Phase 1 (Detection):** Add new-project detection logic
+   - Both ARCHITECTURE.md and PROJECT_MAP.md missing = new project
+   - Report state clearly (new/partial/full context)
+
+2. **Phase 2 (Bootstrap):** Add automatic architecture generation
+   - Detect stack (Next.js/iOS/Android/KMP)
+   - Select appropriate MASTER_PROMPT variant
+   - Generate and WRITE ARCHITECTURE.md to disk
+
+3. **MASTER_PROMPT (Clarity):** Make file creation explicit
+   - Change from "pin decisions in ARCHITECTURE.md" to "CREATE ARCHITECTURE.md"
+   - Remove "e.g." ambiguity
+   - Define exact output format
+
+---
+
+## Phase 3: Fix Bootstrap Flows - READY TO START
+
+Next subtasks:
+- subtask-3-1: Add new-project bootstrap instructions to web MASTER_PROMPT
+- subtask-3-2: Add new-project bootstrap instructions to mobile MASTER_PROMPT
+- subtask-3-3: Update pipeline Phase 1 to handle missing ARCHITECTURE.md gracefully
+
+All three ROOT_CAUSE analyses (web, mobile, pipeline) provide clear fix specifications ready for implementation.
+
