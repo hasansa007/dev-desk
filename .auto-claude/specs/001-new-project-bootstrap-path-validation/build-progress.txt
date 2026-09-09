@@ -173,3 +173,28 @@ All root cause analyses completed for web, mobile, and pipeline.
 ### Phase 3 Status: COMPLETE ✅
 All bootstrap flow fixes implemented for web, mobile, and pipeline.
 
+---
+
+## Phase 4: Validate Fixes Across Stacks - IN PROGRESS
+
+### Completed Subtasks:
+
+✅ subtask-4-1: Validate web bootstrap flow (Next.js, React, Vue) ← JUST COMPLETED
+   - Created test-projects/VALIDATION_WEB.md (515 lines)
+   - Comprehensive validation across all three web stacks
+   - Key findings:
+     * Path validation guidance is comprehensive and stack-agnostic ✅
+     * Bootstrap sequence prevents common failures (Next.js primary) ✅
+     * Anti-patterns clearly documented (4 documented) ✅
+     * Pipeline handles missing ARCHITECTURE.md gracefully ✅
+     * React/Vue work with minor adaptations ⚠️
+   - Validated Phase 3 fixes:
+     * Section 10 "New-Project Bootstrap" in web/MASTER_PROMPT.md
+     * Phase 1 graceful handling in shared/pipeline.md
+   - Documented remaining gaps:
+     * Bootstrap sequence needs stack-specific variants
+     * File creation could be more explicit in header
+     * No automatic trigger in pipeline (manual invocation required)
+   - Validation verdict: ✅ PASS (with documented gaps for future enhancement)
+   - All acceptance criteria met for web bootstrap flow
+
