@@ -169,24 +169,32 @@ Compare against the **working tree**, not `$BASE...HEAD`. The three-dot form onl
 work, so running the gate before committing reports "no cited file touched" while the file sits
 modified on disk — verified the same day, on this very check.
 
-So run the cheap set-intersection too, and treat any overlap as **re-read required**:
+So run the cheap set-intersection too, and treat any overlap as **re-read required**.
+`PRE_PROD` is an input — export it from the branch `entry.md` resolved, or the block refuses
+to run rather than measuring against the wrong base:
 
 ```bash
 # Resolve the base the way shared/entry.md does — NOT hardcoded origin/main. A repo whose
 # pre-prod branch is master/develop, or with no origin, yields an empty BASE, and `git diff ""`
 # then fails while the redirect has already truncated the file: every diagram reports clean.
+: "${PRE_PROD:?set to the pre-prod branch entry.md resolved — staging / develop / main}"
 BASE=$(git merge-base "origin/$PRE_PROD" HEAD) || { echo "cannot resolve base — gate not run"; exit 1; }
 [ -n "$BASE" ] || { echo "empty base — gate not run"; exit 1; }
+TOUCHED=$(mktemp)                             # never a fixed /tmp path — a stale file from an
+                                              # earlier run reports "no cited file touched" for
+                                              # every diagram, and the gate passes on another
+                                              # branch's diff
 git diff --name-only "$BASE" > "$TOUCHED"     # bare $BASE, NOT $BASE...HEAD —
                                               # ...HEAD misses uncommitted work
-python3 - <<'EOF'
-import json,glob
-touched=set(open('/tmp/touched').read().split())
+python3 - "$TOUCHED" <<'EOF'                  # pass the path in; the heredoc is quoted, so
+import json,glob,sys                          # $TOUCHED would not expand inside it
+touched=set(open(sys.argv[1]).read().split())
 for ir in glob.glob('docs/arch/*.architecture.json'):
     cited={s['path'] for c in json.load(open(ir))['components'] for s in c['sources']}
     hit=sorted(cited & touched)
     print(f"{ir}: {'RE-READ ' + ', '.join(hit) if hit else 'no cited file touched'}")
 EOF
+rm -f "$TOUCHED"
 ```
 
 **A hit is not automatically a failure** — the branch may have changed a file the diagram cites in a
