@@ -179,7 +179,7 @@ All bootstrap flow fixes implemented for web, mobile, and pipeline.
 
 ### Completed Subtasks:
 
-✅ subtask-4-1: Validate web bootstrap flow (Next.js, React, Vue) ← JUST COMPLETED
+✅ subtask-4-1: Validate web bootstrap flow (Next.js, React, Vue)
    - Created test-projects/VALIDATION_WEB.md (515 lines)
    - Comprehensive validation across all three web stacks
    - Key findings:
@@ -197,4 +197,30 @@ All bootstrap flow fixes implemented for web, mobile, and pipeline.
      * No automatic trigger in pipeline (manual invocation required)
    - Validation verdict: ✅ PASS (with documented gaps for future enhancement)
    - All acceptance criteria met for web bootstrap flow
+
+✅ subtask-4-2: Validate mobile bootstrap flow (iOS, Android, KMP)
+   - Created test-projects/VALIDATION_MOBILE.md (899 lines)
+   - Comprehensive validation across all three mobile variants
+   - Key findings:
+     * Common bootstrap steps (5) are platform-agnostic and comprehensive ✅
+     * iOS-specific bootstrap (7 steps) covers SPM architecture + native integrations ✅
+     * Android-specific bootstrap (8 steps) handles multi-module complexity + Android integrations ✅
+     * KMP-specific bootstrap (8 steps) includes critical innovation 'Define KMP boundaries FIRST' + parity safeguards ✅
+     * Pipeline handles missing ARCHITECTURE.md gracefully ✅
+   - Validation verdict: ✅ PASS (with documented gaps for future enhancement)
+   - All acceptance criteria met for mobile bootstrap flow
+
+✅ subtask-4-3: End-to-end verification: new project → MASTER_PROMPT → first feature ← JUST COMPLETED
+   - Created test-projects/e2e-project/ fresh greenfield test project
+   - Generated ARCHITECTURE.md via web/MASTER_PROMPT.md Section 10
+   - Verified ARCHITECTURE.md structure and all 10 required sections
+   - Executed FEATURE_PROMPT for System Status & Health feature (specs/system-status.md)
+   - Verified shared/pipeline.md Phase 1 context loading gracefully without blocking
+   - Established PROJECT_MAP.md in Phase 7
+   - Implemented full feature in Phase 8 complying with ARCHITECTURE.md rules
+   - Created test-projects/E2E_VALIDATION.md comprehensive report
+   - Validation verdict: ✅ PASS (100% acceptance criteria satisfied)
+
+### Phase 4 Status: COMPLETE ✅
+All validation subtasks across web, mobile, and end-to-end integration completed successfully.
 
