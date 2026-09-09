@@ -122,12 +122,24 @@ All root cause analyses completed for web, mobile, and pipeline.
 
 ---
 
-## Phase 3: Fix Bootstrap Flows - READY TO START
+## Phase 3: Fix Bootstrap Flows - IN PROGRESS
 
-Next subtasks:
-- subtask-3-1: Add new-project bootstrap instructions to web MASTER_PROMPT
-- subtask-3-2: Add new-project bootstrap instructions to mobile MASTER_PROMPT
-- subtask-3-3: Update pipeline Phase 1 to handle missing ARCHITECTURE.md gracefully
+### Completed Subtasks:
 
-All three ROOT_CAUSE analyses (web, mobile, pipeline) provide clear fix specifications ready for implementation.
+✅ subtask-3-1: Add new-project bootstrap instructions to web MASTER_PROMPT
+   - Updated web/MASTER_PROMPT.md with new section 10 "New-Project Bootstrap"
+   - Added comprehensive coverage of:
+     * Path validation & project structure requirements
+     * Bootstrap sequence with dependency order
+     * Common bootstrap failures to avoid
+     * Anti-patterns for path handling
+   - Renumbered Risks section from 10 to 11
+   - Follows same style and structure as existing sections
+
+### Pending Subtasks:
+
+🔜 subtask-3-2: Add new-project bootstrap instructions to mobile MASTER_PROMPT
+🔜 subtask-3-3: Update pipeline Phase 1 to handle missing ARCHITECTURE.md gracefully
+
+All ROOT_CAUSE analyses provide clear fix specifications for remaining implementations.
 

@@ -222,8 +222,8 @@
             "type": "manual",
             "instructions": "Review web/MASTER_PROMPT.md changes - should include explicit new-project bootstrap section"
           },
-          "status": "pending",
-          "notes": "Based on ROOT_CAUSE_WEB.md findings, add clear instructions for generating ARCHITECTURE.md in new projects"
+          "status": "completed",
+          "notes": "Added section 10 'New-Project Bootstrap' with path validation requirements, bootstrap sequence, common failures, and anti-patterns. Comprehensive coverage of Next.js project setup including path resolution, directory creation order, validation steps, and explicit error handling patterns."
         },
         {
           "id": "subtask-3-2",
@@ -442,5 +442,5 @@
   "planStatus": "in_progress",
   "xstateState": "planning",
   "executionPhase": "coding",
-  "updated_at": "2026-09-09T21:05:26.465Z"
+  "updated_at": "2026-09-09T21:10:06.831Z"
 }
