@@ -136,7 +136,7 @@ All root cause analyses completed for web, mobile, and pipeline.
    - Renumbered Risks section from 10 to 11
    - Follows same style and structure as existing sections
 
-✅ subtask-3-2: Add new-project bootstrap instructions to mobile MASTER_PROMPT ← JUST COMPLETED
+✅ subtask-3-2: Add new-project bootstrap instructions to mobile MASTER_PROMPT
    - Updated mobile/MASTER_PROMPT.md with comprehensive "New Project Bootstrap" section
    - Added coverage for all three mobile variants:
      * Common Bootstrap Steps (applies to all variants)
@@ -155,9 +155,21 @@ All root cause analyses completed for web, mobile, and pipeline.
      * Parity validation steps
    - Follows same style and structure as web MASTER_PROMPT
 
-### Pending Subtasks:
+✅ subtask-3-3: Update pipeline Phase 1 to handle missing ARCHITECTURE.md gracefully ← JUST COMPLETED
+   - Updated shared/pipeline.md Phase 1 (Context Load) with graceful missing file handling
+   - Added explicit guidance for when files are present vs absent:
+     * PROJECT_MAP.md: if absent, note it will be created in Phase 7
+     * ARCHITECTURE.md: if absent, proceed with Phase 2 discovery (file is optional)
+   - Added comprehensive reporting examples for all scenarios:
+     * All present: "Loaded PROJECT_MAP + ARCHITECTURE. No existing spec found."
+     * PROJECT_MAP missing: "ARCHITECTURE loaded. PROJECT_MAP will be created in Phase 7."
+     * ARCHITECTURE missing: "PROJECT_MAP loaded. No ARCHITECTURE.md found (will establish basics through Phase 2 discovery)."
+     * Both missing: "No persistent context found. Will establish PROJECT_MAP in Phase 7."
+     * Spec found: "Loaded PROJECT_MAP + ARCHITECTURE. Resuming from existing spec: specs/[feature-slug].md"
+   - Added bold statement: "Missing files are not blockers"
+   - Clarified ARCHITECTURE.md is optional and documents explicit architectural decisions
+   - Phase 1 now provides clear user guidance instead of silent failures
 
-🔜 subtask-3-3: Update pipeline Phase 1 to handle missing ARCHITECTURE.md gracefully
-
-All ROOT_CAUSE analyses provide clear fix specifications for remaining implementations.
+### Phase 3 Status: COMPLETE ✅
+All bootstrap flow fixes implemented for web, mobile, and pipeline.
 
