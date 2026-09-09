@@ -662,7 +662,7 @@ The prod question — *is this production-worthy?* — is asked ONCE, at the end
 ## Phase 12 — Docs & Decisions Gate (BEFORE any merge)
 
 Code ships faster than the paper trail, and the gap is invisible until someone reads the docs and
-believes them. Run this against `git diff <BASE_BRANCH>...HEAD` before the review gate:
+believes them. Before the review gate, run `git diff <BASE_BRANCH>` — two dots, per the door:
 
 | If the diff contains… | Then update… |
 |---|---|
