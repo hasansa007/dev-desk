@@ -173,10 +173,17 @@ EOF
 
 Runs before everything else. Reads persistent project context to skip re-discovery.
 
-1. Check for `PROJECT_MAP.md` → load `TECH_STACK`, `SYSTEM_FLOW`, `ORPHANS & PENDING`
-2. Check for `ARCHITECTURE.md` → load architectural decisions and conventions
-3. Check for `specs/[feature-slug].md` → if found, resume from existing spec (skip Phase 7; for BUGS, Phase 4's reproduce-first step is never skipped — a spec is a plan, not a reproduction)
-4. Report what was loaded: e.g. `"Loaded PROJECT_MAP + ARCHITECTURE. No existing spec found."`
+1. **Check for `PROJECT_MAP.md`** → if present, load `TECH_STACK`, `SYSTEM_FLOW`, `ORPHANS & PENDING`. If absent, note it will be created in Phase 7.
+2. **Check for `ARCHITECTURE.md`** → if present, load architectural decisions and conventions. If absent, proceed without it (Phase 2 discovery will establish the basics; ARCHITECTURE.md captures explicit decisions and can be created later when needed).
+3. **Check for `specs/[feature-slug].md`** → if found, resume from existing spec (skip Phase 7; for BUGS, Phase 4's reproduce-first step is never skipped — a spec is a plan, not a reproduction).
+4. **Report what was loaded** with clear status for each file:
+   - All present: `"Loaded PROJECT_MAP + ARCHITECTURE. No existing spec found."`
+   - PROJECT_MAP missing: `"ARCHITECTURE loaded. PROJECT_MAP will be created in Phase 7."`
+   - ARCHITECTURE missing: `"PROJECT_MAP loaded. No ARCHITECTURE.md found (will establish basics through Phase 2 discovery)."`
+   - Both missing: `"No persistent context found. Will establish PROJECT_MAP in Phase 7."`
+   - Spec found: `"Loaded PROJECT_MAP + ARCHITECTURE. Resuming from existing spec: specs/[feature-slug].md"`
+
+**Missing files are not blockers.** PROJECT_MAP.md is created automatically in Phase 7 if absent. ARCHITECTURE.md is optional and documents explicit architectural decisions when they exist — its absence means relying on Phase 2 discovery and code patterns, which is fine for many projects.
 
 If a spec is found and Phase 8 or Phase 9 is the next step, skip straight there.
 
