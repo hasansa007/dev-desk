@@ -35,7 +35,7 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
    only. A tool runs no phase, so Right-Size has nothing to size; Simplicity First is what lets
    Phase 3 refuse a diagram.
 
-**Name `owner/repo` before writing, and cut a branch.** `dev:ideation` requires that for one markdown
+**Name `owner/repo` before writing, and cut a branch.** `dev:survey` requires that for one markdown
 report; this door lands two files and one of them is three-quarters of a megabyte.
 
 ## Phase 1 — Arguments

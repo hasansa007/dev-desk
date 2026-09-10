@@ -11,6 +11,7 @@ Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE
 /dev:kanban
 /dev #496
 /dev:create-bug the course list loses its scroll position
+/dev:survey
 /dev:ideation
 ```
 

@@ -52,7 +52,7 @@ ADR is part of the diff.
 
 ## Where ADRs live — this skill owns it
 
-`skills/ideation/SKILL.md` delegates here explicitly: *"`dev:docs` owns ADRs — their numbering and
+`skills/survey/SKILL.md` delegates here explicitly: *"`dev:docs` owns ADRs — their numbering and
 location are its rules, not this skill's."* So they are stated here, once.
 
 `docs/adr/NNNN-kebab-title.md`, four digits, monotonic. `docs/adr/README.md` is the index, one line
