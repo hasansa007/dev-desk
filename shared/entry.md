@@ -18,7 +18,7 @@ path resolves the same on every machine regardless of where the repo was cloned:
 | Antigravity | its registered skills path (`install.sh` reads it from config) — else `~/.agents/skills/dev/` |
 
 **The paths stay absolute on purpose.** These doors run inside somebody else's repo, where a bare
-`shared/entry.md` resolves to a file that does not exist — `dev:survey` Phase 2 and `dev:arch`
+`shared/entry.md` resolves to a file that does not exist — `dev:ideation` Phase 2 and `dev:arch`
 Phase 0 both carry that scar. Absolute is the fix; a home-directory prefix was the accident.
 
 A clone that has never been installed has no such root. Run `install.sh` first.
@@ -180,12 +180,12 @@ this pipeline exists to refuse.
 | `dev:kanban` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
 | `dev:comment-budget` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
 | `dev:arch` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size; it consumes Simplicity First, which is what lets it REFUSE a diagram the target does not need |
-| `dev:survey` | — | **Guiding Principles + Universal Rules + Right-Size** — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
+| `dev:ideation` | — | **Guiding Principles + Universal Rules + Right-Size** — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
 
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
 are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the
 ceremony GUIDE principle 4 refuses. That is why every tool row above reads `nothing` — except
-`dev:comment-budget`, `dev:survey` and `dev:arch`. `comment-budget` **applies a rule**, and a rule it has not read is a
+`dev:comment-budget`, `dev:ideation` and `dev:arch`. `comment-budget` **applies a rule**, and a rule it has not read is a
 rule it will improvise; `survey` **fans out wider than any phase does**, so the one section a tool
 would normally skip — Right-Size — is the one it most needs; `arch` **refuses targets**, and
 Simplicity First is the rule it refuses them with. Read what you consume; name it in the row, and let the
@@ -255,7 +255,7 @@ fields you inferred rather than resolved.
 | `dev:kanban` | — | the repo's tracker | **tool** |
 | `dev:comment-budget` | — | a repo or a path | **tool** |
 | `dev:arch` | — | a system to draw | **tool** |
-| `dev:survey` | — | an existing app | **tool** → feeds Phase 0 |
+| `dev:ideation` | — | an existing app | **tool** → feeds Phase 0 |
 
 **Why these phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning
 lives only in the conversation that produced it — there is no artifact to hand a fresh session.

@@ -388,7 +388,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 | **0 — Portability** | ✅ paths → install path (31 occurrences, 13 files). `LICENSE` deferred with publishing | **everything** — doors written after are portable from birth |
 | **1 — CLI v0** | ✅ complete. `dev state` · `doctor` · `board` (`scripts/dev.py`, stdlib, 41 tests) · CI runs all 4 suites · `pr-gates.sh` asks on STALE state | Stage 2's phase column; `--continue` |
 | **2 — `dev:kanban`** | ✅ `skills/kanban/SKILL.md` (8 phases); `dev:issues` deleted; 7 cross-references swept; guard keeps `issues` as a retired-name alias | — |
-| **3 — `dev:ideation`** | retires `dev:survey`; opportunities mode. Independent of the CLI | — |
+| **3 — `dev:ideation`** | ✅ `skills/ideation/SKILL.md` (9 phases + opportunities hunt); `dev:survey` deleted; live references swept, historical citations left intact; ADR 0008 | — |
 | **4 — `dev:roadmap`** | milestones + epics; **`queue` becomes real here** | — |
 | **5 — `dev:insights`** | low priority, parked until the rest lands | — |
 | **6 — `dev run`** | CLI shells out to `claude`/`codex`/`antigravity` — the headless/CI story | needs Stage 1 |

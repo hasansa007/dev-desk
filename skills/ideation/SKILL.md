@@ -1,21 +1,24 @@
 ---
-name: survey
+name: ideation
 description: >
-  Reads an EXISTING app's flows and reports what is wrong with it — real bugs, and the architectural
-  drift between the patterns actually in use — then files the confirmed ones. It suggests and never
+  Reads an EXISTING app and reports what is wrong with it and what is worth doing to it — real bugs,
+  the architectural drift between the patterns actually in use, and concrete opportunities
+  (performance, security, quality) — then files the confirmed ones. It suggests and never
   implements: no fix, no refactor, no rewrite.
   Every finding is adversarially verified against the code before it can be filed, because a tracker
   full of plausible-but-wrong issues is worse than an empty one and `dev:kanban` will rank it either
   way. Unverified findings are held in the report with the reason, never filed.
-  Writes `docs/survey/<date>.md` first; filing to GitHub is a separate confirmed step. Fans out one
+  Writes `docs/ideation/<date>.md` first; filing to GitHub is a separate confirmed step. Fans out one
   surveyor per flow, and shapes what it files so several issues can be started at once.
+  Replaces `dev:survey`, whose rules it carries unchanged.
   Trigger on: "what's wrong with this app", "find the bugs in this codebase", "survey the code",
+  "ideation", "what could we improve", "find performance problems", "any security concerns",
   "audit the architecture", "is this MVVM or clean", "the architecture is inconsistent",
-  "what should we fix", "review the whole app".
+  "what should we fix", "what should we build next", "review the whole app".
 allowed-tools: [git, gh, rg, grep, Read, Write, Agent]   # Read: every verdict is read-backed. Write: the report. Agent: one surveyor per flow.
 ---
 
-# survey — read the app, report what is wrong, file the confirmed
+# ideation — read the app, report what is wrong and what is worth doing, file the confirmed
 
 A **tool**, not a phase, and it sits **upstream of Phase 0**. `dev:kanban` renders the board;
 nothing stocked it. Every door from Phase 0 on assumes you already know what is wrong — this is the
@@ -24,14 +27,34 @@ one that finds out.
 **It suggests. It never implements.** No fix, no refactor, no rewrite, not even an obvious one.
 The output is a report and, on confirmation, issues. `/dev #N` does the work afterwards.
 
+> **Replaces `dev:survey`.** Its rules are carried unchanged; the only addition is the third hunt in
+> Phase 1. Anything below marked *verbatim* survived the rename untouched.
+
 ## Phase 1 — Arguments
 
 | Token | Meaning | Default |
 |---|---|---|
-| (nothing) | every flow it can discover | this |
+| (nothing) | every flow it can discover, all three hunts | this |
 | A flow name (`checkout`) | that flow only | all |
-| `--arch` | Phase 6 only — skip Phases 4 and 5 entirely | both |
-| `--bugs` | Phases 4 and 5 only — skip Phase 6 | both |
+| `--bugs` | Phases 4 + 5, defects only | all three |
+| `--arch` | Phase 6 only — skip Phases 4 and 5 entirely | all three |
+| `--opportunities` | Phases 4 + 5, opportunities only | all three |
+
+### The three hunts ask different questions of the same code
+
+| Hunt | Question | Output |
+|---|---|---|
+| **bugs** | *what does this do that it should not?* | `dev:create-bug`, one per finding |
+| **opportunities** | *what does this do adequately that could be materially better?* | `dev:create-issue`, labelled `enhancement` |
+| **architecture** | *do the patterns in use agree with each other?* | an ADR or an epic — **never a pile of bugs** |
+
+**An opportunity is not a bug and must not be filed as one.** A bug means the code is wrong; an
+opportunity means it is correct and improvable. Filing an improvement as a bug makes the board lie
+about how broken the app is, and `dev:kanban` ranks from that board.
+
+**Opportunities multiply findings, and Phase 5 costs two checkers each.** Running all three hunts on
+a flow that yields 5 bugs and 5 opportunities is 20 checkers, not 10. Say so when declaring the
+fan-out in Phase 4 — the floor moves, not just the total.
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
@@ -43,7 +66,7 @@ Also read `~/.claude/skills/dev/shared/pipeline.md` → **Guiding Principles, Un
 and Right-Size the Process**. Right-Size is not optional here despite this being a tool: it owns the
 fan-out rule, and Phases 4 and 5 are the largest fan-out in the family.
 
-**A survey that files a bug already in the tracker has made the board worse.** Dedupe runs at
+**A run that files something already in the tracker has made the board worse.** Dedupe runs at
 Phase 9, once findings name files — **searched per path, never as a bulk list**:
 
 ```bash
@@ -80,15 +103,16 @@ Find them from what the repo declares, never from imagination —
 for is one you invented, and every finding under it inherits that.
 
 If nothing declares flows, say so and fall back to **one directory below the source root** — the
-same unit `dev:comment-budget` uses, and for the same reason: it has to be small enough that one surveyor's
-pass fits one context.
+same unit `dev:comment-budget` uses, and for the same reason: it has to be small enough that one
+surveyor's pass fits one context.
 
 **Enumerate with `git ls-files`, never with a directory walk.** Tracked files only means build
 output, vendored trees and anything `.gitignore`d are excluded *by construction* — `node_modules`,
 `dist`, `.next`, `Pods`, `target` — rather than by a blocklist that needs a new entry per ecosystem
-forever. A surveyor auditing compiled assets burns a whole agent to find nothing. Label the results **modules, not flows**; a finding under a module says
-*this code is wrong*, a finding under a flow says *a user hits this*, and only the second can be
-ranked by cost. Everything downstream reads "flow" as "flow or fallback unit".
+forever. A surveyor auditing compiled assets burns a whole agent to find nothing. Label the results
+**modules, not flows**; a finding under a module says *this code is wrong*, a finding under a flow
+says *a user hits this*, and only the second can be ranked by cost. Everything downstream reads
+"flow" as "flow or fallback unit".
 
 ## Phase 4 — Fan out, one surveyor per flow
 
@@ -98,33 +122,45 @@ not fit one context, and a surveyor that runs out mid-flow does not announce it 
 fewer findings, which reads exactly like a clean flow.
 
 **Live progress is `/tasks`, not something this skill prints.** The harness already shows every
-running subagent with its elapsed time and token count, live and continuously — a snapshot printed
-between dispatches would be strictly worse. **Name the flow in each agent's task description**
-(`survey: checkout`) so that view is readable at a glance instead of six identical rows, and point
-the developer at `/tasks` when you declare the fan-out.
+running subagent with its elapsed time and token count, live and continuously. **Name the flow and
+the hunt in each agent's task description** (`ideation: checkout · bugs+opps`) so that view is
+readable at a glance instead of six identical rows.
 
 **What `/tasks` cannot show, and this skill must record**, per surveyor as it returns:
 
-- **the finding count** — `/tasks` knows an agent finished, not what it concluded
+- **the finding count, split by hunt** — `/tasks` knows an agent finished, not what it concluded
 - **done-with-nothing vs died** — both leave no findings, and they mean opposite things. A crashed
   surveyor read as a clean flow is the failure mode this whole phase exists to prevent
-- **duration, tokens and tool calls at completion** — `/tasks` shows them live and they are gone
-  once the run ends; Phase 7 reconciles the estimate against them, and unrecorded, the estimate can
-  never get better
+- **duration, tokens and tool calls at completion** — gone once the run ends; Phase 7 reconciles the
+  estimate against them, and unrecorded, the estimate can never get better
 
-**Declare the fan-out and get a word before spending it** (Right-Size, `shared/pipeline.md`): *"18
-flows → 18 surveyors, then ~2 checkers per finding. Go, or narrow it?"* This is the family's largest
-fan-out — 60 routes is 60 surveyors and can be 300 checkers — and Right-Size forbids opening one on
-the developer's behalf and reporting the bill afterwards. **Above 12 flows, propose a narrowing
-first** rather than asking them to approve a number they have no way to price.
+**Declare the fan-out and get a word before spending it** (Right-Size): *"18 flows → 18 surveyors,
+then ~2 checkers per finding across two hunts. Go, or narrow it?"* This is the family's largest
+fan-out and Right-Size forbids opening one on the developer's behalf and reporting the bill
+afterwards. **Above 12 flows, propose a narrowing first** rather than asking them to approve a
+number they have no way to price.
 
-Each surveyor returns, per finding: the symptom, the file and line, the **mechanism** that produces
-it, and what it expected instead.
+### What each surveyor returns
+
+**Bugs** — the symptom, the file and line, the **mechanism** that produces it, and what it expected
+instead.
 
 **A finding without a mechanism is a guess.** *"Open a course with 40+ lessons, scroll to lesson 30,
 press back"* is a finding; *"navigation seems fragile"* is a feeling. This is `dev:create-bug`'s
 `## Steps` standard applied one step earlier, and it is the whole difference between a survey and a
 vibe.
+
+**Opportunities** — the same standard, translated. An opportunity carries **the current behaviour
+measured or derived from the code, the proposed change, and the expected gain with its unit**:
+
+| Kind | What makes it a finding rather than a preference |
+|---|---|
+| Performance | the cost read off the code — an N+1 named with its call site, an O(n²) with n's real bound, a synchronous call on a render path — **not** "this looks slow" |
+| Security | the reachable path from untrusted input to the sink, with both named |
+| Quality | the duplication or coupling **counted**, with the files listed |
+
+**"Could be faster" is not an opportunity.** Neither is "should use a newer library". If the gain
+cannot be stated with a unit or a count, it is a preference, and preferences do not go in a tracker.
 
 ## Phase 5 — Verify adversarially, before anything is filed
 
@@ -164,10 +200,23 @@ A run that refutes **nothing** is a run whose checkers were agreeing rather than
 tell as `dev:comment-budget`'s "a run that keeps nothing". A run that refutes **almost everything** is the
 opposite failure, and the list is what makes it visible.
 
+### Verifying an opportunity is a different question
+
+A bug checker asks *does the code do this?* An opportunity checker asks **two** things, and both
+must hold or the verdict is PLAUSIBLE:
+
+1. **Is the current behaviour as described?** — read it, do not accept the finding's summary.
+2. **Would the proposed change actually produce the claimed gain?** A refactor that moves a cost
+   rather than removing it is REFUTED, not CONFIRMED, however tidy the result.
+
+**A performance claim with no measurement and no complexity argument is PLAUSIBLE by default**, not
+CONFIRMED. "Probably faster" has the same standing in a tracker as "probably broken", and the whole
+point of this phase is that neither gets filed.
+
 ## Phase 6 — The architecture pass — count before recommending
 
-**Skipped under `--bugs`.** Separate from the bug hunt, and it produces **an ADR or an epic, never
-a pile of bug issues**.
+**Skipped under `--bugs` and under `--opportunities`.** Separate from both hunts, and it produces
+**an ADR or an epic, never a pile of bug issues**.
 
 1. **Name what is actually there, with counts.** *"11 screens: 7 MVVM, 3 MVC, 1 TCA"* — measured by
    reading them, and say how you counted.
@@ -182,21 +231,23 @@ State the cost of doing nothing, or the recommendation is a preference.
 
 ## Phase 7 — Write the report
 
-**Under a flag, the sections whose source phase was skipped are omitted, never left empty.**
-`--arch` skips Phases 4-5, so the report carries ARCHITECTURE only and Phase 9 files no bugs;
-`--bugs` skips Phase 6, so there is no ARCHITECTURE section and nothing for Phase 9 to raise as an
-epic. An empty CONFIRMED reads as *nothing found*, which is a different and much worse claim than
-*not looked for*.
+**Under a flag, the sections whose source phase was skipped are omitted, never left empty.** An
+empty CONFIRMED reads as *nothing found*, which is a different and much worse claim than *not
+looked for*. The same applies to OPPORTUNITIES under `--bugs`.
 
-`docs/survey/<YYYY-MM-DD>.md`, and `<date>-<HHMM>.md` for every later run that day — two runs in one day are usually a
-narrowed re-run, and overwriting the wider one loses the held PLAUSIBLE set. The file is the
-artifact that makes the run reviewable and re-runnable; filing is a separate step, so nothing
-reaches the tracker unread. Create `docs/survey/` if the repo has no `docs/`, and say that you did.
+`docs/ideation/<YYYY-MM-DD>.md`, and `<date>-<HHMM>.md` for every later run that day — two runs in
+one day are usually a narrowed re-run, and overwriting the wider one loses the held PLAUSIBLE set.
+The file is the artifact that makes the run reviewable and re-runnable; filing is a separate step,
+so nothing reaches the tracker unread. Create `docs/ideation/` if the repo has no `docs/`, and say
+that you did.
+
+> **Reports written before 2026-09-10 are in `docs/survey/`.** Read both directories when looking
+> for prior runs, and when `dev:roadmap` reads history. Do not move the old ones — a report is dated
+> evidence, and relocating it breaks whatever cited it.
 
 **Check whether the repo tracks it** — `git check-ignore -q docs/` — and say which answer you got. If
 `docs/` is ignored the report is a local working file: still written, still read before anything is
-filed, but not in the clone, so the branch-cutting rule above does not apply to it and a reader
-should not be sent looking for it in the repo.
+filed, but not in the clone, so a reader should not be sent looking for it in the repo.
 
 **Writing the report is a write, and the write boundary applies** (`shared/entry.md` rule 3): name
 `owner/repo`, and **cut a branch before creating the file** rather than dropping a tracked file onto
@@ -204,15 +255,22 @@ whatever branch the developer is standing on. This is the one phase that is not 
 must not be described as if it were.
 
 ```
-# Survey — <repo> — <date>
-Flows: <n>, from <where they were declared>       Scope: <all | flow | --arch>
+# Ideation — <repo> — <date>
+Flows: <n>, from <where they were declared>   Hunts: <bugs | opportunities | architecture>
 
-## CONFIRMED (n)          ← eligible to file
+## CONFIRMED — BUGS (n)              ← eligible to file as bugs
 - <symptom> · <file:line> · mechanism: <exact steps> · expected: <what should happen>
   touches: <paths>        blocks: <other finding, if same files>
 
-## PLAUSIBLE (n)          ← held, not filed
+## CONFIRMED — OPPORTUNITIES (n)     ← eligible to file as enhancements
+- <current, measured or derived> → <proposed> · gain: <number + unit, or count>
+  <file:line>             touches: <paths>
+
+## PLAUSIBLE (n)                     ← held, not filed
 - <symptom> · why it could not be confirmed from the code
+
+## REFUTED (n)
+- <symptom> · <the refutation>
 
 ## ARCHITECTURE
 Actual: <counts, and how counted>   Recommend: <the majority pattern>   Cost of doing nothing: <…>
@@ -238,16 +296,18 @@ Actual     6 surveyors + 14 checkers = 20 agents · 7m04s wall · 412k tokens ·
 Overrun    +2 agents — one flow returned 5 findings where the floor assumed 2
 
 Per flow          findings   duration   tokens   calls
-  auth                   2      1m12s      38k      14
+  auth               2b 1o      1m12s      38k      14
   checkout               0        52s      21k       9
-  account                1      1m41s      47k      19
-  admin                  5      2m03s      61k      27   ← the overrun
+  account               1b       1m41s      47k      19
+  admin              3b 2o      2m03s      61k      27   ← the overrun
   build              FAILED     0m14s       3k       2   ← died, NOT clean
   export                 0      1m08s      29k      11
 ```
 
 - **A failed surveyor is a row, not a silence.** `FAILED` and `0 findings` mean opposite things and
   a missing row means neither. Whatever a dead flow leaves behind, it is not evidence of clean code.
+- **Split the finding count by hunt** (`2b 1o`). A flow with two bugs and one opportunity costs six
+  checkers, and a single number hides which hunt drove the spend.
 - **Wall time is not the sum of the durations** when agents run concurrently. Report both: the sum
   is what it cost, the wall is what it felt like.
 - **Run inline with no fan-out and this section says so**, with no per-agent figures invented. A
@@ -257,7 +317,7 @@ Per flow          findings   duration   tokens   calls
 
 **The developer's stated purpose for this gate: build their own model of the system, not receive
 one.** A finding they can restate is worth more than three they approved. So this phase is not a
-summary — it asks first and answers second, on **every** confirmed finding.
+summary — it asks first and answers second, on **every** confirmed finding, opportunities included.
 
 For each, in order:
 
@@ -274,11 +334,15 @@ For each, in order:
 **That line is the audit.** It is how the developer sees whether a decision was presented as
 mechanical when it was not — so it is printed even when it is empty, and *especially* then.
 
+**An opportunity gets one extra question: is it worth doing at all?** A bug's existence is the
+argument for fixing it; an opportunity's is not. *"Confirmed, and I would still not do it"* is a
+complete and common answer — record it as REJECTED with the reason so the next run does not
+re-propose it.
+
 **`just do it` skips the current finding. `just do it all` skips the rest of the phase.** No
 re-asking, no friction, no second attempt at persuasion — and the bulk form matters here more than
-anywhere: this is the family's widest fan-out, so a 20-finding survey without it costs 20 separate
-escapes, which is the ceremony GUIDE principle 4 refuses. `shared/pipeline.md` Phase 5 gives the
-whole-step scope by default because it gates ONE plan; this phase gates N findings, so it needs both. A gate that argues with a skip is a gate that gets routed around.
+anywhere: this is the family's widest fan-out, so a 20-finding run without it costs 20 separate
+escapes, which is the ceremony GUIDE principle 4 refuses.
 
 **Never batch.** One finding, one answer, one diff. A list of five questions gets one answer about
 the last one.
@@ -290,14 +354,17 @@ the last one.
 Ask before filing anything. Then, for the confirmed set:
 
 - Bugs → `dev:create-bug`, one per finding, mechanism carried into `## Steps` intact.
+- **Opportunities → `dev:create-issue`, labelled `enhancement`**, with the measured current
+  behaviour and the claimed gain carried into the body. Never `dev:create-bug` — see Phase 1.
 - **Name this run in `## Suspected`, and say what the verdict does NOT cover:** *"found by
-  `dev:survey` <date>; two checkers confirmed the mechanism against the code — not reproduced at
+  `dev:ideation` <date>; two checkers confirmed the mechanism against the code — not reproduced at
   runtime."* That field is already the unverified one, which is exactly the right strength. Phase 4
   reads it to start its evidence ladder at layer 3 instead of layer 1, and to know it must still run
   layers 3–5. Without the line the issue is indistinguishable from a hand-written one and the
   adversarial verification is spent twice.
 - Architecture → `dev:create-epic` for the drift, or an ADR when it is a decision rather than work.
-  **`dev:docs` owns ADRs** — their numbering and location are its rules, not this skill's. Hand it over rather than inventing a path.
+  **`dev:docs` owns ADRs** — their numbering and location are its rules, not this skill's. Hand it
+  over rather than inventing a path.
 - **Touched files go in `## Scope`** — `dev:create-bug`'s existing field for *where it bites*. Do
   not invent a `touches:` field: per `GUIDE.md`, a per-type template field belongs to the
   `dev:create-*` member, not to a caller asserting one from outside.
@@ -306,30 +373,54 @@ Ask before filing anything. Then, for the confirmed set:
   A's has landed — and it is directional, which "same file" never tells you. Calling every shared
   file a block serialises a codebase behind its utils module, the opposite of what this list is for.
 - **Set a priority label on each filed issue, from the cost ranking.** `dev:kanban` Phase 5 orders
-  NEXT by `P1 → P2 → P3`, then slice, then oldest `updatedAt` — ten issues filed the same minute
-  share a timestamp, so without labels the order it shows is arbitrary and this phase's ranking dies
-  in the report. If the repo has no priority labels, say so: the ranking then lives only here.
+  the backlog by `P1 → P2 → P3`, then slice, then oldest `updatedAt` — ten issues filed the same
+  minute share a timestamp, so without labels the order it shows is arbitrary and this phase's
+  ranking dies in the report. If the repo has no priority labels, say so: the ranking then lives
+  only here.
 - **File at most 10 per run, and name what was held.** `dev:kanban` shows the top 2–3 of BACKLOG, so
   ten is already more board than anyone reads at once; thirty is a backlog that gets skipped
   wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim
   that can be argued with. The rest stay in the report, which is why the report is written first.
+- **Bugs outrank opportunities inside the ten** unless the developer says otherwise. A tracker that
+  fills with improvements while defects wait is one nobody trusts.
 
 ## Never
 
 - **Never implement.** Not a fix, not a rename, not an obvious one-liner. Suggest only.
 - **Never file a PLAUSIBLE finding**, and never file without asking.
+- **Never file an opportunity as a bug** (Phase 1). It makes the board lie about how broken the app
+  is, and `dev:kanban` ranks from that board.
+- **Never file an opportunity whose gain has no number, unit or count** — that is a preference.
 - **Never show the fix before asking for theirs.** Phase 8 is worthless the instant an answer is
   visible; anchoring is not undone by asking politely afterwards.
 - **Never invent a flow, a finding, or a count.** An honest *"this flow is clean"* is a result;
   `shared/entry.md`'s *a result is not a claim* applies to every number in the report.
 - **Never recommend an architecture the codebase does not already mostly use.**
-- **Never survey a repo other than the resolved one.**
+- **Never run against a repo other than the resolved one.**
 
 ## Next — ask, never stop flat
 
 `shared/entry.md` → *Never end silently* applies here as to every sibling.
 
-Report written → **walk the findings through (Phase 8)** → offer the filing, naming the branch it would cut. Filed → name the first issue by
-cost and hand to `/dev #N`. **Nothing found → say so plainly, name what was covered and what was
-not, and offer `dev:kanban`** — a clean survey is a real answer, but the board may still hold work,
-and stopping at "nothing" makes the developer remember there is somewhere else to look.
+Report written → **walk the findings through (Phase 8)** → offer the filing, naming the branch it
+would cut. Filed → name the first issue by cost and hand to `/dev #N`. **Nothing found → say so
+plainly, name what was covered and what was not, and offer `dev:kanban`** — a clean run is a real
+answer, but the board may still hold work, and stopping at "nothing" makes the developer remember
+there is somewhere else to look.
+
+## Scar tissue
+
+**2026-09-10 — renamed from `dev:survey` and given a third hunt.** The rename kept every rule; the
+addition is `--opportunities`. Two things were decided at the rename and are worth stating because
+they could quietly erode:
+
+- **Opportunities go through Phase 5 exactly as bugs do.** The temptation is to treat an improvement
+  as low-risk and skip verification. It is the opposite: a bug that turns out not to exist wastes a
+  close, while an "optimisation" that moves a cost rather than removing it wastes a whole branch and
+  looks successful.
+- **The evidence standard for an opportunity is a number, not a narrative.** Without it the hunt
+  degenerates into taste, and taste filed into a tracker is indistinguishable from work.
+
+**Undated, therefore unproven:** the opportunities hunt has not been run against a real codebase,
+so its finding rate, its checker cost and the bugs-outrank-opportunities rule in Phase 9 are all
+designed rather than observed.
