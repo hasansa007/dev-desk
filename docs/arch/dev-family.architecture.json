@@ -12,7 +12,7 @@
   "output": "dev-family.html",
   "repository": {
    "url": "https://github.com/hasansa007/dev-skill",
-   "revision": "17d9ca29f108dafa1b1c80293bbe77fb4d1ec22d"
+   "revision": "1867ec4fff5f3364fbb984c05610327f81e46fa2"
   }
  },
  "components": [
@@ -819,9 +819,9 @@
    "title": "What each tool loads",
    "items": [
     "launch · launch-kill · shots — nothing",
-    "issues — Universal Rules only",
+    "kanban — Universal Rules only",
     "comment-budget · arch — Guiding Principles + Universal Rules",
-    "survey — those plus Right-Size, the widest fan-out"
+    "survey · ideation — those plus Right-Size, the widest fan-out"
    ]
   },
   {
@@ -835,7 +835,7 @@
   },
   {
    "dot": "rose",
-   "title": "Deliberately absent",
+   "title": "By design",
    "items": [
     "Phase 13 is dev:code-review — the door owns the protocol, the engine fans out",
     "launch-kill and shots read launch's discovery, not the pipeline",
@@ -850,6 +850,16 @@
     "dev:roadmap turns their reports into milestones + epic parents",
     "The milestone IS dev:kanban's QUEUE column",
     "All three file through dev:create-* — never directly"
+   ]
+  },
+  {
+   "dot": "violet",
+   "title": "Optional surfaces — neither is a door",
+   "items": [
+    "scripts/dev.py: state · board · run · doctor · project. Stdlib, and every door works without it",
+    "dev project mirrors the computed columns OUTWARD to a GitHub Projects v2 board",
+    "It is never read back as truth — drag a card and the next run moves it back",
+    "Dry run by default; it will not invent a Status option that does not exist"
    ]
   }
  ]
