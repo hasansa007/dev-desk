@@ -95,9 +95,13 @@ Honest, as of 2026-08-04:
   here). Proving them needs a repo with a real `staging` → `prod` split **and** something worth
   promoting. Until that happens the honest status is *unexercised*, not *broken* — and an
   `/dev:prod` here reporting "single-stage, nothing to promote" is the skill working, not failing.
+- **Phase Compliance Auditor implemented (`/dev:audit`).** Solves the self-reporting gap where an agent
+  claims phases in `## PIPELINE` but silently bypasses them or leaves skips unrecorded. Mechanically cross-references
+  claimed phases against tool-call and repository evidence, detects hidden skips and bare skips, and appends
+  a `## COMPLIANCE` audit report to the PR body.
 - **Enforcement is part mechanical as of 2026-08-05.** ~5 of 17 phases produce a durable artifact;
   the rest depend on the reader complying, and `## PIPELINE` / `## DOCS` are self-reported — a run
-  that skips a phase *and* omits it from `Skipped:` is still invisible. Four hooks in `hooks/` now
+  that skips a phase *and* omits it from `Skipped:` is now caught mechanically by `/dev:audit`. Four hooks in `hooks/` now
   make Phases 1, 3, 12, 14 and 16 — plus Phase 11's teardown rule, though not its checklist —
   mechanical **where they touch a tool call**. That qualifier is the whole limit: a hook checks
   presence of state at a tool boundary, so Phases 4–8 are unreachable by construction, on the same
