@@ -25,7 +25,9 @@ Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check t
 
 Bare `/dev` shows current issues and suggested next work. Examples use Claude Code syntax; see the guide for other CLIs and dependencies.
 
-![The dev workflow, from discovery to production](assets/dev-journey.gif)
+![The dev workflow, from discovery to production](assets/dev-journey.png)
+
+*Rendered by [Archify](https://github.com/tt-a1i/archify) from `docs/arch/dev-journey.architecture.json`, where every box is pinned to a real file at a real commit. It shows the linear path; `docs/arch/dev-family.html` has all 20 doors.*
 
 ## Commands
 
