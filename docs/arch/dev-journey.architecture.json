@@ -2,17 +2,17 @@
  "schema_version": 1,
  "diagram_type": "architecture",
  "meta": {
-  "title": "dev — the long way round",
-  "subtitle": "one of four entries, from a codebase you do not know · survey → file → pick → build → verify → ship → promote · bare /dev picks yours",
+  "title": "dev — the order you use it in",
+  "subtitle": "bare /dev orients, then: survey → file → pick → build → verify → ship → promote",
   "quality_profile": "standard",
   "viewBox": [
    1360,
-   960
+   1140
   ],
   "output": "dev-journey.html",
   "repository": {
    "url": "https://github.com/hasansa007/dev-skill",
-   "revision": "1595ca57d99f7ca417c934f5b06d42b90e99f2a6"
+   "revision": "f1bc5fcbb40d29490c1ddfc50ee830bfa60375d1"
   },
   "animation": "trace"
  },
@@ -20,11 +20,11 @@
   {
    "id": "survey",
    "type": "cloud",
-   "label": "1 · dev:survey",
-   "sublabel": "what is wrong? start here",
+   "label": "2 · dev:survey",
+   "sublabel": "what is wrong?",
    "pos": [
     40,
-    130
+    310
    ],
    "size": [
     280,
@@ -47,11 +47,11 @@
   {
    "id": "create",
    "type": "frontend",
-   "label": "2 · dev:create-*",
+   "label": "3 · dev:create-*",
    "sublabel": "file it",
    "pos": [
     360,
-    130
+    310
    ],
    "size": [
     280,
@@ -76,11 +76,11 @@
   {
    "id": "kanban",
    "type": "cloud",
-   "label": "3 · dev:kanban",
+   "label": "4 · dev:kanban",
    "sublabel": "what next?",
    "pos": [
     680,
-    130
+    310
    ],
    "size": [
     280,
@@ -97,11 +97,11 @@
   {
    "id": "dev",
    "type": "frontend",
-   "label": "4 · /dev #N",
+   "label": "5 · /dev #N",
    "sublabel": "Phases 1 – 10",
    "pos": [
     680,
-    310
+    490
    ],
    "size": [
     280,
@@ -126,11 +126,11 @@
   {
    "id": "verify",
    "type": "frontend",
-   "label": "5 · dev:verify",
+   "label": "6 · dev:verify",
    "sublabel": "does it work?",
    "pos": [
     360,
-    310
+    490
    ],
    "size": [
     280,
@@ -153,11 +153,11 @@
   {
    "id": "docs",
    "type": "frontend",
-   "label": "6 · dev:docs",
+   "label": "7 · dev:docs",
    "sublabel": "ADRs current?",
    "pos": [
     40,
-    310
+    490
    ],
    "size": [
     280,
@@ -180,11 +180,11 @@
   {
    "id": "codereview",
    "type": "external",
-   "label": "7 · dev:code-review",
+   "label": "8 · dev:code-review",
    "sublabel": "verified findings",
    "pos": [
     40,
-    490
+    670
    ],
    "size": [
     280,
@@ -201,11 +201,11 @@
   {
    "id": "preprod",
    "type": "frontend",
-   "label": "8 · dev:pre-prod",
+   "label": "9 · dev:pre-prod",
    "sublabel": "PR → pre prod",
    "pos": [
     360,
-    490
+    670
    ],
    "size": [
     280,
@@ -228,11 +228,11 @@
   {
    "id": "prod",
    "type": "security",
-   "label": "9 · dev:prod",
+   "label": "10 · dev:prod",
    "sublabel": "promote",
    "pos": [
     680,
-    490
+    670
    ],
    "size": [
     280,
@@ -263,7 +263,7 @@
    "sublabel": "PR comments",
    "pos": [
     360,
-    670
+    850
    ],
    "size": [
     280,
@@ -290,7 +290,7 @@
    "sublabel": "draw it",
    "pos": [
     1000,
-    130
+    310
    ],
    "size": [
     280,
@@ -313,7 +313,7 @@
    "sublabel": "run the app",
    "pos": [
     1000,
-    310
+    490
    ],
    "size": [
     280,
@@ -334,7 +334,7 @@
    "sublabel": "capture it",
    "pos": [
     1000,
-    490
+    670
    ],
    "size": [
     280,
@@ -355,7 +355,7 @@
    "sublabel": "comments + docstrings",
    "pos": [
     1000,
-    670
+    850
    ],
    "size": [
     280,
@@ -376,7 +376,7 @@
    "sublabel": "stocks the board",
    "pos": [
     680,
-    800
+    980
    ],
    "size": [
     280,
@@ -388,6 +388,27 @@
      "label": "the door"
     }
    ]
+  },
+  {
+   "id": "orient",
+   "type": "cloud",
+   "label": "1 · /dev",
+   "sublabel": "detects which of the four you are on",
+   "pos": [
+    360,
+    130
+   ],
+   "size": [
+    280,
+    80
+   ],
+   "sources": [
+    {
+     "path": "SKILL.md",
+     "label": "Entry 0"
+    }
+   ],
+   "tag": "read-only"
   }
  ],
  "boundaries": [
@@ -517,12 +538,12 @@
  "cards": [
   {
    "dot": "cyan",
-   "title": "Where to start — just type /dev",
+   "title": "Step 1 — /dev orients",
    "items": [
-    "Bare /dev ORIENTS: it detects the repo and offers 2-3 doors. Read-only",
-    "Work in flight → resume it · stocked board → dev:kanban",
-    "Code but an empty tracker → dev:survey (what is wrong) · dev:ideation (what is worth doing)",
-    "Nothing planned → dev:roadmap groups evidence into milestones; the active one IS the QUEUE"
+    "Work in flight → resume it (branch, phase, what is next)",
+    "Board stocked → dev:kanban, then pick one",
+    "Code but empty tracker → dev:survey · dev:ideation · dev:roadmap",
+    "Fresh project → /dev <description>. Read-only until you choose"
    ]
   },
   {
