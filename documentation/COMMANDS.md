@@ -13,6 +13,7 @@ Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE
 /dev:create-bug the course list loses its scroll position
 /dev:survey
 /dev:ideation
+/dev:roadmap
 ```
 
 Bare `/dev` routes to `/dev:kanban` — the board. It shows the queue, what is in flight and what is

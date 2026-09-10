@@ -44,7 +44,7 @@ behaviour was read rather than inferred. Its `roadmap/roadmap.json` recorded `pr
 
 ---
 
-## 2. Doors: 17 → 20
+## 2. Doors: 17 → 20 (19 after Stage 4; `dev:insights` would be the 20th)
 
 | Door | Status | Replaces |
 |---|---|---|
@@ -389,7 +389,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 | **1 — CLI v0** | ✅ complete. `dev state` · `doctor` · `board` (`scripts/dev.py`, stdlib, 41 tests) · CI runs all 4 suites · `pr-gates.sh` asks on STALE state | Stage 2's phase column; `--continue` |
 | **2 — `dev:kanban`** | ✅ `skills/kanban/SKILL.md` (8 phases); `dev:issues` deleted; 7 cross-references swept; guard keeps `issues` as a retired-name alias | — |
 | **3 — `dev:ideation`** | ✅ `skills/ideation/SKILL.md` (9 phases, opportunities only). `dev:survey` **kept**, restored byte-identical after a same-day merge-and-revert; ADR 0008 records both | — |
-| **4 — `dev:roadmap`** | milestones + epics; **`queue` becomes real here** | — |
+| **4 — `dev:roadmap`** | ✅ `skills/roadmap/SKILL.md` (7 phases). Read commands verified live against an empty tracker; `epic` and `roadmap-declined` labels confirmed absent here, which is why Phase 6 reads `gh label list` rather than assuming | — |
 | **5 — `dev:insights`** | low priority, parked until the rest lands | — |
 | **6 — `dev run`** | CLI shells out to `claude`/`codex`/`antigravity` — the headless/CI story | needs Stage 1 |
 | **later** | publish: public + packaging | — |

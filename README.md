@@ -39,6 +39,7 @@ Bare `/dev` shows current issues and suggested next work. Examples use Claude Co
 | `/dev:kanban` | Show current work, the queue, next tasks and statistics; move, cancel or delete a card. |
 | `/dev:survey` | Inspect an app for defects and architectural drift; file the confirmed. |
 | `/dev:ideation` | Inspect an app for performance, security and quality opportunities; file the confirmed. |
+| `/dev:roadmap` | Propose themes from the repo's own evidence; write milestones and epic parents. |
 
 ### Continue delivery
 
