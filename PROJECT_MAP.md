@@ -15,8 +15,8 @@ small deterministic helper.
 
 | | |
 |---|---|
-| Doors | 20 × `skills/<name>/SKILL.md`, plus the root `SKILL.md` |
-| Shared contracts | `shared/entry.md` (workspace + write boundary), `shared/pipeline.md` (17 phases), `shared/pipeline-{web,ios,android,kmp}.md`, `shared/prod-secrets*.md` |
+| Doors | 21 × `skills/<name>/SKILL.md`, plus the root `SKILL.md` |
+| Shared contracts | `shared/entry.md` (workspace + write boundary), `shared/pipeline.md` (17 phases; 11–14 each have a door), `shared/pipeline-{web,ios,android,kmp}.md`, `shared/prod-secrets*.md` |
 | Helper CLI | `scripts/dev.py` — **stdlib only**, Python 3.9-compatible. `state` · `board` · `run` · `doctor` |
 | Compliance | `scripts/compliance_auditor.py` — stdlib only |
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
@@ -76,6 +76,7 @@ its decision. Skills still probe `git check-ignore -q docs/` per repo, because t
 | `dev:ideation` | never run |
 | `dev:roadmap` | never written a milestone |
 | `dev:insights` | never run; this file is the first thing its Phase 5 would maintain |
+| `dev:code-review` | never run — the `--quick` path, the spec-compliance table and the re-verification trigger are designed, not observed |
 
 **Repo state that blocks parts of the design:**
 

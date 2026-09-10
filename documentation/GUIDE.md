@@ -13,9 +13,22 @@ In Claude Code:
 /dev fix the course list losing its scroll position
 ```
 
-An issue number, issue URL, or plain description starts the workflow. Bare `/dev` shows the issue tracker and suggested next work.
+An issue number, issue URL, or plain description starts the workflow. Bare `/dev` opens the board — `/dev:kanban` — which shows what is queued, what is in flight, and what is next, and can move, cancel or delete a card.
 
 To capture work without implementing it, use `/dev:create-issue`, `/dev:create-bug`, or `/dev:create-epic`.
+
+### When the board is empty
+
+Four doors put work *on* it, and none of them invents any — every finding traces to something already in the code or already written down:
+
+| | |
+|---|---|
+| `/dev:survey` | what is **wrong** — defects and architectural drift |
+| `/dev:ideation` | what is **worth doing** — performance, security, quality |
+| `/dev:roadmap` | groups their findings into **milestones**; the active one is the board's queue |
+| `/dev:insights` | answers a question about the codebase with citations, and keeps what lasts in `PROJECT_MAP.md` |
+
+`survey` and `ideation` read the same flows the same way, so run one, not both — defects first, since what is broken changes which improvements are worth making.
 
 ## Choose the depth
 
@@ -42,6 +55,7 @@ You can start from an existing branch, diff, or PR:
 ```text
 /dev:verify
 /dev:docs
+/dev:code-review
 /dev:review https://github.com/you/repo/pull/123
 ```
 

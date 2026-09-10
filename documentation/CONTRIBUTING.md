@@ -73,6 +73,10 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > the standing candidate and is not one — under the "run /code-review" line it carries the
 > spec-compliance check, the Deep-tier security triggers and the verdict handling, so cutting it is
 > the 2026-08-23 failure exactly. Smallest raise, zero slack.
+>
+> **2026-09-10 — that protocol now lives in `dev:code-review`.** Phase 13's prose was rewritten in
+> place at the same 995 lines to point at the door, so the reasoning above still holds and the
+> budget is unchanged. Phase 13 remains a poor deletion candidate for the same reason.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.

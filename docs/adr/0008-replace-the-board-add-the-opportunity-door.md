@@ -42,7 +42,7 @@ the originals.
 
 Consequences accepted deliberately:
 
-- **The family grows to 18 doors**, against *Simplicity First*. Paid for accuracy of naming.
+- **The family grows by one, to 18 doors at the time of this decision**, against *Simplicity First*. Paid for accuracy of naming. (It reached 21 later on the same branch — see `dev:roadmap`, `dev:insights` and `dev:code-review`.)
 - **Two doors discover the same flows and fan out the same way**, so running both doubles the
   family's largest spend. Both intros say run one, and say defects first — what is broken changes
   which improvements are worth making.
