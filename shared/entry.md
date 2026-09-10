@@ -260,6 +260,7 @@ fields you inferred rather than resolved.
 | `dev:survey` | — | an existing app | **tool** → feeds Phase 0 |
 | `dev:roadmap` | — | the repo's own evidence | **tool** → feeds Phase 0 |
 | `dev:insights` | — | a question | **tool** → maintains `PROJECT_MAP.md` |
+| `dev:ui` | — | a repo | **tool** → renders `ui/`, never read back |
 | `dev:ideation` | — | an existing app | **tool** → feeds Phase 0 |
 
 **Why these phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning

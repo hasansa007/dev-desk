@@ -687,17 +687,75 @@ footer{margin-top:2rem;color:#4b5563;font-size:.75rem}
 """
 
 
+# board and roadmap read GitHub, which changes without a commit, so nothing local can prove them
+# fresh — for those, "if needed" is always yes, and fetching to compare would cost as much as rebuilding.
+UI_REMOTE = ("board", "roadmap")
+REMOTE_REASON = "reads GitHub, which changes without a commit"
+
+
+def ui_inputs(root: str, surface: str) -> List[str]:
+    """The local files a surface is built from; a change to any of them makes it stale."""
+    if surface == "insights":
+        return [os.path.join(root, "PROJECT_MAP.md")]
+    if surface == "ideation":
+        d = os.path.join(root, "docs", "ideation")
+        return [os.path.join(d, n) for n in os.listdir(d)] if os.path.isdir(d) else [d]
+    return []
+
+
+def ui_staleness(root: str, surface: str, head: Optional[str]) -> Optional[str]:
+    """Why a surface must be rebuilt, or None when it is fresh — always a reason, never a bare flag."""
+    path = os.path.join(root, UI_DIR, surface + ".json")
+    if not os.path.isfile(path):
+        return "missing"
+    try:
+        with open(path, encoding="utf-8") as fh:
+            built_from = json.load(fh).get("commit")
+    except (OSError, ValueError):
+        return "unreadable"
+    if not os.path.isfile(os.path.join(root, UI_DIR, surface + ".html")):
+        return "html missing"
+    if surface in UI_REMOTE:
+        return REMOTE_REASON
+    if built_from != head:
+        return "built from %s, HEAD is %s" % (str(built_from)[:7], str(head)[:7])
+    built_at = os.path.getmtime(path)
+    for f in ui_inputs(root, surface):
+        if os.path.exists(f) and os.path.getmtime(f) > built_at:
+            return "%s changed since" % os.path.relpath(f, root)
+    return None
+
+
 def cmd_ui(args) -> int:
     root = repo_root()
     if not root:
         print("not a git repository", file=sys.stderr)
         return 2
-    meta = {"repo": remote_slug(), "commit": head_sha(), "generated_at": now()}
-    out_dir = os.path.join(root, UI_DIR)
-    os.makedirs(out_dir, exist_ok=True)
-
+    head = head_sha()
+    check, force = getattr(args, "check", False), getattr(args, "force", False)
     surfaces = [args.surface] if args.surface else list(UI_SURFACES)
+    out_dir = os.path.join(root, UI_DIR)
+
+    if check:
+        stale = 0
+        for s in surfaces:
+            why = ui_staleness(root, s, head)
+            if why == REMOTE_REASON:
+                # always refreshed, never "stale": counting it would make --check fail forever
+                print("  %-9s live — rebuilt on every `dev ui` (%s)" % (s, why))
+                continue
+            stale += why is not None
+            print("  %-9s %s" % (s, "stale — " + why if why else "fresh"))
+        return 1 if stale else 0
+
+    meta = {"repo": remote_slug(), "commit": head, "generated_at": now()}
+    os.makedirs(out_dir, exist_ok=True)
     for s in surfaces:
+        # a surface named explicitly is rebuilt; `dev ui` alone rebuilds only what is stale
+        why = "requested" if (force or args.surface) else ui_staleness(root, s, head)
+        if why is None:
+            print("  %-9s fresh — skipped" % s)
+            continue
         if s == "board":
             data = collect_board(root, args.milestone)
         elif s == "roadmap":
@@ -714,8 +772,13 @@ def cmd_ui(args) -> int:
             fh.write("\n")
         with open(os.path.join(out_dir, s + ".html"), "w", encoding="utf-8") as fh:
             fh.write(render_ui_html(s, data, meta))
-        note = data.get("unavailable") or data.get("note") or "ok"
+        note = data.get("unavailable") or data.get("note") or "rebuilt — %s" % why
         print("  %-9s %s/%s.html  %s" % (s, UI_DIR, s, note))
+
+    # snapshots belong out of commits; say so, but never edit someone else's .gitignore
+    if run(["git", "check-ignore", "-q", os.path.join(UI_DIR, "board.html")], root)[0] != 0:
+        print("\nnote: ui/ is not git-ignored here — add 'ui/' to .gitignore; nothing edits it for you")
+
     first = os.path.join(out_dir, (surfaces[0] if args.surface else "board") + ".html")
     if args.open:
         # stdlib, so it works on macOS, Linux and Windows without a platform switch
@@ -901,6 +964,8 @@ def build_parser() -> argparse.ArgumentParser:
     ui.add_argument("surface", nargs="?", choices=list(UI_SURFACES))
     ui.add_argument("--milestone", help="the active milestone; its members are the queue")
     ui.add_argument("--open", action="store_true", help="open the result in a browser")
+    ui.add_argument("--check", action="store_true", help="report what is stale; write nothing")
+    ui.add_argument("--force", action="store_true", help="rebuild every surface, fresh or not")
     ui.set_defaults(func=cmd_ui)
 
     pj = sub.add_parser("project", help="mirror the computed board into a GitHub Project v2")

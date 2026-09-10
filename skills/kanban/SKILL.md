@@ -6,7 +6,7 @@ description: >
   classifies them into columns derived from git: QUEUE (the active milestone), IN FLIGHT (a branch
   with unmerged commits), PR OPEN, HUMAN REVIEW, BACKLOG, plus DEFERRED (epic-leftover) and an
   ORPHANED warning row. Then reports the counts and asks which to start.
-  Bare `/dev` with no argument routes here. Replaces the earlier read-only `dev:issues`.
+  Bare `/dev` offers it when the tracker has work (Entry 0). Replaces the earlier read-only `dev:issues`.
   Writes are BOUNDED, never free: move a card (labels, milestone) · cancel it (close as "not
   planned", reversible) · delete it (permanent, behind a hard gate). It still never cuts a branch
   and never starts work — naming an issue hands off to `/dev #N`.

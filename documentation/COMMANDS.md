@@ -51,6 +51,7 @@ These commands let you resume from durable work across sessions. A full `/dev` r
 /dev:launch
 /dev:shots
 /dev:arch the dev family
+/dev:ui
 /dev:launch-kill
 ```
 

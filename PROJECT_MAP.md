@@ -15,7 +15,7 @@ small deterministic helper.
 
 | | |
 |---|---|
-| Doors | 21 × `skills/<name>/SKILL.md`, plus the root `SKILL.md` |
+| Doors | 22 × `skills/<name>/SKILL.md`, plus the root `SKILL.md` |
 | Shared contracts | `shared/entry.md` (workspace + write boundary), `shared/pipeline.md` (17 phases; 11–14 each have a door), `shared/pipeline-{web,ios,android,kmp}.md`, `shared/prod-secrets*.md` |
 | Helper CLI | `scripts/dev.py` — **stdlib only**, Python 3.9-compatible. `state` · `board` · `run` · `doctor` · `project` · `ui` |
 | Compliance | `scripts/compliance_auditor.py` — stdlib only |

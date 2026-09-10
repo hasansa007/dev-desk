@@ -72,6 +72,7 @@ A full `/dev` run includes these stages. You can also invoke them independently 
 | `/dev:shots` | Capture screens from the running app. |
 | `/dev:comment-budget` | Report comments and docstrings that exceed the documentation budget. Add `--apply` to make changes. |
 | `/dev:arch` | Generate a diagram tied to verified source locations. Requires Archify. |
+| `/dev:ui` | Rebuild the stale `ui/` pages — board, roadmap, ideation, insights — and open them in a browser. |
 
 See [command examples](documentation/COMMANDS.md) for practical usage and handoffs.
 

@@ -405,7 +405,7 @@ production merge, Phase 16 is skipped, and its secrets pre-flight moves up to Ph
 
 | Risk | Mitigation |
 |---|---|
-| 21 doors against *Simplicity First* | accepted knowingly, and paid for naming accuracy — see ADR 0008 |
+| 22 doors against *Simplicity First* | accepted knowingly, and paid for naming accuracy — see ADR 0008 |
 | Phase state lies between checkpoints | §3 precedence rule + `pr-gates.sh` refusal |
 | `gh issue delete` is permanent | §9 hard gate; refused on merged-PR reference or open children |
 | CLI and prose paths drift | both generated from this spec; `dev doctor` reports version skew |
