@@ -93,12 +93,9 @@ above works without it; when present, the doors use it instead of doing the same
 python3 ~/.claude/skills/dev/scripts/dev.py doctor
 ```
 
-`dev` in the table above is shorthand — nothing installs it on your `PATH`. To type it as written,
-add one line to your shell profile:
-
-```bash
-alias dev='python3 ~/.claude/skills/dev/scripts/dev.py'
-```
+`install.sh` puts `dev` on your `PATH` by linking it into `~/.local/bin` (or `~/bin`) when one of
+those is already on your `PATH`. It never edits your shell profile and never replaces a `dev` that
+belongs to another tool — if it can't link, it says so and prints the alias to use instead.
 
 Then the UI is one command: `dev ui --open` regenerates all four surfaces and opens the board.
 

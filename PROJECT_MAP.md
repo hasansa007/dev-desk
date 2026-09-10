@@ -22,7 +22,7 @@ small deterministic helper.
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
 | Tests | stdlib `unittest`, one file per script under `test-projects/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
 | CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`. Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
-| Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev` |
+| Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev`, and links `scripts/dev.py` as the `dev` command into `~/.local/bin` (or `~/bin`) when one is already on `PATH` |
 
 **Paths inside the family are the INSTALL path** (`~/.claude/skills/dev/…`), never the clone path.
 Absolute on purpose: doors run inside somebody else's repo, where a relative `shared/entry.md`

@@ -189,8 +189,8 @@ python3 ~/.claude/skills/dev/scripts/dev.py ui --open
 
 That regenerates four local pages — `ui/board.html`, `ui/roadmap.html`, `ui/ideation.html`,
 `ui/insights.html` — and opens the board. Self-contained files: no server, no network, no account.
-Add `alias dev='python3 ~/.claude/skills/dev/scripts/dev.py'` to your shell profile and it is just
-`dev ui --open`.
+After `install.sh` it is just `dev ui --open` — the installer links `dev` into `~/.local/bin` when
+that is on your `PATH`, and prints the alias to use if it can't.
 
 **They are a snapshot, not the source.** Each page shows the commit it was built from; run `dev ui`
 again to refresh. Nothing reads them back, so a stale page can never change what the board says.
