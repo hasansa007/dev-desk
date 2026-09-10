@@ -61,6 +61,14 @@ class OptionMatching(unittest.TestCase):
         opts = OPTIONS + [{"id": "o5", "name": "Ready"}]
         self.assertEqual(match_option("queue", opts)["name"], "Ready")
 
+    def test_queue_never_collapses_onto_backlogs_option(self):
+        """A default GitHub board has Todo/In Progress/Done. backlog takes Todo; queue must not,
+        or the two columns merge silently and the milestone-as-queue distinction disappears."""
+        default = [{"id": "t", "name": "Todo"}, {"id": "p", "name": "In Progress"},
+                   {"id": "d", "name": "Done"}]
+        self.assertEqual(match_option("backlog", default)["name"], "Todo")
+        self.assertIsNone(match_option("queue", default))
+
     def test_an_unmappable_column_returns_none_rather_than_guessing(self):
         self.assertIsNone(match_option("deferred", OPTIONS))
 

@@ -376,7 +376,10 @@ def cmd_board(args) -> int:
 # the class of bug the precedence rule exists to prevent.
 STATUS_CANDIDATES = {
     "backlog": ["backlog", "todo", "to do", "no status"],
-    "queue": ["queue", "queued", "ready", "next", "todo"],
+    # deliberately NOT "todo": that is backlog's option, and silently merging two columns
+    # into one loses the queue/backlog distinction the milestone design exists for.
+    # Unmapped is reported; a silent merge is not.
+    "queue": ["queue", "queued", "ready", "next", "up next"],
     "in_progress": ["in progress", "in-progress", "doing", "wip"],
     "pr_created": ["in review", "review", "pr open"],
     "human_review": ["in review", "review", "needs review"],

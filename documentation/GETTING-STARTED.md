@@ -181,10 +181,41 @@ The board's columns are computed from `git` and `gh` every run, so they cannot g
 checkpointed its phase into `.dev/`, the card also shows `planning` / `coding` / `validation` — but
 **git wins any disagreement**, and no state file means no phase claim at all.
 
-If you want a **visual** board, `dev project --number N` mirrors these columns into a GitHub
-Projects v2 board on github.com. It only ever writes outward — the columns are still computed from
-git each run, so the project cannot become a second source of truth. Needs
-`gh auth refresh -s project`.
+### Seeing it as a real board on github.com
+
+The board above is text. If you want a draggable one, `dev project` mirrors the same columns into a
+GitHub Projects v2 board. **One-time setup:**
+
+```bash
+gh auth refresh -s project                       # 1. the scope; opens a browser
+gh project create --owner "@me" --title "dev"    # 2. note the number it prints
+
+# 3. give it options that match the columns — the DEFAULT board does not
+gh project field-create <N> --owner "@me" --name "Status" --data-type SINGLE_SELECT \
+  --single-select-options "Backlog,Queue,In Progress,PR Open,In Review,Done,Blocked"
+
+gh project item-add <N> --owner "@me" --url <issue-url>   # 4. add issues
+```
+
+Then, from the repo:
+
+```bash
+python3 ~/.claude/skills/dev/scripts/dev.py project --number <N>          # dry run
+python3 ~/.claude/skills/dev/scripts/dev.py project --number <N> --apply  # write
+```
+
+View it at `github.com/users/<you>/projects/<N>`.
+
+**Step 3 is not optional busywork.** A new GitHub board ships with `Todo · In Progress · Done`.
+Against those, `in_progress` and `done` map, and **`queue`, `pr_created`, `human_review` and
+`deferred` have no matching option** — they are reported as unmappable and skipped, because
+inventing an option would reshape a board this family does not own. `queue` deliberately does *not*
+fall back to `Todo`: merging it with `backlog` would silently erase the queue distinction the
+milestone design exists for.
+
+**It only ever writes outward.** The columns are still computed from git each run, so the project
+cannot become a second source of truth — drag a card and the next run moves it back. Without the
+scope, the adapter says so and everything else works unchanged.
 
 From the board you can move a card, cancel it with a reason, or delete it — delete asks you to
 confirm against the printed `owner/repo#N` and refuses outright when a merged PR references the
