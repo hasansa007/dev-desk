@@ -56,7 +56,7 @@ so it is defined once there and never duplicated here.
 |---|---|
 | **Nothing at all** | **`dev:kanban`** — the board, then ask which to start |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
-| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `kanban`, `issues`, `survey`, `ideation`, `roadmap`, `insights`, `arch` | **Confirm the handoff** — see the guard below |
+| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `kanban`, `issues`, `survey`, `ideation`, `roadmap`, `insights`, `code-review`, `arch` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
 
 ### The empty-input row is a guard, not a convenience
@@ -79,7 +79,7 @@ a **feature name**: `/dev run` would branch `feature/run` and start building a f
 
 Before routing to Generic, STOP if the argument is:
 
-- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `kanban`, `survey`, `ideation`, `roadmap`, `insights`, `arch`, with or without the
+- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `kanban`, `survey`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
 - **a RENAMED family name.** `trim` is still the advertised trigger (*"trim the comments"*) after the
@@ -144,6 +144,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:create-epic` | 0 | a description | "this is a big one" — files the PARENT only |
 | `dev:verify` | 11 | a branch | "does this branch actually work?" |
 | `dev:docs` | 12 | a diff | "are the ADRs and docs current?" |
+| `dev:code-review` | 13 | a branch | "review this before it becomes a PR" — verified findings, spec compliance, security |
 | `dev:pre-prod` | 14 | a branch | "PR and merge this to pre prod" |
 | `dev:review` | 15 ↺ | a PR number | "changes requested" — loops back to 14 |
 | `dev:prod` | 16 | pre-prod + prod branches | "promote to production" |

@@ -240,6 +240,6 @@ A PR without a `## DOCS` section is not ready to merge.
 This gate is read-only and mid-pipeline, so finishing it is not finishing anything. End by naming
 the rest and asking (`entry.md` → *Never end silently*):
 
-> "Docs gate clean — ADR written, the PROJECT_MAP section reread. Next is Phase 13 (`/code-review`)
+> "Docs gate clean — ADR written, the PROJECT_MAP section reread. Next is Phase 13 (`dev:code-review`)
 > on the same diff, then `dev:pre-prod` (Phase 14) opens the PR and merges to `<pre-prod branch>`.
 > Continue?"

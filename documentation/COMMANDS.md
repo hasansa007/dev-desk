@@ -28,6 +28,7 @@ Survey writes provenance into each issue's `## Suspected` section. Its code insp
 ```text
 /dev:verify
 /dev:docs
+/dev:code-review
 /dev:pre-prod
 /dev:review https://github.com/you/repo/pull/123
 /dev:prod
@@ -42,7 +43,7 @@ These commands let you resume from durable work across sessions. A full `/dev` r
 `/dev:rollback` classifies the broken promotion (code-only vs migration), proposes a safe revert with dual-branch sync, and pauses for human approval before executing.
 `/dev:audit` mechanically cross-references reported `## PIPELINE` claims against tool-call and repository evidence, detects hidden skips, and appends a `## COMPLIANCE` report.
 
-`/code-review` is a separate integration used during review. It is not a member of the `dev` command family.
+`/dev:code-review` is Phase 13. It uses the separate `code-review` integration as its engine and adds the spec-compliance and security passes around it.
 
 ## App and maintenance tools
 

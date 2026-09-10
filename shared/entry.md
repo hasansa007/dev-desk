@@ -171,6 +171,7 @@ this pipeline exists to refuse.
 | `dev:pre-prod` | 14 | always + Phase 2 → platform pipeline |
 | `dev:review` | 15 | always + Phase 1 |
 | `dev:docs` | 12 | always only |
+| `dev:code-review` | 13 | always only — the diff is the whole subject |
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
 | `dev:rollback` | 16 ↺ | always + Phase 1 — plus classification and dual-branch sync |
 | `dev:audit` | — | always only — mechanical phase compliance verification against evidence |
@@ -201,7 +202,7 @@ and 11 call it for mobile targets (`/dev:launch ios sim`, `/dev:launch android e
 equally useful on its own for a throwaway prototype.
 
 It belongs in this repo because it is the pipeline's only **personal-skill** dependency: everything
-else the pipeline calls (`superpowers:*`, `/code-review`, `security-review`, `frontend-design`,
+else the pipeline calls (`superpowers:*`, `code-review` as `dev:code-review`'s engine, `security-review`, `frontend-design`,
 `supabase`, `feature-dev:*`) is a plugin that installs anywhere. `dev:launch` is the one that would
 simply be missing after a clone, taking mobile verification down with it.
 
@@ -244,6 +245,7 @@ fields you inferred rather than resolved.
 | `dev` | Entry 1–2 → 1–16 | issue ref or a description | full run |
 | `dev:verify` | 11 | a branch | stage |
 | `dev:docs` | 12 | a diff | gate |
+| `dev:code-review` | 13 | a branch | gate |
 | `dev:pre-prod` | 14 | a branch | stage |
 | `dev:review` | 15 | a PR number | **loop** ↺ |
 | `dev:prod` | 16 | pre-prod + prod branches | stage |
@@ -265,7 +267,7 @@ lives only in the conversation that produced it — there is no artifact to hand
 From Phase 11 on, every phase takes a durable artifact (branch, diff, PR number), which is exactly
 what makes it independently invocable. Phase 0 qualifies from the opposite side of that seam: it
 runs before any reasoning exists, takes only a description, and produces an issue number. Phase 13 is deliberately absent: it is 20 lines that mostly
-say "run `/code-review`", so run `/code-review`.
+say "run Phase 13", so run `dev:code-review`.
 
 ---
 
@@ -283,7 +285,7 @@ means the developer is standing in the MIDDLE of a pipeline when your phase fini
 of one. So close every invocation by naming **the next phase, what it would do, and where it ends**
 — then ask:
 
-> "Phase 12 clean. Next is Phase 13 (`/code-review`) on the same diff, then Phase 14 opens the PR
+> "Phase 12 clean. Next is Phase 13 (`dev:code-review`) on the same diff, then Phase 14 opens the PR
 > and merges to `staging`. Continue?"
 
 Stopping flat is the failure this closes: it makes the developer remember both that there IS more
@@ -295,5 +297,5 @@ This is an **ask**, not a chain:
 - **Chaining — proceeding WITHOUT asking — is allowed only between adjacent READ-ONLY gates, and
   only one hop.** `dev:verify` → `dev:docs` is the one wired pair: same diff, adjacent phases
   (11 → 12), both read-only, and their outputs are the two halves of one PR body. Everywhere else,
-  you ask. Nothing chains into `/code-review`, and **nothing ever chains into a merge or a
+  you ask. `dev:docs` chains into `dev:code-review`, and **nothing ever chains into a merge or a
   promotion** — those are decisions, not steps.

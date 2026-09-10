@@ -186,5 +186,5 @@ collapsed to "delete everything" than a repo that had none.
 ## Next — ask, never stop flat
 
 - Report only → offer `--apply`, naming the branch it would cut.
-- Applied → the branch is unreviewed. `/code-review` on the diff, then `dev:pre-prod` for the PR.
+- Applied → the branch is unreviewed. `dev:code-review` on the diff, then `dev:pre-prod` for the PR.
 - Name-smells found → offer `dev:create-issue` so the backlog becomes an issue, not scrollback.
