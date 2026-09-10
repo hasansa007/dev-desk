@@ -390,7 +390,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 | **2 — `dev:kanban`** | ✅ `skills/kanban/SKILL.md` (8 phases); `dev:issues` deleted; 7 cross-references swept; guard keeps `issues` as a retired-name alias | — |
 | **3 — `dev:ideation`** | ✅ `skills/ideation/SKILL.md` (9 phases, opportunities only). `dev:survey` **kept**, restored byte-identical after a same-day merge-and-revert; ADR 0008 records both | — |
 | **4 — `dev:roadmap`** | ✅ `skills/roadmap/SKILL.md` (7 phases). Read commands verified live against an empty tracker; `epic` and `roadmap-declined` labels confirmed absent here, which is why Phase 6 reads `gh label list` rather than assuming | — |
-| **5 — `dev:insights`** | low priority, parked until the rest lands | — |
+| **5 — `dev:insights`** | ✅ `skills/insights/SKILL.md` (6 phases). Answer → route → fold durable into `PROJECT_MAP.md`; `map` audits drift without writing | — |
 | **6 — `dev run`** | CLI shells out to `claude`/`codex`/`antigravity` — the headless/CI story | needs Stage 1 |
 | **later** | publish: public + packaging | — |
 

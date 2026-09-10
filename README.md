@@ -40,6 +40,7 @@ Bare `/dev` shows current issues and suggested next work. Examples use Claude Co
 | `/dev:survey` | Inspect an app for defects and architectural drift; file the confirmed. |
 | `/dev:ideation` | Inspect an app for performance, security and quality opportunities; file the confirmed. |
 | `/dev:roadmap` | Propose themes from the repo's own evidence; write milestones and epic parents. |
+| `/dev:insights` | Answer a question about the codebase with citations; keep what lasts in `PROJECT_MAP.md`. |
 
 ### Continue delivery
 

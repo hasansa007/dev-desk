@@ -14,6 +14,7 @@ Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE
 /dev:survey
 /dev:ideation
 /dev:roadmap
+/dev:insights
 ```
 
 Bare `/dev` routes to `/dev:kanban` — the board. It shows the queue, what is in flight and what is
