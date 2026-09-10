@@ -5,3 +5,7 @@
 
 # Third-party agent framework working directory — not part of this family, holds credentials.
 .auto-claude/
+
+# Per-machine Claude Code settings, not project config: the file here holds only
+# outputStyle, which is a local editor preference and differs per clone.
+.claude/settings.local.json
