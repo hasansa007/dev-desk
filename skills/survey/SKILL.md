@@ -5,7 +5,7 @@ description: >
   drift between the patterns actually in use — then files the confirmed ones. It suggests and never
   implements: no fix, no refactor, no rewrite.
   Every finding is adversarially verified against the code before it can be filed, because a tracker
-  full of plausible-but-wrong issues is worse than an empty one and `dev:issues` will rank it either
+  full of plausible-but-wrong issues is worse than an empty one and `dev:kanban` will rank it either
   way. Unverified findings are held in the report with the reason, never filed.
   Writes `docs/survey/<date>.md` first; filing to GitHub is a separate confirmed step. Fans out one
   surveyor per flow, and shapes what it files so several issues can be started at once.
@@ -17,7 +17,7 @@ allowed-tools: [git, gh, rg, grep, Read, Write, Agent]   # Read: every verdict i
 
 # survey — read the app, report what is wrong, file the confirmed
 
-A **tool**, not a phase, and it sits **upstream of Phase 0**. `dev:issues` renders the board;
+A **tool**, not a phase, and it sits **upstream of Phase 0**. `dev:kanban` renders the board;
 nothing stocked it. Every door from Phase 0 on assumes you already know what is wrong — this is the
 one that finds out.
 
@@ -58,7 +58,7 @@ behind, which `shared/entry.md`'s *scope limiter* rule forbids relying on. `--re
 because the surveyed repo is the resolved one, not whatever `cwd` points at.
 
 **If `gh` errors or the repo has Issues disabled, say so and stop.** An empty result and a failed
-query must never render the same — `dev:issues` Phase 3's rule, and the reason it exists is that a
+query must never render the same — `dev:kanban` Phase 3's rule, and the reason it exists is that a
 failed dedupe files every finding as new.
 
 When a match is uncertain, file nothing and report **possible duplicate of #N**: a wrong merge hides
@@ -305,11 +305,11 @@ Ask before filing anything. Then, for the confirmed set:
   and let whoever starts second rebase. Blocking is a real dependency — B's fix does not apply until
   A's has landed — and it is directional, which "same file" never tells you. Calling every shared
   file a block serialises a codebase behind its utils module, the opposite of what this list is for.
-- **Set a priority label on each filed issue, from the cost ranking.** `dev:issues` Phase 5 orders
+- **Set a priority label on each filed issue, from the cost ranking.** `dev:kanban` Phase 5 orders
   NEXT by `P1 → P2 → P3`, then slice, then oldest `updatedAt` — ten issues filed the same minute
   share a timestamp, so without labels the order it shows is arbitrary and this phase's ranking dies
   in the report. If the repo has no priority labels, say so: the ranking then lives only here.
-- **File at most 10 per run, and name what was held.** `dev:issues` shows the top 2–3 of NEXT, so
+- **File at most 10 per run, and name what was held.** `dev:kanban` shows the top 2–3 of BACKLOG, so
   ten is already more board than anyone reads at once; thirty is a backlog that gets skipped
   wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim
   that can be argued with. The rest stay in the report, which is why the report is written first.
@@ -331,5 +331,5 @@ Ask before filing anything. Then, for the confirmed set:
 
 Report written → **walk the findings through (Phase 8)** → offer the filing, naming the branch it would cut. Filed → name the first issue by
 cost and hand to `/dev #N`. **Nothing found → say so plainly, name what was covered and what was
-not, and offer `dev:issues`** — a clean survey is a real answer, but the board may still hold work,
+not, and offer `dev:kanban`** — a clean survey is a real answer, but the board may still hold work,
 and stopping at "nothing" makes the developer remember there is somewhere else to look.

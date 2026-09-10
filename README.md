@@ -36,7 +36,7 @@ Bare `/dev` shows current issues and suggested next work. Examples use Claude Co
 | `/dev:create-issue` | File a work item for later. |
 | `/dev:create-bug` | File a bug report without implementing the fix. |
 | `/dev:create-epic` | File a parent epic; split it during planning. |
-| `/dev:issues` | Show current work, next tasks, and statistics. |
+| `/dev:kanban` | Show current work, the queue, next tasks and statistics; move, cancel or delete a card. |
 | `/dev:survey` | Inspect an app and file confirmed findings. |
 
 ### Continue delivery

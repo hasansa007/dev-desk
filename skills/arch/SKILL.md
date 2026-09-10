@@ -21,7 +21,7 @@ allowed-tools: [node, npx, git, rg, curl, unzip]
 A **tool**, not a phase. It maps to no phase number, takes a target (a repo, a subsystem, a diff,
 or a plain description), and returns one artifact. It never edits code and never files an issue.
 
-`dev:docs` checks that prose is current. `dev:issues` renders a board as text. `dev:shots` captures
+`dev:docs` checks that prose is current. `dev:kanban` renders a board as text. `dev:shots` captures
 a running UI. This is the only door that draws the **shape** of a system — the thing prose serves
 worst, and the thing someone needs when onboarding, reviewing a design, or presenting the work.
 

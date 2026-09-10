@@ -54,9 +54,9 @@ so it is defined once there and never duplicated here.
 
 | Input | Route |
 |---|---|
-| **Nothing at all** | **`dev:issues`** — the tracker view, then ask which to start |
+| **Nothing at all** | **`dev:kanban`** — the board, then ask which to start |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
-| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
+| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `kanban`, `issues`, `survey`, `arch` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
 
 ### The empty-input row is a guard, not a convenience
@@ -68,7 +68,7 @@ Phase 3 for a feature nobody asked for.
 
 That is the same failure as the one-word guard below, one step further out: the guard catches
 `/dev run`, and left `/dev` — strictly more ambiguous — unhandled. Routing empty input to the
-tracker turns the emptiest input into the most useful answer, and `dev:issues` is read-only, so the
+tracker turns the emptiest input into the most useful answer, and `dev:kanban` starts no work, so the
 worst case is now a board instead of a branch.
 
 ### Guard — a command-shaped argument is not a feature title
@@ -79,13 +79,16 @@ a **feature name**: `/dev run` would branch `feature/run` and start building a f
 
 Before routing to Generic, STOP if the argument is:
 
-- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `survey`, `arch`, with or without the
+- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `kanban`, `survey`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
 - **a RENAMED family name.** `trim` is still the advertised trigger (*"trim the comments"*) after the
   door became `comment-budget` on 2026-09-07, so `/dev trim` must map, not fall through:
   *"`/dev trim` isn't a subcommand — did you mean `/dev:comment-budget`?"* A rename that drops the
   old name from this guard while leaving it in the triggers turns it into a feature title.
+  **`issues` is the same case** after the board became `dev:kanban` on 2026-09-10 — "show the
+  issues" is still how anyone asks for it, so `/dev issues` must map:
+  *"`/dev issues` isn't a subcommand — did you mean `/dev:kanban`?"*
 - **a single word with no verb and no object** (`deploy`, `test`, `fix`). Far likelier a mistyped
   command than a feature brief.
 
@@ -151,7 +154,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:comment-budget` | — | a repo or a path | "trim the comments" — existing code to the doc budget; reports unless `--apply` |
 | `dev:arch` | — | a system to draw | "draw the architecture", "map this system" — verifiable diagram; renders via Archify |
 | `dev:survey` | — | an existing app | "what's wrong with this app" — finds bugs + architectural drift, files the confirmed |
-| `dev:issues` | — | the repo's tracker | "what should I work on?" — read-only board; **bare `/dev` routes here** |
+| `dev:kanban` | — | the repo's tracker | "what should I work on?" — the board, plus bounded card writes; **bare `/dev` routes here** |
 
 They all read the same `shared/pipeline.md`; none of them copies it. **Phases 1–8 have no sibling on
 purpose** — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.
