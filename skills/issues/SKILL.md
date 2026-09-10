@@ -29,7 +29,7 @@ off. **It never cuts a branch and never edits an issue** — that is `/dev #N` a
 
 ## Phase 2 — Resolve the repo
 
-Read `~/Developer/skills/dev-skill/shared/entry.md` — repo auto-detect and pre-prod branch
+Read `~/.claude/skills/dev/shared/entry.md` — repo auto-detect and pre-prod branch
 resolution. Both are needed: the repo to query, the pre-prod branch to measure "unmerged" against.
 Do not restate that logic.
 

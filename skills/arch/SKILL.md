@@ -27,11 +27,11 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
 
 ## Phase 0 — Load the contract
 
-1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it — **the absolute path, because
+1. Read `~/.claude/skills/dev/shared/entry.md` and apply it — **the absolute path, because
    this skill runs inside somebody else's repo.** It resolves the repo and defines the **write
    boundary**, which this door needs more than most: it is the only tool that writes a ~750 KB file
    into the tree by default.
-2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → **Guiding Principles + Universal Rules**
+2. Read `~/.claude/skills/dev/shared/pipeline.md` → **Guiding Principles + Universal Rules**
    only. A tool runs no phase, so Right-Size has nothing to size; Simplicity First is what lets
    Phase 3 refuse a diagram.
 

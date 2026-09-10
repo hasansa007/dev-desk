@@ -19,8 +19,8 @@ A rough description of what is broken. One sentence is enough — drafting it is
 
 ## Run
 
-1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it.
-2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 0 — Filing** in full.
+1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
+2. Read `~/.claude/skills/dev/shared/pipeline.md` → execute **Phase 0 — Filing** in full.
 3. Fill the template below. Default type label: `bug`, if `gh label list` shows it exists.
 
 ## Template

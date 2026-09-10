@@ -35,11 +35,11 @@ The output is a report and, on confirmation, issues. `/dev #N` does the work aft
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
-Read `~/Developer/skills/dev-skill/shared/entry.md` — **the absolute path, because this skill runs
+Read `~/.claude/skills/dev/shared/entry.md` — **the absolute path, because this skill runs
 inside somebody else's repo**, where a bare `shared/entry.md` resolves to a file that does not
 exist. The resolved repo is the boundary, for reading, for writing and for filing.
 
-Also read `~/Developer/skills/dev-skill/shared/pipeline.md` → **Guiding Principles, Universal Rules,
+Also read `~/.claude/skills/dev/shared/pipeline.md` → **Guiding Principles, Universal Rules,
 and Right-Size the Process**. Right-Size is not optional here despite this being a tool: it owns the
 fan-out rule, and Phases 4 and 5 are the largest fan-out in the family.
 

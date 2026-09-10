@@ -217,11 +217,26 @@ wires the tests into CI**, and that is the honest new infrastructure — not the
 
 ## 7. Portability and distribution
 
-**Blocker:** 14 real files hardcode `~/Developer/skills/dev-skill/…` — `SKILL.md` alone 9 of 33 occurrences.
-The pipeline's first instruction is to read `~/Developer/skills/dev-skill/shared/entry.md`, which
-resolves on exactly one machine. `install.sh`'s symlink is fine; the *content* is not.
+**Blocker (fixed 2026-09-10).** 14 files hardcoded a clone-specific path — `SKILL.md` alone 9 of 33
+occurrences. The pipeline's first instruction was to read a file under `~/Developer/skills/…`,
+which resolves on exactly one machine.
 
-**Fix:** skill-root-relative references (`shared/entry.md`, `mobile/MASTER_PROMPT.md`). 33 edits.
+**What it is NOT.** Making these relative would revert documented scar tissue. `dev:survey` Phase 2
+says it outright: *"the absolute path, because this skill runs inside somebody else's repo, where a
+bare `shared/entry.md` resolves to a file that does not exist."* `dev:arch` Phase 0 carries the
+same. Absolute was the fix; the home-directory prefix was the accident.
+
+**Fix applied:** the **install** path, not the clone path. `install.sh` symlinks this repo into each
+CLI's skills directory under the fixed name `dev`, so `~/.claude/skills/dev/` resolves identically
+on any machine. 31 occurrences across 13 files swapped; the convention is documented once in
+`SKILL.md` and once in `shared/entry.md`, with the Codex and Antigravity roots named.
+
+Verified on 2026-09-10: all three symlinks present, and `shared/entry.md`, `shared/pipeline.md`,
+`mobile/MASTER_PROMPT.md`, `web/FEATURE_PROMPT.md` and `hooks/pr-gates.sh` all resolve through the
+new root.
+
+**Consequence, accepted:** a clone that has never been installed has no root, so `install.sh`
+becomes required rather than convenient. Stated in both notes.
 
 **Also:** `gh repo view` → `visibility: PRIVATE`, `licenseInfo: null`, no `LICENSE` file. Public
 distribution needs both; without a licence nobody may legally use it even once public.
@@ -354,7 +369,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 
 | Stage | Ships | Blocks |
 |---|---|---|
-| **0 — Portability** | 14 files → relative paths; `LICENSE`. No behaviour change | **everything** — doors written after are portable from birth |
+| **0 — Portability** | ✅ paths → install path (31 occurrences, 13 files). `LICENSE` deferred with publishing | **everything** — doors written after are portable from birth |
 | **1 — CLI v0** | `dev state`/`board`/`doctor`, stdlib only, tests per the existing convention, **+ CI wired to run them**; `pr-gates.sh` calls `dev state verify` | Stage 2's phase column; `--continue` |
 | **2 — `dev:kanban`** | retires `dev:issues`; two axes, write set, terminators | — |
 | **3 — `dev:ideation`** | retires `dev:survey`; opportunities mode. Independent of the CLI | — |

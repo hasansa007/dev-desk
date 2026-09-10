@@ -5,6 +5,26 @@ workspace resolution and for which pipeline sections always load.
 
 ---
 
+## Where these paths point
+
+Every `~/.claude/skills/dev/...` path in this family is the **install** path, not the clone path.
+`install.sh` symlinks this repo into each CLI's skills directory under the fixed name `dev`, so the
+path resolves the same on every machine regardless of where the repo was cloned:
+
+| CLI | Root |
+|---|---|
+| Claude Code | `~/.claude/skills/dev/` |
+| Codex | `~/.codex/skills/dev/` |
+| Antigravity | its registered skills path (`install.sh` reads it from config) — else `~/.agents/skills/dev/` |
+
+**The paths stay absolute on purpose.** These doors run inside somebody else's repo, where a bare
+`shared/entry.md` resolves to a file that does not exist — `dev:survey` Phase 2 and `dev:arch`
+Phase 0 both carry that scar. Absolute is the fix; a home-directory prefix was the accident.
+
+A clone that has never been installed has no such root. Run `install.sh` first.
+
+---
+
 ## Workspace Resolution
 
 ```

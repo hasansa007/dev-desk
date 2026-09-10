@@ -25,8 +25,8 @@ cited-file check below.
 
 ## Run
 
-1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it.
-2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 12** against the diff.
+1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
+2. Read `~/.claude/skills/dev/shared/pipeline.md` → execute **Phase 12** against the diff.
 3. Output the `## DOCS` section verbatim, ready to paste into the PR body.
 
 ## Why this exists as its own entry point
