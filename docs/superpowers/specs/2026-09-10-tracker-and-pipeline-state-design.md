@@ -203,10 +203,15 @@ drift; mitigated by both being generated from this spec.
 
 **Commands (v0):** `dev state checkpoint|read|verify` · `dev board [--json]` · `dev doctor`.
 
-⚠️ **This repo has no unit tests today.** `ci/pr-gates.yml` is a workflow; `test-projects/` is
-fixtures. A CLI without tests is worse than prose, because prose is read by a human every run and
-code is not. **Stage 1 includes a test harness** — genuinely new infrastructure here, and the
-honest cost of shipping a CLI.
+**Test convention already exists** — verified 2026-09-10. `test-projects/compliance/test_compliance_auditor.py`
+(7 tests) and `test-projects/rollback/test_rollback_engine.py` (5 tests) are 474 lines of stdlib
+`unittest`, run directly as `PYTHONPATH=. python3 <file>`, and **all 12 pass**. Stage 1 follows that
+convention rather than inventing a harness: one test file per script, stdlib only.
+
+⚠️ **But nothing enforces them.** `ci/pr-gates.yml` has a single job — `required-sections`, checking
+the PR body carries `PIPELINE` and `DOCS`. It never runs a test. The suite passes because someone
+runs it by hand, which is exactly the failure mode `dev:audit` exists to catch elsewhere. **Stage 1
+wires the tests into CI**, and that is the honest new infrastructure — not the harness.
 
 ---
 
@@ -350,7 +355,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 | Stage | Ships | Blocks |
 |---|---|---|
 | **0 — Portability** | 14 files → relative paths; `LICENSE`. No behaviour change | **everything** — doors written after are portable from birth |
-| **1 — CLI v0** | `dev state`/`board`/`doctor`, stdlib only, **+ test harness**; `pr-gates.sh` calls `dev state verify` | Stage 2's phase column; `--continue` |
+| **1 — CLI v0** | `dev state`/`board`/`doctor`, stdlib only, tests per the existing convention, **+ CI wired to run them**; `pr-gates.sh` calls `dev state verify` | Stage 2's phase column; `--continue` |
 | **2 — `dev:kanban`** | retires `dev:issues`; two axes, write set, terminators | — |
 | **3 — `dev:ideation`** | retires `dev:survey`; opportunities mode. Independent of the CLI | — |
 | **4 — `dev:roadmap`** | milestones + epics; **`queue` becomes real here** | — |
@@ -373,7 +378,7 @@ production merge, Phase 16 is skipped, and its secrets pre-flight moves up to Ph
 | CLI and prose paths drift | both generated from this spec; `dev doctor` reports version skew |
 | A retired door's scar tissue is lost in the port | §2 names it as a hard requirement, not a hope |
 | New artifacts leak project identity | every file stays project-agnostic: no repo names, issue numbers, branch names or issue titles |
-| No tests exist to regress against | Stage 1 builds the harness before the CLI is load-bearing |
+| Tests exist but CI never runs them | Stage 1 wires `ci/pr-gates.yml` to execute the suite before the CLI is load-bearing |
 
 ---
 
