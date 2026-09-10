@@ -98,10 +98,10 @@
       "tag": "tool"
     },
     {
-      "id": "issues",
+      "id": "kanban",
       "type": "cloud",
-      "label": "dev:issues",
-      "sublabel": "the tracker",
+      "label": "dev:kanban",
+      "sublabel": "the board",
       "pos": [
         835,
         110

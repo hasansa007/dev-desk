@@ -74,9 +74,9 @@
       "tag": "Phase 0"
     },
     {
-      "id": "issues",
+      "id": "kanban",
       "type": "cloud",
-      "label": "3 · dev:issues",
+      "label": "3 · dev:kanban",
       "sublabel": "what next?",
       "pos": [
         680,
@@ -423,13 +423,13 @@
     {
       "id": "create-issues",
       "from": "create",
-      "to": "issues",
+      "to": "kanban",
       "label": "lands on the board",
       "labelDy": -34
     },
     {
       "id": "issues-dev",
-      "from": "issues",
+      "from": "kanban",
       "to": "dev",
       "label": "pick one",
       "variant": "emphasis",
@@ -503,7 +503,7 @@
       "items": [
         "No idea what's wrong → dev:survey",
         "Already know → dev:create-* files it",
-        "Board already stocked → dev:issues, or bare /dev"
+        "Board already stocked → dev:kanban, or bare /dev"
       ]
     },
     {
