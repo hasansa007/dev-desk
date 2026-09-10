@@ -16,4 +16,6 @@
 # Generated status snapshots — `dev ui` rebuilds them from git and gh in one command.
 # Tracking them would put a churning file in every diff and invite someone to trust a
 # committed copy over the live query.
-ui/
+# ANCHORED on purpose: an unanchored `ui/` also matches skills/ui/ — which silently kept the
+# /dev:ui door itself out of git.
+/ui/

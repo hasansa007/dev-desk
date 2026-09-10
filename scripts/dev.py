@@ -777,7 +777,9 @@ def cmd_ui(args) -> int:
 
     # snapshots belong out of commits; say so, but never edit someone else's .gitignore
     if run(["git", "check-ignore", "-q", os.path.join(UI_DIR, "board.html")], root)[0] != 0:
-        print("\nnote: ui/ is not git-ignored here — add 'ui/' to .gitignore; nothing edits it for you")
+        # ANCHORED: a bare `ui/` also ignores any source directory named ui — src/ui/, skills/ui/
+        print("\nnote: ui/ is not git-ignored here — add '/ui/' (with the leading slash) to .gitignore;"
+              "\n      a bare 'ui/' would also hide any source folder named ui. Nothing edits it for you.")
 
     first = os.path.join(out_dir, (surfaces[0] if args.surface else "board") + ".html")
     if args.open:
