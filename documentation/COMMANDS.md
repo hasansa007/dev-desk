@@ -1,6 +1,6 @@
 # Command examples
 
-The full [command reference](../README.md#commands) is in README.
+The full [command reference](../README.md#commands) is in README. New here? Start with [Getting started](GETTING-STARTED.md).
 
 Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE.md#running-it-on-another-cli).
 

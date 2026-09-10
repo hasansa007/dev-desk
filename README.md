@@ -16,6 +16,8 @@ This private repository requires GitHub access. The installer links the checkout
 
 Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check the loaded skill list.
 
+**New here?** [Getting started](documentation/GETTING-STARTED.md) walks through the first run and the four situations you can be in — a fresh project, one you know, one you inherited, and picking work up again.
+
 ## Start a task
 
 ```text
@@ -23,7 +25,7 @@ Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check t
 /dev fix the course list losing its scroll position
 ```
 
-Bare `/dev` shows current issues and suggested next work. Examples use Claude Code syntax; see the guide for other CLIs and dependencies.
+Bare `/dev` **orients**: it detects where the repo actually is and offers the two or three doors that fit — resume work in flight, open the board, stock an empty tracker, or set up a fresh project. It is read-only and never starts work. Examples use Claude Code syntax; see the guide for other CLIs and dependencies.
 
 ![The dev workflow, from discovery to production](assets/dev-journey.png)
 
@@ -91,6 +93,7 @@ python3 ~/.claude/skills/dev/scripts/dev.py doctor
 
 ## Learn more
 
+- [Getting started](documentation/GETTING-STARTED.md) — first install, first run, and the four situations.
 - [User guide](documentation/GUIDE.md) — usage, compatibility, and troubleshooting.
 - [Workflow](documentation/WORKFLOW.md) — phases, approvals, and known limitations.
 - [Contributing](documentation/CONTRIBUTING.md) — structure, design rules, and maintenance.

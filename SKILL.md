@@ -54,7 +54,7 @@ so it is defined once there and never duplicated here.
 
 | Input | Route |
 |---|---|
-| **Nothing at all** | **`dev:kanban`** — the board, then ask which to start |
+| **Nothing at all** | **Entry 0 — Orient**: detect where this repo actually is, then offer the two or three doors that fit it |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
 | A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `kanban`, `issues`, `survey`, `ideation`, `roadmap`, `insights`, `code-review`, `arch` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
@@ -67,9 +67,54 @@ argument there is no seed. The outcome was whatever got improvised, up to cuttin
 Phase 3 for a feature nobody asked for.
 
 That is the same failure as the one-word guard below, one step further out: the guard catches
-`/dev run`, and left `/dev` — strictly more ambiguous — unhandled. Routing empty input to the
-tracker turns the emptiest input into the most useful answer, and `dev:kanban` starts no work, so the
-worst case is now a board instead of a branch.
+`/dev run`, and left `/dev` — strictly more ambiguous — unhandled. Giving empty input a **defined,
+read-only** answer turns the emptiest input into the most useful one, and the worst case is a
+question instead of a branch.
+
+**2026-09-10 — the fixed destination was wrong for half the repos it met.** Empty input routed
+straight to `dev:kanban`. That is the right answer for a repo with a stocked tracker and useless for
+the other three cases: a fresh install where nothing is configured, a codebase whose tracker is
+empty, and a run that stopped halfway and wants resuming. A board rendering `0 open` is a true
+answer to a question the developer did not ask. Entry 0 keeps the guard — still read-only, still
+never a branch — and picks the destination from what is actually there.
+
+---
+
+## Entry 0 — Orient (bare `/dev` only)
+
+**One detection pass, then two or three offers. Never a list of twenty-one doors.**
+
+```bash
+git rev-parse --show-toplevel                      # a repo at all?
+git log -1 --format=%H                             # any commits?
+git remote get-url origin                          # a remote?
+gh issue list --state open --limit 1 --json number # a reachable tracker, and is it stocked?
+git branch --format='%(refname:short)'             # branches to resume
+ls .dev/*.json                                     # a run that checkpointed
+```
+
+`dev board --json` and `dev state read` supply the same facts when the CLI is installed. **A failed
+query and an empty result are different answers** — say which you got.
+
+Then match the FIRST situation that applies:
+
+| Situation | Detected by | Offer |
+|---|---|---|
+| **1 · Work in flight** | `.dev/<branch>.json` exists, or a branch carries commits not in the base | **Resume it.** Name the branch, the phase it reached, and what comes next. `/dev --continue`, or the door for that phase |
+| **2 · The board has work** | tracker reachable and has open issues | `dev:kanban` — the board, then pick one |
+| **3 · Code, but an empty tracker** | commits exist, tracker reachable and empty | `dev:survey` (what is wrong) · `dev:ideation` (what is worth doing) · `dev:roadmap` (group it into milestones) |
+| **4 · A fresh or empty project** | no commits, or no remote, or `gh` not authenticated | Say exactly what is missing and how to fix it, then offer `/dev <description>` to build the first thing |
+
+**Rules this inherits and must not lose:**
+
+- **Read-only.** Entry 0 detects and asks. It never cuts a branch, never edits an issue, never
+  starts work — naming a choice hands off to the door that owns it.
+- **Never render another repo's state** (`shared/entry.md`, write boundary). An empty tracker here
+  is the answer; another repo's fuller one is a sentence you may say, never a board you render.
+- **Never invent work to fill situation 3.** `dev:kanban` 6b's rule applies: surface only what the
+  repo already wrote down, and *"this repo records no gaps"* is a complete answer.
+- **Situation 1 outranks the rest.** Unfinished work is the thing most likely to be forgotten, and
+  the thing most expensive to rediscover.
 
 ### Guard — a command-shaped argument is not a feature title
 
