@@ -201,7 +201,7 @@ algorithm when it is not. This preserves `SKILL.md`'s claim — *"plain markdown
 `gh`"* — and keeps Claude Code, Codex and Antigravity all working. Cost: two paths that must not
 drift; mitigated by both being generated from this spec.
 
-**Commands (v0):** `dev state checkpoint|read|verify` · `dev doctor` · `dev board [--json]`.
+**Commands:** `dev state checkpoint|read|verify` · `dev doctor` · `dev board [--json]` · `dev run <door> [args] [--agent] [--execute]`.
 
 `board` is pure at its core — issues plus per-issue git facts in, columns out — so every
 classification rule is tested against fixtures rather than a live tracker. The fixture that matters
@@ -391,7 +391,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 | **3 — `dev:ideation`** | ✅ `skills/ideation/SKILL.md` (9 phases, opportunities only). `dev:survey` **kept**, restored byte-identical after a same-day merge-and-revert; ADR 0008 records both | — |
 | **4 — `dev:roadmap`** | ✅ `skills/roadmap/SKILL.md` (7 phases). Read commands verified live against an empty tracker; `epic` and `roadmap-declined` labels confirmed absent here, which is why Phase 6 reads `gh label list` rather than assuming | — |
 | **5 — `dev:insights`** | ✅ `skills/insights/SKILL.md` (6 phases). Answer → route → fold durable into `PROJECT_MAP.md`; `map` audits drift without writing | — |
-| **6 — `dev run`** | CLI shells out to `claude`/`codex`/`antigravity` — the headless/CI story | needs Stage 1 |
+| **6 — `dev run`** | ✅ `claude -p` and `codex exec`, both verified against installed CLIs. Dry run by DEFAULT. `antigravity` and `gemini` refused with a reason rather than guessed | — |
 | **later** | publish: public + packaging | — |
 
 One branch and PR per stage. **This is a single-stage repo** — the Phase 14 merge *is* the

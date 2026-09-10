@@ -368,6 +368,101 @@ def cmd_board(args) -> int:
     return 0
 
 
+# ------------------------------------------------------------------ dispatch
+
+# Only invocations verified against an installed CLI belong here. A guessed flag produces a command
+# that fails in CI at the least convenient moment, so an unknown agent is refused, never improvised.
+AGENTS = {
+    "claude": ["claude", "-p"],        # verified 2026-09-10, Claude Code 2.1.267
+    "codex": ["codex", "exec"],        # verified 2026-09-10
+}
+UNSUPPORTED = {
+    "antigravity": "a PATH shim reports the real CLI is not installed",
+    "gemini": "no non-interactive invocation confirmed",
+}
+
+
+def skill_root() -> str:
+    """Where the family is installed, not where it was cloned — see SKILL.md."""
+    return os.path.expanduser("~/.claude/skills/dev")
+
+
+def resolve_door(root: str, door: Optional[str]) -> Optional[str]:
+    """`dev` is the root SKILL.md; anything else is a member door."""
+    path = os.path.join(root, "SKILL.md") if door in (None, "dev") \
+        else os.path.join(root, "skills", door, "SKILL.md")
+    return path if os.path.isfile(path) else None
+
+
+def list_doors(root: str) -> List[str]:
+    """A door is a directory holding a SKILL.md — .DS_Store is not a door."""
+    skills = os.path.join(root, "skills")
+    if not os.path.isdir(skills):
+        return []
+    return sorted(d for d in os.listdir(skills)
+                  if os.path.isfile(os.path.join(skills, d, "SKILL.md")))
+
+
+def available_agents() -> List[str]:
+    return [name for name in AGENTS if run(["command", "-v", name])[0] == 0
+            or _which(name)]
+
+
+def _which(name: str) -> bool:
+    for d in os.environ.get("PATH", "").split(os.pathsep):
+        if d and os.path.isfile(os.path.join(d, name)):
+            return True
+    return False
+
+
+def build_prompt(door_path: str, door: str, args: List[str]) -> str:
+    extra = (" Arguments: " + " ".join(args)) if args else ""
+    return ("Read %s and execute it exactly as written, following every phase and gate it "
+            "defines.%s" % (door_path, extra))
+
+
+def build_command(agent: str, prompt: str) -> List[str]:
+    return AGENTS[agent] + [prompt]
+
+
+def cmd_run(args) -> int:
+    root = skill_root()
+    if not os.path.isdir(root):
+        print("skill root not found at %s — run install.sh" % root, file=sys.stderr)
+        return 2
+    door_path = resolve_door(root, args.door)
+    if not door_path:
+        print("no such door: %s\navailable: dev, %s" % (args.door, ", ".join(list_doors(root))),
+              file=sys.stderr)
+        return 2
+
+    agent = args.agent
+    if agent in UNSUPPORTED:
+        print("%s is not supported: %s" % (agent, UNSUPPORTED[agent]), file=sys.stderr)
+        return 2
+    if agent is None:
+        found = available_agents()
+        if not found:
+            print("no supported agent CLI on PATH (%s)" % ", ".join(sorted(AGENTS)), file=sys.stderr)
+            return 2
+        agent = found[0]
+
+    cmd = build_command(agent, build_prompt(door_path, args.door or "dev", args.args))
+    printable = " ".join(cmd[:-1] + ['"%s"' % cmd[-1]])
+    if not args.execute:
+        # Dry run is the DEFAULT: this spawns an agent that can write to the repo, and a command
+        # printed for review is useful, while one run by surprise is not.
+        print(printable)
+        print("\n(dry run — add --execute to actually dispatch)")
+        return 0
+    print("dispatching: %s" % printable, file=sys.stderr)
+    try:
+        return subprocess.run(cmd).returncode
+    except OSError as e:
+        print("could not start %s: %s" % (agent, e), file=sys.stderr)
+        return 2
+
+
 def _gitignore_covers_state(root: str) -> bool:
     code, _ = run(["git", "check-ignore", "-q", os.path.join(STATE_DIR, "x.json")], root)
     return code == 0
@@ -432,6 +527,13 @@ def build_parser() -> argparse.ArgumentParser:
     bd.add_argument("--top", type=int, default=3, help="backlog rows to show")
     bd.add_argument("--milestone", help="the active milestone; its members are the queue")
     bd.set_defaults(func=cmd_board)
+
+    rn = sub.add_parser("run", help="dispatch a door to an agent CLI (dry run by default)")
+    rn.add_argument("door", nargs="?", help="door name, or 'dev' for the full pipeline")
+    rn.add_argument("args", nargs="*", help="arguments passed to the door")
+    rn.add_argument("--agent", choices=sorted(list(AGENTS) + list(UNSUPPORTED)))
+    rn.add_argument("--execute", action="store_true", help="actually dispatch")
+    rn.set_defaults(func=cmd_run)
 
     dr = sub.add_parser("doctor", help="check the environment this family needs")
     dr.set_defaults(func=cmd_doctor)
