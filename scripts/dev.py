@@ -9,6 +9,7 @@ import argparse
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 from typing import Dict, List, Optional, Tuple
@@ -404,15 +405,9 @@ def list_doors(root: str) -> List[str]:
 
 
 def available_agents() -> List[str]:
-    return [name for name in AGENTS if run(["command", "-v", name])[0] == 0
-            or _which(name)]
-
-
-def _which(name: str) -> bool:
-    for d in os.environ.get("PATH", "").split(os.pathsep):
-        if d and os.path.isfile(os.path.join(d, name)):
-            return True
-    return False
+    """`shutil.which`, not `command -v`: that is a shell builtin, and /usr/bin/command exists on
+    macOS but not on the Linux runner CI uses — so the subprocess form works here and fails there."""
+    return [name for name in AGENTS if shutil.which(name)]
 
 
 def build_prompt(door_path: str, door: str, args: List[str]) -> str:

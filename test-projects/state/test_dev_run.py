@@ -94,6 +94,37 @@ class CommandConstruction(unittest.TestCase):
         self.assertEqual(cmd[-1], "a prompt with spaces")
 
 
+class AgentDetection(unittest.TestCase):
+    def test_detection_uses_PATH_not_a_shell_builtin(self):
+        """/usr/bin/command exists on macOS and not on the Linux runner; PATH lookup works on both."""
+        import shutil as _sh
+        from scripts import dev as _dev
+        seen = []
+
+        def fake_which(name):
+            seen.append(name)
+            return "/fake/bin/" + name if name == "claude" else None
+
+        real, _sh.which = _sh.which, fake_which
+        _dev.shutil.which = fake_which
+        try:
+            self.assertEqual(_dev.available_agents(), ["claude"])
+            self.assertEqual(sorted(seen), ["claude", "codex"])
+        finally:
+            _sh.which = real
+            _dev.shutil.which = real
+
+    def test_no_agent_on_path_yields_an_empty_list_not_a_guess(self):
+        import shutil as _sh
+        from scripts import dev as _dev
+        real = _dev.shutil.which
+        _dev.shutil.which = lambda n: None
+        try:
+            self.assertEqual(_dev.available_agents(), [])
+        finally:
+            _dev.shutil.which = real
+
+
 class AgentSupport(unittest.TestCase):
     def test_only_verified_invocations_are_offered(self):
         self.assertEqual(sorted(AGENTS), ["claude", "codex"])

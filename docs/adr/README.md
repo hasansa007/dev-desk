@@ -17,3 +17,5 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0006](0006-ask-for-their-approach-before-showing-yours.md) | The walkthrough gate always asks; the rule governs depth | Accepted |
 | [0007](0007-raise-the-pipeline-line-ceiling-to-988.md) | Raise the pipeline line ceiling to 988, and install the check | Accepted |
 | [0008](0008-replace-the-board-add-the-opportunity-door.md) | Replace the board; add the opportunity door rather than merge it | Accepted |
+| [0009](0009-track-docs-so-an-adr-can-be-part-of-its-own-diff.md) | Track `docs/` so an ADR can be part of the diff that introduces it | Accepted |
+| [0010](0010-paths-point-at-the-install-root.md) | Paths point at the install root, not the clone | Accepted |
