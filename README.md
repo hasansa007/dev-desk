@@ -29,7 +29,7 @@ Bare `/dev` **orients**: it detects where the repo actually is and offers the tw
 
 ![The dev workflow, from discovery to production](assets/dev-journey.png)
 
-*Rendered by [Archify](https://github.com/tt-a1i/archify) from `docs/arch/dev-journey.architecture.json`, where every box is pinned to a real file at a real commit. It shows the linear path; `docs/arch/dev-family.html` has all 20 doors.*
+*Rendered by [Archify](https://github.com/tt-a1i/archify) from `docs/arch/dev-journey.architecture.json`, where every box is pinned to a real file at a real commit. It shows **one** of the four ways in — the discovery path, for a codebase you do not know. Bare `/dev` detects which of the four you are on. `docs/arch/dev-family.html` has all 21 doors.*
 
 ## Commands
 

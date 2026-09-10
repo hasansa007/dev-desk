@@ -2,8 +2,8 @@
  "schema_version": 1,
  "diagram_type": "architecture",
  "meta": {
-  "title": "dev — the order you use it in",
-  "subtitle": "survey → file → pick → build → verify → ship → promote",
+  "title": "dev — the long way round",
+  "subtitle": "one of four entries, from a codebase you do not know · survey → file → pick → build → verify → ship → promote · bare /dev picks yours",
   "quality_profile": "standard",
   "viewBox": [
    1360,
@@ -12,7 +12,7 @@
   "output": "dev-journey.html",
   "repository": {
    "url": "https://github.com/hasansa007/dev-skill",
-   "revision": "f23200da976eb59c21f8c1c7741aef22dc31126f"
+   "revision": "1595ca57d99f7ca417c934f5b06d42b90e99f2a6"
   },
   "animation": "trace"
  },
@@ -21,7 +21,7 @@
    "id": "survey",
    "type": "cloud",
    "label": "1 · dev:survey",
-   "sublabel": "what is wrong?",
+   "sublabel": "what is wrong? start here",
    "pos": [
     40,
     130
