@@ -90,6 +90,18 @@ If nothing declares flows, say so and fall back to **one directory below the sou
 same unit `dev:comment-budget` uses, and for the same reason: it has to be small enough that one surveyor's
 pass fits one context.
 
+**A nested project is not a flow of THIS one.** A tracked directory carrying its own manifest —
+`package.json`, `Package.swift`, `build.gradle`, `pyproject.toml`, `ARCHITECTURE.md`,
+`PROJECT_MAP.md` — is a separate project: a test fixture, an example app, a vendored sample. **Print
+it as excluded, with the manifest that identified it**, and survey it only if asked by name.
+
+> **2026-09-10, found by the verification gate.** This family's own repo tracks
+> `test-projects/e2e-project/`, a complete Next.js app with its own `package.json` and
+> `ARCHITECTURE.md`, used to exercise the doors. `git ls-files` includes it and
+> `src/app/status/page.tsx` is a genuine declared route — so an unguarded run reports a **fixture's**
+> flow as this repo's, and every finding under it is real code that nobody ships. Excluding build
+> output by construction does not exclude a whole application checked in as a test.
+
 **Enumerate with `git ls-files`, never with a directory walk.** Tracked files only means build
 output, vendored trees and anything `.gitignore`d are excluded *by construction* — `node_modules`,
 `dist`, `.next`, `Pods`, `target` — rather than by a blocklist that needs a new entry per ecosystem

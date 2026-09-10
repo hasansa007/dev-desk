@@ -135,14 +135,19 @@ they point, never duplicate.
    where the rule is already written. An addition that removes nothing pays a permanent tax on every
    future task.
 
-## `docs/` is not in the clone — and switching branches deletes it
+## `docs/` IS tracked here — and an untracked/tracked transition deletes files
 
-This repo git-ignores `docs/`, so ADRs (`docs/adr/`), diagrams (`docs/arch/`) and survey reports
-(`docs/survey/`) live on one machine and are not on GitHub. That is a choice **here**; the skills
-themselves write into `docs/` in whatever repo they run in, and check `git check-ignore -q docs/`
-before doing so.
+**Changed 2026-09-10.** This repo previously git-ignored `docs/`, so its ADRs, diagrams and reports
+lived on one machine only. They are now **tracked**: the docs gate requires an ADR to be *part of
+the diff* that introduces the decision, which an ignored path can never satisfy — `0001-adrs-live-in-docs-adr`
+and `0002-diagrams-land-in-the-repo` were both falsified by their own storage.
 
-> **The trap, and it has already fired once.** `git rm --cached` untracks a file and leaves it on
+The skills still write into `docs/` in whatever repo they run in, and still check
+`git check-ignore -q docs/` before doing so — that check exists because the answer differs per repo,
+and it now returns *not ignored* here.
+
+> **The trap works in BOTH directions, and it has fired once.** Moving between a commit where
+> `docs/` is tracked and one where it is not changes the working tree either way. `git rm --cached` untracks a file and leaves it on
 > disk — but a later `git checkout` or `git pull` that moves you from a commit where `docs/` **was**
 > tracked to one where it is not will **delete those files**. Being git-ignored does not protect
 > them; that only applies to files Git was never tracking. On 2026-09-07 the untracking merge
@@ -163,6 +168,12 @@ before doing so.
 > ```bash
 > git restore --source="$(git log -1 --format=%H --diff-filter=D -- docs/adr)^" --worktree -- docs/
 > ```
+>
+> **The current direction, until this lands on `main`.** `docs/` is tracked on
+> `feature/tracker-and-pipeline-state` and untracked on `main`, so checking out `main` from that
+> branch **removes the 16 tracked files from disk**. Unlike 2026-09-07 this is *recoverable* —
+> they are committed on the branch, so switching back restores them — but the removal is still
+> silent. The window closes when the branch merges and `main` tracks them too.
 
 **Anything under `docs/` you want other people to have must be copied somewhere tracked.** The
 journey GIF is the worked example: it lives at `assets/dev-journey.gif` precisely so the README still
