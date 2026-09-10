@@ -12,6 +12,8 @@ git clone https://github.com/hasansa007/dev-skill.git && dev-skill/install.sh
 
 This private repository requires GitHub access. The installer links the checkout into existing skill directories for **Claude Code, Codex, and Antigravity**, skipping missing directories. It is safe to rerun.
 
+**Installing is required, not optional.** Every path inside the family resolves through the install root (`~/.claude/skills/dev/…`), which is what lets it run on any machine regardless of where you cloned it. A clone that has never been installed has no root to resolve against.
+
 Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check the loaded skill list.
 
 ## Start a task
@@ -67,6 +69,22 @@ A full `/dev` run includes these stages. You can also invoke them independently 
 | `/dev:arch` | Generate a diagram tied to verified source locations. Requires Archify. |
 
 See [command examples](documentation/COMMANDS.md) for practical usage and handoffs.
+
+### `dev` — the optional helper
+
+A stdlib-only Python helper for the parts that are computable rather than judged. Every command
+above works without it; when present, the doors use it instead of doing the same work by hand.
+
+| Command | Purpose |
+| --- | --- |
+| `dev doctor` | Check the environment: repo, origin, base branch, `gh` auth, install root. |
+| `dev board [--json]` | Classify open issues into columns from git and `gh`. |
+| `dev state checkpoint\|read\|verify` | Record which pipeline phase a branch reached; `verify` fails when the record disagrees with git. |
+| `dev run <door> [args]` | Dispatch a door to an agent CLI for headless or CI use. Prints the command unless given `--execute`. |
+
+```bash
+python3 ~/.claude/skills/dev/scripts/dev.py doctor
+```
 
 ## Learn more
 
