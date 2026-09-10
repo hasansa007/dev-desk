@@ -23,7 +23,7 @@ Phase 12 states the ceiling outright: *"the check is ACCURACY, not presence."* `
 | Hook | Phase | Event | Verdict |
 |---|---|---|---|
 | `branch-guard.sh` | 3 | PreToolUse `Edit\|Write\|MultiEdit\|NotebookEdit`, and `Bash` for `git commit` | **deny** a write while on `main`/`master`/`staging` |
-| `pr-gates.sh` | 12 · 14 · 16 | PreToolUse `Bash` | **deny** a PR body missing `## PIPELINE`/`## DOCS` · **deny** a push onto a protected ref · **ask** on a merge into prod and on the documented catch-up push |
+| `pr-gates.sh` | 12 · 14 · 16 | PreToolUse `Bash` | **deny** a PR body missing `## PIPELINE`/`## DOCS` · **deny** a push onto a protected ref · **ask** on a merge into prod, on the documented catch-up push, and on `.dev/` phase state that disagrees with git |
 | `teardown.sh` | 11 | Stop | **block the stop** while MCP debug Chrome is alive |
 | `context-load.sh` | 1 | SessionStart | inject PROJECT_MAP's `TECH_STACK` + `ORPHANS` and the branch |
 

@@ -52,6 +52,23 @@ no env/migration, no new module/flow, no deferred work, no doc made stale
 
 override: touch \"$ROOT/.claude/hooks-off\"   (logged)"
   fi
+  # Phase state, WHEN PRESENT, must agree with git. A PR carrying a false phase record is worse
+  # than one carrying none, and this is the last moment being wrong costs anything.
+  # Fires only on STALE: no .dev/ and no dev.py are the prose-fallback path, which must stay
+  # silent or the CLI has stopped being optional. MISSING is not stale — it is unused.
+  DEVPY="$HOME/.claude/skills/dev/scripts/dev.py"
+  if [ -f "$DEVPY" ] && [ -d "$ROOT/.dev" ]; then
+    SV=$(cd "$ROOT" && python3 "$DEVPY" state verify 2>&1)
+    case "$SV" in
+      STALE*) ask state-stale "Phase 14 - .dev/ phase state disagrees with git:
+
+$SV
+
+Git is authoritative; the state file is advisory. Re-checkpoint (dev state checkpoint --phase N)
+or delete the stale file before opening a PR that reports a phase it cannot support." ;;
+      *) log pass "state:${SV%% *}" ;;
+    esac
+  fi
   log pass create
 fi
 

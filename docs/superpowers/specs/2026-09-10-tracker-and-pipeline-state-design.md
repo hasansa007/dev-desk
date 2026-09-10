@@ -201,17 +201,27 @@ algorithm when it is not. This preserves `SKILL.md`'s claim — *"plain markdown
 `gh`"* — and keeps Claude Code, Codex and Antigravity all working. Cost: two paths that must not
 drift; mitigated by both being generated from this spec.
 
-**Commands (v0):** `dev state checkpoint|read|verify` · `dev board [--json]` · `dev doctor`.
+**Commands (v0):** `dev state checkpoint|read|verify` · `dev doctor`. `dev board [--json]` follows.
+
+**It never writes to another repo's `.gitignore`.** `doctor` reports that `.dev/` is unignored and
+prints the line to add; appending it would be this family writing into a repo it does not own,
+which the write-boundary rule forbids without an explicit yes naming that repo.
 
 **Test convention already exists** — verified 2026-09-10. `test-projects/compliance/test_compliance_auditor.py`
 (7 tests) and `test-projects/rollback/test_rollback_engine.py` (5 tests) are 474 lines of stdlib
 `unittest`, run directly as `PYTHONPATH=. python3 <file>`, and **all 12 pass**. Stage 1 follows that
 convention rather than inventing a harness: one test file per script, stdlib only.
 
-⚠️ **But nothing enforces them.** `ci/pr-gates.yml` has a single job — `required-sections`, checking
-the PR body carries `PIPELINE` and `DOCS`. It never runs a test. The suite passes because someone
-runs it by hand, which is exactly the failure mode `dev:audit` exists to catch elsewhere. **Stage 1
-wires the tests into CI**, and that is the honest new infrastructure — not the harness.
+⚠️ **But nothing ran them.** `ci/pr-gates.yml` is **deliberately uninstalled** — its own header says
+so, because its `required-sections` job would fail every PR opened against this repo, which are not
+pipeline runs. This repo's real CI was one workflow, `.github/workflows/line-budget.yml`, installed
+on its own after four consecutive ceiling breaches. No workflow ran a test, so the suite passed only
+when someone remembered to — the failure mode `dev:audit` exists to catch elsewhere.
+
+**Fixed 2026-09-10:** `.github/workflows/tests.yml`, installed on its own per the same convention.
+It *discovers* `test-projects/*/test_*.py` rather than listing them, so it keeps covering whatever
+is added next, and pins Python 3.9 — what macOS ships as system `python3`, and the version these
+stdlib-only scripts must actually run on.
 
 ---
 
@@ -370,7 +380,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 | Stage | Ships | Blocks |
 |---|---|---|
 | **0 — Portability** | ✅ paths → install path (31 occurrences, 13 files). `LICENSE` deferred with publishing | **everything** — doors written after are portable from birth |
-| **1 — CLI v0** | `dev state`/`board`/`doctor`, stdlib only, tests per the existing convention, **+ CI wired to run them**; `pr-gates.sh` calls `dev state verify` | Stage 2's phase column; `--continue` |
+| **1 — CLI v0** | ✅ `dev state` + `doctor` (`scripts/dev.py`, stdlib, 15 tests) · ✅ CI runs all 3 suites · ✅ `pr-gates.sh` asks on STALE state. **`dev board` still to come** — it carries the epic task-list parse and needs its own fixtures | Stage 2's phase column; `--continue` |
 | **2 — `dev:kanban`** | retires `dev:issues`; two axes, write set, terminators | — |
 | **3 — `dev:ideation`** | retires `dev:survey`; opportunities mode. Independent of the CLI | — |
 | **4 — `dev:roadmap`** | milestones + epics; **`queue` becomes real here** | — |

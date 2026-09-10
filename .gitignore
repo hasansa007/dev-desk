@@ -9,3 +9,6 @@
 # Per-machine Claude Code settings, not project config: the file here holds only
 # outputStyle, which is a local editor preference and differs per clone.
 .claude/settings.local.json
+
+# Per-branch pipeline state — machine-local; git is authoritative for anything that matters.
+.dev/
