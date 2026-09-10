@@ -41,6 +41,20 @@ is absent, do Phases 3–5 by hand from the prose below** — the CLI is optiona
 work without it. Never report a number the CLI gave you as if you had checked it, and never skip a
 rule below because you assume the CLI applied it.
 
+### Optional — mirror to a GitHub Project v2 board
+
+If you want a draggable board on github.com, `dev project --number N` pushes the columns computed
+here into that project's Status field.
+
+**The project MIRRORS; it never decides.** Columns are computed from `git` and `gh` as always, then
+written outward. Project status is **never read back as truth** — a stored value that can disagree
+with git is precisely the class of bug 4.4's precedence rule exists to prevent, and a board is more
+convincing than a state file because you can drag it.
+
+Dry run by default. It refuses to invent a Status option that does not exist: an unmappable column
+is reported, not guessed. Needs `gh auth refresh -s project`; without it the adapter says so and
+everything else works unchanged.
+
 ## Phase 1 — Arguments
 
 | Token | Meaning | Default |

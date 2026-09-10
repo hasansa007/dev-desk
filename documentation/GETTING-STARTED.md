@@ -181,6 +181,11 @@ The board's columns are computed from `git` and `gh` every run, so they cannot g
 checkpointed its phase into `.dev/`, the card also shows `planning` / `coding` / `validation` — but
 **git wins any disagreement**, and no state file means no phase claim at all.
 
+If you want a **visual** board, `dev project --number N` mirrors these columns into a GitHub
+Projects v2 board on github.com. It only ever writes outward — the columns are still computed from
+git each run, so the project cannot become a second source of truth. Needs
+`gh auth refresh -s project`.
+
 From the board you can move a card, cancel it with a reason, or delete it — delete asks you to
 confirm against the printed `owner/repo#N` and refuses outright when a merged PR references the
 issue or when an epic still has open children.

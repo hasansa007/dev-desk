@@ -369,6 +369,148 @@ def cmd_board(args) -> int:
     return 0
 
 
+# ------------------------------------------------- GitHub Projects v2 adapter
+
+# The board MIRRORS; it never decides. Columns are computed from git and gh, then pushed here.
+# Project status is never read back as truth — a stored value that can disagree with git is exactly
+# the class of bug the precedence rule exists to prevent.
+STATUS_CANDIDATES = {
+    "backlog": ["backlog", "todo", "to do", "no status"],
+    "queue": ["queue", "queued", "ready", "next", "todo"],
+    "in_progress": ["in progress", "in-progress", "doing", "wip"],
+    "pr_created": ["in review", "review", "pr open"],
+    "human_review": ["in review", "review", "needs review"],
+    "done": ["done", "closed", "shipped"],
+    "deferred": ["blocked", "deferred", "on hold", "icebox"],
+}
+
+
+def find_status_field(fields: List[Dict]) -> Optional[Dict]:
+    """The single-select field a Project uses for columns; GitHub names it Status by default."""
+    for f in fields:
+        if f.get("type") == "ProjectV2SingleSelectField" and f.get("name", "").lower() == "status":
+            return f
+    for f in fields:
+        if f.get("type") == "ProjectV2SingleSelectField":
+            return f
+    return None
+
+
+def match_option(column: str, options: List[Dict]) -> Optional[Dict]:
+    """Map one of our columns onto a Status option by name. Never invents an option."""
+    by_name = {o.get("name", "").strip().lower(): o for o in options}
+    for candidate in STATUS_CANDIDATES.get(column, []):
+        if candidate in by_name:
+            return by_name[candidate]
+    return None
+
+
+def plan_project_sync(board: Dict, items: List[Dict], options: List[Dict]) -> Dict:
+    """Pure: computed board + current project items in, the edits needed out.
+
+    Returns `edits` (item id → option), `unmapped` (columns with no matching option), and
+    `absent` (issues on the board that are not items in the project).
+    """
+    want: Dict[int, str] = {}
+    for column, rows in board.get("columns", {}).items():
+        for row in rows:
+            want[row["number"]] = column
+
+    by_number = {}
+    for it in items:
+        content = it.get("content") or {}
+        n = content.get("number")
+        if n is not None:
+            by_number[n] = it
+
+    edits, unmapped, absent = [], set(), []
+    for number, column in sorted(want.items()):
+        item = by_number.get(number)
+        if item is None:
+            absent.append(number)
+            continue
+        option = match_option(column, options)
+        if option is None:
+            unmapped.add(column)
+            continue
+        if (item.get("status") or "").strip().lower() != option["name"].strip().lower():
+            edits.append({"number": number, "item_id": item.get("id"),
+                          "from": item.get("status") or "(none)",
+                          "to": option["name"], "option_id": option.get("id")})
+    return {"edits": edits, "unmapped": sorted(unmapped), "absent": absent}
+
+
+def cmd_project(args) -> int:
+    root = repo_root()
+    if not root:
+        print("not a git repository", file=sys.stderr)
+        return 2
+    slug = remote_slug()
+    owner = slug.split("/")[0] if slug else None
+    if not owner:
+        print("no origin remote — cannot resolve the project owner", file=sys.stderr)
+        return 2
+
+    projects = _gh_json(["project", "list", "--owner", owner, "--format", "json"])
+    if projects is None:
+        # The scope is the usual cause and the message must say so, not read as "no projects".
+        print("could not list projects for %s.\n"
+              "If this is a scope problem: gh auth refresh -s project\n"
+              "The board works without a project — this adapter is optional." % owner,
+              file=sys.stderr)
+        return 2
+    plist = projects.get("projects", projects if isinstance(projects, list) else [])
+    if not plist:
+        print("%s has no Projects v2 boards. Nothing to mirror to." % owner)
+        return 0
+    if args.number is None:
+        for p in plist:
+            print("  #%-4s %-40s %s items" % (p.get("number"), p.get("title", "")[:40],
+                                              p.get("items", {}).get("totalCount", "?")))
+        print("\npick one with --number N")
+        return 0
+
+    fields = _gh_json(["project", "field-list", str(args.number), "--owner", owner,
+                       "--format", "json"]) or {}
+    status = find_status_field(fields.get("fields", []))
+    if status is None:
+        print("project #%s has no single-select Status field to mirror into" % args.number,
+              file=sys.stderr)
+        return 2
+    items = _gh_json(["project", "item-list", str(args.number), "--owner", owner,
+                      "--format", "json"]) or {}
+
+    board = build_board(_gh_json(["issue", "list", "--state", "open", "--limit", "200", "--json",
+                                  "number,title,labels,updatedAt,milestone,body"]) or [], {},
+                        args.milestone)
+    plan = plan_project_sync(board, items.get("items", []), status.get("options", []))
+
+    for e in plan["edits"]:
+        print("  #%-5s %-14s → %s" % (e["number"], e["from"], e["to"]))
+    for c in plan["unmapped"]:
+        print("  column %r has no matching Status option — not guessing one" % c, file=sys.stderr)
+    if plan["absent"]:
+        print("  not in the project: %s" % ", ".join("#%d" % n for n in plan["absent"]))
+    if not plan["edits"]:
+        print("  project already matches the computed board")
+        return 0
+    if not args.apply:
+        print("\n(dry run — add --apply to write %d change(s) to the project)" % len(plan["edits"]))
+        return 0
+
+    pid = next((p.get("id") for p in plist if str(p.get("number")) == str(args.number)), None)
+    failed = 0
+    for e in plan["edits"]:
+        code, _ = run(["gh", "project", "item-edit", "--id", e["item_id"], "--project-id", pid,
+                       "--field-id", status.get("id"),
+                       "--single-select-option-id", e["option_id"]])
+        if code != 0:
+            print("  FAILED #%s" % e["number"], file=sys.stderr)
+            failed += 1
+    print("  wrote %d, failed %d" % (len(plan["edits"]) - failed, failed))
+    return 1 if failed else 0
+
+
 # ------------------------------------------------------------------ dispatch
 
 # Only invocations verified against an installed CLI belong here. A guessed flag produces a command
@@ -482,16 +624,25 @@ def cmd_doctor(args) -> int:
     ok_py = sys.version_info >= (3, 8)
     rows.append(("python", ok_py, sys.version.split()[0]))
 
-    skill_root = os.path.expanduser("~/.claude/skills/dev")
-    have_skill = os.path.isdir(skill_root)
+    root_dir = skill_root()
+    have_skill = os.path.isdir(root_dir)
     rows.append(("skill root", have_skill,
-                 skill_root if have_skill else "not installed — run install.sh"))
+                 root_dir if have_skill else "not installed — run install.sh"))
 
     failed = 0
     for name, ok, detail in rows:
         if not ok:
             failed += 1
         print("%-15s %-4s %s" % (name, "ok" if ok else "WARN", detail))
+
+    # Optional capabilities are REPORTED, never counted as failures — the family works without
+    # every one of them, and a doctor that fails on an unused extra is a doctor people stop running.
+    owner = (remote_slug() or "/").split("/")[0]
+    has_projects = owner and run(["gh", "project", "list", "--owner", owner,
+                                  "--format", "json"])[0] == 0
+    print("%-15s %-4s %s" % ("projects v2", "--",
+                             "available — `dev project` can mirror the board" if has_projects
+                             else "not available (optional; needs `gh auth refresh -s project`)"))
     return 1 if failed else 0
 
 
@@ -529,6 +680,12 @@ def build_parser() -> argparse.ArgumentParser:
     rn.add_argument("--agent", choices=sorted(list(AGENTS) + list(UNSUPPORTED)))
     rn.add_argument("--execute", action="store_true", help="actually dispatch")
     rn.set_defaults(func=cmd_run)
+
+    pj = sub.add_parser("project", help="mirror the computed board into a GitHub Project v2")
+    pj.add_argument("--number", type=int, help="project number; omit to list")
+    pj.add_argument("--milestone", help="the active milestone; its members are the queue")
+    pj.add_argument("--apply", action="store_true", help="actually write; default is a dry run")
+    pj.set_defaults(func=cmd_project)
 
     dr = sub.add_parser("doctor", help="check the environment this family needs")
     dr.set_defaults(func=cmd_doctor)

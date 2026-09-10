@@ -132,8 +132,10 @@ Without this, a card reading "validation" for a branch deleted last week is wors
 
 ## 4. Backing
 
-- **No GitHub Project v2 board.** No `project` token scope, nothing provisioned per repo, board
-  reconstructable from scratch anywhere.
+- **No GitHub Project v2 board as a source of truth.** ~~No adapter at all~~ — **amended by ADR
+  0011 (2026-09-11):** `dev project` mirrors the computed columns *outward* to a Projects v2
+  board. It is write-only, dry-run by default, and optional; the board is still reconstructable
+  from scratch anywhere, because nothing reads the project back as truth.
 - **`queue` = active-milestone membership.** `dev:roadmap` §6 writes milestones anyway, so
   milestone-awareness costs nothing extra. Note milestones are currently a void: the only
   occurrence of "milestone" in the real files is `SKILL.md:90`, which fetches the field and never

@@ -17,7 +17,7 @@ small deterministic helper.
 |---|---|
 | Doors | 21 × `skills/<name>/SKILL.md`, plus the root `SKILL.md` |
 | Shared contracts | `shared/entry.md` (workspace + write boundary), `shared/pipeline.md` (17 phases; 11–14 each have a door), `shared/pipeline-{web,ios,android,kmp}.md`, `shared/prod-secrets*.md` |
-| Helper CLI | `scripts/dev.py` — **stdlib only**, Python 3.9-compatible. `state` · `board` · `run` · `doctor` |
+| Helper CLI | `scripts/dev.py` — **stdlib only**, Python 3.9-compatible. `state` · `board` · `run` · `doctor` · `project` |
 | Compliance | `scripts/compliance_auditor.py` — stdlib only |
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
 | Tests | stdlib `unittest`, one file per script under `test-projects/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
@@ -83,6 +83,7 @@ its decision. Skills still probe `git check-ignore -q docs/` per repo, because t
 - **No `epic` label** in this tracker, so `dev:kanban` 4.1's epic-progress logic cannot fire.
   `dev:roadmap` Phase 6 offers to create it; nothing creates it silently.
 - **No `roadmap-declined` label**, so the declined-theme round trip is untested.
+- **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
 - **0 open issues, 0 milestones** — every board render so far has been of an empty tracker.
 
 **Deferred deliberately:**
