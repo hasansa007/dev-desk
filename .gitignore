@@ -2,3 +2,6 @@
 
 # docs/ IS tracked: the docs gate requires an ADR to be part of the diff that
 # introduces the decision, which an ignored path can never be.
+
+# Third-party agent framework working directory — not part of this family, holds credentials.
+.auto-claude/
