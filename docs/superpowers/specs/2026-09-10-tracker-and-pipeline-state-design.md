@@ -201,7 +201,13 @@ algorithm when it is not. This preserves `SKILL.md`'s claim — *"plain markdown
 `gh`"* — and keeps Claude Code, Codex and Antigravity all working. Cost: two paths that must not
 drift; mitigated by both being generated from this spec.
 
-**Commands (v0):** `dev state checkpoint|read|verify` · `dev doctor`. `dev board [--json]` follows.
+**Commands (v0):** `dev state checkpoint|read|verify` · `dev doctor` · `dev board [--json]`.
+
+`board` is pure at its core — issues plus per-issue git facts in, columns out — so every
+classification rule is tested against fixtures rather than a live tracker. The fixture that matters
+most reproduces the 2026-08-05 shape exactly: an epic body with four `- [ ] #N` children plus the
+same unrelated roadmap issue referenced twice in prose. A bare `#N` grep returns five and reports
+`1/5`; the task-list parse returns four and reports `0/4`.
 
 **It never writes to another repo's `.gitignore`.** `doctor` reports that `.dev/` is unignored and
 prints the line to add; appending it would be this family writing into a repo it does not own,
@@ -380,7 +386,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 | Stage | Ships | Blocks |
 |---|---|---|
 | **0 — Portability** | ✅ paths → install path (31 occurrences, 13 files). `LICENSE` deferred with publishing | **everything** — doors written after are portable from birth |
-| **1 — CLI v0** | ✅ `dev state` + `doctor` (`scripts/dev.py`, stdlib, 15 tests) · ✅ CI runs all 3 suites · ✅ `pr-gates.sh` asks on STALE state. **`dev board` still to come** — it carries the epic task-list parse and needs its own fixtures | Stage 2's phase column; `--continue` |
+| **1 — CLI v0** | ✅ complete. `dev state` · `doctor` · `board` (`scripts/dev.py`, stdlib, 41 tests) · CI runs all 4 suites · `pr-gates.sh` asks on STALE state | Stage 2's phase column; `--continue` |
 | **2 — `dev:kanban`** | retires `dev:issues`; two axes, write set, terminators | — |
 | **3 — `dev:ideation`** | retires `dev:survey`; opportunities mode. Independent of the CLI | — |
 | **4 — `dev:roadmap`** | milestones + epics; **`queue` becomes real here** | — |
