@@ -514,6 +514,211 @@ def cmd_project(args) -> int:
     return 1 if failed else 0
 
 
+
+# ------------------------------------------------------------------------ ui
+
+# ui/ is GENERATED OUTPUT, never an input. Nothing in this family reads it back — it is a snapshot
+# of what the doors computed, the same relationship docs/arch/*.html has to its IR. Every file
+# carries the commit it was built from, so a stale one is visible rather than assumed fresh.
+UI_DIR = "ui"
+UI_SURFACES = ("board", "roadmap", "ideation", "insights")
+
+
+def _headings(md: str) -> List[Dict]:
+    """Split a markdown document on its ## headings. Structure only — never interprets prose."""
+    out, current = [], None
+    for line in md.splitlines():
+        if line.startswith("## "):
+            current = {"heading": line[3:].strip(), "lines": []}
+            out.append(current)
+        elif current is not None and line.strip():
+            current["lines"].append(line.rstrip())
+    return out
+
+
+def collect_board(root: str, milestone: Optional[str] = None) -> Dict:
+    issues = _gh_json(["issue", "list", "--state", "open", "--limit", "200",
+                       "--json", "number,title,labels,updatedAt,milestone,body"])
+    if issues is None:
+        return {"unavailable": "could not read issues — is gh authenticated?"}
+    facts: Dict[int, Dict] = {}
+    base = resolve_base()
+    code, out = run(["git", "branch", "--format=%(refname:short)"])
+    branches = out.splitlines() if code == 0 else []
+    for issue in issues:
+        n = issue["number"]
+        match = next((b for b in branches
+                      if re.match(r"^(gh-)?%d(-|$)" % n, b) or ("/%d-" % n) in b), None)
+        f: Dict = {}
+        if match and base:
+            c, cnt = run(["git", "rev-list", "--count", "%s..%s" % (base, match)])
+            f["unmerged"] = int(cnt) if c == 0 and cnt.isdigit() else 0
+            st = load_state(root, match)
+            if st:
+                f["phase_group"] = st.get("phase_group")
+        facts[n] = f
+    return build_board(issues, facts, milestone)
+
+
+def collect_roadmap() -> Dict:
+    slug = remote_slug() or "/"
+    ms = _gh_json(["api", "repos/%s/milestones" % slug,
+                   "--jq", "[.[] | {title, open: .open_issues, closed: .closed_issues, due: .due_on}]"])
+    if ms is None:
+        return {"unavailable": "could not read milestones"}
+    epics = _gh_json(["issue", "list", "--state", "open", "--label", "epic",
+                      "--json", "number,title,milestone,body"]) or []
+    for e in epics:
+        done, total = epic_progress(parse_epic_children(e.get("body", "")))
+        e["progress"] = {"done": done, "total": total}
+        e.pop("body", None)
+    return {"milestones": ms, "epics": epics}
+
+
+def collect_reports(root: str, kind: str) -> Dict:
+    """Structured output if the door wrote it; otherwise an index of the dated reports."""
+    d = os.path.join(root, "docs", kind)
+    if not os.path.isdir(d):
+        return {"reports": [], "note": "no docs/%s/ yet — run dev:%s" % (kind, kind)}
+    reports = []
+    for name in sorted(os.listdir(d), reverse=True):
+        path = os.path.join(d, name)
+        if name.endswith(".json"):
+            try:
+                with open(path, encoding="utf-8") as fh:
+                    reports.append({"file": name, "structured": True, "data": json.load(fh)})
+                continue
+            except (OSError, ValueError):
+                pass
+        if name.endswith(".md"):
+            reports.append({"file": name, "structured": False,
+                            "sections": [h["heading"] for h in
+                                         _headings(open(path, encoding="utf-8").read())]})
+    return {"reports": reports}
+
+
+def collect_insights(root: str) -> Dict:
+    p = os.path.join(root, "PROJECT_MAP.md")
+    if not os.path.isfile(p):
+        return {"unavailable": "no PROJECT_MAP.md — run dev:insights"}
+    with open(p, encoding="utf-8") as fh:
+        return {"sections": _headings(fh.read())}
+
+
+def render_ui_html(surface: str, data: Dict, meta: Dict) -> str:
+    """One self-contained file per surface. No network, no build step, no dependencies."""
+    body = []
+    if data.get("unavailable"):
+        body.append('<p class="empty">%s</p>' % _esc(data["unavailable"]))
+    elif surface == "board":
+        for col, rows in data.get("columns", {}).items():
+            body.append('<section><h2>%s <span class="n">%d</span></h2>'
+                        % (_esc(col.replace("_", " ").upper()), len(rows)))
+            body.append("".join(
+                '<article><b>#%s</b> %s%s</article>'
+                % (r["number"], _esc(r["title"]),
+                   '<em>%s · advisory</em>' % _esc(r["phase"]) if r.get("phase") else "")
+                for r in rows) or '<p class="empty">nothing here</p>')
+            body.append("</section>")
+    elif surface == "roadmap":
+        body.append('<section><h2>MILESTONES</h2>')
+        body.append("".join('<article><b>%s</b> %s open / %s closed</article>'
+                            % (_esc(m.get("title", "")), m.get("open"), m.get("closed"))
+                            for m in data.get("milestones", [])) or '<p class="empty">none</p>')
+        body.append('</section><section><h2>EPICS</h2>')
+        body.append("".join('<article><b>#%s</b> %s <em>%s/%s</em></article>'
+                            % (e["number"], _esc(e["title"]),
+                               e["progress"]["done"], e["progress"]["total"])
+                            for e in data.get("epics", [])) or '<p class="empty">none</p>')
+        body.append("</section>")
+    elif surface in ("ideation", "survey"):
+        body.append('<section><h2>REPORTS</h2>')
+        body.append("".join('<article><b>%s</b> <em>%s</em></article>'
+                            % (_esc(r["file"]),
+                               "structured" if r["structured"] else _esc(", ".join(r.get("sections", []))[:120]))
+                            for r in data.get("reports", []))
+                    or '<p class="empty">%s</p>' % _esc(data.get("note", "none")))
+        body.append("</section>")
+    else:
+        for s in data.get("sections", []):
+            body.append('<section><h2>%s</h2><pre>%s</pre></section>'
+                        % (_esc(s["heading"]), _esc("\n".join(s["lines"][:40]))))
+
+    return UI_TEMPLATE % {
+        "surface": _esc(surface),
+        "repo": _esc(meta.get("repo") or ""),
+        "commit": _esc((meta.get("commit") or "")[:8]),
+        "at": _esc(meta.get("generated_at") or ""),
+        "body": "".join(body),
+    }
+
+
+def _esc(s) -> str:
+    return (str(s).replace("&", "&amp;").replace("<", "&lt;")
+            .replace(">", "&gt;").replace('"', "&quot;"))
+
+
+UI_TEMPLATE = """<!doctype html>
+<meta charset="utf-8"><title>dev · %(surface)s</title>
+<style>
+:root{color-scheme:dark}
+body{margin:0;padding:2rem;background:#0d0f12;color:#e6e8eb;
+     font:14px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+header{display:flex;gap:1rem;align-items:baseline;margin-bottom:1.5rem}
+h1{font-size:1.1rem;margin:0;color:#e9f07a}
+.meta{color:#6b7280;font-size:.8rem}
+.wrap{display:flex;gap:1rem;align-items:flex-start;flex-wrap:wrap}
+section{flex:1 1 260px;min-width:260px;background:#14171c;border:1px solid #232830;
+        border-radius:10px;padding:.75rem}
+h2{font-size:.75rem;letter-spacing:.08em;color:#9aa3af;margin:0 0 .6rem}
+.n{color:#6b7280}
+article{background:#1a1e25;border:1px solid #232830;border-radius:7px;
+        padding:.5rem .6rem;margin-bottom:.4rem}
+article b{color:#e9f07a;font-weight:600}
+article em{display:block;color:#6b7280;font-style:normal;font-size:.75rem;margin-top:.2rem}
+.empty{color:#4b5563;font-size:.8rem;margin:.2rem 0}
+pre{white-space:pre-wrap;color:#9aa3af;font-size:.78rem;margin:0}
+footer{margin-top:2rem;color:#4b5563;font-size:.75rem}
+</style>
+<header><h1>dev · %(surface)s</h1>
+<span class="meta">%(repo)s · built from %(commit)s · %(at)s</span></header>
+<div class="wrap">%(body)s</div>
+<footer>Generated by <code>dev ui</code>. Never read back as truth — regenerate rather than trust.</footer>
+"""
+
+
+def cmd_ui(args) -> int:
+    root = repo_root()
+    if not root:
+        print("not a git repository", file=sys.stderr)
+        return 2
+    meta = {"repo": remote_slug(), "commit": head_sha(), "generated_at": now()}
+    out_dir = os.path.join(root, UI_DIR)
+    os.makedirs(out_dir, exist_ok=True)
+
+    surfaces = [args.surface] if args.surface else list(UI_SURFACES)
+    for s in surfaces:
+        if s == "board":
+            data = collect_board(root, args.milestone)
+        elif s == "roadmap":
+            data = collect_roadmap()
+        elif s == "ideation":
+            data = collect_reports(root, "ideation")
+        else:
+            data = collect_insights(root)
+        payload = dict(meta)
+        payload["surface"] = s
+        payload["data"] = data
+        with open(os.path.join(out_dir, s + ".json"), "w", encoding="utf-8") as fh:
+            json.dump(payload, fh, indent=2, sort_keys=True)
+            fh.write("\n")
+        with open(os.path.join(out_dir, s + ".html"), "w", encoding="utf-8") as fh:
+            fh.write(render_ui_html(s, data, meta))
+        note = data.get("unavailable") or data.get("note") or "ok"
+        print("  %-9s %s/%s.html  %s" % (s, UI_DIR, s, note))
+    print("\nopen %s/board.html — regenerate with `dev ui`, never edit by hand" % UI_DIR)
+    return 0
+
 # ------------------------------------------------------------------ dispatch
 
 # Only invocations verified against an installed CLI belong here. A guessed flag produces a command
@@ -683,6 +888,11 @@ def build_parser() -> argparse.ArgumentParser:
     rn.add_argument("--agent", choices=sorted(list(AGENTS) + list(UNSUPPORTED)))
     rn.add_argument("--execute", action="store_true", help="actually dispatch")
     rn.set_defaults(func=cmd_run)
+
+    ui = sub.add_parser("ui", help="regenerate ui/<surface>.json + .html")
+    ui.add_argument("surface", nargs="?", choices=list(UI_SURFACES))
+    ui.add_argument("--milestone", help="the active milestone; its members are the queue")
+    ui.set_defaults(func=cmd_ui)
 
     pj = sub.add_parser("project", help="mirror the computed board into a GitHub Project v2")
     pj.add_argument("--number", type=int, help="project number; omit to list")

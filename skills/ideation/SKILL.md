@@ -211,6 +211,11 @@ Ask before filing anything. Then, for the confirmed set:
   so when handing off: a tracker that fills with improvements while defects wait is one nobody
   trusts.
 
+**Write the structured twin.** Alongside `docs/ideation/<date>.md`, write `docs/ideation/<date>.json`
+with the same findings — verdict, `file:line`, gain, cost. The markdown is the human artifact and the
+JSON is what `dev ui ideation` renders; **generate the markdown FROM the JSON** so the two cannot
+disagree. Then offer `dev ui ideation`.
+
 ## Never
 
 - **Never implement.** Not a fix, not a rename, not an obvious one-liner. Suggest only.

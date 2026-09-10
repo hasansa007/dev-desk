@@ -278,6 +278,10 @@ queue records what was *decided*, and a decided order is never silently re-sorte
 is indistinguishable from one closed by accident, and `dev:roadmap` reads these back so a declined
 direction is not re-proposed next quarter.
 
+**After any write, offer to refresh the snapshot:** `dev ui board` regenerates `ui/board.html`.
+It is generated output — never edit it, and never read it back as truth. Offer; do not run it
+unasked, because this door's contract is that writes are bounded and named.
+
 ### 7.1 — An epic's children come first
 
 Before cancelling or deleting anything labelled `epic`, enumerate its children (4.1's parse) and

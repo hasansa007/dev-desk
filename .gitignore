@@ -12,3 +12,8 @@
 
 # Per-branch pipeline state — machine-local; git is authoritative for anything that matters.
 .dev/
+
+# Generated status snapshots — `dev ui` rebuilds them from git and gh in one command.
+# Tracking them would put a churning file in every diff and invite someone to trust a
+# committed copy over the live query.
+ui/

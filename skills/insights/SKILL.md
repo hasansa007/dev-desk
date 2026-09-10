@@ -139,6 +139,9 @@ then offer the correction.
 **A stale map is worse than an absent one** — the same reason `dev:docs` exists. Absent, the
 pipeline explores; stale, it skips exploring an area it has been told is covered.
 
+**After folding, offer `dev ui insights`** — it regenerates `ui/insights.html` from
+`PROJECT_MAP.md`'s sections. Generated output, never an input.
+
 ## Phase 6 — Ask next
 
 `shared/entry.md` → *Never end silently*.
