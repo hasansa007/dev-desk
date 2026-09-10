@@ -716,7 +716,15 @@ def cmd_ui(args) -> int:
             fh.write(render_ui_html(s, data, meta))
         note = data.get("unavailable") or data.get("note") or "ok"
         print("  %-9s %s/%s.html  %s" % (s, UI_DIR, s, note))
-    print("\nopen %s/board.html — regenerate with `dev ui`, never edit by hand" % UI_DIR)
+    first = os.path.join(out_dir, (surfaces[0] if args.surface else "board") + ".html")
+    if args.open:
+        # stdlib, so it works on macOS, Linux and Windows without a platform switch
+        import webbrowser
+        webbrowser.open("file://" + first)
+        print("\nopened %s" % os.path.relpath(first, root))
+    else:
+        print("\n%s — add --open to launch it; regenerate, never edit by hand"
+              % os.path.relpath(first, root))
     return 0
 
 # ------------------------------------------------------------------ dispatch
@@ -892,6 +900,7 @@ def build_parser() -> argparse.ArgumentParser:
     ui = sub.add_parser("ui", help="regenerate ui/<surface>.json + .html")
     ui.add_argument("surface", nargs="?", choices=list(UI_SURFACES))
     ui.add_argument("--milestone", help="the active milestone; its members are the queue")
+    ui.add_argument("--open", action="store_true", help="open the result in a browser")
     ui.set_defaults(func=cmd_ui)
 
     pj = sub.add_parser("project", help="mirror the computed board into a GitHub Project v2")

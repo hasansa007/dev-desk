@@ -93,6 +93,15 @@ above works without it; when present, the doors use it instead of doing the same
 python3 ~/.claude/skills/dev/scripts/dev.py doctor
 ```
 
+`dev` in the table above is shorthand — nothing installs it on your `PATH`. To type it as written,
+add one line to your shell profile:
+
+```bash
+alias dev='python3 ~/.claude/skills/dev/scripts/dev.py'
+```
+
+Then the UI is one command: `dev ui --open` regenerates all four surfaces and opens the board.
+
 ## Learn more
 
 - [Getting started](documentation/GETTING-STARTED.md) — first install, first run, and the four situations.

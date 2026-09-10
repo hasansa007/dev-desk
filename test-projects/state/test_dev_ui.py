@@ -103,6 +103,48 @@ class OtherSurfaces(unittest.TestCase):
         self.assertIn("python", html)
 
 
+class OpenFlag(unittest.TestCase):
+    def test_open_hands_a_file_url_to_the_browser_and_nothing_else(self):
+        """--open must use stdlib webbrowser with a file:// URL — no shell, no platform switch."""
+        import argparse, tempfile, subprocess, webbrowser
+        from scripts import dev as _dev
+        d = tempfile.mkdtemp()
+        subprocess.run(["git", "init", "-q", d], check=True)
+        seen = []
+        real_open, real_collect = webbrowser.open, _dev.collect_board
+        webbrowser.open = lambda url: seen.append(url) or True
+        _dev.collect_board = lambda root, milestone=None: {"columns": {}}
+        cwd = os.getcwd()
+        try:
+            os.chdir(d)
+            rc = _dev.cmd_ui(argparse.Namespace(surface="board", milestone=None, open=True))
+        finally:
+            os.chdir(cwd)
+            webbrowser.open, _dev.collect_board = real_open, real_collect
+        self.assertEqual(rc, 0)
+        self.assertEqual(len(seen), 1)
+        self.assertTrue(seen[0].startswith("file://"))
+        self.assertTrue(seen[0].endswith("ui/board.html"))
+
+    def test_without_open_nothing_is_launched(self):
+        import argparse, tempfile, subprocess, webbrowser
+        from scripts import dev as _dev
+        d = tempfile.mkdtemp()
+        subprocess.run(["git", "init", "-q", d], check=True)
+        seen = []
+        real_open, real_collect = webbrowser.open, _dev.collect_board
+        webbrowser.open = lambda url: seen.append(url) or True
+        _dev.collect_board = lambda root, milestone=None: {"columns": {}}
+        cwd = os.getcwd()
+        try:
+            os.chdir(d)
+            _dev.cmd_ui(argparse.Namespace(surface="board", milestone=None, open=False))
+        finally:
+            os.chdir(cwd)
+            webbrowser.open, _dev.collect_board = real_open, real_collect
+        self.assertEqual(seen, [])
+
+
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=0).result
     total = result.testsRun

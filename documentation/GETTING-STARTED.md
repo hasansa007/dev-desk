@@ -181,6 +181,22 @@ The board's columns are computed from `git` and `gh` every run, so they cannot g
 checkpointed its phase into `.dev/`, the card also shows `planning` / `coding` / `validation` — but
 **git wins any disagreement**, and no state file means no phase claim at all.
 
+### Seeing it in a browser — no setup
+
+```bash
+python3 ~/.claude/skills/dev/scripts/dev.py ui --open
+```
+
+That regenerates four local pages — `ui/board.html`, `ui/roadmap.html`, `ui/ideation.html`,
+`ui/insights.html` — and opens the board. Self-contained files: no server, no network, no account.
+Add `alias dev='python3 ~/.claude/skills/dev/scripts/dev.py'` to your shell profile and it is just
+`dev ui --open`.
+
+**They are a snapshot, not the source.** Each page shows the commit it was built from; run `dev ui`
+again to refresh. Nothing reads them back, so a stale page can never change what the board says.
+After `dev:kanban`, `dev:roadmap`, `dev:ideation` or `dev:insights` writes something, it offers to
+regenerate the matching page.
+
 ### Seeing it as a real board on github.com
 
 The board above is text. If you want a draggable one, `dev project` mirrors the same columns into a
