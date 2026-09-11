@@ -4,6 +4,8 @@ import SwiftUI
 struct ProjectWindow: View {
     let ref: ProjectRef
     @State private var model: ProjectWindowModel
+    /// This window's shells; closing the window or quitting ends them.
+    @State private var terminals: ShellTerminalRegistry
     @State private var layoutRestored = false
     @Environment(OpenProjectRegistry.self) private var registry
     @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
@@ -15,7 +17,9 @@ struct ProjectWindow: View {
 
     init(ref: ProjectRef) {
         self.ref = ref
-        _model = State(initialValue: ProjectWindowModel(ref: ref, source: DataSources.make(for: ref)))
+        let model = ProjectWindowModel(ref: ref, source: DataSources.make(for: ref))
+        _model = State(initialValue: model)
+        _terminals = State(initialValue: ShellTerminalRegistry(sessions: model.shellSessions))
     }
 
     var body: some View {
@@ -32,10 +36,12 @@ struct ProjectWindow: View {
             SheetHost(model: model, kind: kind)
         }
         .modifier(DeskLinkRouting(model: model))
+        .environment(\.shellTerminals, terminals)
         .focusedSceneValue(\.projectModel, model)
         .preferredColorScheme(SnapshotMode.shared.colorScheme ?? appearance.colorScheme)
         .frame(minWidth: 1100, minHeight: 720)
         .background { SnapshotWindowHook(ref: ref, model: model) }
+        .background { ShellLifetimeHook(terminals: terminals) }
         .task { await model.load() }
         .onChange(of: model.snapshot != nil) { _, isLoaded in
             if isLoaded { applyFirstLoad() }

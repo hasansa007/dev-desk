@@ -22,7 +22,7 @@ small deterministic helper.
 | Compliance | `skills/audit/compliance_auditor.py` — stdlib only |
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
 | Tests | stdlib `unittest`, one file per script under `tests/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
-| Mac app | `apps/desk/` — Dev Desk, a native macOS app: SwiftUI with AppKit where needed, macOS 14+, Swift 5 mode. `project.yml` generates the Xcode project with xcodegen (gitignored, not committed); `DeskCore` is the local Swift package — models, sample data, the git/GitHub reader — tested with `swift test --package-path apps/desk/DeskCore` (see [ADR 0012](docs/adr/0012-the-mac-app-lives-in-apps-desk.md)) |
+| Mac app | `apps/desk/` — Dev Desk, a native macOS app: SwiftUI with AppKit where needed, macOS 14+, Swift 5 mode. `project.yml` generates the Xcode project with xcodegen (gitignored, not committed); `DeskCore` is the local Swift package — models, sample data, the git/GitHub reader, task folders and shell state — tested with `swift test --package-path apps/desk/DeskCore` (see [ADR 0012](docs/adr/0012-the-mac-app-lives-in-apps-desk.md)). One dependency, SwiftTerm 1.11.2, in the app target only; DeskCore has none ([ADR 0016](docs/adr/0016-dev-desk-embeds-a-terminal-with-swiftterm.md)) |
 | CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `hooks/pr-gates.yml`, beside the `pr-gates.sh` hook that mirrors it, is a template for *other* repos and is deliberately never installed here |
 | Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev`, and links `scripts/dev.py` as the `dev` command into `~/.local/bin` (or `~/bin`) when one is already on `PATH` |
 
@@ -69,9 +69,11 @@ pre-flight moves up into Phase 14.
 its decision. Skills still probe `git check-ignore -q docs/` per repo, because the answer differs.
 
 **The container.** Dev Desk (`apps/desk/`) reads what the doors and `dev` already wrote — git,
-GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and starts no agents itself. Its two sample
-projects demo the whole design on labelled sample data; a real opened folder shows only what it can
-actually read, with the reason next to anything it can't yet (see ORPHANS).
+GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and starts no agents itself. The one thing it
+runs inside a repository is a shell you start from a task's dock, in that task's own worktree
+(ADR 0017). Its two sample projects demo the whole design on labelled sample data; a real opened
+folder shows only what it can actually read, with the reason next to anything it can't yet (see
+ORPHANS).
 
 ## ORPHANS & PENDING
 
@@ -101,9 +103,10 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
 
 **Dev Desk (`apps/desk/`), not built yet:**
 
-- **Runner-dependent surfaces work only in the sample projects** — the agents list, the terminal
-  dock, decisions waiting on an answer, Insights' answers, and tracker updates from the app. A real
-  opened project shows each as unavailable, with the reason (ADR 0013).
+- **Runner-dependent surfaces work only in the sample projects** — the agents list, decisions
+  waiting on an answer, Insights' answers, and tracker updates from the app. A real opened project
+  shows each as unavailable, with the reason (ADR 0013). Its dock has a real shell per task, which
+  you start (ADR 0017). Starting agents from the app, by hand or in an Auto mode, is step 2.
 - **`dev snapshot`, `dev jobs` and `dev events`** (container spec §3) are not built — the app cannot
   start, stop or answer a door yet.
 - **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
@@ -112,9 +115,15 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
   rather than `apps/desk/` (merged in #50), and its `scripts/dev.py` citations moved when `dev ui`
   was removed (ADR 0014). The folder reorganisation (ADR 0015) moved none of its cited paths, so
   the re-pin no longer waits on it.
-- **The Notifications and Execution settings panes store values**
-  (`desk.notifyDecisions`/`notifyCompletion`/`notifyFailures`, `desk.worktreeLocation`) that nothing
-  reads yet — no notification is posted, no worktree is created at the configured path.
+- **The Notifications settings pane stores values** (`desk.notifyDecisions`/`notifyCompletion`/
+  `notifyFailures`) that nothing reads yet — no notification is posted. Execution's
+  `desk.worktreeLocation` is live: task worktrees are created there (ADR 0017).
+- **Dev Desk never removes a worktree it created.** They stay under the worktree location until
+  `git worktree remove <path>` (ADR 0017).
+- **A fork PR's head is still matched by name for what the board shows.** Its branch line, its
+  Activity and Changes, the pipeline-state lookup and the rule that hides a same-named local branch
+  all use `headRefName`. So a fork PR from `someone:main` shows the local `main`'s commits. Its shell
+  is safe: fork heads get no branch and open at the project root (ADR 0017).
 - **No Ideation or PROJECT_MAP view.** `/dev:ui` rendered `docs/ideation/` reports and
   `PROJECT_MAP.md`'s sections as pages until it was retired on 2026-09-11 (ADR 0014). Dev Desk's
   Findings reads only `docs/survey/` and Insights is unavailable for real projects, so both are read

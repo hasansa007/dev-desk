@@ -32,8 +32,9 @@ final class BoardBuilderTests: XCTestCase {
                     url: "https://github.com/acme/app/issues/\(number)")
     }
 
-    private func pr(_ number: Int, _ title: String, head: String, decision: String = "", draft: Bool = false, body: String = "") -> GitHubPullRequest {
-        GitHubPullRequest(number: number, title: title, headRefName: head, reviewDecision: decision, isDraft: draft,
+    private func pr(_ number: Int, _ title: String, head: String, decision: String = "", draft: Bool = false, fork: Bool = false,
+                    body: String = "") -> GitHubPullRequest {
+        GitHubPullRequest(number: number, title: title, headRefName: head, isCrossRepository: fork, reviewDecision: decision, isDraft: draft,
                           url: "https://github.com/acme/app/pull/\(number)", body: body)
     }
 
@@ -296,12 +297,88 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(tasks()["14"]?.evidence.value?.limitations)
     }
 
-    func testNoTaskShowsAgents() {
+    private func shellDock(example: String) -> DockContent {
+        DockContent(tabs: [
+            DockTab(id: "shell", title: "Shell", kind: .liveShell),
+            DockTab(id: "agents", title: "Agents", kind: .unavailable(reason: "Dev Desk doesn't start agents yet. You can run one in the Shell tab, "
+                                                                     + "for example \(example). Starting agents from here, by hand or automatically, comes next.")),
+        ], caption: "Agents & Terminals · a shell in this task's folder")
+    }
+
+    func testNoTaskShowsAgentsButEveryTaskGetsAShellDock() {
         for task in BoardBuilder.build(fixture) {
             XCTAssertEqual(task.agents, [], task.id)
             XCTAssertEqual(task.agentsNote, "No managed sessions. Dev Desk doesn't start agents yet.", task.id)
-            XCTAssertNil(task.dock, task.id)
+            XCTAssertEqual(task.dock, shellDock(example: task.taskNumber.map { "claude \"/dev #\($0)\"" } ?? "claude \"/dev\""), task.id)
         }
+    }
+
+    func testTheAgentsTabNamesTheTasksDevCommandAndNoTabHasATranscript() throws {
+        XCTAssertEqual(try XCTUnwrap(tasks()["12"]).dock, shellDock(example: "claude \"/dev #12\""))
+        XCTAssertEqual(try XCTUnwrap(tasks()["pr:20"]).dock, shellDock(example: "claude \"/dev\""))
+        XCTAssertEqual(try XCTUnwrap(tasks()["branch:spike/z"]).dock, shellDock(example: "claude \"/dev\""))
+        XCTAssertEqual(try XCTUnwrap(tasks()["12"]?.dock).tabs.map(\.transcript), [nil, nil])
+    }
+
+    func testEveryTaskCarriesItsBranchWhenOneIsKnown() throws {
+        let built = tasks()
+        XCTAssertEqual(try XCTUnwrap(built["12"]).branch, "gh-12-x", "an issue with a matched local branch")
+        XCTAssertEqual(try XCTUnwrap(built["13"]).branch, "gh-13-y")
+        XCTAssertEqual(try XCTUnwrap(built["19"]).branch, "feature/retry", "a linked pull request's head, even when it isn't local")
+        XCTAssertEqual(try XCTUnwrap(built["pr:20"]).branch, "refactor/net")
+        XCTAssertEqual(try XCTUnwrap(built["branch:spike/z"]).branch, "spike/z", "a branch-only task")
+        XCTAssertEqual(try XCTUnwrap(built["merged:9"]).branch, "feat/onboarding")
+        XCTAssertNil(try XCTUnwrap(built["14"]).branch, "no branch yet")
+        XCTAssertNil(try XCTUnwrap(built["15"]).branch)
+        XCTAssertEqual(built.values.compactMap(\.noBranchNote), [], "no pull request here comes from a fork")
+    }
+
+    func testABranchOnlyTaskTakesItsNumberFromAGhPrefix() throws {
+        var input = fixture
+        input.github = nil
+        input.activeMilestone = nil
+        let task = try XCTUnwrap(tasks(input)["branch:gh-12-x"])
+        XCTAssertNil(task.issueNumber)
+        XCTAssertEqual(task.branch, "gh-12-x")
+        XCTAssertEqual(task.taskNumber, 12)
+        XCTAssertEqual(task.dock, shellDock(example: "claude \"/dev #12\""))
+    }
+
+    func testAForkHeadIsNeverTakenForABranchHere() throws {
+        let fork = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
+        let git = GitFacts(base: "main", baseRef: "refs/heads/main", baseShort: "abc1234",
+                           branches: [BranchFacts(name: "gh-50-mine", unmerged: 1, worktree: nil)])
+        let github = GitHubData(slug: "acme/app", issues: [issue(51, "Linked to a fork")], openPullRequests: [
+            pr(60, "From someone's main", head: "main", fork: true),
+            // Its head has the name of a local branch of ours, which is not the fork's branch.
+            pr(61, "A fork's fix", head: "gh-50-mine", fork: true, body: "Fixes #51"),
+            pr(62, "From this repository", head: "feature/same"),
+        ], mergedPullRequests: [GitHubMergedPullRequest(number: 63, title: "Merged from a fork", headRefName: "main", isCrossRepository: true,
+                                                        mergedAt: "2026-09-10T08:00:00Z", url: "https://github.com/acme/app/pull/63")])
+        let built = tasks(BoardInput(git: git, github: github, activeMilestone: nil,
+                                     now: date("2026-09-11T12:00:00Z"), timeZone: TimeZone(identifier: "UTC")!))
+        for id in ["pr:60", "51", "merged:63"] {
+            let task = try XCTUnwrap(built[id], id)
+            XCTAssertNil(task.branch, id)
+            XCTAssertEqual(task.noBranchNote, fork, id)
+        }
+        let same = try XCTUnwrap(built["pr:62"])
+        XCTAssertEqual(same.branch, "feature/same")
+        XCTAssertNil(same.noBranchNote)
+    }
+
+    func testTaskNumberIsTheIssueElseAGhPrefixOnTheBranch() {
+        func task(_ issue: Int?, _ branch: String?) -> DeskTask {
+            DeskTask(id: "t", issueNumber: issue, title: "t", column: .inProgress, headerBadge: StatusBadge(.neutral, "t"), branchLine: "",
+                     branch: branch, requirements: .unavailable(""), changes: .unavailable(""), evidence: .unavailable(""), parallel: .none(""))
+        }
+        XCTAssertEqual(task(12, "gh-99-x").taskNumber, 12)
+        XCTAssertEqual(task(nil, "gh-7-demo").taskNumber, 7)
+        XCTAssertNil(task(nil, "gh-7").taskNumber, "the prefix ends with a dash")
+        XCTAssertNil(task(nil, "7-demo").taskNumber)
+        XCTAssertNil(task(nil, "feature/gh-7-x").taskNumber)
+        XCTAssertNil(task(nil, "gh--x").taskNumber)
+        XCTAssertNil(task(nil, nil).taskNumber)
     }
 
     func testWithoutGitHubOnlyLocalBranchesShow() {

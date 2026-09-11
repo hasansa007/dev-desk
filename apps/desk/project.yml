@@ -7,6 +7,9 @@ options:
 packages:
   DeskCore:
     path: DeskCore
+  SwiftTerm:
+    url: https://github.com/migueldeicaza/SwiftTerm
+    exactVersion: 1.11.2
 targets:
   DevDesk:
     type: application
@@ -15,6 +18,7 @@ targets:
       - path: DevDesk
     dependencies:
       - package: DeskCore
+      - package: SwiftTerm
     settings:
       base:
         PRODUCT_NAME: Dev Desk

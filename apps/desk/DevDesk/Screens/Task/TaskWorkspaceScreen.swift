@@ -41,7 +41,7 @@ struct TaskWorkspaceScreen: View {
                 }
             }
             if model.dockOpen, let dock = task.dock {
-                AgentsDock(model: model, dock: dock, placement: placement)
+                AgentsDock(model: model, task: task, dock: dock, placement: placement)
                     .frame(width: placement == .side ? DeskMetric.dockSideWidth : nil,
                            height: placement == .bottom ? DeskMetric.dockHeight : nil)
             }

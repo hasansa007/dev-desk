@@ -27,6 +27,19 @@ enum BoardBuilder {
         BoardContext(input).tasks()
     }
 
+    static let dockCaption = "Agents & Terminals · a shell in this task's folder"
+    static let forkNote = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
+
+    /// A real task's dock: a shell in the task's folder, and an Agents tab saying agents don't start from here yet.
+    static func dock(taskNumber: Int?) -> DockContent {
+        let example = taskNumber.map { "claude \"/dev #\($0)\"" } ?? "claude \"/dev\""
+        return DockContent(tabs: [
+            DockTab(id: "shell", title: "Shell", kind: .liveShell),
+            DockTab(id: "agents", title: "Agents", kind: .unavailable(reason: "Dev Desk doesn't start agents yet. You can run one in the Shell tab, "
+                                                                      + "for example \(example). Starting agents from here, by hand or automatically, comes next.")),
+        ], caption: dockCaption)
+    }
+
     static func note(github: GitHubState, activeMilestone: (title: String?, why: String), localBranchNote: String? = nil) -> String {
         let suffix = localBranchNote.map { " \($0)" } ?? ""
         guard let data = github.data else {
@@ -187,7 +200,11 @@ private struct BoardContext {
         let pullRequestTasks = openPullRequests.filter { !claimedPullRequests.contains($0.number) }.map(pullRequestTask)
         let branchTasks = branches.filter { $0.unmerged > 0 && !claimedBranches.contains($0.name) && !heads.contains($0.name) }.map(branchTask)
         let merged = (input.github?.mergedPullRequests ?? []).map(mergedTask)
-        return active + pullRequestTasks + branchTasks + orderNext(backlog) + deferred + merged
+        return (active + pullRequestTasks + branchTasks + orderNext(backlog) + deferred + merged).map { task in
+            var task = task
+            task.dock = BoardBuilder.dock(taskNumber: task.taskNumber)
+            return task
+        }
     }
 
     /// dev.py's classify; its PR OPEN and HUMAN REVIEW columns both land in Review.
@@ -210,6 +227,8 @@ private struct BoardContext {
     private func issueTask(_ issue: GitHubIssue, column: BoardColumn, isDeferred: Bool, branch: BranchFacts?, pullRequest: GitHubPullRequest?) -> DeskTask {
         let local = branch ?? pullRequest.flatMap { branchByName[$0.headRefName] }
         let head = local?.name ?? pullRequest?.headRefName
+        // A fork's head names a branch of someone else's repository; a branch here with that name is a different one.
+        let fromFork = branch == nil && pullRequest?.isCrossRepository == true
         let state = head.flatMap { input.pipeline[$0] }
         let badge: StatusBadge?
         if isDeferred {
@@ -226,6 +245,7 @@ private struct BoardContext {
             cardBadge: badge, cardNote: state?.cardNote,
             headerBadge: badge ?? StatusBadge(.neutral, column == .queued ? "Queued" : "Backlog"),
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
+            branch: fromFork ? nil : head, noBranchNote: fromFork ? BoardBuilder.forkNote : nil,
             nextAction: nextAction(local: local, pullRequestURL: pullRequest?.url, issueURL: issue.url),
             pipeline: state?.progress,
             activity: activity(head, local: local),
@@ -246,6 +266,7 @@ private struct BoardContext {
             id: "pr:\(pullRequest.number)", title: pullRequest.title, column: .review,
             cardMeta: "PR #\(pullRequest.number)", cardBadge: badge, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
+            branch: pullRequest.isCrossRepository ? nil : head, noBranchNote: pullRequest.isCrossRepository ? BoardBuilder.forkNote : nil,
             nextAction: nextAction(local: local, pullRequestURL: pullRequest.url, issueURL: nil),
             pipeline: state?.progress,
             activity: activity(head, local: local),
@@ -265,6 +286,7 @@ private struct BoardContext {
             id: "branch:\(branch.name)", title: branch.name, column: .inProgress,
             cardBadge: badge, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(branch.name, local: branch), parallelLine: parallelLine(branch.name, local: branch),
+            branch: branch.name,
             nextAction: .reviewChanges,
             pipeline: state?.progress,
             activity: activity(branch.name, local: branch),
@@ -283,6 +305,8 @@ private struct BoardContext {
             id: "merged:\(pullRequest.number)", issueNumber: pullRequest.number, title: pullRequest.title, column: .done,
             cardMeta: "merged", isDimmed: true, headerBadge: StatusBadge(.ended, "Merged"),
             branchLine: [pullRequest.headRefName, day.map { "merged \($0)" } ?? "merged"].filter { !$0.isEmpty }.joined(separator: " · "),
+            branch: pullRequest.isCrossRepository || pullRequest.headRefName.isEmpty ? nil : pullRequest.headRefName,
+            noBranchNote: pullRequest.isCrossRepository ? BoardBuilder.forkNote : nil,
             nextAction: URL(string: pullRequest.url).map { .openURL($0, title: "Open pull request") },
             activity: .unavailable(reason),
             requirements: .unavailable(reason),
