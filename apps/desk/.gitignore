@@ -1,0 +1,4 @@
+DevDesk.xcodeproj/
+.build/
+DerivedData/
+*.xcuserstate
