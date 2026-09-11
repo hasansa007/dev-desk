@@ -29,9 +29,10 @@ permissions or picks a model.
 **The folder.**
 - **A task with no branch yet gets its own detached worktree** at the base ref, at the task's own
   path. The pipeline cuts the branch there itself.
-- **Rule 1b, for shells and agents alike: a worktree already at the task's own path is reused.** For a
-  task that has such a worktree, this replaces ADR 0017's rule 3. That rule opens a task with no branch
-  at the project root.
+- **Rule 1b, for shells and agents alike: for a task with no branch yet, a worktree already at the
+  task's own path is reused.** For such a task, this replaces ADR 0017's rule 3, which opens a task
+  with no branch at the project root. A task that has a branch never uses 1b, because another
+  branch's task can share its folder name.
 
 **Manual is the default.** Auto is set per project and is off by default. Turning it on, after the
 warning, is the one explicit act that lets Dev Desk start agents without a click per task. Auto

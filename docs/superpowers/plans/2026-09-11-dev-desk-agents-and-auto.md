@@ -28,7 +28,7 @@ The app reuses step 1's terminal machinery to run a command rather than a bare s
   - `Gemini has no confirmed way to run the dev pipeline, so Dev Desk doesn't start it.`
 - **The agent folder rule, in order.** The exclusive claim, hardened flags and failure fallbacks from ADR 0017 all apply.
   1. A worktree whose branch is the task's branch: use that worktree.
-  1b. A worktree of this repository that already sits at the task's own path (`<location>/<project>-<N or slug>`), detached or not: reuse it.
+  1b. The task has **no branch yet**, and a worktree of this repository already sits at the task's own path (`<location>/<project>-<N>`, or that path plus `-k`): reuse it. *Ruled during review: a task that has a branch never uses 1b, because another branch's task can share its folder name.*
   2. The task's branch exists but no worktree has it checked out: create a worktree on it, as the shell does.
   3. The task has no branch, it has a number, and a base ref is known: run `git worktree add --detach <path> <base ref>` at the task's own path. The plan note is `The pipeline creates the task's branch here at its first write.`
   4. Anything else, such as no base ref or a fork PR's task: use the project root, with its note. **Auto never starts such a task.**
