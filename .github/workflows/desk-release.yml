@@ -1,0 +1,77 @@
+name: desk-release
+
+# Publishes Dev Desk as a downloadable GitHub Release: an ad-hoc signed zip, no notarization
+# (there is no Apple Developer ID). Push a tag like `desk-v0.2.0` to publish it; re-run via
+# workflow_dispatch to re-publish an existing tag (for example after a failed upload).
+
+on:
+  push:
+    tags: ['desk-v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing desk-v* tag to (re-)publish'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish Dev Desk
+    runs-on: macos-15
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+
+      - name: Resolve the tag and version
+        id: version
+        run: |
+          TAG="${{ inputs.tag || github.ref_name }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#desk-v}" >> "$GITHUB_OUTPUT"
+
+      - run: brew install xcodegen
+      - run: xcodegen generate --spec apps/desk/project.yml
+
+      - name: Build Release, ad-hoc signed, versioned from the tag
+        run: |
+          xcodebuild -project apps/desk/DevDesk.xcodeproj -scheme DevDesk -configuration Release \
+            -destination 'platform=macOS' -derivedDataPath build \
+            CODE_SIGN_IDENTITY=- MARKETING_VERSION=${{ steps.version.outputs.version }} \
+            build
+
+      - name: Package the app and checksum it
+        id: package
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          ZIP="Dev-Desk-$VERSION.zip"
+          ditto -c -k --sequesterRsrc --keepParent "build/Build/Products/Release/Dev Desk.app" "$ZIP"
+          shasum -a 256 "$ZIP" > "$ZIP.sha256"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
+      - name: Write release notes
+        run: |
+          {
+            echo "Dev Desk is ad-hoc signed and not notarized. The first time you open it, right-click the app and choose **Open** — or run \`xattr -dr com.apple.quarantine \"/Applications/Dev Desk.app\"\`."
+            echo
+            echo "Requires macOS 14 or later."
+            echo
+            echo "This repo is private, so downloading the release needs GitHub access, for example: \`gh release download ${{ steps.version.outputs.tag }} -R hasansa007/dev-skill -p 'Dev-Desk-*.zip'\`."
+          } > notes.md
+
+      - name: Create or update the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.version.outputs.tag }}"
+          ZIP="${{ steps.package.outputs.zip }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
+          else
+            gh release create "$TAG" "$ZIP" "$ZIP.sha256" \
+              --title "Dev Desk ${{ steps.version.outputs.version }}" --notes-file notes.md
+          fi

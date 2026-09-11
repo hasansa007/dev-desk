@@ -4,6 +4,17 @@ Dev Desk is a native Mac app for the dev-skill family. For each project it shows
 
 It's a first build of the container described in the [container spec](../../docs/superpowers/specs/2026-09-11-container-design.md). [System model](../../docs/guide/SYSTEM-MODEL.md) explains what it reads, what it runs, and what isn't built yet.
 
+## Download
+
+A prebuilt release is quicker than building. Releases are ad-hoc signed zips, published to GitHub Releases when a `desk-v*` tag is pushed:
+
+```bash
+gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.zip'
+unzip -o "Dev-Desk-"*.zip -d /Applications
+```
+
+The first launch needs one extra step, because the app isn't notarized: right-click **Dev Desk.app** and choose **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Dev Desk.app"`. It needs macOS 14 or later.
+
 ## Requirements
 
 - macOS 14 or later, and Xcode.
