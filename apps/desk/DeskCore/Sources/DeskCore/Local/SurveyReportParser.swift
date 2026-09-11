@@ -4,7 +4,7 @@ import Foundation
 enum SurveyReportParser {
     static let limits = "Survey checks code only; nothing here was reproduced in a running app."
 
-    private static let location = try! Regex(#"^[\w./-]+:\d+"#)
+    private static let location = try! Regex(#"^[^\s·]+:\d+"#)
 
     private enum Section: Hashable {
         case confirmed, plausible, tracked

@@ -41,27 +41,11 @@ final class TempGitRepo {
     }
 }
 
-private final class SlowCountingRunner: CommandRunner {
-    private let lock = NSLock()
-    private var running = 0
-    private var highest = 0
-
-    var peak: Int { lock.withLock { highest } }
-
-    func run(_ tool: String, _ arguments: [String], in directory: URL?, timeout: TimeInterval) async throws -> CommandResult {
-        lock.withLock {
-            running += 1
-            highest = max(highest, running)
-        }
-        try await Task.sleep(nanoseconds: 20_000_000)
-        lock.withLock { running -= 1 }
-        return CommandResult(status: 0, stdout: "", stderr: "")
-    }
-}
-
 final class LocalGitDataSourceTests: XCTestCase {
     private let issueList = "gh issue list --repo acme/app --state open --limit 200 --json number,title,labels,milestone,updatedAt,body,url"
     private let openPRs = "gh pr list --repo acme/app --state open --limit 100 --json number,title,headRefName,reviewDecision,isDraft,url,body"
+    private let activeAuth = "gh auth status --active --hostname github.com"
+    private let plainAuth = "gh auth status --hostname github.com"
 
     private func githubReadyRunner(root: URL) -> FakeRunner {
         FakeRunner([
@@ -70,10 +54,10 @@ final class LocalGitDataSourceTests: XCTestCase {
             "git remote get-url origin": .ok("git@github.com:acme/app.git\n"),
             "git rev-parse --short HEAD": .ok("abc1234\n"),
             "git branch -r --format=%(refname:short)": .ok("origin\norigin/main\n"),
-            "git for-each-ref --format=%(refname:short) refs/heads": .ok("main\n"),
+            "git for-each-ref --format=%(refname) refs/heads": .ok("refs/heads/main\n"),
             "git rev-parse --verify --quiet refs/heads/main": .ok("0123456789abcdef0123456789abcdef01234567\n"),
-            "git rev-parse --short main": .ok("abc1234\n"),
-            "gh auth status --hostname github.com": .ok("github.com\n  ✓ Logged in to github.com account octo (keyring)\n"),
+            "git rev-parse --short refs/heads/main": .ok("abc1234\n"),
+            activeAuth: .ok("github.com\n  ✓ Logged in to github.com account octo (keyring)\n"),
             issueList: .ok("[]"),
             openPRs: .ok("[]"),
             "gh pr list --repo acme/app --state merged --limit 10 --json number,title,headRefName,mergedAt,url": .ok("[]"),
@@ -88,6 +72,13 @@ final class LocalGitDataSourceTests: XCTestCase {
         adjust(runner)
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         return (snapshot.connections.first { $0.id == "github" }, snapshot)
+    }
+
+    private func pullRequestJSON(_ numbers: ClosedRange<Int>) -> String {
+        let prs = numbers.map {
+            #"{"number":\#($0),"title":"PR \#($0)","headRefName":"b\#($0)","reviewDecision":"","isDraft":false,"url":"https://github.com/acme/app/pull/\#($0)","body":""}"#
+        }
+        return "[" + prs.joined(separator: ",") + "]"
     }
 
     func testRealRepositoryShowsItsFeatureBranchWithoutGitHub() async throws {
@@ -150,7 +141,7 @@ final class LocalGitDataSourceTests: XCTestCase {
                       .ok(#"[{"title":"v2","due_on":"2026-10-01T07:00:00Z","created_at":"2026-08-01T00:00:00Z","open_issues":1,"closed_issues":1}]"#))
         }
         XCTAssertEqual(snapshot.boardNote, "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued. "
-                       + "Active milestone: v2 (nearest due date (2026-10-01)).")
+                       + "Active milestone: v2, nearest due date 2026-10-01.")
         XCTAssertEqual(snapshot.projectFacts, [
             KeyValue("Base branch", "main", monospaced: true),
             KeyValue("Base revision", "abc1234", monospaced: true),
@@ -168,8 +159,8 @@ final class LocalGitDataSourceTests: XCTestCase {
     }
 
     func testMissingGhIsReportedAsNotInstalled() async throws {
-        let (github, snapshot) = try await githubConnection {
-            $0.script("gh auth status --hostname github.com", .failed(127, stderr: "env: gh: No such file or directory"))
+        let (github, snapshot) = try await githubConnection { [activeAuth] in
+            $0.script(activeAuth, .failed(127, stderr: "env: gh: No such file or directory"))
         }
         XCTAssertEqual(github, Connection(id: "github", name: "GitHub", state: .unavailable, label: "gh not installed"))
         XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (gh not installed), so only local branches are shown.")
@@ -177,11 +168,34 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(snapshot.projectFacts.first { $0.key == "GitHub account" }?.value, "gh not installed")
     }
 
-    func testSignedOutGhIsReportedAsNotSignedIn() async throws {
-        let (github, _) = try await githubConnection {
-            $0.script("gh auth status --hostname github.com", .failed(1, stderr: "You are not logged into any GitHub hosts. To log in, run: gh auth login"))
-        }
-        XCTAssertEqual(github?.label, "not signed in to GitHub")
+    func testSignedOutGhIsReportedAsNotSignedInWithoutRetrying() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script(activeAuth, .failed(1, stderr: "You are not logged into any GitHub hosts. To log in, run: gh auth login"))
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        XCTAssertEqual(snapshot.connections.first { $0.id == "github" }?.label, "not signed in to GitHub")
+        XCTAssertFalse(runner.keys.contains(plainAuth))
+    }
+
+    func testActiveAccountDecidesEvenWhenAnotherAccountIsBroken() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script(plainAuth, .failed(1, stderr: "X Failed to log in to github.com account old-account (keyring)"))
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        XCTAssertEqual(snapshot.connections.first { $0.id == "github" }?.state, .connected)
+        XCTAssertEqual(snapshot.projectFacts.first { $0.key == "GitHub account" }?.value, "octo")
+        XCTAssertFalse(runner.keys.contains(plainAuth))
+    }
+
+    func testOlderGhWithoutTheActiveFlagFallsBackToThePlainStatus() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script(activeAuth, .failed(1, stderr: "unknown flag: --active\n\nUsage:  gh auth status [flags]\n"))
+        runner.script(plainAuth, .ok("github.com\n  ✓ Logged in to github.com as octo (oauth_token)\n"))
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        XCTAssertEqual(snapshot.connections.first { $0.id == "github" }?.state, .connected)
+        XCTAssertEqual(snapshot.projectFacts.first { $0.key == "GitHub account" }?.value, "octo")
+        XCTAssertEqual(runner.keys.filter { $0.hasPrefix("gh auth status") }, [activeAuth, plainAuth])
     }
 
     func testNonGitHubRemoteIsNamedAsSuch() async throws {
@@ -197,10 +211,23 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(snapshot.projectFacts.first { $0.key == "Remote" }?.value, "none")
     }
 
-    func testFailedIssueReadNamesTheFailure() async throws {
-        let (github, snapshot) = try await githubConnection { [issueList] in $0.script(issueList, .failed(1, stderr: "HTTP 502: Bad Gateway\n")) }
-        XCTAssertEqual(github?.label, "could not read open issues: HTTP 502: Bad Gateway")
-        XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (could not read open issues: HTTP 502: Bad Gateway), so only local branches are shown.")
+    func testDisabledIssuesKeepPullRequestsOnTheBoardAndSayWhy() async throws {
+        let (github, snapshot) = try await githubConnection { [issueList, openPRs, pullRequestJSON] in
+            $0.script(issueList, .failed(1, stderr: "the 'acme/app' repository has disabled issues\n"))
+            $0.script(openPRs, .ok(pullRequestJSON(5...5)))
+        }
+        XCTAssertEqual(github?.state, .connected)
+        XCTAssertEqual(snapshot.board.value?.map(\.id), ["pr:5"])
+        XCTAssertTrue(snapshot.boardNote.hasSuffix(
+            " Open issues could not be read (the 'acme/app' repository has disabled issues), so only pull requests and branches are shown."))
+        XCTAssertEqual(snapshot.roadmap.unavailableReason,
+                       "Open issues could not be read (the 'acme/app' repository has disabled issues), so the roadmap can't be read.")
+    }
+
+    func testFailedPullRequestReadMakesGitHubUnavailable() async throws {
+        let (github, snapshot) = try await githubConnection { [openPRs] in $0.script(openPRs, .failed(1, stderr: "HTTP 502: Bad Gateway\n")) }
+        XCTAssertEqual(github?.label, "could not read open pull requests: HTTP 502: Bad Gateway")
+        XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (could not read open pull requests: HTTP 502: Bad Gateway), so only local branches are shown.")
     }
 
     func testToolsAreDetectedAndNothingClaimsAnAgentConnection() async throws {
@@ -235,11 +262,13 @@ final class LocalGitDataSourceTests: XCTestCase {
         let folder = try TempGitRepo()
         try folder.write(".dev/feat-12-x.json", #"{"phase":9,"phase_group":"coding","tier":"standard"}"#)
         let runner = githubReadyRunner(root: folder.url)
-        runner.script("git for-each-ref --format=%(refname:short) refs/heads", .ok("main\nfeat/12-x\n"))
-        runner.script("git rev-list --count main..feat/12-x", .ok("2\n"))
-        runner.script("git log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 main..feat/12-x", .ok("abc1234\u{1F}Ada\u{1F}2026-09-11T09:00:00Z\u{1F}Start\n"))
-        runner.script("git diff --numstat main...feat/12-x", .ok("1\t0\tA.swift\n"))
-        runner.script("git diff --no-color --no-ext-diff -U3 main...feat/12-x", .ok("diff --git a/A.swift b/A.swift\n--- /dev/null\n+++ b/A.swift\n@@ -0,0 +1 @@\n+x\n"))
+        runner.script("git for-each-ref --format=%(refname) refs/heads", .ok("refs/heads/main\nrefs/heads/feat/12-x\n"))
+        runner.script("git rev-list --count refs/heads/main..refs/heads/feat/12-x", .ok("2\n"))
+        runner.script("git log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/feat/12-x",
+                      .ok("abc1234\u{1F}Ada\u{1F}2026-09-11T09:00:00Z\u{1F}Start\n"))
+        runner.script("git diff --numstat refs/heads/main...refs/heads/feat/12-x", .ok("1\t0\tA.swift\n"))
+        runner.script("git diff --no-color --no-ext-diff -U3 refs/heads/main...refs/heads/feat/12-x",
+                      .ok("diff --git a/A.swift b/A.swift\n--- /dev/null\n+++ b/A.swift\n@@ -0,0 +1 @@\n+x\n"))
         runner.script(issueList, .ok(#"[{"number":12,"title":"Crash","labels":[],"milestone":null,"updatedAt":"2026-09-01T00:00:00Z","body":"","url":"https://github.com/acme/app/issues/12"}]"#))
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
@@ -251,31 +280,105 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(task.branchLine, "feat/12-x · base main@abc1234")
     }
 
-    func testChecksAreReadForTenPullRequestsEvenWhilePending() async throws {
+    func testChecksAreReadForTheTenNewestPullRequestsAndNeverFakeAnEmptyList() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
-        let prs = (1...12).map {
-            #"{"number":\#($0),"title":"PR \#($0)","headRefName":"b\#($0)","reviewDecision":"","isDraft":false,"url":"https://github.com/acme/app/pull/\#($0)","body":""}"#
-        }
-        runner.script(openPRs, .ok("[" + prs.joined(separator: ",") + "]"))
+        runner.script(openPRs, .ok(pullRequestJSON(1...12)))
         runner.script("gh pr checks 1 --repo acme/app --json name,bucket,link",
                       CommandResult(status: 8, stdout: #"[{"name":"ci","bucket":"pending","link":""}]"#, stderr: ""))
+        runner.script("gh pr checks 3 --repo acme/app --json name,bucket,link", .failed(1, stderr: "no checks reported on the 'b3' branch\n"))
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        let evidence = Dictionary(uniqueKeysWithValues: (snapshot.board.value ?? []).map { ($0.id, $0.evidence) })
         XCTAssertEqual(runner.keys.filter { $0.hasPrefix("gh pr checks ") }.count, 10)
-        let checks = try XCTUnwrap(snapshot.board.value?.first { $0.id == "pr:1" }?.evidence.value?.checks)
-        XCTAssertEqual(checks, [CheckResult(id: "pr1-0", name: "ci", outcome: .warning, outcomeLabel: "pending", revisionLabel: "PR #1")])
+        XCTAssertEqual(evidence["pr:1"]?.value?.checks,
+                       [CheckResult(id: "pr1-0", name: "ci", outcome: .warning, outcomeLabel: "pending", revisionLabel: "PR #1")])
+        XCTAssertEqual(evidence["pr:2"], .unavailable("gh pr checks failed: unscripted"))
+        XCTAssertEqual(evidence["pr:3"], .available(Evidence(isDemo: false)))
+        XCTAssertEqual(evidence["pr:11"], .unavailable("Checks are read for the 10 newest open pull requests; this one was not read."))
+        XCTAssertEqual(evidence["pr:12"], .unavailable("Checks are read for the 10 newest open pull requests; this one was not read."))
     }
 
-    func testThrottledRunnerCapsConcurrentCommands() async {
-        let slow = SlowCountingRunner()
-        let throttled = ThrottledRunner(base: slow, limit: 3)
-        await withTaskGroup(of: Void.self) { group in
-            for _ in 0..<12 {
-                group.addTask { _ = try? await throttled.run("git", ["status"], in: nil, timeout: 1) }
-            }
+    func testFailedLogAndDiffReadsAreUnavailableRatherThanEmpty() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script("git for-each-ref --format=%(refname) refs/heads", .ok("refs/heads/main\nrefs/heads/spike\n"))
+        runner.script("git rev-list --count refs/heads/main..refs/heads/spike", .ok("3\n"))
+        runner.script("git log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/spike",
+                      .failed(128, stderr: "fatal: bad object refs/heads/spike\n"))
+        runner.script("git diff --numstat refs/heads/main...refs/heads/spike", .ok("1\t0\tA.swift\n"))
+        runner.script("git diff --no-color --no-ext-diff -U3 refs/heads/main...refs/heads/spike",
+                      .failed(128, stderr: "fatal: unable to read tree 1234567\n"))
+
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        let task = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:spike" })
+        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "3 commits ahead"))
+        XCTAssertEqual(task.activity, .unavailable("git log failed: fatal: bad object refs/heads/spike"))
+        XCTAssertEqual(task.changes, .unavailable("git diff failed: fatal: unable to read tree 1234567"))
+    }
+
+    func testRevisionArgumentsAreFullyQualifiedSoNoBranchNameBecomesAnOption() async throws {
+        let folder = try TempGitRepo()
+        let runner = FakeRunner([
+            "git rev-parse --show-toplevel": .ok(folder.url.path + "\n"),
+            "git rev-parse --abbrev-ref HEAD": .ok("--output=/tmp/pwned\n"),
+            "git for-each-ref --format=%(refname) refs/heads": .ok("refs/heads/--output=/tmp/pwned\nrefs/heads/feature\n"),
+            "git rev-list --count refs/heads/--output=/tmp/pwned..refs/heads/feature": .ok("0\n"),
+        ])
+        _ = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        XCTAssertTrue(runner.keys.contains("git rev-parse --short refs/heads/--output=/tmp/pwned"))
+        XCTAssertTrue(runner.keys.contains("git rev-list --count refs/heads/--output=/tmp/pwned..refs/heads/feature"))
+        for key in runner.keys where key.hasPrefix("git ") {
+            XCTAssertFalse(key.split(separator: " ").contains { $0.hasPrefix("--output") }, key)
         }
-        XCTAssertLessThanOrEqual(slow.peak, 3)
-        XCTAssertGreaterThanOrEqual(slow.peak, 2)
+    }
+
+    func testRealBranchNamedWithALeadingDashIsReadAsARef() async throws {
+        let repo = try TempGitRepo()
+        try repo.git("init", "-q", "-b", "main")
+        try repo.write("README.md", "hello\n")
+        try repo.commitAll("initial")
+        try repo.git("checkout", "-q", "-b", "scratch")
+        try repo.write("Dash.swift", "let dash = 1\n")
+        try repo.commitAll("dash work")
+        try repo.git("update-ref", "refs/heads/-x", "HEAD")
+        try repo.git("checkout", "-q", "main")
+        try repo.git("branch", "-q", "-D", "scratch")
+
+        let snapshot = try await LocalGitDataSource(root: repo.url).load()
+        let task = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:-x" })
+        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "1 commit ahead"))
+        XCTAssertEqual(task.changes.value?.files.map(\.id), ["Dash.swift"])
+    }
+
+    private func boardReason(toplevel result: CommandResult) async throws -> String? {
+        let folder = try TempGitRepo()
+        let runner = FakeRunner(["git rev-parse --show-toplevel": result])
+        return try await LocalGitDataSource(root: folder.url, runner: runner).load().board.unavailableReason
+    }
+
+    func testMissingGitAndMissingCommandLineToolsAreNamed() async throws {
+        let missingGit = try await boardReason(toplevel: .failed(127, stderr: "env: git: No such file or directory\n"))
+        XCTAssertEqual(missingGit, "Git is not installed, so this folder can't be read.")
+        let missingTools = try await boardReason(toplevel: .failed(1, stderr:
+            "xcrun: error: invalid active developer path (/Library/Developer/CommandLineTools), missing xcrun at: /Library/Developer/CommandLineTools/usr/bin/xcrun\n"))
+        XCTAssertEqual(missingTools, "The Xcode command line tools are missing, so git can't run. Install them with xcode-select --install.")
+    }
+
+    func testOwnershipRefusalNamesTheCommandThatTrustsTheFolder() async throws {
+        let reason = try await boardReason(toplevel: .failed(128, stderr:
+            "fatal: detected dubious ownership in repository at '/Volumes/shared/app'\nTo add an exception for this directory, call:\n\n\tgit config --global --add safe.directory /Volumes/shared/app\n"))
+        XCTAssertEqual(reason, "Git refuses to read this folder because another user owns it (dubious ownership). "
+                       + "To trust it, run: git config --global --add safe.directory /Volumes/shared/app")
+    }
+
+    func testGenuineNonRepositoryKeepsItsTextAndOtherFailuresSayWhatHappened() async throws {
+        let notRepository = try await boardReason(toplevel: .failed(128, stderr: "fatal: not a git repository (or any of the parent directories): .git\n"))
+        XCTAssertEqual(notRepository, "This folder is not a git repository.")
+        let bare = try await boardReason(toplevel: .failed(128, stderr: "fatal: this operation must be run in a work tree\n"))
+        XCTAssertEqual(bare, "git could not read this folder: fatal: this operation must be run in a work tree")
+        let folder = try TempGitRepo()
+        let timedOut = try await LocalGitDataSource(root: folder.url, runner: ThrowingRunner(error: CommandError.timedOut(tool: "git", seconds: 15))).load()
+        XCTAssertEqual(timedOut.board.unavailableReason, "git could not read this folder: git did not finish within 15 seconds")
     }
 }

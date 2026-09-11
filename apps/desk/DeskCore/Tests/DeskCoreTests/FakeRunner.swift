@@ -35,6 +35,15 @@ extension CommandResult {
     static func failed(_ status: Int32 = 1, stderr: String = "") -> CommandResult { CommandResult(status: status, stdout: "", stderr: stderr) }
 }
 
+/// Throws the same error from every call, standing in for a timeout or a cancelled task.
+struct ThrowingRunner: CommandRunner {
+    let error: Error
+
+    func run(_ tool: String, _ arguments: [String], in directory: URL?, timeout: TimeInterval) async throws -> CommandResult {
+        throw error
+    }
+}
+
 final class FakeRunnerTests: XCTestCase {
     func testScriptedCallReturnsItsResultAndIsRecorded() async throws {
         let runner = FakeRunner(["git rev-parse --show-toplevel": .ok("/repo\n")])

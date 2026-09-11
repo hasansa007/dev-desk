@@ -42,7 +42,8 @@ public enum ProjectOperations {
             try projectMap.write(to: folder.appendingPathComponent("PROJECT_MAP.md"), atomically: true, encoding: .utf8)
         } catch {
             try? FileManager.default.removeItem(at: folder)
-            throw (error as? ProjectOperationError) ?? .initFailed(error.localizedDescription)
+            if error is CancellationError || error is ProjectOperationError { throw error }
+            throw ProjectOperationError.initFailed(error.localizedDescription)
         }
         return folder
     }
@@ -53,6 +54,8 @@ public enum ProjectOperations {
         let result: CommandResult
         do {
             result = try await runner.run("git", ["clone", "--", source, folder.path], in: parent, timeout: CommandTimeout.clone)
+        } catch let cancellation as CancellationError {
+            throw cancellation
         } catch {
             throw ProjectOperationError.cloneFailed(error.localizedDescription)
         }
@@ -77,7 +80,7 @@ public enum ProjectOperations {
         guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains(":") else {
             throw ProjectOperationError.invalidName(name)
         }
-        let folder = parent.appendingPathComponent(name, isDirectory: true)
+        let folder = parent.appendingPathComponent(name, isDirectory: false)
         guard !FileManager.default.fileExists(atPath: folder.path) else { throw ProjectOperationError.destinationExists(folder.path) }
         return folder
     }

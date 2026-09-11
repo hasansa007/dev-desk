@@ -9,7 +9,7 @@ final class ActiveMilestoneTests: XCTestCase {
             GitHubMilestone(title: "Someday", dueOn: nil, createdAt: "2025-01-01T00:00:00Z"),
         ])
         XCTAssertEqual(result.title, "v2")
-        XCTAssertEqual(result.why, "nearest due date (2026-10-01)")
+        XCTAssertEqual(result.why, "nearest due date 2026-10-01")
     }
 
     func testSameDayTieResolvesToNilNamingBoth() {

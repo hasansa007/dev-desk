@@ -9,7 +9,7 @@ enum ActiveMilestone {
             if dated.count > 1, dated[1].due.prefix(10) == day {
                 return (nil, "\(first.title) and \(dated[1].title) are due the same day")
             }
-            return (first.title, "nearest due date (\(day))")
+            return (first.title, "nearest due date \(day)")
         }
         guard let oldest = milestones.min(by: { ($0.createdAt ?? "") < ($1.createdAt ?? "") }) else {
             return (nil, "no open milestone")

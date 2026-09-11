@@ -23,16 +23,19 @@ public struct LocalGitDataSource: ProjectDataSource {
 
     public func load() async throws -> ProjectSnapshot {
         guard FileManager.default.fileExists(atPath: root.path) else { throw LocalProjectError.folderMissing(root.path) }
-        let throttled = ThrottledRunner(base: runner, limit: 6)
         async let info = identity()
-        async let toplevel = git(["rev-parse", "--show-toplevel"])
-        async let tools = ToolDetection.detect(runner: throttled)
+        async let toplevel = repositoryRoot()
+        async let tools = ToolDetection.detect(runner: runner)
         let project = await info
-        guard let top = await toplevel else { return Self.plainFolder(project, tools: await tools) }
+        let top: String
+        switch await toplevel {
+        case .success(let path): top = path
+        case .failure(let failure): return Self.plainFolder(project, tools: await tools, reason: failure.detail)
+        }
 
         let topURL = URL(fileURLWithPath: top)
-        async let gitFacts = GitReader(root: root, runner: throttled).read(toplevel: top, currentBranch: project.branch)
-        async let githubState = GitHubReader(directory: root, runner: throttled).read(remote: project.remote)
+        async let gitFacts = GitReader(root: root, runner: runner).read(toplevel: top, currentBranch: project.branch)
+        async let githubState = GitHubReader(directory: root, runner: runner).read(remote: project.remote)
         async let findings = Self.findings(in: topURL)
         async let decisions = Self.decisions(in: topURL)
         let facts = await gitFacts
@@ -40,12 +43,10 @@ public struct LocalGitDataSource: ProjectDataSource {
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
         let board = BoardBuilder.build(BoardInput(git: facts, github: github.data, activeMilestone: active.title,
                                                   pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL)))
-        let roadmap: Surface<Roadmap> = github.data.map { .available(RoadmapBuilder.build(milestones: $0.milestones, issues: $0.issues)) }
-            ?? .unavailable("GitHub is unavailable (\(github.unavailableReason ?? "")), so the roadmap can't be read.")
         return ProjectSnapshot(
             project: project, isDemo: false, board: .available(board),
             boardNote: BoardBuilder.note(github: github, activeMilestone: active),
-            findings: .available(await findings), roadmap: roadmap, decisions: .available(await decisions),
+            findings: .available(await findings), roadmap: Self.roadmap(github), decisions: .available(await decisions),
             connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
             projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github))
@@ -71,14 +72,53 @@ public struct LocalGitDataSource: ProjectDataSource {
         return path.hasPrefix(home) ? "~" + path.dropFirst(home.count) : path
     }
 
-    private static func plainFolder(_ project: ProjectInfo, tools: [Connection]) -> ProjectSnapshot {
-        let github = GitHubState.unavailable("no GitHub remote")
+    /// Tells git missing, the command line tools missing and git's ownership refusal apart from a folder that is simply not a repository.
+    static func notARepositoryReason(status: Int32, stderr: String) -> String {
+        if status == 127 { return "Git is not installed, so this folder can't be read." }
+        if stderr.contains("xcrun: error") || stderr.contains("xcode-select") {
+            return "The Xcode command line tools are missing, so git can't run. Install them with xcode-select --install."
+        }
+        if stderr.contains("dubious ownership") {
+            let trust = GitOutput.lines(stderr).map { $0.trimmingCharacters(in: .whitespaces) }
+                .first { $0.hasPrefix("git config --global --add safe.directory") }
+            return "Git refuses to read this folder because another user owns it (dubious ownership)." + (trust.map { " To trust it, run: \($0)" } ?? "")
+        }
+        if stderr.contains("not a git repository") { return notARepository }
+        return "git could not read this folder: \(GitOutput.lastNonEmptyLine(stderr) ?? "git exited with status \(status)")"
+    }
+
+    private func repositoryRoot() async -> Result<String, GitReadFailure> {
+        do {
+            let result = try await runner.run("git", ["rev-parse", "--show-toplevel"], in: root, timeout: CommandTimeout.git)
+            let path = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard result.succeeded, !path.isEmpty else {
+                return .failure(GitReadFailure(detail: Self.notARepositoryReason(status: result.status, stderr: result.stderr)))
+            }
+            return .success(path)
+        } catch {
+            var text = error.localizedDescription
+            if text.hasSuffix(".") { text.removeLast() }
+            return .failure(GitReadFailure(detail: "git could not read this folder: \(text)"))
+        }
+    }
+
+    private static func plainFolder(_ project: ProjectInfo, tools: [Connection], reason: String) -> ProjectSnapshot {
+        let unread = reason != notARepository
+        let github = GitHubState.unavailable(unread ? "git could not read this folder" : "no GitHub remote")
         return ProjectSnapshot(
-            project: project, isDemo: false, board: .unavailable(notARepository), boardNote: "",
-            findings: .unavailable(notARepository), roadmap: .unavailable(notARepository), decisions: .unavailable(notARepository),
+            project: project, isDemo: false, board: .unavailable(reason), boardNote: "",
+            findings: .unavailable(reason), roadmap: .unavailable(reason), decisions: .unavailable(reason),
             connections: tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(insightsReason),
-            projectFacts: facts(base: nil, baseShort: nil, remote: nil, active: (nil, "not a git repository"), github: github))
+            projectFacts: facts(base: nil, baseShort: nil, remote: nil,
+                                active: (nil, unread ? "git could not read this folder" : "not a git repository"), github: github))
+    }
+
+    /// Without open issues every theme would look empty, so an issue-read failure makes the roadmap unavailable rather than bare.
+    private static func roadmap(_ github: GitHubState) -> Surface<Roadmap> {
+        guard let data = github.data else { return .unavailable("GitHub is unavailable (\(github.unavailableReason ?? "")), so the roadmap can't be read.") }
+        if let detail = data.issuesUnavailable { return .unavailable("Open issues could not be read (\(detail)), so the roadmap can't be read.") }
+        return .available(RoadmapBuilder.build(milestones: data.milestones, issues: data.issues))
     }
 
     private static func facts(base: String?, baseShort: String?, remote: String?, active: (title: String?, why: String), github: GitHubState) -> [KeyValue] {
@@ -128,51 +168,5 @@ public struct LocalGitDataSource: ProjectDataSource {
 
     private static func markdownFiles(in folder: URL) -> [String] {
         ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).filter { $0.hasSuffix(".md") }
-    }
-}
-
-/// Caps concurrent commands: each ProcessRunner call blocks up to three GCD threads, and an exhausted pool stalls pipe reads.
-struct ThrottledRunner: CommandRunner {
-    let base: CommandRunner
-    private let gate: CommandGate
-
-    init(base: CommandRunner, limit: Int) {
-        self.base = base
-        gate = CommandGate(limit: limit)
-    }
-
-    func run(_ tool: String, _ arguments: [String], in directory: URL?, timeout: TimeInterval) async throws -> CommandResult {
-        await gate.acquire()
-        do {
-            let result = try await base.run(tool, arguments, in: directory, timeout: timeout)
-            await gate.release()
-            return result
-        } catch {
-            await gate.release()
-            throw error
-        }
-    }
-}
-
-private actor CommandGate {
-    private var available: Int
-    private var waiters: [CheckedContinuation<Void, Never>] = []
-
-    init(limit: Int) { available = limit }
-
-    func acquire() async {
-        if available > 0 {
-            available -= 1
-            return
-        }
-        await withCheckedContinuation { waiters.append($0) }
-    }
-
-    func release() {
-        if waiters.isEmpty {
-            available += 1
-        } else {
-            waiters.removeFirst().resume()
-        }
     }
 }

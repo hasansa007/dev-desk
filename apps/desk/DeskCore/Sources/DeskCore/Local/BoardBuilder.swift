@@ -14,6 +14,7 @@ enum BoardBuilder {
     static let agentsNote = "No managed sessions. Dev Desk doesn't start agents yet."
     static let checksLimitation = "CI results reported by GitHub for this pull request. Dev Desk has not verified behaviour in a running app."
     static let unlinkedRequirements = "No linked issue. Name the branch gh-<number>-… to link one."
+    static let checksNotRead = "Checks are read for the \(GitHubReader.checkedPullRequests) newest open pull requests; this one was not read."
 
     private static let taskLine = try! Regex(#"^[ \t]*[-*][ \t]*\[([ xX])\][ \t]*#(\d+)"#)
     private static let criterion = try! Regex(#"^\s*[-*]\s*\[( |x|X)\]\s*(.+)$"#)
@@ -27,10 +28,11 @@ enum BoardBuilder {
     }
 
     static func note(github: GitHubState, activeMilestone: (title: String?, why: String)) -> String {
-        if let reason = github.unavailableReason { return "GitHub is unavailable (\(reason)), so only local branches are shown." }
+        guard let data = github.data else { return "GitHub is unavailable (\(github.unavailableReason ?? "")), so only local branches are shown." }
         let rule = "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued."
-        guard let title = activeMilestone.title else { return rule + " No active milestone, so Queued is empty." }
-        return rule + " Active milestone: \(title) (\(activeMilestone.why))."
+        let milestone = activeMilestone.title.map { " Active milestone: \($0), \(activeMilestone.why)." } ?? " No active milestone, so Queued is empty."
+        let issues = data.issuesUnavailable.map { " Open issues could not be read (\($0)), so only pull requests and branches are shown." } ?? ""
+        return rule + milestone + issues
     }
 
     /// dev.py's `^(gh-)?N(-|$)` or `/N-`.
@@ -226,7 +228,6 @@ private struct BoardContext {
         } else {
             badge = nil
         }
-        let events = local.map { activityEvents($0.commits) }
         return DeskTask(
             id: String(issue.number), issueNumber: issue.number, title: issue.title, column: column,
             cardBadge: badge, cardNote: state?.cardNote,
@@ -234,13 +235,13 @@ private struct BoardContext {
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
             nextAction: nextAction(local: local, pullRequestURL: pullRequest?.url, issueURL: issue.url),
             pipeline: state?.progress,
-            activity: activity(head, events: events),
+            activity: activity(head, local: local),
             requirements: .available(BoardBuilder.requirements(body: issue.body, title: issue.title, source: "Issue #\(issue.number)")),
             changes: changes(head, local: local),
             evidence: evidence(pullRequest: pullRequest?.number, state: state),
             agentsNote: BoardBuilder.agentsNote,
             dependencies: BoardBuilder.dependencies(issue.body),
-            parallel: parallel(head, events: events))
+            parallel: parallel(head, local: local))
     }
 
     private func pullRequestTask(_ pullRequest: GitHubPullRequest) -> DeskTask {
@@ -248,39 +249,37 @@ private struct BoardContext {
         let local = head.flatMap { branchByName[$0] }
         let state = head.flatMap { input.pipeline[$0] }
         let badge = BoardBuilder.reviewBadge(pullRequest)
-        let events = local.map { activityEvents($0.commits) }
         return DeskTask(
             id: "pr:\(pullRequest.number)", title: pullRequest.title, column: .review,
             cardMeta: "PR #\(pullRequest.number)", cardBadge: badge, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
             nextAction: nextAction(local: local, pullRequestURL: pullRequest.url, issueURL: nil),
             pipeline: state?.progress,
-            activity: activity(head, events: events),
+            activity: activity(head, local: local),
             requirements: .available(BoardBuilder.requirements(body: pullRequest.body, title: pullRequest.title,
                                                                source: "Pull request #\(pullRequest.number)")),
             changes: changes(head, local: local),
             evidence: evidence(pullRequest: pullRequest.number, state: state),
             agentsNote: BoardBuilder.agentsNote,
             dependencies: BoardBuilder.dependencies(pullRequest.body),
-            parallel: parallel(head, events: events))
+            parallel: parallel(head, local: local))
     }
 
     private func branchTask(_ branch: BranchFacts) -> DeskTask {
         let state = input.pipeline[branch.name]
         let badge = BoardBuilder.aheadBadge(branch.unmerged)
-        let events = activityEvents(branch.commits)
         return DeskTask(
             id: "branch:\(branch.name)", title: branch.name, column: .inProgress,
             cardBadge: badge, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(branch.name, local: branch), parallelLine: parallelLine(branch.name, local: branch),
             nextAction: .reviewChanges,
             pipeline: state?.progress,
-            activity: .available(events),
+            activity: activity(branch.name, local: branch),
             requirements: .unavailable(BoardBuilder.unlinkedRequirements),
             changes: changes(branch.name, local: branch),
             evidence: evidence(pullRequest: nil, state: state),
             agentsNote: BoardBuilder.agentsNote,
-            parallel: parallel(branch.name, events: events))
+            parallel: parallel(branch.name, local: branch))
     }
 
     private func mergedTask(_ pullRequest: GitHubMergedPullRequest) -> DeskTask {
@@ -320,18 +319,21 @@ private struct BoardContext {
         return nil
     }
 
-    private func activity(_ head: String?, events: [ActivityEvent]?) -> Surface<[ActivityEvent]> {
-        if let events { return .available(events) }
+    private func activity(_ head: String?, local: BranchFacts?) -> Surface<[ActivityEvent]> {
+        if let failure = local?.logFailure { return .unavailable("git log failed: \(failure)") }
+        if let local { return .available(activityEvents(local.commits)) }
         if let head { return .unavailable("The branch `\(head)` is not in this checkout. Fetch it to see its commits.") }
         return .available([])
     }
 
-    private func parallel(_ head: String?, events: [ActivityEvent]?) -> ParallelPreview {
-        if let events { return .activity(Array(events.prefix(5))) }
+    private func parallel(_ head: String?, local: BranchFacts?) -> ParallelPreview {
+        if let failure = local?.logFailure { return .none("git log failed: \(failure)") }
+        if let local { return .activity(Array(activityEvents(local.commits).prefix(5))) }
         return .none(head == nil ? "No branch yet" : "The branch isn't in this checkout")
     }
 
     private func changes(_ head: String?, local: BranchFacts?) -> Surface<ChangeSet> {
+        if let failure = local?.diffFailure { return .unavailable("git diff failed: \(failure)") }
         if let local {
             let files = local.files.map {
                 ChangedFile(id: $0.path, displayPath: BoardBuilder.displayPath($0.path), additions: $0.additions, deletions: $0.deletions)
@@ -350,9 +352,16 @@ private struct BoardContext {
     private func evidence(pullRequest number: Int?, state: PipelineState?) -> Surface<Evidence> {
         var checks: [CheckResult] = []
         if let number {
-            checks = (input.github?.checks[number] ?? []).enumerated().map { index, check in
-                let (outcome, label) = BoardBuilder.outcome(ofBucket: check.bucket)
-                return CheckResult(id: "pr\(number)-\(index)", name: check.name, outcome: outcome, outcomeLabel: label, revisionLabel: "PR #\(number)")
+            switch input.github?.checks[number] {
+            case nil:
+                return .unavailable(BoardBuilder.checksNotRead)
+            case .failed(let detail)?:
+                return .unavailable("gh pr checks failed: \(detail)")
+            case .read(let read)?:
+                checks = read.enumerated().map { index, check in
+                    let (outcome, label) = BoardBuilder.outcome(ofBucket: check.bucket)
+                    return CheckResult(id: "pr\(number)-\(index)", name: check.name, outcome: outcome, outcomeLabel: label, revisionLabel: "PR #\(number)")
+                }
             }
         }
         let limitations = checks.isEmpty ? nil : BoardBuilder.checksLimitation

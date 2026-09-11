@@ -71,9 +71,10 @@ final class BoardBuilderTests: XCTestCase {
             mergedPullRequests: [GitHubMergedPullRequest(number: 9, title: "Ship onboarding", headRefName: "feat/onboarding",
                                                          mergedAt: "2026-09-10T08:00:00Z", url: "https://github.com/acme/app/pull/9")],
             milestones: [GitHubMilestone(title: "v2", dueOn: "2026-10-01T07:00:00Z")],
-            checks: [30: [GitHubCheck(name: "unit", bucket: "pass"), GitHubCheck(name: "lint", bucket: "fail"),
-                          GitHubCheck(name: "e2e", bucket: "pending"), GitHubCheck(name: "deploy", bucket: "skipping"),
-                          GitHubCheck(name: "docs", bucket: "cancel")]])
+            checks: [30: .read([GitHubCheck(name: "unit", bucket: "pass"), GitHubCheck(name: "lint", bucket: "fail"),
+                                GitHubCheck(name: "e2e", bucket: "pending"), GitHubCheck(name: "deploy", bucket: "skipping"),
+                                GitHubCheck(name: "docs", bucket: "cancel")]),
+                     20: .read([])])
         return BoardInput(git: git, github: github, activeMilestone: "v2",
                           pipeline: ["gh-12-x": PipelineState(phase: 9, phaseGroup: "coding", tier: "standard")],
                           now: date("2026-09-11T12:00:00Z"), timeZone: TimeZone(identifier: "UTC")!)
@@ -289,11 +290,35 @@ final class BoardBuilderTests: XCTestCase {
     func testBoardNoteNamesTheRuleAndTheActiveMilestone() {
         let ready = GitHubState.ready(GitHubData(slug: "acme/app"))
         let rule = "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued."
-        XCTAssertEqual(BoardBuilder.note(github: ready, activeMilestone: ("v2", "nearest due date (2026-10-01)")),
-                       rule + " Active milestone: v2 (nearest due date (2026-10-01)).")
+        XCTAssertEqual(BoardBuilder.note(github: ready, activeMilestone: ("v2", "nearest due date 2026-10-01")),
+                       rule + " Active milestone: v2, nearest due date 2026-10-01.")
         XCTAssertEqual(BoardBuilder.note(github: ready, activeMilestone: (nil, "no open milestone")),
                        rule + " No active milestone, so Queued is empty.")
         XCTAssertEqual(BoardBuilder.note(github: .unavailable("gh not installed"), activeMilestone: (nil, "gh not installed")),
                        "GitHub is unavailable (gh not installed), so only local branches are shown.")
+        var noIssues = GitHubData(slug: "acme/app")
+        noIssues.issuesUnavailable = "the 'acme/app' repository has disabled issues"
+        XCTAssertEqual(BoardBuilder.note(github: .ready(noIssues), activeMilestone: (nil, "no open milestone")),
+                       rule + " No active milestone, so Queued is empty. Open issues could not be read "
+                       + "(the 'acme/app' repository has disabled issues), so only pull requests and branches are shown.")
+    }
+
+    func testUnreadAndFailedChecksAreUnavailableRatherThanEmpty() throws {
+        XCTAssertEqual(tasks()["19"]?.evidence, .unavailable("Checks are read for the 10 newest open pull requests; this one was not read."))
+        XCTAssertEqual(tasks()["pr:20"]?.evidence, .available(Evidence(isDemo: false)))
+        var input = fixture
+        input.github?.checks[30] = .failed("HTTP 502: Bad Gateway")
+        XCTAssertEqual(tasks(input)["13"]?.evidence, .unavailable("gh pr checks failed: HTTP 502: Bad Gateway"))
+    }
+
+    func testFailedGitReadsAreUnavailableWithTheirReasonWhileTheCountStays() throws {
+        var input = fixture
+        input.git?.branches[0].logFailure = "fatal: bad object c0ffee1"
+        input.git?.branches[0].diffFailure = "git did not finish within 15 seconds"
+        let task = try XCTUnwrap(tasks(input)["12"])
+        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "2 commits ahead"))
+        XCTAssertEqual(task.activity, .unavailable("git log failed: fatal: bad object c0ffee1"))
+        XCTAssertEqual(task.changes, .unavailable("git diff failed: git did not finish within 15 seconds"))
+        XCTAssertEqual(task.parallel, .none("git log failed: fatal: bad object c0ffee1"))
     }
 }

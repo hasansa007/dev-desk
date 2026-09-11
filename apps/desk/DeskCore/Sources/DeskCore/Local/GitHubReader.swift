@@ -56,14 +56,22 @@ struct GitHubCheck: Decodable, Equatable {
     var link: String? = nil
 }
 
+enum PullRequestChecks: Equatable {
+    case read([GitHubCheck])
+    case failed(String)
+}
+
 struct GitHubData: Equatable {
     var slug: String
     var account: String?
     var issues: [GitHubIssue] = []
+    /// Why open issues could not be read while pull requests could, e.g. a fork with issues turned off.
+    var issuesUnavailable: String? = nil
     var openPullRequests: [GitHubPullRequest] = []
     var mergedPullRequests: [GitHubMergedPullRequest] = []
     var milestones: [GitHubMilestone] = []
-    var checks: [Int: [GitHubCheck]] = [:]
+    /// Keyed by pull request number; a missing key means its checks were not read.
+    var checks: [Int: PullRequestChecks] = [:]
 }
 
 enum GitHubState: Equatable {
@@ -96,10 +104,21 @@ enum GitHubJSON {
     static func authFailureReason(_ output: String) -> String {
         output.contains("Timeout trying to log in") ? "gh could not reach github.com" : "not signed in to GitHub"
     }
+
+    /// gh exits 8 while checks are pending, so JSON is trusted whatever the status; only "no checks reported" is a genuine empty list.
+    static func checks(from result: CommandResult) -> PullRequestChecks {
+        if let checks = decode([GitHubCheck].self, from: result.stdout) { return .read(checks) }
+        if result.stderr.contains("no checks reported") { return .read([]) }
+        if result.succeeded { return .failed("gh returned unreadable output") }
+        return .failed(GitOutput.lastNonEmptyLine(result.stderr) ?? "gh exited with status \(result.status)")
+    }
 }
 
 private struct GitHubReadFailure: Error {
-    let reason: String
+    let what: String
+    let detail: String
+
+    var reason: String { "could not read \(what): \(detail)" }
 }
 
 struct GitHubReader {
@@ -114,7 +133,7 @@ struct GitHubReader {
         guard let slug = GitRemote.githubSlug(remote) else { return .unavailable("the remote is not on GitHub") }
         let auth: CommandResult
         do {
-            auth = try await gh(["auth", "status", "--hostname", "github.com"])
+            auth = try await authStatus()
         } catch {
             return .unavailable("gh could not run: \(Self.describe(error))")
         }
@@ -132,6 +151,10 @@ struct GitHubReader {
         async let milestones = list([GitHubMilestone].self, "milestones", ["api", "repos/\(slug)/milestones?state=open"])
         do {
             data.issues = try await issues
+        } catch {
+            data.issuesUnavailable = (error as? GitHubReadFailure)?.detail ?? Self.describe(error)
+        }
+        do {
             data.openPullRequests = try await open
             data.mergedPullRequests = try await merged
             data.milestones = try await milestones
@@ -144,26 +167,35 @@ struct GitHubReader {
         return .ready(data)
     }
 
+    /// Asks about the active account only, so a broken inactive account cannot report a working user as signed out; older gh lacks --active.
+    private func authStatus() async throws -> CommandResult {
+        let active = try await gh(["auth", "status", "--active", "--hostname", "github.com"])
+        guard !active.succeeded, active.stderr.contains("unknown flag: --active") else { return active }
+        return try await gh(["auth", "status", "--hostname", "github.com"])
+    }
+
     private func list<T: Decodable>(_ type: T.Type, _ what: String, _ arguments: [String]) async throws -> T {
         let result: CommandResult
         do {
             result = try await gh(arguments)
         } catch {
-            throw GitHubReadFailure(reason: "could not read \(what): \(Self.describe(error))")
+            throw GitHubReadFailure(what: what, detail: Self.describe(error))
         }
         guard result.succeeded else {
-            throw GitHubReadFailure(reason: "could not read \(what): \(GitOutput.lastNonEmptyLine(result.stderr) ?? "gh exited with status \(result.status)")")
+            throw GitHubReadFailure(what: what, detail: GitOutput.lastNonEmptyLine(result.stderr) ?? "gh exited with status \(result.status)")
         }
         guard let value = GitHubJSON.decode(type, from: result.stdout) else {
-            throw GitHubReadFailure(reason: "could not read \(what): gh returned unreadable JSON")
+            throw GitHubReadFailure(what: what, detail: "gh returned unreadable JSON")
         }
         return value
     }
 
-    /// gh exits 8 while checks are pending, so stdout is parsed whatever the status.
-    private func pullRequestChecks(_ number: Int, slug: String) async -> [GitHubCheck] {
-        guard let result = try? await gh(["pr", "checks", String(number), "--repo", slug, "--json", "name,bucket,link"]) else { return [] }
-        return GitHubJSON.decode([GitHubCheck].self, from: result.stdout) ?? []
+    private func pullRequestChecks(_ number: Int, slug: String) async -> PullRequestChecks {
+        do {
+            return GitHubJSON.checks(from: try await gh(["pr", "checks", String(number), "--repo", slug, "--json", "name,bucket,link"]))
+        } catch {
+            return .failed(Self.describe(error))
+        }
     }
 
     private func gh(_ arguments: [String]) async throws -> CommandResult {

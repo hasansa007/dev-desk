@@ -9,6 +9,7 @@ final class ProjectOperationsTests: XCTestCase {
         let parent = try TempGitRepo()
         let folder = try await ProjectOperations.createProject(named: "  New App  ", in: parent.url)
         XCTAssertEqual(folder.path, parent.url.appendingPathComponent("New App").path)
+        XCTAssertFalse(folder.absoluteString.hasSuffix("/"), "a trailing slash would not match a picked folder's path")
         var isDirectory: ObjCBool = false
         XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent(".git").path, isDirectory: &isDirectory))
         XCTAssertTrue(isDirectory.boolValue)
@@ -64,6 +65,7 @@ final class ProjectOperationsTests: XCTestCase {
 
         let folder = try await ProjectOperations.cloneRepository(url: " \(source.url.path)/ ", into: parent.url)
         XCTAssertEqual(folder.path, parent.url.appendingPathComponent(source.url.lastPathComponent).path)
+        XCTAssertFalse(folder.absoluteString.hasSuffix("/"), "a trailing slash would not match a picked folder's path")
         XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent(".git").path))
         XCTAssertEqual(try String(contentsOf: folder.appendingPathComponent("README.md"), encoding: .utf8), "hello\n")
     }
@@ -125,5 +127,19 @@ final class ProjectOperationsTests: XCTestCase {
         XCTAssertEqual(ProjectOperationError.destinationExists("/tmp/app").errorDescription, "/tmp/app already exists. Choose another name or location.")
         XCTAssertEqual(ProjectOperationError.cloneFailed("fatal: not found").errorDescription, "git clone failed: fatal: not found")
         XCTAssertEqual(ProjectOperationError.initFailed("fatal: denied").errorDescription, "git init failed: fatal: denied")
+    }
+
+    func testCancelledCloneAndCreateRethrowCancellationInsteadOfAFailure() async throws {
+        let parent = try TempGitRepo()
+        let cancelled = ThrowingRunner(error: CancellationError())
+        do {
+            _ = try await ProjectOperations.cloneRepository(url: "https://github.com/acme/app.git", into: parent.url, runner: cancelled)
+            XCTFail("expected CancellationError")
+        } catch is CancellationError {}
+        do {
+            _ = try await ProjectOperations.createProject(named: "Halted", in: parent.url, runner: cancelled)
+            XCTFail("expected CancellationError")
+        } catch is CancellationError {}
+        XCTAssertFalse(FileManager.default.fileExists(atPath: parent.url.appendingPathComponent("Halted").path))
     }
 }

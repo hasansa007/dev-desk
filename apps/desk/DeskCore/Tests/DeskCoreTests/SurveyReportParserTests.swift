@@ -56,4 +56,11 @@ final class SurveyReportParserTests: XCTestCase {
     func testReportWithoutFindingSectionsHasNoFindings() {
         XCTAssertEqual(SurveyReportParser.parse("# Survey\n\n## ARCHITECTURE\n- drift → move\n", runID: "x"), [])
     }
+
+    func testFrameworkRoutePathsCountAsLocations() {
+        let report = "## CONFIRMED (1)\n- Route params lost · app/[id]/page.tsx:12 · app/(auth)/login/page.tsx:7 · src/routes/+page.svelte:3 · mechanism: step 1 drops the id\n"
+        let finding = SurveyReportParser.parse(report, runID: "r")[0]
+        XCTAssertEqual(finding.locations, ["app/[id]/page.tsx:12", "app/(auth)/login/page.tsx:7", "src/routes/+page.svelte:3"])
+        XCTAssertEqual(finding.summary, "mechanism: step 1 drops the id")
+    }
 }

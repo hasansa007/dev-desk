@@ -38,13 +38,22 @@ public protocol CommandRunner {
 
 /// Runs a tool from PATH, widened with the Homebrew and user bin directories a GUI app does not inherit.
 public struct ProcessRunner: CommandRunner {
-    public init() {}
+    let gate: CommandGate
 
+    public init() { gate = .shared }
+
+    init(gate: CommandGate) { self.gate = gate }
+
+    /// Holds a slot of the app-wide gate while the child runs; cancelling the task terminates the child and throws CancellationError.
     public func run(_ tool: String, _ arguments: [String], in directory: URL?, timeout: TimeInterval) async throws -> CommandResult {
-        try await withCheckedThrowingContinuation { continuation in
-            DispatchQueue.global(qos: .userInitiated).async {
-                continuation.resume(with: Result { try Self.runBlocking(tool, arguments, directory, timeout) })
-            }
+        try await gate.acquire()
+        do {
+            let result = try await launch(tool, arguments, directory, timeout)
+            await gate.release()
+            return result
+        } catch {
+            await gate.release()
+            throw error
         }
     }
 
@@ -60,7 +69,21 @@ public struct ProcessRunner: CommandRunner {
         return env
     }
 
-    private static func runBlocking(_ tool: String, _ arguments: [String], _ directory: URL?, _ timeout: TimeInterval) throws -> CommandResult {
+    private func launch(_ tool: String, _ arguments: [String], _ directory: URL?, _ timeout: TimeInterval) async throws -> CommandResult {
+        let child = ChildProcess()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                DispatchQueue.global(qos: .userInitiated).async {
+                    continuation.resume(with: Result { try Self.runBlocking(tool, arguments, directory, timeout, child) })
+                }
+            }
+        } onCancel: {
+            child.cancel()
+        }
+    }
+
+    private static func runBlocking(_ tool: String, _ arguments: [String], _ directory: URL?, _ timeout: TimeInterval,
+                                    _ child: ChildProcess) throws -> CommandResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [tool] + arguments
@@ -71,7 +94,9 @@ public struct ProcessRunner: CommandRunner {
         process.standardOutput = out
         process.standardError = err
         process.standardInput = FileHandle.nullDevice
+        guard child.attach(process) else { throw CancellationError() }
         do { try process.run() } catch { throw CommandError.launchFailed(error.localizedDescription) }
+        child.launched()
 
         // Both pipes drain concurrently, so output larger than the pipe buffer never blocks the child.
         var outData = Data()
@@ -90,10 +115,42 @@ public struct ProcessRunner: CommandRunner {
         process.waitUntilExit()
         watchdog.cancel()
         readers.wait()
+        if child.isCancelled { throw CancellationError() }
         if timedOut.isSet { throw CommandError.timedOut(tool: tool, seconds: timeout) }
         return CommandResult(status: process.terminationStatus,
                              stdout: String(decoding: outData, as: UTF8.self),
                              stderr: String(decoding: errData, as: UTF8.self))
+    }
+}
+
+/// Lets a cancelled task terminate its child; a process that has not launched yet is never terminated, only prevented.
+private final class ChildProcess: @unchecked Sendable {
+    private let lock = NSLock()
+    private var process: Process?
+    private var cancelled = false
+
+    var isCancelled: Bool { lock.withLock { cancelled } }
+
+    /// False when the task was cancelled before launch, so the caller must not start the process.
+    func attach(_ process: Process) -> Bool {
+        lock.withLock {
+            guard !cancelled else { return false }
+            self.process = process
+            return true
+        }
+    }
+
+    func launched() { lock.withLock { if cancelled { terminateIfRunning() } } }
+
+    func cancel() {
+        lock.withLock {
+            cancelled = true
+            terminateIfRunning()
+        }
+    }
+
+    private func terminateIfRunning() {
+        if let process, process.isRunning { process.terminate() }
     }
 }
 

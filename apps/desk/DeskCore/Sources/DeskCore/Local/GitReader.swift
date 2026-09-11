@@ -21,13 +21,22 @@ struct BranchFacts: Equatable {
     var commits: [GitCommit] = []
     var files: [NumstatEntry] = []
     var diffs: [String: FileDiff] = [:]
+    /// Why `git log` failed, so Activity says so instead of showing no commits.
+    var logFailure: String? = nil
+    /// Why `git diff` failed, so Changes says so instead of showing no files.
+    var diffFailure: String? = nil
 }
 
 struct GitFacts: Equatable {
     var base: String?
+    /// The fully qualified form commands use, e.g. refs/heads/main.
     var baseRef: String?
     var baseShort: String?
     var branches: [BranchFacts]
+}
+
+struct GitReadFailure: Error {
+    let detail: String
 }
 
 /// Pure parsers for the git output GitReader collects.
@@ -45,6 +54,11 @@ enum GitOutput {
 
     static func lastNonEmptyLine(_ text: String) -> String? {
         lines(text).map { $0.trimmingCharacters(in: .whitespaces) }.last { !$0.isEmpty }
+    }
+
+    /// Names from `for-each-ref --format=%(refname) refs/heads`; the full form stays exact when a tag shares a branch's name.
+    static func localBranches(_ output: String) -> [String] {
+        lines(output).compactMap { $0.hasPrefix("refs/heads/") ? String($0.dropFirst("refs/heads/".count)) : nil }
     }
 
     static func preferredBase(remoteBranches output: String) -> String? {
@@ -258,9 +272,9 @@ struct GitReader {
 
     func read(toplevel: String, currentBranch: String) async -> GitFacts {
         async let remote = output(["branch", "-r", "--format=%(refname:short)"])
-        async let local = output(["for-each-ref", "--format=%(refname:short)", "refs/heads"])
+        async let local = output(["for-each-ref", "--format=%(refname)", "refs/heads"])
         async let porcelain = output(["worktree", "list", "--porcelain"])
-        let localNames = GitOutput.lines(await local ?? "").filter { !$0.isEmpty }
+        let localNames = GitOutput.localBranches(await local ?? "")
         let (base, baseRef) = await resolveBase(remote: await remote ?? "", local: localNames, current: currentBranch)
         var baseShort: String?
         if let baseRef { baseShort = trimmed(await output(["rev-parse", "--short", baseRef])) }
@@ -273,35 +287,58 @@ struct GitReader {
         return GitFacts(base: base, baseRef: baseRef, baseShort: baseShort, branches: branches)
     }
 
-    /// dev.py's resolve_base, plus a local staging/develop/main/master before the current branch for repos with no remote.
+    /// dev.py's resolve_base plus a local candidate before the current branch; refs are fully qualified so no name can read as an option.
     private func resolveBase(remote: String, local: [String], current: String) async -> (name: String?, ref: String?) {
         if let name = GitOutput.preferredBase(remoteBranches: remote) {
             let isLocal = await output(["rev-parse", "--verify", "--quiet", "refs/heads/\(name)"]) != nil
-            return (name, isLocal ? name : "origin/\(name)")
+            return (name, isLocal ? "refs/heads/\(name)" : "refs/remotes/origin/\(name)")
         }
-        if let name = GitOutput.preferredBase(among: local) { return (name, name) }
-        return current.isEmpty ? (nil, nil) : (current, current)
+        if let name = GitOutput.preferredBase(among: local) { return (name, "refs/heads/\(name)") }
+        if current.isEmpty { return (nil, nil) }
+        return (current, current == "HEAD" ? "HEAD" : "refs/heads/\(current)")
     }
 
     private func branchFacts(_ name: String, baseRef: String?, worktree: String?) async -> BranchFacts {
         var facts = BranchFacts(name: name, unmerged: 0, worktree: worktree)
+        let ref = "refs/heads/\(name)"
         guard let baseRef,
-              let count = Int(trimmed(await output(["rev-list", "--count", "\(baseRef)..\(name)"])) ?? ""),
+              let count = Int(trimmed(await output(["rev-list", "--count", "\(baseRef)..\(ref)"])) ?? ""),
               count > 0 else { return facts }
         facts.unmerged = count
-        async let log = output(["log", "--format=%h%x1f%an%x1f%aI%x1f%s", "-n", "50", "\(baseRef)..\(name)"])
-        async let numstat = output(["diff", "--numstat", "\(baseRef)...\(name)"])
-        async let diff = output(["diff", "--no-color", "--no-ext-diff", "-U3", "\(baseRef)...\(name)"])
-        facts.commits = GitOutput.commits(await log ?? "")
-        facts.files = GitOutput.numstat(await numstat ?? "")
-        facts.diffs = Dictionary(GitOutput.fileDiffs(await diff ?? "").map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+        async let log = read(["log", "--format=%h%x1f%an%x1f%aI%x1f%s", "-n", "50", "\(baseRef)..\(ref)"])
+        async let numstat = read(["diff", "--numstat", "\(baseRef)...\(ref)"])
+        async let diff = read(["diff", "--no-color", "--no-ext-diff", "-U3", "\(baseRef)...\(ref)"])
+        switch await log {
+        case .success(let text): facts.commits = GitOutput.commits(text)
+        case .failure(let failure): facts.logFailure = failure.detail
+        }
+        switch (await numstat, await diff) {
+        case (.success(let stat), .success(let text)):
+            facts.files = GitOutput.numstat(stat)
+            facts.diffs = Dictionary(GitOutput.fileDiffs(text).map { ($0.path, $0) }, uniquingKeysWith: { first, _ in first })
+        case (.failure(let failure), _), (_, .failure(let failure)):
+            facts.diffFailure = failure.detail
+        }
         return facts
     }
 
-    /// Untrimmed stdout of a successful git call, so a diff keeps its last context line.
+    /// Untrimmed stdout of a successful git call, or why it failed, so a diff keeps its last context line.
+    private func read(_ arguments: [String]) async -> Result<String, GitReadFailure> {
+        do {
+            let result = try await runner.run("git", arguments, in: root, timeout: CommandTimeout.git)
+            guard result.succeeded else {
+                return .failure(GitReadFailure(detail: GitOutput.lastNonEmptyLine(result.stderr) ?? "git exited with status \(result.status)"))
+            }
+            return .success(result.stdout)
+        } catch {
+            var text = error.localizedDescription
+            if text.hasSuffix(".") { text.removeLast() }
+            return .failure(GitReadFailure(detail: text))
+        }
+    }
+
     private func output(_ arguments: [String]) async -> String? {
-        guard let result = try? await runner.run("git", arguments, in: root, timeout: CommandTimeout.git), result.succeeded else { return nil }
-        return result.stdout
+        try? await read(arguments).get()
     }
 
     private func trimmed(_ text: String?) -> String? {

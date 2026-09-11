@@ -77,4 +77,12 @@ final class GitHubDecodingTests: XCTestCase {
         XCTAssertEqual(GitHubJSON.authFailureReason("You are not logged into any GitHub hosts."), "not signed in to GitHub")
         XCTAssertEqual(GitHubJSON.authFailureReason("X Timeout trying to log in to github.com account octo (keyring)"), "gh could not reach github.com")
     }
+
+    func testChecksReadSeparatesPendingAndGenuinelyEmptyFromFailures() {
+        XCTAssertEqual(GitHubJSON.checks(from: CommandResult(status: 8, stdout: #"[{"name":"ci","bucket":"pending","link":""}]"#, stderr: "")),
+                       .read([GitHubCheck(name: "ci", bucket: "pending", link: "")]))
+        XCTAssertEqual(GitHubJSON.checks(from: CommandResult(status: 1, stdout: "", stderr: "no checks reported on the 'feat' branch\n")), .read([]))
+        XCTAssertEqual(GitHubJSON.checks(from: CommandResult(status: 1, stdout: "", stderr: "HTTP 502: Bad Gateway\n")), .failed("HTTP 502: Bad Gateway"))
+        XCTAssertEqual(GitHubJSON.checks(from: CommandResult(status: 0, stdout: "not json", stderr: "")), .failed("gh returned unreadable output"))
+    }
 }
