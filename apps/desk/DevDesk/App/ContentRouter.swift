@@ -1,0 +1,68 @@
+import DeskCore
+import SwiftUI
+
+struct ContentRouter: View {
+    let model: ProjectWindowModel
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if let reloadError = model.reloadError {
+                NoticeBanner(tone: .failed, title: "Reload failed", message: reloadError)
+                    .padding([.horizontal, .top], 12)
+            }
+            HStack(spacing: 0) {
+                content
+                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                if model.insightsOpen && model.insightsDocked {
+                    InsightsPanel(model: model, placement: .docked)
+                        .frame(width: DeskMetric.insightsDockedWidth)
+                }
+            }
+        }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+        .background(DeskColor.canvas)
+        .overlay(alignment: .bottomTrailing) {
+            if model.insightsOpen && !model.insightsDocked {
+                InsightsPanel(model: model, placement: .floating)
+                    .frame(width: DeskMetric.insightsFloatingSize.width, height: DeskMetric.insightsFloatingSize.height)
+                    .padding(.trailing, 36)
+                    .padding(.bottom, 34)
+            }
+        }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch model.loadState {
+        case .loading:
+            ProgressView()
+        case .failed(let message):
+            EmptyStateView(title: "This project could not be opened", message: message) {
+                Button("Retry") { Task { await model.load() } }
+                    .buttonStyle(DeskButtonStyle(kind: .primary))
+            }
+        case .loaded:
+            destination
+        }
+    }
+
+    @ViewBuilder private var destination: some View {
+        switch model.destination {
+        case .board:
+            if model.mode == .parallel {
+                ParallelScreen(model: model)
+            } else if let task = model.selectedTask {
+                TaskWorkspaceScreen(model: model, task: task)
+            } else {
+                BoardScreen(model: model)
+            }
+        case .roadmap:
+            RoadmapScreen(model: model)
+        case .findings:
+            FindingsScreen(model: model)
+        case .decisions:
+            DecisionsScreen(model: model)
+        case .settings:
+            SettingsScreen(model: model)
+        }
+    }
+}

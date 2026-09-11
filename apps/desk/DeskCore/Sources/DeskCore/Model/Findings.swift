@@ -1,0 +1,110 @@
+public enum FindingCategory: String, CaseIterable, Hashable {
+    case new = "New"
+    case knownNewEvidence = "Known · new evidence"
+    case needsDecision = "Needs a decision"
+    case closedOrDeclined = "Closed or declined"
+}
+
+public struct SurveyRun: Identifiable, Hashable {
+    public var id: String
+    public var label: String       // "today 09:40", or a report file stem
+    public var revision: String?   // "9c2e410"
+    public init(id: String, label: String, revision: String?) {
+        self.id = id
+        self.label = label
+        self.revision = revision
+    }
+}
+
+public struct CompareCard: Hashable {
+    public var title: String
+    public var body: String
+    public var meta: String         // may contain "\n"; the sheet renders it with line breaks
+    public var metaMonospaced: Bool
+    public init(title: String, body: String, meta: String, metaMonospaced: Bool) {
+        self.title = title
+        self.body = body
+        self.meta = meta
+        self.metaMonospaced = metaMonospaced
+    }
+}
+
+public struct RelationshipOption: Identifiable, Hashable {
+    public var id: String
+    public var title: String
+    public var detail: String
+    public init(id: String, title: String, detail: String) {
+        self.id = id
+        self.title = title
+        self.detail = detail
+    }
+}
+
+public struct Reconciliation: Hashable {
+    public var candidateIssue: Int
+    public var statusNote: String
+    public var guidance: [String]
+    public var findingCard: CompareCard
+    public var issueCard: CompareCard
+    public var relationships: [RelationshipOption]
+    public var proposedUpdate: [String]
+    public var deliveryNote: String
+    /// Set after the developer queues the update in the demo.
+    public var queuedNote: String?
+    public init(candidateIssue: Int, statusNote: String, guidance: [String], findingCard: CompareCard, issueCard: CompareCard,
+                relationships: [RelationshipOption], proposedUpdate: [String], deliveryNote: String, queuedNote: String? = nil) {
+        self.candidateIssue = candidateIssue
+        self.statusNote = statusNote
+        self.guidance = guidance
+        self.findingCard = findingCard
+        self.issueCard = issueCard
+        self.relationships = relationships
+        self.proposedUpdate = proposedUpdate
+        self.deliveryNote = deliveryNote
+        self.queuedNote = queuedNote
+    }
+}
+
+public struct Finding: Identifiable, Hashable {
+    public var id: String
+    public var runID: String
+    public var title: String
+    public var listDetail: String
+    public var categories: Set<FindingCategory>
+    public var summary: String
+    public var verificationLabel: String
+    public var locations: [String]
+    public var limits: String
+    public var reconcile: Reconciliation?
+    public var historyNote: String?
+    public init(id: String, runID: String, title: String, listDetail: String, categories: Set<FindingCategory>, summary: String,
+                verificationLabel: String, locations: [String], limits: String, reconcile: Reconciliation? = nil, historyNote: String? = nil) {
+        self.id = id
+        self.runID = runID
+        self.title = title
+        self.listDetail = listDetail
+        self.categories = categories
+        self.summary = summary
+        self.verificationLabel = verificationLabel
+        self.locations = locations
+        self.limits = limits
+        self.reconcile = reconcile
+        self.historyNote = historyNote
+    }
+}
+
+public struct FindingsReport: Hashable {
+    public var runs: [SurveyRun]
+    public var findings: [Finding]
+    /// Shown under the list, e.g. why issue search is unavailable.
+    public var searchNote: String?
+    public init(runs: [SurveyRun], findings: [Finding], searchNote: String? = nil) {
+        self.runs = runs
+        self.findings = findings
+        self.searchNote = searchNote
+    }
+
+    public func count(of category: FindingCategory, run runID: String?) -> Int {
+        findings.filter { ($0.runID == runID || runID == nil) && $0.categories.contains(category) }.count
+    }
+}

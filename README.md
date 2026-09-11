@@ -106,3 +106,4 @@ Then the UI is one command: `dev ui --open` regenerates all four surfaces and op
 - [User guide](documentation/GUIDE.md) — usage, compatibility, and troubleshooting.
 - [Workflow](documentation/WORKFLOW.md) — phases, approvals, and known limitations.
 - [Contributing](documentation/CONTRIBUTING.md) — structure, design rules, and maintenance.
+- [System model](documentation/SYSTEM-MODEL.md) — the five layers, what Dev Desk (the Mac app) reads, and what's not built yet.

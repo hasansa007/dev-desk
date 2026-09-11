@@ -21,7 +21,8 @@ small deterministic helper.
 | Compliance | `scripts/compliance_auditor.py` — stdlib only |
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
 | Tests | stdlib `unittest`, one file per script under `test-projects/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
-| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`. Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
+| Mac app | `apps/desk/` — Dev Desk, a native macOS app: SwiftUI with AppKit where needed, macOS 14+, Swift 5 mode. `project.yml` generates the Xcode project with xcodegen (gitignored, not committed); `DeskCore` is the local Swift package — models, sample data, the git/GitHub reader — tested with `swift test --package-path apps/desk/DeskCore` (see [ADR 0012](docs/adr/0012-the-mac-app-lives-in-apps-desk.md)) |
+| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
 | Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev`, and links `scripts/dev.py` as the `dev` command into `~/.local/bin` (or `~/bin`) when one is already on `PATH` |
 
 **Paths inside the family are the INSTALL path** (`~/.claude/skills/dev/…`), never the clone path.
@@ -66,6 +67,11 @@ pre-flight moves up into Phase 14.
 **`docs/` is tracked here** (changed 2026-09-10) so an ADR can be part of the diff that introduces
 its decision. Skills still probe `git check-ignore -q docs/` per repo, because the answer differs.
 
+**The container.** Dev Desk (`apps/desk/`) reads what the doors and `dev` already wrote — git,
+GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and starts no agents itself. Its two sample
+projects demo the whole design on labelled sample data; a real opened folder shows only what it can
+actually read, with the reason next to anything it can't yet (see ORPHANS).
+
 ## ORPHANS & PENDING
 
 **Doors that exist but have never been exercised.** Each says so in its own `## Scar tissue`:
@@ -85,6 +91,28 @@ its decision. Skills still probe `git check-ignore -q docs/` per repo, because t
 - **No `roadmap-declined` label**, so the declined-theme round trip is untested.
 - **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
 - **0 open issues, 0 milestones** — every board render so far has been of an empty tracker.
+- **`dev board` and `dev ui board` never reach the `pr_created`/`human_review` columns.**
+  `cmd_board` (`scripts/dev.py:346-358`) and `collect_board` (`:565-576`) build each issue's `facts`
+  dict with only `unmerged` and `phase_group` — neither ever sets `facts["pr"]`, so `classify`'s PR
+  branch (`facts.get("pr")`) is always empty and those two columns are dead code from both callers.
+  Dev Desk's board (ADR 0013) does receive PR data and reaches Review correctly, so for an issue
+  with an open PR the app says Review while `dev board` says In progress or Backlog. A `dev.py` fix;
+  out of this branch's scope.
+
+**Dev Desk (`apps/desk/`), not built yet:**
+
+- **Runner-dependent surfaces work only in the sample projects** — the agents list, the terminal
+  dock, decisions waiting on an answer, Insights' answers, and tracker updates from the app. A real
+  opened project shows each as unavailable, with the reason (ADR 0013).
+- **`dev snapshot`, `dev jobs` and `dev events`** (container spec §3) are not built — the app cannot
+  start, stop or answer a door yet.
+- **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
+  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both.
+- **`docs/arch/dev-system.html`'s Container node cites the design brief**, not `apps/desk/` — it
+  needs a re-pin once this branch merges.
+- **The Notifications and Execution settings panes store values**
+  (`desk.notifyDecisions`/`notifyCompletion`/`notifyFailures`, `desk.worktreeLocation`) that nothing
+  reads yet — no notification is posted, no worktree is created at the configured path.
 
 **Deferred deliberately:**
 
@@ -101,3 +129,11 @@ its decision. Skills still probe `git check-ignore -q docs/` per repo, because t
 - **Antigravity CLI is not installed**, though `install.sh` links skills into its directory. The
   binary on `PATH` is a shim that reports the real CLI missing, so `dev run --agent antigravity` is
   refused rather than guessed. Gemini has no confirmed non-interactive invocation either.
+- **Two of the three evidenced diagrams have an orphaned pin.** `docs/arch/dev-family.architecture.json`
+  (pinned `90bcc4fa…`) and `docs/arch/dev-journey.architecture.json` (pinned `f1bc5fcb…`) each cite
+  a commit that is not an ancestor of `main` or this branch — an earlier squash merge likely dropped
+  it from history while the commit object itself is still present locally (`git cat-file -t`
+  succeeds), which is why `archify validate` still reads `ok` today. Neither pin resolves for a
+  fresh clone, or after this machine's next `git gc`. Not caused by this branch: none of the 115
+  files this branch changed intersect either diagram's cited paths. Needs a re-pin at a reachable
+  commit; `docs/arch/` is out of this task's touch-list.

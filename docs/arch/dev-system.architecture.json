@@ -1,0 +1,479 @@
+{
+ "schema_version": 1,
+ "diagram_type": "architecture",
+ "meta": {
+  "title": "The dev system in five layers",
+  "quality_profile": "standard",
+  "viewBox": [
+   1360,
+   800
+  ],
+  "output": "dev-system.html",
+  "repository": {
+   "url": "https://github.com/hasansa007/dev-skill",
+   "revision": "321fb15a6e78d497c49dccbdfecf5c7e431b6eca"
+  },
+  "legend": {
+   "entries": {
+    "frontend": { "label": "Container" },
+    "backend": { "label": "Engine" },
+    "cloud": { "label": "Helper" },
+    "security": { "label": "Gate or hook" },
+    "database": { "label": "Stored record" },
+    "external": { "label": "Hosted tracker" }
+   }
+  }
+ },
+ "components": [
+  {
+   "id": "gates",
+   "type": "security",
+   "label": "Four human gates",
+   "sublabel": "5 · 6 · 14 · 16",
+   "pos": [
+    60,
+    130
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "shared/pipeline.md",
+     "line": 81,
+     "end_line": 93,
+     "label": "Four gates stop anyway"
+    }
+   ],
+   "tag": "never automatic"
+  },
+  {
+   "id": "pipeline",
+   "type": "backend",
+   "label": "shared/pipeline.md",
+   "sublabel": "Phases 0–16",
+   "pos": [
+    60,
+    280
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "SKILL.md",
+     "line": 210,
+     "end_line": 210,
+     "label": "every door reads it"
+    },
+    {
+     "path": "shared/pipeline.md",
+     "line": 172,
+     "end_line": 179,
+     "label": "Phase 1 context load"
+    }
+   ]
+  },
+  {
+   "id": "doors",
+   "type": "backend",
+   "label": "The doors",
+   "sublabel": "dev + 22 siblings",
+   "pos": [
+    60,
+    470
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "SKILL.md",
+     "line": 180,
+     "end_line": 213,
+     "label": "the family"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 56,
+     "end_line": 67,
+     "label": "the write boundary"
+    }
+   ],
+   "tag": "writers"
+  },
+  {
+   "id": "memory",
+   "type": "database",
+   "label": "Committed memory",
+   "sublabel": "PROJECT_MAP · ADRs · reports",
+   "pos": [
+    572,
+    130
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/insights/SKILL.md",
+     "line": 94,
+     "end_line": 130,
+     "label": "insights keeps PROJECT_MAP"
+    },
+    {
+     "path": "docs/adr/0001-adrs-live-in-docs-adr.md",
+     "line": 21,
+     "end_line": 25,
+     "label": "docs/adr, never edited"
+    },
+    {
+     "path": "skills/survey/SKILL.md",
+     "line": 210,
+     "end_line": 213,
+     "label": "docs/survey/<date>.md"
+    }
+   ]
+  },
+  {
+   "id": "state",
+   "type": "database",
+   "label": ".dev/<branch>.json",
+   "sublabel": "phase checkpoints",
+   "pos": [
+    572,
+    280
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "scripts/dev.py",
+     "line": 78,
+     "end_line": 110,
+     "label": "state_path · save_state"
+    },
+    {
+     "path": "scripts/dev.py",
+     "line": 185,
+     "end_line": 209,
+     "label": "verify: git is the authority"
+    }
+   ],
+   "tag": "advisory"
+  },
+  {
+   "id": "git",
+   "type": "database",
+   "label": "git",
+   "sublabel": "branches · commits",
+   "pos": [
+    572,
+    470
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "shared/entry.md",
+     "line": 28,
+     "end_line": 48,
+     "label": "workspace resolution"
+    },
+    {
+     "path": "scripts/dev.py",
+     "line": 35,
+     "end_line": 68,
+     "label": "git helpers"
+    }
+   ]
+  },
+  {
+   "id": "github",
+   "type": "external",
+   "label": "GitHub",
+   "sublabel": "issues · milestones · PRs",
+   "pos": [
+    572,
+    620
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "scripts/dev.py",
+     "line": 330,
+     "end_line": 340,
+     "label": "cmd_board: gh issue list"
+    },
+    {
+     "path": "skills/kanban/SKILL.md",
+     "line": 263,
+     "end_line": 271,
+     "label": "bounded card writes"
+    }
+   ]
+  },
+  {
+   "id": "hooks",
+   "type": "security",
+   "label": "hooks/",
+   "sublabel": "four Claude Code hooks",
+   "pos": [
+    1085,
+    130
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "hooks/README.md",
+     "line": 21,
+     "end_line": 28,
+     "label": "the four"
+    },
+    {
+     "path": "hooks/context-load.sh",
+     "line": 11,
+     "end_line": 18,
+     "label": "reads PROJECT_MAP"
+    },
+    {
+     "path": "hooks/pr-gates.sh",
+     "line": 55,
+     "end_line": 68,
+     "label": ".dev/ state must agree with git"
+    }
+   ]
+  },
+  {
+   "id": "devcli",
+   "type": "cloud",
+   "label": "dev CLI",
+   "sublabel": "scripts/dev.py",
+   "pos": [
+    1085,
+    280
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "scripts/dev.py",
+     "line": 1,
+     "end_line": 6,
+     "label": "optional by design"
+    },
+    {
+     "path": "scripts/dev.py",
+     "line": 1223,
+     "end_line": 1277,
+     "label": "state · board · run · ui · project"
+    }
+   ],
+   "tag": "stdlib"
+  },
+  {
+   "id": "desk",
+   "type": "frontend",
+   "label": "Dev Desk",
+   "sublabel": "Mac app · apps/desk/",
+   "pos": [
+    1035,
+    470
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "docs/design/dev-desk-app-design-prompt.md",
+     "line": 11,
+     "end_line": 23,
+     "label": "product purpose"
+    },
+    {
+     "path": "docs/design/dev-desk-app-design-prompt.md",
+     "line": 61,
+     "end_line": 77,
+     "label": "main navigation"
+    }
+   ],
+   "tag": "first build"
+  }
+ ],
+ "boundaries": [
+  {
+   "kind": "region",
+   "label": "1 · Truth",
+   "wraps": [
+    "git",
+    "github"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "2 · Memory",
+   "wraps": [
+    "memory",
+    "state"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "3 · Engine",
+   "wraps": [
+    "gates",
+    "pipeline",
+    "doors"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "4 · Helpers",
+   "wraps": [
+    "hooks",
+    "devcli"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "5 · Container",
+   "wraps": [
+    "desk"
+   ]
+  }
+ ],
+ "connections": [
+  {
+   "id": "doors-pipeline",
+   "from": "doors",
+   "to": "pipeline",
+   "label": "all read it"
+  },
+  {
+   "id": "pipeline-gates",
+   "from": "pipeline",
+   "to": "gates",
+   "label": "stops at",
+   "variant": "security"
+  },
+  {
+   "id": "doors-memory",
+   "from": "doors",
+   "to": "memory",
+   "label": "map · ADRs · reports",
+   "variant": "emphasis"
+  },
+  {
+   "id": "doors-git",
+   "from": "doors",
+   "to": "git",
+   "label": "branches · commits",
+   "variant": "emphasis",
+   "labelDx": 80
+  },
+  {
+   "id": "doors-github",
+   "from": "doors",
+   "to": "github",
+   "label": "issues · PRs",
+   "variant": "emphasis"
+  },
+  {
+   "id": "hooks-memory",
+   "from": "hooks",
+   "to": "memory",
+   "label": "reads PROJECT_MAP",
+   "variant": "dashed"
+  },
+  {
+   "id": "devcli-state",
+   "from": "devcli",
+   "to": "state",
+   "label": "checkpoint · read"
+  },
+  {
+   "id": "devcli-github",
+   "from": "devcli",
+   "to": "github",
+   "label": "gh issue list",
+   "variant": "dashed"
+  },
+  {
+   "id": "desk-memory",
+   "from": "desk",
+   "to": "memory",
+   "label": "ADRs · survey",
+   "variant": "dashed"
+  },
+  {
+   "id": "desk-git",
+   "from": "desk",
+   "to": "git",
+   "label": "diffs · commits",
+   "variant": "dashed"
+  },
+  {
+   "id": "desk-github",
+   "from": "desk",
+   "to": "github",
+   "label": "issues · PRs · checks",
+   "variant": "dashed"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "Authority runs down the numbers",
+   "items": [
+    "Each layer defers to the layers numbered below it",
+    "git and GitHub win any disagreement with Memory",
+    ".dev/<branch>.json is advisory; dev state verify checks it against git"
+   ]
+  },
+  {
+   "dot": "amber",
+   "title": "Reading the arrows",
+   "items": [
+    "An arrow runs from the actor to what it acts on",
+    "Emphasis: a door writes. Dashed: a helper or Dev Desk reads",
+    "The dev CLI is the one writer of .dev/ state, through dev state checkpoint"
+   ]
+  },
+  {
+   "dot": "violet",
+   "title": "Dev Desk, first build",
+   "items": [
+    "Lives in apps/desk/ in this repo (ADR 0012)",
+    "Reads git and gh directly (ADR 0013); writes to no repository or tracker",
+    "Starts no agents; Insights is unavailable for real projects",
+    "Its evidence cites the design brief at this pin; a re-pin will cite apps/desk/ once merged"
+   ]
+  },
+  {
+   "dot": "rose",
+   "title": "Not built, so no edge is drawn",
+   "items": [
+    "The shared runner and its jobs",
+    "dev snapshot and dev events (container spec §3)",
+    "Provider integrations and tracker writes"
+   ]
+  }
+ ]
+}
