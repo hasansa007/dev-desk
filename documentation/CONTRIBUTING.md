@@ -38,8 +38,9 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
 > than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
 > `wc -l shared/pipeline.md` before you write. The number stays deliberately close to current: this
-> file grew 593 → 938 on rules alone, and an unstated ceiling is not a ceiling. It has since lost
-> rules — see the note below — which is the reason the gap is kept tight rather than comfortable.
+> file grew 685 → 1014 on rules alone before any ceiling existed, and an unstated ceiling is not a
+> ceiling. It has since lost rules — see the note below — which is the reason the gap is kept
+> tight rather than comfortable.
 >
 > **2026-08-23 — raised 950 → 975, because the cheaper move was worse.** Staying under 950 for the
 > Short Documentation rule was done by emptying Phase 9's Surgical Protocol into a pointer at the
@@ -127,9 +128,10 @@ they point, never duplicate.
    is not an input. This whole file's last five fixes came from one real run.
 2. **Say what artifact proves it.** If the gate cannot leave evidence behind, it will be skipped.
 3. **Say which tier pays for it.** Everything mandatory taxes every task forever.
-4. **Say what it replaces — and now you can prove it.** The pipeline grew 593 → 823 lines without
-   ever losing a rule, because deletion was never safe: you cannot remove on a hunch what was added
-   after an incident. `## PIPELINE`'s `Gates:` line is what makes it safe. Query the history —
+4. **Say what it replaces — and now you can prove it.** The pipeline grew from 685 lines in the
+   repo's first commit to a peak of 1014 without ever losing a rule, because deletion was never
+   safe: you cannot remove on a hunch what was added after an incident. `## PIPELINE`'s `Gates:`
+   line is what makes it safe. Query the history —
 
    ```bash
    gh pr list --state merged --limit 100 --json body -q '.[].body' | grep '^Gates:'
