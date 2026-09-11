@@ -22,7 +22,7 @@ same-day-tie refusal to pick silently.
 
 **One deliberate difference.** `dev.py`'s `resolve_base` checks only the remote: the first of
 `staging`/`develop`/`main`/`master` present under `origin/`, else the current branch
-(`scripts/dev.py:59-68`). `GitReader.resolveBase` adds a step for a repo with **no origin**: before
+(`scripts/dev.py:57-66`). `GitReader.resolveBase` adds a step for a repo with **no origin**: before
 falling back to the current branch, it checks the same four names among **local** branches
 (`apps/desk/DeskCore/Sources/DeskCore/Local/GitReader.swift`, `resolveBase`, and
 `GitOutput.preferredBase(among:)`). Without that step, a locally-created repo with a `main` branch
@@ -32,6 +32,11 @@ unmerged, which is the "nothing in flight" failure: the board would show no work
 while a real base branch sits right there, untracked because it never left this machine. Dev Desk
 opens exactly this shape of folder (a `create-project` result, or any repo cloned without a
 remote), so the gap could not be left as a shared limitation.
+
+**Both measure a branch against origin's copy of the base** when the remote has one
+(`GitReader.resolveBase`; `origin_ref` in `scripts/dev.py`), never a local branch of that name. A
+local copy lags behind pull requests merged on GitHub and counts their work as unmerged: until
+2026-09-12 both used it whenever it existed, and a merged task showed as in progress.
 
 ## Rejected
 

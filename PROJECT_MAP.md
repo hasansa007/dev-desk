@@ -114,7 +114,10 @@ ORPHANS).
 - **Auto needs a GitHub milestone.** It starts tasks from the Queued column, which is the active
   milestone's issues, so a repo with no milestone gives Auto nothing to start (ADR 0018).
 - **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
-  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both.
+  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both. Both measure a branch
+  against `origin/<base>`, never a local copy that can lag. One rule is Dev Desk's alone: a branch
+  still at a merged pull request's head goes to Done, which covers squash merges. `dev board` reads
+  no merged pull requests, so it can't apply it.
 - **The agent prompt is duplicated.** `AgentLaunch.prompt` mirrors `scripts/dev.py`'s `build_prompt`
   byte for byte (ADR 0018), so a change to one needs both.
 - **`docs/arch/dev-system.html` needs a re-pin.** Its Container node still cites the design brief
