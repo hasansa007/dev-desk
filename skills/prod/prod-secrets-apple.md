@@ -1,6 +1,6 @@
 # Prod Secrets — Apple acquisition steps
 
-Read from `shared/prod-secrets.md` §3 (Phase 16, step 2) and **only when a missing secret matches a
+Read from `skills/prod/prod-secrets.md` §3 (Phase 16, step 2) and **only when a missing secret matches a
 name below**. A lookup table, not a phase: it adds no step, gates nothing, and Phase 16 stays
 stack-agnostic without it. A missing name that matches nothing here is still reported by name.
 

@@ -85,7 +85,7 @@ if grep -qE '(^|[;&|])[[:space:]]*gh[[:space:]]+pr[[:space:]]+merge\b' <<<"$CMD"
   if [ -z "$BASE" ]; then
     ask merge-unknown "Phase 16 - could not read this PR's base branch. Confirm it is not the prod promotion."
   elif [ "$IS_PROD" = yes ]; then
-    ask merge-prod "Phase 16 - this merges into '$BASE', which AUTO-DEPLOYS PROD. Secrets pre-flight run (shared/prod-secrets.md)? Migrations already applied? Pre prod verified? This approves the RELEASE, not the work."
+    ask merge-prod "Phase 16 - this merges into '$BASE', which AUTO-DEPLOYS PROD. Secrets pre-flight run (skills/prod/prod-secrets.md)? Migrations already applied? Pre prod verified? This approves the RELEASE, not the work."
   else
     log pass "merge->$BASE"
   fi

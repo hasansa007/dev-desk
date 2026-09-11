@@ -49,7 +49,7 @@ Prod branch: the branch whose merge RELEASES PRODUCTION.
 
 If the two resolve to the same branch, the repo has a **single-stage model**: Phase 14's merge
 already reaches production. Say so explicitly, and skip Phase 16 — **except its secrets pre-flight**
-(`shared/prod-secrets.md`), which moves to Phase 14 and runs before that merge. It is bound to the
+(`skills/prod/prod-secrets.md`), which moves to Phase 14 and runs before that merge. It is bound to the
 merge that releases production, not to a phase number; skipping it here is how it missed the very
 incident it was written for.
 

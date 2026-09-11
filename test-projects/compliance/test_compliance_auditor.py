@@ -15,11 +15,11 @@ import os
 import sys
 import unittest
 
-# Add repo root to import path
+# The auditor lives beside the dev:audit door, in skills/audit/ (ADR 0015)
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
-sys.path.insert(0, REPO_ROOT)
+sys.path.insert(0, os.path.join(REPO_ROOT, "skills", "audit"))
 
-from scripts.compliance_auditor import (
+from compliance_auditor import (
     audit_pipeline,
     format_compliance_markdown,
     parse_range_list,
