@@ -432,6 +432,10 @@ public struct DeskTask: Identifiable, Hashable {
 
     public var issueLabel: String { issueNumber.map { "#\($0)" } ?? "" }
 
+    /// Nobody has started this: no branch of its own, and still where the tracker put it. A pull request from a
+    /// fork also has no branch here, but it is in Review, so it keeps its workspace.
+    public var isUnstarted: Bool { branch == nil && (column == .backlog || column == .queued) }
+
     /// What the task's shell and `/dev` call it: the issue number, else the N of a gh-N-… branch.
     public var taskNumber: Int? { issueNumber ?? branch.flatMap { Self.ghNumber($0) } }
 

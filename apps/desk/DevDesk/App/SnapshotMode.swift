@@ -128,6 +128,8 @@ final class SnapshotMode {
         Capture(name: "21-followup-sheet", isSheet: true) { $0.openTask("42"); $0.present(.followUp) },
         Capture(name: "22-handoff-sheet", isSheet: true) { $0.openTask("63"); $0.present(.handoff) },
         Capture(name: "23-dark-task42", isDark: true) { $0.openTask("42"); $0.insightsOpen = true },
+        // #65 is queued with no branch, so opening it presents the sheet rather than a workspace.
+        Capture(name: "24-unstarted-task-sheet", isSheet: true) { $0.go(.board); $0.openTask("65") },
     ]
 
     private static let localStates: [Capture] = [
@@ -151,7 +153,15 @@ final class SnapshotMode {
             model.prepareRun(door: "survey", title: "Survey", agent: "Claude")
             model.floatRuns()
         },
+        Capture(name: "09-unstarted-task-sheet", isSheet: true) { model in
+            if let id = firstUnstartedTaskID(model) { model.openTask(id) }
+        },
     ]
+
+    /// The first card nobody has started, so the sheet capture shows Start task against a real folder.
+    private static func firstUnstartedTaskID(_ model: ProjectWindowModel) -> String? {
+        model.tasks.first { $0.isUnstarted }?.id
+    }
 
     /// The first in-progress card, so the Changes capture shows a real diff when one exists; else the first card on the board.
     private static func firstTaskID(_ model: ProjectWindowModel) -> String? {

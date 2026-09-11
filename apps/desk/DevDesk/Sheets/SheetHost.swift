@@ -45,6 +45,15 @@ struct SheetHost: View {
         case .reconcileFinding(let findingID):
             ReconcileFindingSheet(title: reconcileTitle(findingID), reconcile: findFinding(findingID)?.reconcile,
                                   onCancel: model.dismissSheet, onConfirm: { model.confirmSheet() })
+        case .unstartedTask(let taskID):
+            if let task = model.task(taskID) {
+                UnstartedTaskSheet(model: model, task: task)
+            } else {
+                SheetChrome(title: "Task", confirmTitle: "Start task", width: 720, confirmDisabled: true,
+                            onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
+                    UnavailableView(reason: "This task is no longer on the board.")
+                }
+            }
         case .cloneRepository:
             CloneRepositorySheet(onDismiss: model.dismissSheet)
         case .createProject:

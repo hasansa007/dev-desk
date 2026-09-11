@@ -161,6 +161,22 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertEqual(loads, 2)
     }
 
+    func testOpeningAnUnstartedCardShowsItsSheet() async {
+        let model = await makeStudyHubModel()
+        model.openTask("65")
+        XCTAssertEqual(model.sheet, .unstartedTask("65"))
+        XCTAssertEqual(model.lastOpenedTaskID, "65")
+        XCTAssertEqual(model.selectedTaskID, "42", "the workspace behind the sheet is left as it was")
+    }
+
+    func testOpeningWorkThatHasStartedOpensTheWorkspace() async {
+        let model = await makeStudyHubModel()
+        model.openTask("57")
+        XCTAssertNil(model.sheet)
+        XCTAssertEqual(model.selectedTaskID, "57")
+        XCTAssertEqual(model.tab, .activity)
+    }
+
     func testDockingRunsOpensThePanel() async {
         let model = await makeStudyHubModel()
         model.dockRuns()

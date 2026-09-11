@@ -132,13 +132,14 @@ extension ProjectWindowModel {
     }
 
     /// Lists the door as a run and opens the panel. Nothing executes until the pane's own Start, per ADR 0017.
-    func prepareRun(door: String, title: String, agent: String, arguments: [String] = []) {
+    /// `id` separates runs of the same door for different tasks; the folder rule prefixes `folderNote` with where it opens.
+    func prepareRun(door: String, title: String, agent: String, arguments: [String] = [],
+                    id: String? = nil, folderNote: String? = nil) {
         guard canRunDoors,
               let command = DoorCommand.build(door: door, agent: agent, arguments: arguments, home: NSHomeDirectory())
         else { return }
-        // The folder rule prefixes this with where it opens, so the note carries only the reason.
-        runs.add(DoorRun(id: "door:\(door)", title: title, agent: agent, command: command,
-                         folderNote: "a door reads the whole project, not one task's branch."))
+        runs.add(DoorRun(id: id ?? "door:\(door)", title: title, agent: agent, command: command,
+                         folderNote: folderNote ?? "a door reads the whole project, not one task's branch."))
         runsOpen = true
     }
 

@@ -33,6 +33,7 @@ public enum SettingsSection: String, CaseIterable, Codable, Hashable {
 
 public enum SheetKind: Hashable, Identifiable {
     case openProject, compareOutputs, followUp, handoff, reconcileFinding(String), cloneRepository, createProject
+    case unstartedTask(String)
 
     public var id: String {
         switch self {
@@ -43,6 +44,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .reconcileFinding(let findingID): return "reconcileFinding:\(findingID)"
         case .cloneRepository: return "cloneRepository"
         case .createProject: return "createProject"
+        case .unstartedTask(let taskID): return "unstartedTask:\(taskID)"
         }
     }
 }
@@ -148,11 +150,16 @@ public final class ProjectWindowModel {
         }
     }
 
+    /// An unstarted card opens as a sheet over the board; anything with work behind it opens its workspace.
     public func openTask(_ id: String) {
         destination = .board
+        lastOpenedTaskID = id
+        guard task(id)?.isUnstarted != true else {
+            sheet = .unstartedTask(id)
+            return
+        }
         mode = .focus
         selectedTaskID = id
-        lastOpenedTaskID = id
         tab = .activity
         dockTabID = nil
     }
