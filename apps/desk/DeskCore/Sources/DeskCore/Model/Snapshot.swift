@@ -33,6 +33,8 @@ public struct ProjectSnapshot: Hashable {
     public var board: Surface<[DeskTask]>
     public var boardNote: String
     public var findings: Surface<FindingsReport>
+    /// `docs/ideation/` reports; an empty one reads as "no runs yet", which is not the same as unavailable.
+    public var ideation: Surface<IdeationReport>
     public var roadmap: Surface<Roadmap>
     public var decisions: Surface<[Decision]>
     public var connections: [Connection]
@@ -48,10 +50,12 @@ public struct ProjectSnapshot: Hashable {
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,
-                findings: Surface<FindingsReport>, roadmap: Surface<Roadmap>, decisions: Surface<[Decision]>,
+                findings: Surface<FindingsReport>, ideation: Surface<IdeationReport> = .available(IdeationReport()),
+                roadmap: Surface<Roadmap>, decisions: Surface<[Decision]>,
                 connections: [Connection], connectionsNote: String, capabilities: CapabilityMatrix,
                 insights: InsightsAvailability, projectFacts: [KeyValue] = [],
                 slug: String? = nil, activeMilestone: String? = nil) {
+        self.ideation = ideation
         self.project = project
         self.isDemo = isDemo
         self.launch = launch

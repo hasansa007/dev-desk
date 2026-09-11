@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, roadmap, findings, decisions, settings
+    case board, roadmap, findings, ideation, decisions, settings
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
 
@@ -89,6 +89,9 @@ public final class ProjectWindowModel {
     public var selectedFindingID: String?
     public var selectedRunID: String?
     public var findingFilter: FindingCategory?
+    public var selectedOpportunityID: String?
+    public var selectedIdeationRunID: String?
+    public var ideationFilter: OpportunityVerdict?
     public var settingsSection: SettingsSection = .agentsAndDefaults
     public private(set) var answeredDecisionID: String?
     /// Why the last tracker write failed, already escaped: it is rendered as markdown in a banner.
@@ -122,6 +125,7 @@ public final class ProjectWindowModel {
     public func task(_ id: String) -> DeskTask? { tasks.first { $0.id == id } }
     public var openTaskCount: Int { tasks.filter { $0.column != .done }.count }
     public var findingsCount: Int? { snapshot?.findings.value?.findings.count }
+    public var ideationCount: Int? { snapshot?.ideation.value?.opportunities.count }
     public var pendingDecisionCount: Int { (snapshot?.decisions.value ?? []).filter { $0.state == .needsAttention }.count }
     public var parallelTasks: [DeskTask] { Array(tasks.filter { $0.column == .inProgress && !$0.parallel.isNone }.prefix(4)) }
 
@@ -143,6 +147,8 @@ public final class ProjectWindowModel {
             insightsOpen = loaded.launch.insightsOpen
             selectedRunID = loaded.findings.value?.runs.first?.id
             selectedFindingID = loaded.findings.value?.findings.first?.id
+            selectedIdeationRunID = loaded.ideation.value?.runs.first?.id
+            selectedOpportunityID = loaded.ideation.value?.opportunities.first?.id
             selectedDecisionID = loaded.decisions.value?.first { $0.state != .answered }?.id
         } catch {
             guard !Task.isCancelled else { return }

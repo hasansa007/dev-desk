@@ -157,6 +157,7 @@ final class SnapshotMode {
         Capture(name: "09-unstarted-task-sheet", isSheet: true) { model in
             if let id = firstUnstartedTaskID(model) { model.openTask(id) }
         },
+        Capture(name: "10-ideation") { $0.go(.ideation) },
     ]
 
     /// The first card nobody has started, so the sheet capture shows Start task against a real folder.

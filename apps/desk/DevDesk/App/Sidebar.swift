@@ -97,6 +97,9 @@ struct Sidebar: View {
         case .findings:
             guard let count = model.findingsCount, count > 0 else { return nil }
             return (count, false)
+        case .ideation:
+            guard let count = model.ideationCount, count > 0 else { return nil }
+            return (count, false)
         case .decisions:
             return model.pendingDecisionCount > 0 ? (model.pendingDecisionCount, true) : nil
         case .roadmap, .settings:
@@ -114,6 +117,7 @@ struct Sidebar: View {
         case .board: return "square.grid.3x2"
         case .roadmap: return "map"
         case .findings: return "scope"
+        case .ideation: return "lightbulb"
         case .decisions: return "questionmark.diamond"
         case .settings: return "gearshape"
         }
