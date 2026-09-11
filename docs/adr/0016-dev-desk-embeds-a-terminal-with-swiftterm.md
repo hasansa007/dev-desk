@@ -21,8 +21,9 @@ and agent CLIs use.
 
 The `DevDesk` app target depends on **SwiftTerm**
 ([github.com/migueldeicaza/SwiftTerm](https://github.com/migueldeicaza/SwiftTerm), MIT). It is
-pinned with `exactVersion: 1.20.0` in `apps/desk/project.yml`. SwiftTerm's `LocalProcessTerminalView`
-runs the user's login shell in a PTY inside the task's dock.
+pinned with `exactVersion: 1.11.2` in `apps/desk/project.yml`, the newest release with neither a
+Metal shader nor a build plugin. SwiftTerm's `LocalProcessTerminalView` runs the user's login shell
+in a PTY inside the task's dock.
 
 **DeskCore stays dependency-free.** Choosing the task's folder and keeping per-window shell state
 both live there, tested with `swift test`. Only the view that draws the terminal and hosts its process
@@ -39,6 +40,12 @@ imports SwiftTerm.
   dependency belongs with the only code that draws.
 - **Agent sessions first.** Those need the `dev jobs`/`dev events` runner contract (container spec
   §3), which is unbuilt. Step 2 starts agents *inside* this shell instead.
+- **The newest SwiftTerm, 1.20.0.** Version 1.12 added a Metal shader. Xcode 26 compiles that only
+  after a separate Metal Toolchain download (`xcodebuild -downloadComponent MetalToolchain`). Version
+  1.19 added a build plugin, which command-line builds must skip validating with
+  `-skipPackagePluginValidation`, a flag xcodebuild calls a risk for untrusted sources. 1.11.2 builds
+  with stock Xcode here and on CI. The release notes from 1.12 to 1.20 list features and a
+  Metal-renderer crash fix, and no security fix.
 
 ## Consequences
 
@@ -48,6 +55,8 @@ imports SwiftTerm.
 - **The first build resolves SwiftTerm over the network**, and so does `desk.yml`'s `xcodebuild`.
   `Package.resolved` lives inside the gitignored `.xcodeproj`, so the exact pin is what makes builds
   reproducible. Bumping the version is a deliberate edit to `project.yml`.
+- **Moving past 1.11.2 needs the Metal Toolchain and plugin trust,** on every developer Mac and in
+  `desk.yml`. So it waits until one of them is standard, or until a SwiftTerm fix is worth that cost.
 - **SwiftTerm has one principal maintainer.** If it stalls, the pin keeps working, and replacing it
   touches only `ShellTerminalView.swift`.
 - **The licence is MIT, which is compatible.** This repo has no licence of its own yet (see

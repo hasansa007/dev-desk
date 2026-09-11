@@ -17,6 +17,7 @@ The dock model gains two tab kinds besides the transcript: a live shell, and an 
 
 ## Global Constraints
 
+- **Ruled during implementation (2026-09-11): SwiftTerm is pinned at `1.11.2`, not `1.20.0`.** 1.12 and later need Xcode 26's separate Metal Toolchain, and 1.19 and later carry a build plugin. See ADR 0016.
 - **SwiftTerm** comes from `https://github.com/migueldeicaza/SwiftTerm`, pinned `exactVersion: 1.20.0` (MIT). Only the `DevDesk` app target depends on it. **DeskCore stays dependency-free** and is tested with `swift test --package-path apps/desk/DeskCore`.
 - `SWIFT_VERSION` stays `5.0`, and macOS stays `14.0`. There are no other new dependencies.
 - **Nothing runs in a repository until the user clicks "Start shell".** A shell never starts on its own when a task opens. (Auto-start is step 2.)
