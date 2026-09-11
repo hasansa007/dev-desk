@@ -49,14 +49,14 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     private func githubReadyRunner(root: URL) -> FakeRunner {
         FakeRunner([
-            "git rev-parse --show-toplevel": .ok(root.path + "\n"),
-            "git rev-parse --abbrev-ref HEAD": .ok("main\n"),
-            "git remote get-url origin": .ok("git@github.com:acme/app.git\n"),
-            "git rev-parse --short HEAD": .ok("abc1234\n"),
-            "git branch -r --format=%(refname:short)": .ok("origin\norigin/main\n"),
-            "git for-each-ref --format=%(refname) refs/heads": .ok("refs/heads/main\n"),
-            "git rev-parse --verify --quiet refs/heads/main": .ok("0123456789abcdef0123456789abcdef01234567\n"),
-            "git rev-parse --short refs/heads/main": .ok("abc1234\n"),
+            FakeRunner.gitRead("rev-parse --show-toplevel"): .ok(root.path + "\n"),
+            FakeRunner.gitRead("rev-parse --abbrev-ref HEAD"): .ok("main\n"),
+            FakeRunner.gitRead("remote get-url origin"): .ok("git@github.com:acme/app.git\n"),
+            FakeRunner.gitRead("rev-parse --short HEAD"): .ok("abc1234\n"),
+            FakeRunner.gitRead("branch -r --format=%(refname:short)"): .ok("origin\norigin/main\n"),
+            FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"): .ok("refs/heads/main\n"),
+            FakeRunner.gitRead("rev-parse --verify --quiet refs/heads/main"): .ok("0123456789abcdef0123456789abcdef01234567\n"),
+            FakeRunner.gitRead("rev-parse --short refs/heads/main"): .ok("abc1234\n"),
             activeAuth: .ok("github.com\n  ✓ Logged in to github.com account octo (keyring)\n"),
             issueList: .ok("[]"),
             openPRs: .ok("[]"),
@@ -199,13 +199,13 @@ final class LocalGitDataSourceTests: XCTestCase {
     }
 
     func testNonGitHubRemoteIsNamedAsSuch() async throws {
-        let (github, _) = try await githubConnection { $0.script("git remote get-url origin", .ok("git@gitlab.com:acme/app.git\n")) }
+        let (github, _) = try await githubConnection { $0.script(FakeRunner.gitRead("remote get-url origin"), .ok("git@gitlab.com:acme/app.git\n")) }
         XCTAssertEqual(github?.label, "the remote is not on GitHub")
     }
 
     func testMissingRemoteIsNamedAsSuch() async throws {
         let (github, snapshot) = try await githubConnection {
-            $0.script("git remote get-url origin", .failed(2, stderr: "error: No such remote 'origin'"))
+            $0.script(FakeRunner.gitRead("remote get-url origin"), .failed(2, stderr: "error: No such remote 'origin'"))
         }
         XCTAssertEqual(github?.label, "no GitHub remote")
         XCTAssertEqual(snapshot.projectFacts.first { $0.key == "Remote" }?.value, "none")
@@ -258,16 +258,100 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(report.findings.map(\.id), ["2026-09-10-C1", "2026-09-01-C1"])
     }
 
+    func testASymlinkedReportIsIgnoredAndItsContentsNeverAppear() async throws {
+        let folder = try TempGitRepo()
+        try folder.write("docs/survey/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
+        let outside = FileManager.default.temporaryDirectory.appendingPathComponent("secret-\(UUID().uuidString).md")
+        try "## CONFIRMED (1)\n- Leaked secret · /etc/passwd:1\n".write(to: outside, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: outside) }
+        try FileManager.default.createSymbolicLink(at: folder.url.appendingPathComponent("docs/survey/2026-09-20.md"), withDestinationURL: outside)
+
+        let report = try await LocalGitDataSource(root: folder.url, runner: githubReadyRunner(root: folder.url)).load().findings.value
+        XCTAssertEqual(report?.runs.map(\.id), ["2026-09-10"])
+        XCTAssertFalse(report?.findings.contains { $0.title == "Leaked secret" } ?? true, "a symlinked report must not be read")
+    }
+
+    func testAnOversizedReportIsRefusedButLabelled() async throws {
+        let folder = try TempGitRepo()
+        try folder.write("docs/survey/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
+        try folder.write("docs/survey/2026-09-30.md", "## CONFIRMED (1)\n- x · a.swift:1\n" + String(repeating: "a", count: 1_048_600))
+
+        let report = try await LocalGitDataSource(root: folder.url, runner: githubReadyRunner(root: folder.url)).load().findings.value
+        XCTAssertEqual(report?.runs.map(\.label), ["2026-09-30 · Report too large to read (over 1 MB)", "2026-09-10"])
+        XCTAssertEqual(report?.findings.map(\.runID), ["2026-09-10"], "no findings are parsed from the oversized report")
+    }
+
+    func testAHostileTextconvDriverDoesNotRunOnOpen() async throws {
+        let repo = try TempGitRepo()
+        try repo.git("init", "-q", "-b", "main")
+        let marker = repo.url.appendingPathComponent("PWNED")
+        let driver = repo.url.appendingPathComponent("driver.sh")
+        try "#!/bin/sh\ntouch \"\(marker.path)\"\ncat \"$1\"\n".write(to: driver, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: driver.path)
+        try repo.write(".gitattributes", "* diff=evil\n")
+        try repo.write("file.txt", "one\n")
+        try repo.commitAll("initial")
+        try repo.git("config", "diff.evil.textconv", driver.path)
+        try repo.git("checkout", "-q", "-b", "feature")
+        try repo.write("file.txt", "two\n")
+        try repo.commitAll("change")
+
+        // Control: under the repo's own config the driver runs, proving the attack is real.
+        try repo.git("diff", "main...feature")
+        XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path), "textconv should run under the repo's own config")
+        try FileManager.default.removeItem(at: marker)
+
+        _ = try await LocalGitDataSource(root: repo.url).load()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "opening the folder must not run the repo's textconv driver")
+    }
+
+    func testEveryGitReadIsHardenedAndDiffsDisableTextconv() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/feat/12-x\n"))
+        runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/feat/12-x"), .ok("1\n"))
+        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/feat/12-x"), .ok(""))
+        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/feat/12-x"), .ok(""))
+        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/feat/12-x"), .ok(""))
+
+        _ = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        let gitKeys = runner.keys.filter { $0.hasPrefix("git ") }
+        XCTAssertFalse(gitKeys.isEmpty)
+        for key in gitKeys {
+            XCTAssertTrue(key.hasPrefix("git -c core.fsmonitor= -c core.hooksPath=/dev/null -c diff.external= "), key)
+        }
+        XCTAssertTrue(runner.keys.contains { $0.contains("diff --numstat --no-textconv ") })
+        XCTAssertTrue(runner.keys.contains { $0.contains("--no-ext-diff --no-textconv -U3 ") })
+    }
+
+    func testBranchFanOutIsCappedAtTwoHundredAndTheNoteSaysSo() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        let refs = (["refs/heads/main"] + (1...250).map { "refs/heads/b\($0)" }).joined(separator: "\n") + "\n"
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok(refs))
+        for i in 1...250 {
+            runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/b\(i)"), .ok("1\n"))
+            runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/b\(i)"), .ok(""))
+            runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/b\(i)"), .ok(""))
+            runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/b\(i)"), .ok(""))
+        }
+
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        XCTAssertEqual(snapshot.board.value?.filter { $0.id.hasPrefix("branch:") }.count, 200)
+        XCTAssertTrue(snapshot.boardNote.hasSuffix(" Showing 200 of 250 local branches."), snapshot.boardNote)
+        XCTAssertEqual(runner.keys.filter { $0.contains("rev-list --count") }.count, 200, "only the 200 newest branches are processed")
+    }
+
     func testIssueBranchReadsItsDiffAndItsPipelineStateFile() async throws {
         let folder = try TempGitRepo()
         try folder.write(".dev/feat-12-x.json", #"{"phase":9,"phase_group":"coding","tier":"standard"}"#)
         let runner = githubReadyRunner(root: folder.url)
-        runner.script("git for-each-ref --format=%(refname) refs/heads", .ok("refs/heads/main\nrefs/heads/feat/12-x\n"))
-        runner.script("git rev-list --count refs/heads/main..refs/heads/feat/12-x", .ok("2\n"))
-        runner.script("git log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/feat/12-x",
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/feat/12-x\n"))
+        runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/feat/12-x"), .ok("2\n"))
+        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/feat/12-x"),
                       .ok("abc1234\u{1F}Ada\u{1F}2026-09-11T09:00:00Z\u{1F}Start\n"))
-        runner.script("git diff --numstat refs/heads/main...refs/heads/feat/12-x", .ok("1\t0\tA.swift\n"))
-        runner.script("git diff --no-color --no-ext-diff -U3 refs/heads/main...refs/heads/feat/12-x",
+        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/feat/12-x"), .ok("1\t0\tA.swift\n"))
+        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/feat/12-x"),
                       .ok("diff --git a/A.swift b/A.swift\n--- /dev/null\n+++ b/A.swift\n@@ -0,0 +1 @@\n+x\n"))
         runner.script(issueList, .ok(#"[{"number":12,"title":"Crash","labels":[],"milestone":null,"updatedAt":"2026-09-01T00:00:00Z","body":"","url":"https://github.com/acme/app/issues/12"}]"#))
 
@@ -302,12 +386,12 @@ final class LocalGitDataSourceTests: XCTestCase {
     func testFailedLogAndDiffReadsAreUnavailableRatherThanEmpty() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
-        runner.script("git for-each-ref --format=%(refname) refs/heads", .ok("refs/heads/main\nrefs/heads/spike\n"))
-        runner.script("git rev-list --count refs/heads/main..refs/heads/spike", .ok("3\n"))
-        runner.script("git log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/spike",
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/spike\n"))
+        runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/spike"), .ok("3\n"))
+        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/spike"),
                       .failed(128, stderr: "fatal: bad object refs/heads/spike\n"))
-        runner.script("git diff --numstat refs/heads/main...refs/heads/spike", .ok("1\t0\tA.swift\n"))
-        runner.script("git diff --no-color --no-ext-diff -U3 refs/heads/main...refs/heads/spike",
+        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/spike"), .ok("1\t0\tA.swift\n"))
+        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/spike"),
                       .failed(128, stderr: "fatal: unable to read tree 1234567\n"))
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
@@ -320,14 +404,14 @@ final class LocalGitDataSourceTests: XCTestCase {
     func testRevisionArgumentsAreFullyQualifiedSoNoBranchNameBecomesAnOption() async throws {
         let folder = try TempGitRepo()
         let runner = FakeRunner([
-            "git rev-parse --show-toplevel": .ok(folder.url.path + "\n"),
-            "git rev-parse --abbrev-ref HEAD": .ok("--output=/tmp/pwned\n"),
-            "git for-each-ref --format=%(refname) refs/heads": .ok("refs/heads/--output=/tmp/pwned\nrefs/heads/feature\n"),
-            "git rev-list --count refs/heads/--output=/tmp/pwned..refs/heads/feature": .ok("0\n"),
+            FakeRunner.gitRead("rev-parse --show-toplevel"): .ok(folder.url.path + "\n"),
+            FakeRunner.gitRead("rev-parse --abbrev-ref HEAD"): .ok("--output=/tmp/pwned\n"),
+            FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"): .ok("refs/heads/--output=/tmp/pwned\nrefs/heads/feature\n"),
+            FakeRunner.gitRead("rev-list --count refs/heads/--output=/tmp/pwned..refs/heads/feature"): .ok("0\n"),
         ])
         _ = try await LocalGitDataSource(root: folder.url, runner: runner).load()
-        XCTAssertTrue(runner.keys.contains("git rev-parse --short refs/heads/--output=/tmp/pwned"))
-        XCTAssertTrue(runner.keys.contains("git rev-list --count refs/heads/--output=/tmp/pwned..refs/heads/feature"))
+        XCTAssertTrue(runner.keys.contains(FakeRunner.gitRead("rev-parse --short refs/heads/--output=/tmp/pwned")))
+        XCTAssertTrue(runner.keys.contains(FakeRunner.gitRead("rev-list --count refs/heads/--output=/tmp/pwned..refs/heads/feature")))
         for key in runner.keys where key.hasPrefix("git ") {
             XCTAssertFalse(key.split(separator: " ").contains { $0.hasPrefix("--output") }, key)
         }
@@ -353,7 +437,7 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     private func boardReason(toplevel result: CommandResult) async throws -> String? {
         let folder = try TempGitRepo()
-        let runner = FakeRunner(["git rev-parse --show-toplevel": result])
+        let runner = FakeRunner([FakeRunner.gitRead("rev-parse --show-toplevel"): result])
         return try await LocalGitDataSource(root: folder.url, runner: runner).load().board.unavailableReason
     }
 

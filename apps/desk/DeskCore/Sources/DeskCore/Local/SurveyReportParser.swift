@@ -92,7 +92,8 @@ enum SurveyReportParser {
             locations.append(path)
         }
         return Finding(id: "\(runID)-\(section.idLetter)\(index)", runID: runID, title: parts.first ?? text,
-                       listDetail: section.category.rawValue, categories: [section.category], summary: rest.joined(separator: " · "),
+                       listDetail: section.category.rawValue, categories: [section.category],
+                       summary: Markdown.escape(rest.joined(separator: " · ")),
                        verificationLabel: section.verificationLabel, locations: locations, limits: limits)
     }
 

@@ -95,6 +95,12 @@ final class CommandGateTests: XCTestCase {
         XCTAssertLessThan(Date().timeIntervalSince(started), 2)
     }
 
+    func testExtraEnvironmentReachesTheChildProcess() async throws {
+        let runner = ProcessRunner(extraEnvironment: ["GIT_ALLOW_PROTOCOL": "https:ssh:git:file"])
+        let result = try await runner.run("env", [], in: nil, timeout: 5)
+        XCTAssertTrue(result.stdout.contains("GIT_ALLOW_PROTOCOL=https:ssh:git:file"), result.stdout)
+    }
+
     func testCancelledRunGivesItsGateSlotBack() async throws {
         let runner = ProcessRunner(gate: CommandGate(limit: 1))
         let run = Task { try await runner.run("sleep", ["5"], in: nil, timeout: 10) }

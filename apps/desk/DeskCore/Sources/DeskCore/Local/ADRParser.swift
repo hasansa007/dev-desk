@@ -15,10 +15,11 @@ enum ADRParser {
         let status = value(of: "Status:", in: lines)
         let date = value(of: "Date:", in: lines)
         let meta = [number.isEmpty ? "ADR" : "ADR \(number)", status, date].filter { !$0.isEmpty }.joined(separator: " · ")
-        let answer = DecisionAnswer(optionTitle: nil, rationale: rationale(lines),
+        let answer = DecisionAnswer(optionTitle: nil, rationale: Markdown.escape(rationale(lines)),
                                     answeredLabel: [status, date].filter { !$0.isEmpty }.joined(separator: " "))
+        // The file name is repo-controlled; escape it and drop the backticks the escaper can't make safe inside a code span.
         return Decision(id: stem, listTitle: title, listMeta: meta, state: .answered, question: title,
-                        context: "Recorded in `docs/adr/\(fileName)`", answer: answer, body: markdown)
+                        context: "Recorded in \(Markdown.escape("docs/adr/\(fileName)"))", answer: answer, body: markdown)
     }
 
     private static func value(of key: String, in lines: [String]) -> String {

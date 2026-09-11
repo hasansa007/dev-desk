@@ -2,6 +2,7 @@ import Foundation
 
 public enum ProjectOperationError: Error, Equatable, LocalizedError {
     case invalidName(String)
+    case unsupportedURL(String)
     case destinationExists(String)
     case cloneFailed(String)
     case initFailed(String)
@@ -12,6 +13,8 @@ public enum ProjectOperationError: Error, Equatable, LocalizedError {
             return "The folder name is empty."
         case .invalidName(let name):
             return "“\(name)” can't be used as a folder name. Names can't be “.” or “..” and can't contain “/” or “:”."
+        case .unsupportedURL(let url):
+            return "“\(url)” isn't a supported repository URL. Dev Desk clones only https, ssh, git and local-path URLs."
         case .destinationExists(let path):
             return "\(path) already exists. Choose another name or location."
         case .cloneFailed(let message):
@@ -25,6 +28,10 @@ public enum ProjectOperationError: Error, Equatable, LocalizedError {
 /// The launcher's two writes: a new local project and a clone. Neither touches a folder that already exists.
 public enum ProjectOperations {
     static let projectMap = "# PROJECT_MAP\n\n## TECH_STACK\n\n## SYSTEM_FLOW\n\n## ORPHANS & PENDING\n"
+    /// git enables the ext:: and fd:: remote helpers by default; this whitelist keeps a pasted URL from running commands.
+    public static let cloneEnvironment = ["GIT_ALLOW_PROTOCOL": "https:ssh:git:file"]
+    /// Remote-helper transports that run an arbitrary command; rejected before git ever sees the URL.
+    static let blockedTransports = ["ext", "fd"]
 
     public static func createProject(named name: String, in parent: URL, runner: CommandRunner = ProcessRunner()) async throws -> URL {
         let folder = try destination(named: name.trimmingCharacters(in: .whitespacesAndNewlines), in: parent)
@@ -48,8 +55,12 @@ public enum ProjectOperations {
         return folder
     }
 
-    public static func cloneRepository(url: String, into parent: URL, runner: CommandRunner = ProcessRunner()) async throws -> URL {
+    public static func cloneRepository(url: String, into parent: URL,
+                                       runner: CommandRunner = ProcessRunner(extraEnvironment: cloneEnvironment)) async throws -> URL {
         let source = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        if let transport = transport(of: source), blockedTransports.contains(transport) {
+            throw ProjectOperationError.unsupportedURL(source)
+        }
         let folder = try destination(named: folderName(fromCloneURL: source), in: parent)
         let result: CommandResult
         do {
@@ -74,6 +85,14 @@ public enum ProjectOperations {
             value = String(value[value.index(after: separator)...])
         }
         return value
+    }
+
+    /// The lowercased transport name before "::", e.g. "ext" in "ext::sh -c …"; nil for an ordinary URL or scp-style path.
+    static func transport(of url: String) -> String? {
+        guard let separator = url.range(of: "::") else { return nil }
+        let scheme = url[..<separator.lowerBound]
+        guard !scheme.isEmpty, scheme.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "+" || $0 == "-" || $0 == "." }) else { return nil }
+        return scheme.lowercased()
     }
 
     private static func destination(named name: String, in parent: URL) throws -> URL {

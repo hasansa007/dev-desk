@@ -70,6 +70,39 @@ final class ProjectOperationsTests: XCTestCase {
         XCTAssertEqual(try String(contentsOf: folder.appendingPathComponent("README.md"), encoding: .utf8), "hello\n")
     }
 
+    func testCloneRefusesRemoteHelperTransportsWithoutRunningGit() async throws {
+        let parent = try TempGitRepo()
+        let runner = FakeRunner()
+        for url in ["ext::sh -c \"touch /tmp/pwned\"", "  fd::17/foo ", "EXT::sh -c whoami"] {
+            do {
+                _ = try await ProjectOperations.cloneRepository(url: url, into: parent.url, runner: runner)
+                XCTFail("expected unsupportedURL for \(url.debugDescription)")
+            } catch let error as ProjectOperationError {
+                XCTAssertEqual(error, .unsupportedURL(url.trimmingCharacters(in: .whitespacesAndNewlines)))
+            }
+        }
+        XCTAssertEqual(runner.calls, [])
+    }
+
+    func testOrdinaryURLsAreNotMistakenForTransports() {
+        XCTAssertNil(ProjectOperations.transport(of: "https://github.com/acme/app.git"))
+        XCTAssertNil(ProjectOperations.transport(of: "git@github.com:acme/app.git"))
+        XCTAssertNil(ProjectOperations.transport(of: "/tmp/code/repo"))
+        XCTAssertEqual(ProjectOperations.transport(of: "ext::sh -c x"), "ext")
+        XCTAssertEqual(ProjectOperations.transport(of: "FD::17"), "fd")
+    }
+
+    func testCloneUsesTheProtocolWhitelistButStillAllowsLocalPaths() async throws {
+        XCTAssertEqual(ProjectOperations.cloneEnvironment["GIT_ALLOW_PROTOCOL"], "https:ssh:git:file")
+        let source = try TempGitRepo()
+        try source.git("init", "-q", "-b", "main")
+        try source.write("README.md", "hi\n")
+        try source.commitAll("initial")
+        let parent = try TempGitRepo()
+        let folder = try await ProjectOperations.cloneRepository(url: source.url.path, into: parent.url)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: folder.appendingPathComponent(".git").path))
+    }
+
     func testCloneRefusesAnExistingDestinationWithoutRunningGit() async throws {
         let parent = try TempGitRepo()
         try parent.write("app/keep.txt", "mine")
@@ -127,6 +160,8 @@ final class ProjectOperationsTests: XCTestCase {
         XCTAssertEqual(ProjectOperationError.destinationExists("/tmp/app").errorDescription, "/tmp/app already exists. Choose another name or location.")
         XCTAssertEqual(ProjectOperationError.cloneFailed("fatal: not found").errorDescription, "git clone failed: fatal: not found")
         XCTAssertEqual(ProjectOperationError.initFailed("fatal: denied").errorDescription, "git init failed: fatal: denied")
+        XCTAssertEqual(ProjectOperationError.unsupportedURL("ext::sh -c x").errorDescription,
+                       "“ext::sh -c x” isn't a supported repository URL. Dev Desk clones only https, ssh, git and local-path URLs.")
     }
 
     func testCancelledCloneAndCreateRethrowCancellationInsteadOfAFailure() async throws {

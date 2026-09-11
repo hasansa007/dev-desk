@@ -27,12 +27,15 @@ enum BoardBuilder {
         BoardContext(input).tasks()
     }
 
-    static func note(github: GitHubState, activeMilestone: (title: String?, why: String)) -> String {
-        guard let data = github.data else { return "GitHub is unavailable (\(github.unavailableReason ?? "")), so only local branches are shown." }
+    static func note(github: GitHubState, activeMilestone: (title: String?, why: String), localBranchNote: String? = nil) -> String {
+        let suffix = localBranchNote.map { " \($0)" } ?? ""
+        guard let data = github.data else {
+            return "GitHub is unavailable (\(github.unavailableReason ?? "")), so only local branches are shown." + suffix
+        }
         let rule = "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued."
         let milestone = activeMilestone.title.map { " Active milestone: \($0), \(activeMilestone.why)." } ?? " No active milestone, so Queued is empty."
         let issues = data.issuesUnavailable.map { " Open issues could not be read (\($0)), so only pull requests and branches are shown." } ?? ""
-        return rule + milestone + issues
+        return rule + milestone + issues + suffix
     }
 
     /// dev.py's `^(gh-)?N(-|$)` or `/N-`.
@@ -124,16 +127,6 @@ enum BoardBuilder {
             guard seen.insert("\(verb) \(number)").inserted else { return nil }
             return Dependency(text: "\(verb) [#\(number)](desk://task/\(number))", taskID: number)
         }
-    }
-
-    /// Backslash-escapes the characters inline markdown would otherwise format.
-    static func escapeMarkdown(_ text: String) -> String {
-        var escaped = ""
-        for character in text {
-            if "\\`*_[]<>~&".contains(character) { escaped.append("\\") }
-            escaped.append(character)
-        }
-        return escaped
     }
 
     static func displayPath(_ path: String) -> String {
@@ -371,9 +364,9 @@ private struct BoardContext {
 
     private func activityEvents(_ commits: [GitCommit]) -> [ActivityEvent] {
         commits.map { commit in
-            let subject = BoardBuilder.escapeMarkdown(commit.subject)
+            let subject = Markdown.escape(commit.subject)
             return ActivityEvent(id: commit.sha, time: time(commit.date),
-                                 text: "**\(BoardBuilder.escapeMarkdown(commit.author))**" + (subject.isEmpty ? "" : " \(subject)"),
+                                 text: "**\(Markdown.escape(commit.author))**" + (subject.isEmpty ? "" : " \(subject)"),
                                  detail: ToolDetail(title: "Commit \(commit.sha)", lines: [commit.date]))
         }
     }

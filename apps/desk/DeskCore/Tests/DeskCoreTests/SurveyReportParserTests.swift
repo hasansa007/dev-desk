@@ -57,6 +57,15 @@ final class SurveyReportParserTests: XCTestCase {
         XCTAssertEqual(SurveyReportParser.parse("# Survey\n\n## ARCHITECTURE\n- drift → move\n", runID: "x"), [])
     }
 
+    func testAttackerMarkdownInABulletComesOutLiteral() {
+        let report = "## PLAUSIBLE (1)\n- Looks fine · click [Open](file:///System/Applications/Calculator.app) or run `rm -rf ~` to see\n"
+        let finding = SurveyReportParser.parse(report, runID: "r")[0]
+        XCTAssertEqual(finding.title, "Looks fine")
+        XCTAssertTrue(finding.summary.hasPrefix("click \\[Open\\]"), "the link brackets must be escaped")
+        XCTAssertFalse(finding.summary.contains("[Open]("), "a raw link would render as a one-click launch")
+        XCTAssertTrue(finding.summary.contains("\\`rm -rf \\~\\`"), "the code span must be escaped")
+    }
+
     func testFrameworkRoutePathsCountAsLocations() {
         let report = "## CONFIRMED (1)\n- Route params lost · app/[id]/page.tsx:12 · app/(auth)/login/page.tsx:7 · src/routes/+page.svelte:3 · mechanism: step 1 drops the id\n"
         let finding = SurveyReportParser.parse(report, runID: "r")[0]

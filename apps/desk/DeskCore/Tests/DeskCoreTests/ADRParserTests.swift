@@ -60,16 +60,25 @@ final class ADRParserTests: XCTestCase {
         XCTAssertEqual(decision.question, title)
         XCTAssertEqual(decision.listMeta, "ADR 0002 · Accepted · 2026-08-31")
         XCTAssertEqual(decision.state, .answered)
-        XCTAssertEqual(decision.context, "Recorded in `docs/adr/0002-diagrams-land-in-the-repo.md`")
+        XCTAssertEqual(decision.context, "Recorded in docs/adr/0002-diagrams-land-in-the-repo.md")
         XCTAssertEqual(decision.body, adr0002)
-        XCTAssertEqual(decision.answer, DecisionAnswer(
-            optionTitle: nil,
-            rationale: "`dev:arch` writes `docs/arch/<name>.architecture.json` **and** `<name>.html` into the invoked repo. "
-                + "Both, always: an HTML with no IR beside it cannot be checked by anything. "
-                + "`$SCRATCH` remains for `--scratch`, for a target that is not the invoked repo, and for the four "
-                + "unevidenced diagram types, which nothing can re-check and which must not sit in the tree wearing an "
-                + "evidenced diagram's authority.",
-            answeredLabel: "Accepted 2026-08-31"))
+        let rawRationale = "`dev:arch` writes `docs/arch/<name>.architecture.json` **and** `<name>.html` into the invoked repo. "
+            + "Both, always: an HTML with no IR beside it cannot be checked by anything. "
+            + "`$SCRATCH` remains for `--scratch`, for a target that is not the invoked repo, and for the four "
+            + "unevidenced diagram types, which nothing can re-check and which must not sit in the tree wearing an "
+            + "evidenced diagram's authority."
+        XCTAssertEqual(decision.answer, DecisionAnswer(optionTitle: nil, rationale: Markdown.escape(rawRationale), answeredLabel: "Accepted 2026-08-31"))
+        XCTAssertFalse(decision.answer!.rationale.contains("**and**"), "the emphasis markers must be escaped")
+    }
+
+    func testAttackerMarkdownInTheDecisionAndFileNameComesOutLiteral() {
+        let adr = "# 0009 — Evil\n\nStatus: Proposed\nDate: 2026-09-01\n\n## Decision\n\nClick [here](file:///Applications/Calculator.app) and `run me`.\n"
+        let decision = ADRParser.parse(adr, fileName: "0009-[a](b).md")
+        XCTAssertEqual(decision.answer?.rationale, "Click \\[here\\](file:///Applications/Calculator.app) and \\`run me\\`.")
+        XCTAssertFalse(decision.answer!.rationale.contains("[here]("), "a raw link would render as a one-click launch")
+        XCTAssertFalse(decision.context.contains("[a](b)"), "an attacker file name must not stay a live link")
+        XCTAssertFalse(decision.context.contains("`"), "backticks are dropped so an attacker file name can't open a code span")
+        XCTAssertTrue(decision.context.hasPrefix("Recorded in docs/adr/"))
     }
 
     func testRationaleIsCappedAtSixHundredCharacters() {

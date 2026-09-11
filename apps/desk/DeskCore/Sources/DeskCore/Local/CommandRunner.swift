@@ -39,10 +39,23 @@ public protocol CommandRunner {
 /// Runs a tool from PATH, widened with the Homebrew and user bin directories a GUI app does not inherit.
 public struct ProcessRunner: CommandRunner {
     let gate: CommandGate
+    /// Extra variables merged over the inherited environment, e.g. GIT_ALLOW_PROTOCOL to restrict clone transports.
+    let extraEnvironment: [String: String]
 
-    public init() { gate = .shared }
+    public init() {
+        gate = .shared
+        extraEnvironment = [:]
+    }
 
-    init(gate: CommandGate) { self.gate = gate }
+    public init(extraEnvironment: [String: String]) {
+        gate = .shared
+        self.extraEnvironment = extraEnvironment
+    }
+
+    init(gate: CommandGate, extraEnvironment: [String: String] = [:]) {
+        self.gate = gate
+        self.extraEnvironment = extraEnvironment
+    }
 
     /// Holds a slot of the app-wide gate while the child runs; cancelling the task terminates the child and throws CancellationError.
     public func run(_ tool: String, _ arguments: [String], in directory: URL?, timeout: TimeInterval) async throws -> CommandResult {
@@ -57,7 +70,7 @@ public struct ProcessRunner: CommandRunner {
         }
     }
 
-    static func environment() -> [String: String] {
+    func environment() -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         let home = FileManager.default.homeDirectoryForCurrentUser.path
         let extra = ["/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin", "\(home)/.local/bin", "\(home)/bin"]
@@ -66,15 +79,17 @@ public struct ProcessRunner: CommandRunner {
         env["GIT_TERMINAL_PROMPT"] = "0"
         env["GH_PROMPT_DISABLED"] = "1"
         env["NO_COLOR"] = "1"
+        for (key, value) in extraEnvironment { env[key] = value }
         return env
     }
 
     private func launch(_ tool: String, _ arguments: [String], _ directory: URL?, _ timeout: TimeInterval) async throws -> CommandResult {
         let child = ChildProcess()
+        let env = environment()
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 DispatchQueue.global(qos: .userInitiated).async {
-                    continuation.resume(with: Result { try Self.runBlocking(tool, arguments, directory, timeout, child) })
+                    continuation.resume(with: Result { try Self.runBlocking(tool, arguments, directory, timeout, env, child) })
                 }
             }
         } onCancel: {
@@ -83,11 +98,11 @@ public struct ProcessRunner: CommandRunner {
     }
 
     private static func runBlocking(_ tool: String, _ arguments: [String], _ directory: URL?, _ timeout: TimeInterval,
-                                    _ child: ChildProcess) throws -> CommandResult {
+                                    _ environment: [String: String], _ child: ChildProcess) throws -> CommandResult {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
         process.arguments = [tool] + arguments
-        process.environment = environment()
+        process.environment = environment
         process.currentDirectoryURL = directory
         let out = Pipe()
         let err = Pipe()

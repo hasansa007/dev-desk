@@ -21,6 +21,11 @@ final class FakeRunner: CommandRunner {
 
     func script(_ key: String, _ result: CommandResult) { lock.withLock { responses[key] = result } }
 
+    /// The recorded key for a hardened git read: the hardening flags sit between "git" and the subcommand.
+    static func gitRead(_ subcommand: String) -> String {
+        (["git"] + GitCommand.readFlags + subcommand.split(separator: " ").map(String.init)).joined(separator: " ")
+    }
+
     func run(_ tool: String, _ arguments: [String], in directory: URL?, timeout: TimeInterval) async throws -> CommandResult {
         let key = ([tool] + arguments).joined(separator: " ")
         return lock.withLock {

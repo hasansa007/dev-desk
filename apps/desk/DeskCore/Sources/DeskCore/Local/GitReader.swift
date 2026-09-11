@@ -33,6 +33,8 @@ struct GitFacts: Equatable {
     var baseRef: String?
     var baseShort: String?
     var branches: [BranchFacts]
+    /// The total count of non-base local branches when more than the cap exist, so the note can say what was left out.
+    var truncatedBranchCount: Int? = nil
 }
 
 struct GitReadFailure: Error {
@@ -44,6 +46,7 @@ enum GitOutput {
     static let baseCandidates = ["staging", "develop", "main", "master"]
     static let maxDiffFiles = 200
     static let maxDiffLines = 1500
+    static let maxBranches = 200
 
     /// Splits on "\n" only, so a form feed or U+2028 inside a line never splits it; a trailing "\r" is dropped.
     static func lines(_ text: String) -> [String] {
@@ -272,7 +275,7 @@ struct GitReader {
 
     func read(toplevel: String, currentBranch: String) async -> GitFacts {
         async let remote = output(["branch", "-r", "--format=%(refname:short)"])
-        async let local = output(["for-each-ref", "--format=%(refname)", "refs/heads"])
+        async let local = output(["for-each-ref", "--format=%(refname)", "--sort=-committerdate", "refs/heads"])
         async let porcelain = output(["worktree", "list", "--porcelain"])
         let localNames = GitOutput.localBranches(await local ?? "")
         let (base, baseRef) = await resolveBase(remote: await remote ?? "", local: localNames, current: currentBranch)
@@ -280,11 +283,15 @@ struct GitReader {
         if let baseRef { baseShort = trimmed(await output(["rev-parse", "--short", baseRef])) }
         let worktrees = GitOutput.worktrees(await porcelain ?? "")
         let here = Self.canonical(toplevel)
-        let branches = await localNames.filter { $0 != base }.concurrentMap { name in
+        // Cap the fan-out: rev-list, log and two diffs run per branch, and the newest-committed branches matter most.
+        let candidates = localNames.filter { $0 != base }
+        let shown = Array(candidates.prefix(GitOutput.maxBranches))
+        let branches = await shown.concurrentMap { name in
             let elsewhere = worktrees[name].flatMap { Self.canonical($0) == here ? nil : $0 }
             return await branchFacts(name, baseRef: baseRef, worktree: elsewhere)
         }
-        return GitFacts(base: base, baseRef: baseRef, baseShort: baseShort, branches: branches)
+        return GitFacts(base: base, baseRef: baseRef, baseShort: baseShort, branches: branches,
+                        truncatedBranchCount: candidates.count > GitOutput.maxBranches ? candidates.count : nil)
     }
 
     /// dev.py's resolve_base plus a local candidate before the current branch; refs are fully qualified so no name can read as an option.
@@ -306,8 +313,8 @@ struct GitReader {
               count > 0 else { return facts }
         facts.unmerged = count
         async let log = read(["log", "--format=%h%x1f%an%x1f%aI%x1f%s", "-n", "50", "\(baseRef)..\(ref)"])
-        async let numstat = read(["diff", "--numstat", "\(baseRef)...\(ref)"])
-        async let diff = read(["diff", "--no-color", "--no-ext-diff", "-U3", "\(baseRef)...\(ref)"])
+        async let numstat = read(["diff", "--numstat", "--no-textconv", "\(baseRef)...\(ref)"])
+        async let diff = read(["diff", "--no-color", "--no-ext-diff", "--no-textconv", "-U3", "\(baseRef)...\(ref)"])
         switch await log {
         case .success(let text): facts.commits = GitOutput.commits(text)
         case .failure(let failure): facts.logFailure = failure.detail
@@ -322,10 +329,10 @@ struct GitReader {
         return facts
     }
 
-    /// Untrimmed stdout of a successful git call, or why it failed, so a diff keeps its last context line.
+    /// Untrimmed stdout of a successful (hardened) git call, or why it failed, so a diff keeps its last context line.
     private func read(_ arguments: [String]) async -> Result<String, GitReadFailure> {
         do {
-            let result = try await runner.run("git", arguments, in: root, timeout: CommandTimeout.git)
+            let result = try await runner.run("git", GitCommand.read(arguments), in: root, timeout: CommandTimeout.git)
             guard result.succeeded else {
                 return .failure(GitReadFailure(detail: GitOutput.lastNonEmptyLine(result.stderr) ?? "git exited with status \(result.status)"))
             }

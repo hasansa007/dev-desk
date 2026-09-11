@@ -15,6 +15,8 @@ public struct LocalGitDataSource: ProjectDataSource {
 
     static let notARepository = "This folder is not a git repository."
     static let insightsReason = "Insights needs a validated agent connection. None is set up, so this panel can't answer yet."
+    static let maxReportBytes = 1_048_576
+    static let maxStateBytes = 262_144
 
     public init(root: URL, runner: CommandRunner = ProcessRunner()) {
         self.root = root
@@ -43,9 +45,10 @@ public struct LocalGitDataSource: ProjectDataSource {
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
         let board = BoardBuilder.build(BoardInput(git: facts, github: github.data, activeMilestone: active.title,
                                                   pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL)))
+        let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
         return ProjectSnapshot(
             project: project, isDemo: false, board: .available(board),
-            boardNote: BoardBuilder.note(github: github, activeMilestone: active),
+            boardNote: BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
             findings: .available(await findings), roadmap: Self.roadmap(github), decisions: .available(await decisions),
             connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
@@ -60,9 +63,9 @@ public struct LocalGitDataSource: ProjectDataSource {
                            branch: await branch ?? "", remote: await remote.map(GitRemote.display), headRevision: await head)
     }
 
-    /// Trimmed stdout of a successful git call; nil when git fails or is missing.
+    /// Trimmed stdout of a successful (hardened) git call; nil when git fails or is missing.
     func git(_ arguments: [String]) async -> String? {
-        guard let result = try? await runner.run("git", arguments, in: root, timeout: CommandTimeout.git), result.succeeded else { return nil }
+        guard let result = try? await runner.run("git", GitCommand.read(arguments), in: root, timeout: CommandTimeout.git), result.succeeded else { return nil }
         let text = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
         return text.isEmpty ? nil : text
     }
@@ -89,7 +92,7 @@ public struct LocalGitDataSource: ProjectDataSource {
 
     private func repositoryRoot() async -> Result<String, GitReadFailure> {
         do {
-            let result = try await runner.run("git", ["rev-parse", "--show-toplevel"], in: root, timeout: CommandTimeout.git)
+            let result = try await runner.run("git", GitCommand.read(["rev-parse", "--show-toplevel"]), in: root, timeout: CommandTimeout.git)
             let path = result.stdout.trimmingCharacters(in: .whitespacesAndNewlines)
             guard result.succeeded, !path.isEmpty else {
                 return .failure(GitReadFailure(detail: Self.notARepositoryReason(status: result.status, stderr: result.stderr)))
@@ -139,7 +142,10 @@ public struct LocalGitDataSource: ProjectDataSource {
         for name in Set(facts.branches.map(\.name) + (github?.openPullRequests.map(\.headRefName) ?? [])) {
             let file = ".dev/\(PipelineState.slug(name)).json"
             states[name] = [worktrees[name], toplevel].compactMap { $0 }.lazy
-                .compactMap { (try? Data(contentsOf: $0.appendingPathComponent(file))).flatMap(PipelineState.parse) }
+                .compactMap { dir -> PipelineState? in
+                    guard case .text(let text) = SafeFile.read(dir.appendingPathComponent(file), maxBytes: maxStateBytes, within: dir) else { return nil }
+                    return PipelineState.parse(Data(text.utf8))
+                }
                 .first
         }
         return states
@@ -147,12 +153,21 @@ public struct LocalGitDataSource: ProjectDataSource {
 
     private static func findings(in toplevel: URL) -> FindingsReport {
         let folder = toplevel.appendingPathComponent("docs/survey")
-        let reports = markdownFiles(in: folder).sorted(by: >).compactMap { name -> (stem: String, text: String)? in
-            guard let text = try? String(contentsOf: folder.appendingPathComponent(name), encoding: .utf8) else { return nil }
-            return (String(name.dropLast(3)), text)
+        var runs: [SurveyRun] = []
+        var findings: [Finding] = []
+        for name in markdownFiles(in: folder).sorted(by: >) {
+            let stem = String(name.dropLast(3))
+            switch SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) {
+            case .text(let text):
+                runs.append(SurveyRun(id: stem, label: stem, revision: nil))
+                findings.append(contentsOf: SurveyReportParser.parse(text, runID: stem))
+            case .tooLarge:
+                runs.append(SurveyRun(id: stem, label: "\(stem) · Report too large to read (over 1 MB)", revision: nil))
+            case .skipped:
+                continue
+            }
         }
-        return FindingsReport(runs: reports.map { SurveyRun(id: $0.stem, label: $0.stem, revision: nil) },
-                              findings: reports.flatMap { SurveyReportParser.parse($0.text, runID: $0.stem) })
+        return FindingsReport(runs: runs, findings: findings)
     }
 
     private static func decisions(in toplevel: URL) -> [Decision] {
@@ -161,8 +176,9 @@ public struct LocalGitDataSource: ProjectDataSource {
         return markdownFiles(in: folder)
             .filter { $0.lowercased() != "readme.md" }
             .sorted { (number($0), $0) > (number($1), $1) }
-            .compactMap { name in
-                (try? String(contentsOf: folder.appendingPathComponent(name), encoding: .utf8)).map { ADRParser.parse($0, fileName: name) }
+            .compactMap { name -> Decision? in
+                guard case .text(let text) = SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) else { return nil }
+                return ADRParser.parse(text, fileName: name)
             }
     }
 
