@@ -37,6 +37,11 @@ final class CommandRunnerTests: XCTestCase {
         }
     }
 
+    func testAChildKilledBySIGHUPDoesNotReadAsExitStatusOne() async throws {
+        let result = try await runner.run("sh", ["-c", "kill -HUP $$"], in: nil, timeout: 5)
+        XCTAssertEqual(result.status, 128 + SIGHUP, "a signal must not pass for git config's exit 1, which means \"not set\"")
+    }
+
     func testMissingToolReportsToolMissing() async throws {
         let result = try await runner.run("no-such-tool-xyz", [], in: nil, timeout: 5)
         XCTAssertTrue(result.toolMissing)

@@ -339,7 +339,8 @@ private struct BoardContext {
 
     private var baseNote: String {
         guard let base = input.git?.base else { return "No base branch could be resolved." }
-        return "Diff is against `\(base)`" + (input.git?.baseShort.map { " at `\($0)`" } ?? "") + "."
+        // The base can be an attacker-named branch, so it is escaped rather than code-spanned; the revision is git's own hex.
+        return "Diff is against \(Markdown.escape(base))" + (input.git?.baseShort.map { " at `\($0)`" } ?? "") + "."
     }
 
     private func evidence(pullRequest number: Int?, state: PipelineState?) -> Surface<Evidence> {

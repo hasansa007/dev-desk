@@ -65,7 +65,7 @@ ls docs/adr/[0-9]*.md | tail -1        # the highest that exists; the next one i
 ```
 
 Guessing it is the same defect class as the three wrong line counts that forced the CI budget check
-(`GUIDE.md`, 2026-08-23/24) — a number asserted rather than measured.
+(`docs/guide/CONTRIBUTING.md`, 2026-08-23/24) — a number asserted rather than measured.
 
 The shape:
 
