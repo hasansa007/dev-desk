@@ -22,7 +22,7 @@ small deterministic helper.
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
 | Tests | stdlib `unittest`, one file per script under `test-projects/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
 | Mac app | `apps/desk/` — Dev Desk, a native macOS app: SwiftUI with AppKit where needed, macOS 14+, Swift 5 mode. `project.yml` generates the Xcode project with xcodegen (gitignored, not committed); `DeskCore` is the local Swift package — models, sample data, the git/GitHub reader — tested with `swift test --package-path apps/desk/DeskCore` (see [ADR 0012](docs/adr/0012-the-mac-app-lives-in-apps-desk.md)) |
-| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`, added by the integration task after this one — see ORPHANS). Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
+| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
 | Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev`, and links `scripts/dev.py` as the `dev` command into `~/.local/bin` (or `~/bin`) when one is already on `PATH` |
 
 **Paths inside the family are the INSTALL path** (`~/.claude/skills/dev/…`), never the clone path.
@@ -110,8 +110,6 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
   mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both.
 - **`docs/arch/dev-system.html`'s Container node cites the design brief**, not `apps/desk/` — it
   needs a re-pin once this branch merges.
-- **`desk.yml`**, the path-filtered Xcode CI job, is unproven until its first real run — it lands
-  with the integration task after this one.
 - **The Notifications and Execution settings panes store values**
   (`desk.notifyDecisions`/`notifyCompletion`/`notifyFailures`, `desk.worktreeLocation`) that nothing
   reads yet — no notification is posted, no worktree is created at the configured path.

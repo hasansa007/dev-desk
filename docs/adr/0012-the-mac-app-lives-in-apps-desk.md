@@ -40,9 +40,9 @@ once that stops being true.
 
 ## Consequences
 
-- A path-filtered `desk.yml` is the CI this decision requires — it does not exist yet; the
-  integration task still in progress adds it under that exact name, running `swift test` only when
-  `apps/desk/**` changes.
+- A path-filtered `desk.yml` is the CI this decision requires. It runs DeskCore's `swift test` and
+  an `xcodebuild` of the app only when `apps/desk/**` or the workflow itself changes; its first run
+  passed on PR #50.
 - `tests.yml` and `line-budget.yml` stay untouched. `tests.yml` discovers `test-projects/*/test_*.py`
   only; `line-budget.yml` reads `shared/pipeline.md` and `documentation/CONTRIBUTING.md`'s budget
   line. Neither glob nor grep reaches a Swift file or `apps/`, so a desk-only PR never runs through
