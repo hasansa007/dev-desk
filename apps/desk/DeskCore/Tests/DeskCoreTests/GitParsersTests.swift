@@ -121,14 +121,15 @@ final class GitParsersTests: XCTestCase {
         XCTAssertEqual(GitOutput.worktrees(output), ["main": "/Users/me/app", "gh-12-x": "/Users/me/wt/app 12"])
     }
 
-    func testTruePromisorIsDetectedFromGetRegexpOutput() {
-        XCTAssertTrue(GitOutput.hasTruePromisor("remote.origin.promisor true\n"))
-        XCTAssertTrue(GitOutput.hasTruePromisor("remote.origin.promisor 1\nremote.up.promisor false\n"))
-        XCTAssertTrue(GitOutput.hasTruePromisor("remote.origin.promisor\n"), "a bool key with no value is git-true")
-        XCTAssertTrue(GitOutput.hasTruePromisor("remote.origin.promisor YES\n"))
-        XCTAssertFalse(GitOutput.hasTruePromisor("remote.origin.promisor false\n"))
-        XCTAssertFalse(GitOutput.hasTruePromisor("remote.origin.promisor 0\n"))
-        XCTAssertFalse(GitOutput.hasTruePromisor(""))
+    func testPromisorStateIsReadOnlyFromGitsNormalisedBooleans() {
+        XCTAssertEqual(GitOutput.anyPromisorIsOn("remote.origin.promisor true\n"), true)
+        XCTAssertEqual(GitOutput.anyPromisorIsOn("remote.up.promisor false\nremote.origin.promisor true\n"), true)
+        XCTAssertEqual(GitOutput.anyPromisorIsOn("remote.a b.promisor true\n"), true, "a remote name may hold a space; the value is the last word")
+        XCTAssertEqual(GitOutput.anyPromisorIsOn("remote.x true.promisor false\n"), false, "a remote named like a value does not count")
+        XCTAssertEqual(GitOutput.anyPromisorIsOn("remote.origin.promisor false\nremote.up.promisor false\n"), false)
+        XCTAssertNil(GitOutput.anyPromisorIsOn("remote.origin.promisor 2\n"), "a raw value is not trusted; only --type=bool output is")
+        XCTAssertNil(GitOutput.anyPromisorIsOn("remote.origin.promisor\n"))
+        XCTAssertNil(GitOutput.anyPromisorIsOn(""), "success with nothing listed is not an answer")
     }
 
     func testBasePrefersStagingThenDevelopThenMainThenMaster() {

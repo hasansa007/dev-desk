@@ -134,7 +134,9 @@ public struct ProcessRunner: CommandRunner {
         readers.wait()
         if child.isCancelled { throw CancellationError() }
         if timedOut.isSet { throw CommandError.timedOut(tool: tool, seconds: timeout) }
-        return CommandResult(status: process.terminationStatus,
+        // A signal death reports the signal number as its status; 128+N, as a shell reports it, keeps SIGHUP from passing for exit 1.
+        let status = process.terminationReason == .uncaughtSignal ? 128 + process.terminationStatus : process.terminationStatus
+        return CommandResult(status: status,
                              stdout: String(decoding: outData, as: UTF8.self),
                              stderr: String(decoding: errData, as: UTF8.self))
     }

@@ -59,13 +59,12 @@ enum GitOutput {
         lines(text).map { $0.trimmingCharacters(in: .whitespaces) }.last { !$0.isEmpty }
     }
 
-    /// True when `git config --get-regexp` output lists a promisor remote whose value is a git-true boolean.
-    static func hasTruePromisor(_ configOutput: String) -> Bool {
-        lines(configOutput).contains { line in
-            guard let space = line.firstIndex(of: " ") else { return !line.isEmpty }
-            let value = line[line.index(after: space)...].trimmingCharacters(in: .whitespaces).lowercased()
-            return value.isEmpty || ["true", "yes", "on", "1"].contains(value)
-        }
+    /// From `git config --type=bool --get-regexp` output, whether any promisor remote is on; nil when a line isn't git's normalised true/false.
+    /// The value is the last word, since a remote's name may itself hold a space.
+    static func anyPromisorIsOn(_ boolOutput: String) -> Bool? {
+        let entries = lines(boolOutput)
+        guard !entries.isEmpty, entries.allSatisfy({ $0.hasSuffix(" true") || $0.hasSuffix(" false") }) else { return nil }
+        return entries.contains { $0.hasSuffix(" true") }
     }
 
     /// Names from `for-each-ref --format=%(refname) refs/heads`; the full form stays exact when a tag shares a branch's name.

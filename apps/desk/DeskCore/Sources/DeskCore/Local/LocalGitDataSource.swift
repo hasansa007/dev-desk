@@ -18,6 +18,7 @@ public struct LocalGitDataSource: ProjectDataSource {
     static let maxReportBytes = 1_048_576
     static let maxStateBytes = 262_144
     static let partialCloneReason = "This is a partial clone. Dev Desk doesn't read it, because reading could fetch from its remote and run a command its configuration names."
+    static let remotesUncheckedReason = "Dev Desk couldn't check this repository's remotes, so it doesn't read it."
 
     public init(root: URL, runner: CommandRunner = ProcessRunner()) {
         self.root = root
@@ -41,29 +42,61 @@ public struct LocalGitDataSource: ProjectDataSource {
         async let findings = Self.findings(in: topURL)
         async let decisions = Self.decisions(in: topURL)
         // These config reads run nothing; they must precede the branch fan-out, whose rev-list/log/diff could lazily fetch and run uploadpack.
-        let refuseGitReads = await lazyFetchIsPossible()
-        let facts = refuseGitReads ? GitFacts(base: nil, baseRef: nil, baseShort: nil, branches: [])
+        let refusal = try await lazyFetchRefusal()
+        let facts = refusal != nil ? GitFacts(base: nil, baseRef: nil, baseShort: nil, branches: [])
             : await GitReader(root: root, runner: runner).read(toplevel: top, currentBranch: project.branch)
         let github = await githubState
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
         let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
-        let board: Surface<[DeskTask]> = refuseGitReads ? .unavailable(Self.partialCloneReason)
-            : .available(BoardBuilder.build(BoardInput(git: facts, github: github.data, activeMilestone: active.title,
-                                                       pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL))))
+        let board: Surface<[DeskTask]>
+        if let refusal {
+            board = .unavailable(refusal)
+        } else {
+            board = .available(BoardBuilder.build(BoardInput(git: facts, github: github.data, activeMilestone: active.title,
+                                                             pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL))))
+        }
         return ProjectSnapshot(
             project: project, isDemo: false, board: board,
-            boardNote: refuseGitReads ? "" : BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
+            boardNote: refusal != nil ? "" : BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
             findings: .available(await findings), roadmap: Self.roadmap(github), decisions: .available(await decisions),
             connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
             projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github))
     }
 
-    /// A partial clone, or any promisor remote, lazy-fetches missing objects mid-read, running remote.<name>.uploadpack — even without extensions.partialClone on git before 2.44.
-    private func lazyFetchIsPossible() async -> Bool {
-        if await git(["config", "--get", "extensions.partialClone"]) != nil { return true }
-        guard let remotes = await git(["config", "--get-regexp", "^remote\\..*\\.promisor$"]) else { return false }
-        return GitOutput.hasTruePromisor(remotes)
+    /// A partial clone, or any promisor remote, lazy-fetches missing objects mid-read, running remote.<name>.uploadpack — even without
+    /// extensions.partialClone on git before 2.44. Returns why the repo is refused, or nil only when both reads cleanly say "not set".
+    private func lazyFetchRefusal() async throws -> String? {
+        switch try await config(["--get", "extensions.partialClone"]) {
+        case .value: return Self.partialCloneReason
+        case .unknown: return Self.remotesUncheckedReason
+        case .unset: break
+        }
+        // --type=bool applies git's own rule (any non-zero integer is true, an empty value false) and exits non-zero on a non-bool.
+        switch try await config(["--type=bool", "--get-regexp", "^remote\\..*\\.promisor$"]) {
+        case .value(let output):
+            guard let on = GitOutput.anyPromisorIsOn(output) else { return Self.remotesUncheckedReason }
+            return on ? Self.partialCloneReason : nil
+        case .unknown: return Self.remotesUncheckedReason
+        case .unset: return nil
+        }
+    }
+
+    private enum ConfigRead { case unset, value(String), unknown }
+
+    /// A gate read on the same hardened path as every other read. Only exit 1 with no output at all means "not set"; any other exit,
+    /// a timeout or a signal (the runner reports 128+N) is .unknown. Cancellation is rethrown, so the load is dropped, not refused.
+    private func config(_ arguments: [String]) async throws -> ConfigRead {
+        let result: CommandResult
+        do {
+            result = try await runner.run("git", GitCommand.read(["config"] + arguments), in: root, timeout: CommandTimeout.git)
+        } catch let cancellation as CancellationError {
+            throw cancellation
+        } catch {
+            return .unknown
+        }
+        if result.succeeded { return .value(result.stdout) }
+        return result.status == 1 && result.stdout.isEmpty && result.stderr.isEmpty ? .unset : .unknown
     }
 
     func identity() async -> ProjectInfo {

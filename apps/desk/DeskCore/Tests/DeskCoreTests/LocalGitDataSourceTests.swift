@@ -81,6 +81,8 @@ final class LocalGitDataSourceTests: XCTestCase {
             FakeRunner.gitRead("rev-parse --abbrev-ref HEAD"): .ok("main\n"),
             FakeRunner.gitRead("remote get-url origin"): .ok("git@github.com:acme/app.git\n"),
             FakeRunner.gitRead("rev-parse --short HEAD"): .ok("abc1234\n"),
+            FakeRunner.partialCloneRead: .failed(1),
+            FakeRunner.promisorRead: .failed(1),
             FakeRunner.gitRead("branch -r --format=%(refname:short)"): .ok("origin\norigin/main\n"),
             FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"): .ok("refs/heads/main\n"),
             FakeRunner.gitRead("rev-parse --verify --quiet refs/heads/main"): .ok("0123456789abcdef0123456789abcdef01234567\n"),
@@ -364,53 +366,103 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "opening the folder must not run the repo's signature verifier")
     }
 
-    func testAPartialCloneIsRefusedAndItsUploadpackNeverRuns() async throws {
-        let repo = try TempGitRepo()
-        try repo.git("init", "-q", "-b", "main")
-        try repo.write("README.md", "hi\n")
-        try repo.commitAll("initial")
-        try repo.git("checkout", "-q", "-b", "feature")
-        try repo.write("f.txt", "x\n")
-        try repo.commitAll("change")
-        let marker = repo.url.appendingPathComponent("FETCHED")
-        let uploadpack = try repo.writeScript("uploadpack.sh", "touch \"\(marker.path)\"\nexit 1\n")
-        try repo.git("config", "core.repositoryformatversion", "1")
-        try repo.git("config", "extensions.partialClone", "origin")
-        try repo.git("config", "remote.origin.promisor", "true")
-        try repo.git("config", "remote.origin.uploadpack", uploadpack.path)
+    /// A genuine blob:none partial clone of `source`: its local `feature` branch adds a blob the clone never fetched, so diffing it must lazy-fetch.
+    private func partialCloneMissingABlob() throws -> (source: TempGitRepo, clone: TempGitRepo) {
+        let source = try TempGitRepo()
+        try source.git("init", "-q", "-b", "main")
+        try source.write("README.md", "hi\n")
+        try source.commitAll("initial")
+        try source.git("checkout", "-q", "-b", "feature")
+        try source.write("f.txt", "x\n")
+        try source.commitAll("change")
+        try source.git("checkout", "-q", "main")
+        try source.git("config", "uploadpack.allowFilter", "true")
+        let clone = try TempGitRepo()
+        try source.git("clone", "-q", "--no-checkout", "--filter=blob:none", "file://\(source.url.path)", clone.url.path)
+        try clone.git("branch", "-q", "feature", "origin/feature")
+        return (source, clone)
+    }
 
-        let snapshot = try await LocalGitDataSource(root: repo.url).load()
-        XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason)
-        XCTAssertEqual(snapshot.boardNote, "")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "reading a partial clone must not fetch from its remote")
+    /// Objects the repo lacks; `--missing=print` lists them without fetching.
+    private func missingObjects(in repo: TempGitRepo) throws -> Int {
+        try repo.gitOutput(["rev-list", "--objects", "--missing=print", "--all"]).split(separator: "\n").filter { $0.hasPrefix("?") }.count
+    }
+
+    /// Lazy fetch stays on (GIT_NO_LAZY_FETCH=0, as on git before 2.44), so only the gate stands between a read and the remote's uploadpack.
+    private func assertLiveLazyFetchIsRefused(file: StaticString = #filePath, line: UInt = #line,
+                                              _ markAsPartial: (TempGitRepo) throws -> Void) async throws {
+        let fixture = try partialCloneMissingABlob()
+        let clone = fixture.clone
+        let marker = clone.url.appendingPathComponent("FETCHED")
+        let uploadpack = try clone.writeScript("uploadpack.sh", "touch \"\(marker.path)\"\nexit 1\n")
+        try clone.git("config", "remote.origin.uploadpack", uploadpack.path)
+        try markAsPartial(clone)
+        let missing = try missingObjects(in: clone)
+        XCTAssertGreaterThan(missing, 0, "the clone must lack a blob, or no read could fetch", file: file, line: line)
+
+        // Control: the app's own hardened diff, run without the gate, fetches the missing blob through the uploadpack.
+        let lazyFetchOn = ProcessRunner(extraEnvironment: ["GIT_NO_LAZY_FETCH": "0"])
+        _ = try await lazyFetchOn.run("git", GitCommand.read(["diff", "--no-color", "--no-ext-diff", "--no-textconv", "-U3",
+                                                              "refs/heads/main...refs/heads/feature"]), in: clone.url, timeout: CommandTimeout.git)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path), "the attack must be live: an ungated read runs the uploadpack", file: file, line: line)
+        try? FileManager.default.removeItem(at: marker)
+        XCTAssertEqual(try missingObjects(in: clone), missing, "the failed fetch left the blob missing", file: file, line: line)
+
+        let snapshot = try await LocalGitDataSource(root: clone.url, runner: lazyFetchOn).load()
+        XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason, file: file, line: line)
+        XCTAssertEqual(snapshot.boardNote, "", file: file, line: line)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "the gate must stop every read that could fetch", file: file, line: line)
+        withExtendedLifetime(fixture.source) {}
+    }
+
+    /// Only remote.origin.promisor marks the clone: git 2.50 never writes extensions.partialClone, and an older git's copy is removed.
+    private func markAsPromisorOnly(_ clone: TempGitRepo, _ value: String) throws {
+        try? clone.git("config", "--unset", "extensions.partialClone")
+        XCTAssertEqual(try clone.gitOutput(["config", "--get", "extensions.partialClone"]), "", "the extension must be unset for this case")
+        try clone.git("config", "remote.origin.promisor", value)
+    }
+
+    func testAPartialCloneIsRefusedAndItsUploadpackNeverRuns() async throws {
+        try await assertLiveLazyFetchIsRefused { clone in
+            try clone.git("config", "--unset-all", "remote.origin.promisor")
+            try clone.git("config", "extensions.partialClone", "origin")
+            XCTAssertEqual(try clone.gitOutput(["config", "--get-regexp", "^remote\\..*\\.promisor$"]), "", "only the extension marks this clone")
+        }
     }
 
     func testAPromisorRemoteIsRefusedEvenWithoutThePartialCloneExtension() async throws {
+        try await assertLiveLazyFetchIsRefused { try markAsPromisorOnly($0, "true") }
+    }
+
+    func testAPromisorSetToANonZeroIntegerIsRefusedBecauseGitReadsItAsTrue() async throws {
+        try await assertLiveLazyFetchIsRefused { try markAsPromisorOnly($0, "2") }
+    }
+
+    func testTheGateFollowsGitsOwnBooleanRule() async throws {
         let repo = try TempGitRepo()
         try repo.git("init", "-q", "-b", "main")
         try repo.write("README.md", "hi\n")
         try repo.commitAll("initial")
-        try repo.git("checkout", "-q", "-b", "feature")
-        try repo.write("f.txt", "x\n")
-        try repo.commitAll("change")
-        let marker = repo.url.appendingPathComponent("FETCHED")
-        let uploadpack = try repo.writeScript("uploadpack.sh", "touch \"\(marker.path)\"\nexit 1\n")
-        try repo.git("config", "remote.origin.promisor", "true")
-        try repo.git("config", "remote.origin.uploadpack", uploadpack.path)
-        XCTAssertEqual(try repo.gitOutput(["config", "--get", "extensions.partialClone"]), "", "the extension must be unset for this case")
-
-        // Load with lazy fetch enabled, simulating git older than 2.44: only the gate can protect here.
-        let runner = ProcessRunner(extraEnvironment: ["GIT_NO_LAZY_FETCH": "0"])
-        let snapshot = try await LocalGitDataSource(root: repo.url, runner: runner).load()
-        XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason)
-        XCTAssertEqual(snapshot.boardNote, "")
-        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "a promisor remote must not be read")
+        func board(promisor value: String) async throws -> Surface<[DeskTask]> {
+            try repo.git("config", "remote.origin.promisor", value)
+            return try await LocalGitDataSource(root: repo.url).load().board
+        }
+        for value in ["42", "-1", "1k"] {
+            let refused = try await board(promisor: value)
+            XCTAssertEqual(refused.unavailableReason, LocalGitDataSource.partialCloneReason, "git reads promisor=\(value) as true")
+        }
+        for value in ["", "0"] {
+            let read = try await board(promisor: value)
+            XCTAssertNotNil(read.value, "git reads promisor=\"\(value)\" as false, so the repo is read")
+        }
+        let invalid = try await board(promisor: "maybe")
+        XCTAssertEqual(invalid.unavailableReason, LocalGitDataSource.remotesUncheckedReason, "git rejects the value, so the gate can't tell")
     }
 
     func testAPromisorRemoteSetToFalseIsNotRefused() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
-        runner.script(FakeRunner.gitRead("config --get-regexp ^remote\\..*\\.promisor$"), .ok("remote.origin.promisor false\n"))
+        runner.script(FakeRunner.promisorRead, .ok("remote.origin.promisor false\n"))
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         XCTAssertNotEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason)
         XCTAssertNotNil(snapshot.board.value)
@@ -419,7 +471,7 @@ final class LocalGitDataSourceTests: XCTestCase {
     func testPromisorConfigSkipsEveryBranchRead() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
-        runner.script(FakeRunner.gitRead("config --get-regexp ^remote\\..*\\.promisor$"), .ok("remote.origin.promisor true\n"))
+        runner.script(FakeRunner.promisorRead, .ok("remote.origin.promisor true\n"))
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason)
         XCTAssertFalse(runner.keys.contains { $0.contains("for-each-ref") || $0.contains("rev-list") || $0.contains(" log ") },
@@ -429,11 +481,53 @@ final class LocalGitDataSourceTests: XCTestCase {
     func testPartialCloneConfigSkipsEveryBranchRead() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
-        runner.script(FakeRunner.gitRead("config --get extensions.partialClone"), .ok("origin\n"))
+        runner.script(FakeRunner.partialCloneRead, .ok("origin\n"))
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason)
         XCTAssertFalse(runner.keys.contains { $0.contains("for-each-ref") || $0.contains("rev-list") || $0.contains(" log ") },
                        "no branch read may run for a partial clone")
+    }
+
+    func testAnEmptyPartialCloneValueStillCountsAsSet() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script(FakeRunner.partialCloneRead, .ok("\n"))
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason, "exit 0 means the key is set, whatever its value")
+    }
+
+    func testTheGateFailsClosedWhenAConfigReadGivesNoClearAnswer() async throws {
+        let badBool = "fatal: bad boolean config value 'maybe' for 'remote.origin.promisor'\n"
+        let timeout = CommandError.timedOut(tool: "git", seconds: CommandTimeout.git)
+        let outcomes: [(String, (FakeRunner) -> Void)] = [
+            ("promisor read exits 128", { $0.script(FakeRunner.promisorRead, .failed(128, stderr: badBool)) }),
+            ("promisor read times out", { $0.script(FakeRunner.promisorRead, throwing: timeout) }),
+            ("promisor read is killed by SIGHUP", { $0.script(FakeRunner.promisorRead, .failed(128 + SIGHUP)) }),
+            ("promisor read exits 1 but writes stderr", { $0.script(FakeRunner.promisorRead, .failed(1, stderr: "error: unexpected\n")) }),
+            ("promisor read succeeds but lists nothing", { $0.script(FakeRunner.promisorRead, .ok("")) }),
+            ("partialClone read exits 128", { $0.script(FakeRunner.partialCloneRead, .failed(128, stderr: "fatal: bad config line 1\n")) }),
+            ("partialClone read times out", { $0.script(FakeRunner.partialCloneRead, throwing: timeout) }),
+        ]
+        for (label, outcome) in outcomes {
+            let folder = try TempGitRepo()
+            let runner = githubReadyRunner(root: folder.url)
+            outcome(runner)
+            let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+            XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.remotesUncheckedReason, label)
+            XCTAssertEqual(snapshot.boardNote, "", label)
+            XCTAssertFalse(runner.keys.contains { $0.contains("for-each-ref") || $0.contains("rev-list") || $0.contains(" log ") }, label)
+        }
+    }
+
+    func testACancelledGateReadIsRethrownSoTheLoadIsDroppedNotRefused() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script(FakeRunner.promisorRead, throwing: CancellationError())
+        do {
+            _ = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+            XCTFail("a cancelled gate read must not come back as a refused snapshot")
+        } catch is CancellationError {}
+        XCTAssertFalse(runner.keys.contains { $0.contains("for-each-ref") }, "no branch read runs after a cancelled gate read")
     }
 
     func testGitLogFailureReasonIsEscapedForMarkdown() async throws {
@@ -554,6 +648,8 @@ final class LocalGitDataSourceTests: XCTestCase {
         let runner = FakeRunner([
             FakeRunner.gitRead("rev-parse --show-toplevel"): .ok(folder.url.path + "\n"),
             FakeRunner.gitRead("rev-parse --abbrev-ref HEAD"): .ok("--output=/tmp/pwned\n"),
+            FakeRunner.partialCloneRead: .failed(1),
+            FakeRunner.promisorRead: .failed(1),
             FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"): .ok("refs/heads/--output=/tmp/pwned\nrefs/heads/feature\n"),
             FakeRunner.gitRead("rev-list --count refs/heads/--output=/tmp/pwned..refs/heads/feature"): .ok("0\n"),
         ])

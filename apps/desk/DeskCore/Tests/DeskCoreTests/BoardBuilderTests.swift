@@ -259,8 +259,19 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(tasks()["12"]).changes, .available(ChangeSet(
             files: [ChangedFile(id: "Sources/App/Launch/Boot.swift", displayPath: "Launch/Boot.swift", additions: 10, deletions: 2),
                     ChangedFile(id: "Assets/icon.png", displayPath: "Assets/icon.png", additions: nil, deletions: nil)],
-            baseNote: "Diff is against `main` at `abc1234`.",
+            baseNote: "Diff is against main at `abc1234`.",
             diffs: ["Sources/App/Launch/Boot.swift": Self.bootDiff])))
+    }
+
+    func testBaseBranchNameIsEscapedNotPlacedInACodeSpan() throws {
+        let base = "wip/`[x](file:///Applications/Calculator.app)"
+        let input = BoardInput(git: GitFacts(base: base, baseRef: "refs/heads/\(base)", baseShort: "abc1234",
+                                             branches: [BranchFacts(name: "spike", unmerged: 1, worktree: nil)]),
+                               github: nil, activeMilestone: nil, now: date("2026-09-11T12:00:00Z"), timeZone: TimeZone(identifier: "UTC")!)
+        let note = try XCTUnwrap(tasks(input)["branch:spike"]?.changes.value?.baseNote)
+        XCTAssertEqual(note, "Diff is against wip/\\`\\[x\\](file:///Applications/Calculator.app) at `abc1234`.")
+        XCTAssertFalse(note.contains("[x]("), "a raw link would render as a one-click launch")
+        XCTAssertFalse(note.hasPrefix("Diff is against `"), "the base name must not open a code span")
     }
 
     func testPipelineStateAddsACardNoteStagesAndAnAdvisoryCheck() throws {

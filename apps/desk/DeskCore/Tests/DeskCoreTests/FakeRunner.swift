@@ -12,6 +12,7 @@ final class FakeRunner: CommandRunner {
 
     private let lock = NSLock()
     private var responses: [String: CommandResult]
+    private var errors: [String: Error] = [:]
     private var recorded: [Call] = []
 
     init(_ responses: [String: CommandResult] = [:]) { self.responses = responses }
@@ -21,15 +22,23 @@ final class FakeRunner: CommandRunner {
 
     func script(_ key: String, _ result: CommandResult) { lock.withLock { responses[key] = result } }
 
+    /// Makes one call throw — a timeout or a cancellation — while every other key answers as scripted.
+    func script(_ key: String, throwing error: Error) { lock.withLock { errors[key] = error } }
+
     /// The recorded key for a hardened git read: the hardening flags sit between "git" and the subcommand.
     static func gitRead(_ subcommand: String) -> String {
         (["git"] + GitCommand.readFlags + subcommand.split(separator: " ").map(String.init)).joined(separator: " ")
     }
 
+    /// The lazy-fetch gate's two config reads; a load only reaches the branch reads when both answer "not set" (exit 1, no output).
+    static let partialCloneRead = gitRead("config --get extensions.partialClone")
+    static let promisorRead = gitRead("config --type=bool --get-regexp ^remote\\..*\\.promisor$")
+
     func run(_ tool: String, _ arguments: [String], in directory: URL?, timeout: TimeInterval) async throws -> CommandResult {
         let key = ([tool] + arguments).joined(separator: " ")
-        return lock.withLock {
+        return try lock.withLock {
             recorded.append(Call(key: key, directory: directory, timeout: timeout))
+            if let error = errors[key] { throw error }
             return responses[key] ?? CommandResult(status: 1, stdout: "", stderr: "unscripted")
         }
     }
