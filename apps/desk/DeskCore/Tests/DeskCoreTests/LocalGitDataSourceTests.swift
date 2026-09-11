@@ -39,6 +39,34 @@ final class TempGitRepo {
         try git("add", "-A")
         try git("commit", "-q", "-m", message)
     }
+
+    /// Runs git and returns its stdout, optionally feeding stdin — for plumbing like `hash-object --stdin`.
+    @discardableResult
+    func gitOutput(_ arguments: [String], stdin: String? = nil) throws -> String {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = ["git", "-c", "user.name=Test", "-c", "user.email=test@example.com",
+                             "-c", "commit.gpgsign=false", "-c", "core.hooksPath=/dev/null"] + arguments
+        process.currentDirectoryURL = url
+        let out = Pipe()
+        let input = Pipe()
+        process.standardOutput = out
+        process.standardError = FileHandle.nullDevice
+        process.standardInput = input
+        try process.run()
+        if let stdin { input.fileHandleForWriting.write(Data(stdin.utf8)) }
+        try? input.fileHandleForWriting.close()
+        let data = out.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        return String(decoding: data, as: UTF8.self)
+    }
+
+    func writeScript(_ name: String, _ body: String) throws -> URL {
+        let script = url.appendingPathComponent(name)
+        try ("#!/bin/sh\n" + body).write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+        return script
+    }
 }
 
 final class LocalGitDataSourceTests: XCTestCase {
@@ -305,6 +333,84 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "opening the folder must not run the repo's textconv driver")
     }
 
+    func testAHostileSignatureVerifierDoesNotRunOnOpen() async throws {
+        let repo = try TempGitRepo()
+        try repo.git("init", "-q", "-b", "main")
+        try repo.write("README.md", "one\n")
+        try repo.commitAll("initial")
+        try repo.git("checkout", "-q", "-b", "feature")
+        try repo.write("README.md", "two\n")
+        try repo.commitAll("change")
+
+        // Give the feature commit a PGP-looking signature header so log.showSignature triggers verification.
+        var lines = try repo.gitOutput(["cat-file", "commit", "refs/heads/feature"]).components(separatedBy: "\n")
+        let committer = try XCTUnwrap(lines.firstIndex { $0.hasPrefix("committer ") })
+        lines.insert(contentsOf: ["gpgsig -----BEGIN PGP SIGNATURE-----", " ", " aGVsbG8=", " -----END PGP SIGNATURE-----"], at: committer + 1)
+        let sha = try repo.gitOutput(["hash-object", "-t", "commit", "-w", "--stdin"], stdin: lines.joined(separator: "\n"))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        try repo.git("update-ref", "refs/heads/feature", sha)
+
+        let marker = repo.url.appendingPathComponent("PWNED")
+        let verifier = try repo.writeScript("gpg.sh", "touch \"\(marker.path)\"\nexit 0\n")
+        try repo.git("config", "log.showSignature", "true")
+        try repo.git("config", "gpg.program", verifier.path)
+
+        // Control: under the repo's own config the verifier runs, proving the attack is real.
+        _ = try repo.gitOutput(["log", "-1", "--show-signature", "refs/heads/feature"])
+        XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path), "the verifier should run under the repo's own config")
+        try FileManager.default.removeItem(at: marker)
+
+        _ = try await LocalGitDataSource(root: repo.url).load()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "opening the folder must not run the repo's signature verifier")
+    }
+
+    func testAPartialCloneIsRefusedAndItsUploadpackNeverRuns() async throws {
+        let repo = try TempGitRepo()
+        try repo.git("init", "-q", "-b", "main")
+        try repo.write("README.md", "hi\n")
+        try repo.commitAll("initial")
+        try repo.git("checkout", "-q", "-b", "feature")
+        try repo.write("f.txt", "x\n")
+        try repo.commitAll("change")
+        let marker = repo.url.appendingPathComponent("FETCHED")
+        let uploadpack = try repo.writeScript("uploadpack.sh", "touch \"\(marker.path)\"\nexit 1\n")
+        try repo.git("config", "core.repositoryformatversion", "1")
+        try repo.git("config", "extensions.partialClone", "origin")
+        try repo.git("config", "remote.origin.promisor", "true")
+        try repo.git("config", "remote.origin.uploadpack", uploadpack.path)
+
+        let snapshot = try await LocalGitDataSource(root: repo.url).load()
+        XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason)
+        XCTAssertEqual(snapshot.boardNote, "")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "reading a partial clone must not fetch from its remote")
+    }
+
+    func testPartialCloneConfigSkipsEveryBranchRead() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script(FakeRunner.gitRead("config --get extensions.partialClone"), .ok("origin\n"))
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        XCTAssertEqual(snapshot.board.unavailableReason, LocalGitDataSource.partialCloneReason)
+        XCTAssertFalse(runner.keys.contains { $0.contains("for-each-ref") || $0.contains("rev-list") || $0.contains(" log ") },
+                       "no branch read may run for a partial clone")
+    }
+
+    func testGitLogFailureReasonIsEscapedForMarkdown() async throws {
+        let folder = try TempGitRepo()
+        let runner = githubReadyRunner(root: folder.url)
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/spike\n"))
+        runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/spike"), .ok("1\n"))
+        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/spike"),
+                      .failed(128, stderr: "fatal: [pwn](file:///Applications/Calculator.app)\n"))
+        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/spike"), .ok(""))
+        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/spike"), .ok(""))
+
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
+        let reason = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:spike" }?.activity.unavailableReason)
+        XCTAssertEqual(reason, "git log failed: fatal: \\[pwn\\](file:///Applications/Calculator.app)")
+        XCTAssertFalse(reason.contains("[pwn]("), "the link must be escaped")
+    }
+
     func testEveryGitReadIsHardenedAndDiffsDisableTextconv() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
@@ -319,6 +425,7 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertFalse(gitKeys.isEmpty)
         for key in gitKeys {
             XCTAssertTrue(key.hasPrefix("git -c core.fsmonitor= -c core.hooksPath=/dev/null -c diff.external= "), key)
+            XCTAssertTrue(key.contains("-c log.showSignature=false -c gpg.program=false -c gpg.ssh.program=false -c gpg.x509.program=false "), key)
         }
         XCTAssertTrue(runner.keys.contains { $0.contains("diff --numstat --no-textconv ") })
         XCTAssertTrue(runner.keys.contains { $0.contains("--no-ext-diff --no-textconv -U3 ") })
@@ -464,5 +571,11 @@ final class LocalGitDataSourceTests: XCTestCase {
         let folder = try TempGitRepo()
         let timedOut = try await LocalGitDataSource(root: folder.url, runner: ThrowingRunner(error: CommandError.timedOut(tool: "git", seconds: 15))).load()
         XCTAssertEqual(timedOut.board.unavailableReason, "git could not read this folder: git did not finish within 15 seconds")
+    }
+
+    func testMaliciousGitStderrInAToplevelReasonIsEscapedForMarkdown() async throws {
+        let reason = try await boardReason(toplevel: .failed(128, stderr: "fatal: bad config value for 'diff.renameLimit': [x](file:///y)\n"))
+        XCTAssertEqual(reason, "git could not read this folder: fatal: bad config value for 'diff.renameLimit': \\[x\\](file:///y)")
+        XCTAssertFalse(reason!.contains("[x]("), "the link must be escaped")
     }
 }

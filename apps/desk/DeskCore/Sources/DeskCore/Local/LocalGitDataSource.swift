@@ -17,6 +17,7 @@ public struct LocalGitDataSource: ProjectDataSource {
     static let insightsReason = "Insights needs a validated agent connection. None is set up, so this panel can't answer yet."
     static let maxReportBytes = 1_048_576
     static let maxStateBytes = 262_144
+    static let partialCloneReason = "This is a partial clone. Dev Desk doesn't read it, because reading could fetch from its remote and run a command its configuration names."
 
     public init(root: URL, runner: CommandRunner = ProcessRunner()) {
         self.root = root
@@ -36,19 +37,22 @@ public struct LocalGitDataSource: ProjectDataSource {
         }
 
         let topURL = URL(fileURLWithPath: top)
-        async let gitFacts = GitReader(root: root, runner: runner).read(toplevel: top, currentBranch: project.branch)
         async let githubState = GitHubReader(directory: root, runner: runner).read(remote: project.remote)
         async let findings = Self.findings(in: topURL)
         async let decisions = Self.decisions(in: topURL)
-        let facts = await gitFacts
+        // A config read runs nothing; it must precede the branch fan-out, whose rev-list/log/diff could lazily fetch and run uploadpack.
+        let partialClone = await git(["config", "--get", "extensions.partialClone"]) != nil
+        let facts = partialClone ? GitFacts(base: nil, baseRef: nil, baseShort: nil, branches: [])
+            : await GitReader(root: root, runner: runner).read(toplevel: top, currentBranch: project.branch)
         let github = await githubState
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
-        let board = BoardBuilder.build(BoardInput(git: facts, github: github.data, activeMilestone: active.title,
-                                                  pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL)))
         let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
+        let board: Surface<[DeskTask]> = partialClone ? .unavailable(Self.partialCloneReason)
+            : .available(BoardBuilder.build(BoardInput(git: facts, github: github.data, activeMilestone: active.title,
+                                                       pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL))))
         return ProjectSnapshot(
-            project: project, isDemo: false, board: .available(board),
-            boardNote: BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
+            project: project, isDemo: false, board: board,
+            boardNote: partialClone ? "" : BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
             findings: .available(await findings), roadmap: Self.roadmap(github), decisions: .available(await decisions),
             connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
@@ -84,10 +88,10 @@ public struct LocalGitDataSource: ProjectDataSource {
         if stderr.contains("dubious ownership") {
             let trust = GitOutput.lines(stderr).map { $0.trimmingCharacters(in: .whitespaces) }
                 .first { $0.hasPrefix("git config --global --add safe.directory") }
-            return "Git refuses to read this folder because another user owns it (dubious ownership)." + (trust.map { " To trust it, run: \($0)" } ?? "")
+            return "Git refuses to read this folder because another user owns it (dubious ownership)." + (trust.map { " To trust it, run: \(Markdown.reason($0))" } ?? "")
         }
         if stderr.contains("not a git repository") { return notARepository }
-        return "git could not read this folder: \(GitOutput.lastNonEmptyLine(stderr) ?? "git exited with status \(status)")"
+        return "git could not read this folder: \(Markdown.reason(GitOutput.lastNonEmptyLine(stderr) ?? "git exited with status \(status)"))"
     }
 
     private func repositoryRoot() async -> Result<String, GitReadFailure> {
@@ -101,7 +105,7 @@ public struct LocalGitDataSource: ProjectDataSource {
         } catch {
             var text = error.localizedDescription
             if text.hasSuffix(".") { text.removeLast() }
-            return .failure(GitReadFailure(detail: "git could not read this folder: \(text)"))
+            return .failure(GitReadFailure(detail: "git could not read this folder: \(Markdown.reason(text))"))
         }
     }
 

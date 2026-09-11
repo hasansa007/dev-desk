@@ -5,22 +5,31 @@ The board is pure: issues plus per-issue git facts in, columns out. Every case b
 so the classification rules are checked against known input rather than against a live tracker.
 """
 
+import io
+import json
 import os
+import shutil
+import subprocess
 import sys
+import tempfile
 import unittest
+from contextlib import redirect_stdout
 
 # Add repo root to import path
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
 sys.path.insert(0, REPO_ROOT)
 
+from scripts import dev as _dev  # noqa: E402
 from scripts.dev import (  # noqa: E402
     build_board,
     classify,
     epic_progress,
     is_startable,
+    main,
     order_next,
     parse_epic_children,
     priority_rank,
+    resolve_active_milestone,
     slice_rank,
 )
 
@@ -163,6 +172,78 @@ class BoardAssembly(unittest.TestCase):
     def test_empty_tracker_yields_empty_columns_not_an_error(self):
         board = build_board([], {})
         self.assertEqual(sum(board["counts"].values()), 0)
+
+
+class ActiveMilestone(unittest.TestCase):
+    """The same rule dev:roadmap states: nearest due date, else the oldest open; a tie is asked."""
+
+    def test_nearest_due_date_wins(self):
+        ms = [{"title": "late", "due_on": "2026-12-01T00:00:00Z", "created_at": "2026-01-01"},
+              {"title": "soon", "due_on": "2026-10-01T00:00:00Z", "created_at": "2026-02-01"},
+              {"title": "undated", "due_on": None, "created_at": "2025-01-01"}]
+        self.assertEqual(resolve_active_milestone(ms)[0], "soon")
+
+    def test_with_no_due_dates_the_oldest_open_wins(self):
+        ms = [{"title": "new", "due_on": None, "created_at": "2026-05-01"},
+              {"title": "old", "due_on": None, "created_at": "2026-01-01"}]
+        self.assertEqual(resolve_active_milestone(ms)[0], "old")
+
+    def test_a_tie_is_not_silently_broken(self):
+        ms = [{"title": "a", "due_on": "2026-10-01T00:00:00Z"},
+              {"title": "b", "due_on": "2026-10-01T00:00:00Z"}]
+        title, why = resolve_active_milestone(ms)
+        self.assertIsNone(title)
+        self.assertIn("--milestone", why)
+
+    def test_no_open_milestone_means_no_queue(self):
+        self.assertIsNone(resolve_active_milestone([])[0])
+
+
+class BoardResolvesTheQueue(unittest.TestCase):
+    """`dev board` without --milestone applies that rule, so dev:kanban's QUEUE needs no flag."""
+
+    def setUp(self):
+        self.dir, self.cwd = tempfile.mkdtemp(), os.getcwd()
+        subprocess.run(["git", "init", "-q", self.dir], check=True)
+        os.chdir(self.dir)
+        self.real = (_dev._gh_json, _dev._open_milestones)
+        issues = [issue(1, milestone="soon"), issue(2, milestone="late"), issue(3)]
+        self.milestones = [
+            {"title": "late", "due_on": "2026-12-01T00:00:00Z", "created_at": "2026-01-01"},
+            {"title": "soon", "due_on": "2026-10-01T00:00:00Z", "created_at": "2026-02-01"}]
+        _dev._gh_json = lambda args: issues if args[:2] == ["issue", "list"] else None
+        _dev._open_milestones = lambda: self.milestones
+
+    def tearDown(self):
+        os.chdir(self.cwd)
+        _dev._gh_json, _dev._open_milestones = self.real
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def run_board(self, *argv):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(main(["board"] + list(argv)), 0)
+        return out.getvalue()
+
+    def test_without_the_flag_the_nearest_due_milestone_is_the_queue(self):
+        board = json.loads(self.run_board("--json"))
+        self.assertEqual([r["number"] for r in board["columns"]["queue"]], [1])
+        self.assertEqual(board["active_milestone"], "soon")
+        self.assertIn("nearest due date", board["active_why"])
+
+    def test_the_flag_overrides_the_rule(self):
+        board = json.loads(self.run_board("--json", "--milestone", "late"))
+        self.assertEqual([r["number"] for r in board["columns"]["queue"]], [2])
+        self.assertEqual(board["active_why"], "given with --milestone")
+
+    def test_a_failed_milestone_read_says_so_rather_than_posing_as_none(self):
+        self.milestones = None
+        board = json.loads(self.run_board("--json"))
+        self.assertEqual(board["columns"]["queue"], [])
+        self.assertIn("could not read milestones", board["active_why"])
+
+    def test_the_text_board_names_the_milestone_its_queue_is(self):
+        self.assertIn("QUEUE = milestone soon", self.run_board())
 
 
 if __name__ == "__main__":

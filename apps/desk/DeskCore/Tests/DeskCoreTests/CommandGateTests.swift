@@ -101,6 +101,11 @@ final class CommandGateTests: XCTestCase {
         XCTAssertTrue(result.stdout.contains("GIT_ALLOW_PROTOCOL=https:ssh:git:file"), result.stdout)
     }
 
+    func testEveryProcessRunsWithLazyFetchDisabled() async throws {
+        let result = try await ProcessRunner().run("env", [], in: nil, timeout: 5)
+        XCTAssertTrue(result.stdout.contains("GIT_NO_LAZY_FETCH=1"), result.stdout)
+    }
+
     func testCancelledRunGivesItsGateSlotBack() async throws {
         let runner = ProcessRunner(gate: CommandGate(limit: 1))
         let run = Task { try await runner.run("sleep", ["5"], in: nil, timeout: 10) }

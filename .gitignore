@@ -10,7 +10,7 @@
 # outputStyle, which is a local editor preference and differs per clone.
 .claude/settings.local.json
 
-# Everything the dev CLI generates: per-branch pipeline state and the .dev/ui/ pages.
+# Everything the dev CLI generates: per-branch pipeline state.
 # Machine-local; git is authoritative. The CLI also writes .dev/.gitignore, so repos without
 # this line stay clean too.
 .dev/

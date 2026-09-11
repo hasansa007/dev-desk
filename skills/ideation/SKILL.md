@@ -213,8 +213,8 @@ Ask before filing anything. Then, for the confirmed set:
 
 **Write the structured twin.** Alongside `docs/ideation/<date>.md`, write `docs/ideation/<date>.json`
 with the same findings — verdict, `file:line`, gain, cost. The markdown is the human artifact and the
-JSON is what `dev ui ideation` renders; **generate the markdown FROM the JSON** so the two cannot
-disagree. Then offer `dev ui ideation`.
+JSON the machine-readable one; **generate the markdown FROM the JSON** so the two cannot
+disagree. Then point the developer at `docs/ideation/<date>.md` — the report is the view.
 
 ## Never
 

@@ -4,7 +4,7 @@ What dev-skill is made of, which part holds what, and which part wins when two d
 
 [Guide](GUIDE.md) · [Workflow](WORKFLOW.md) · [Commands](COMMANDS.md) · [Diagram](../docs/arch/dev-system.html)
 
-The family is a set of doors — `/dev` and 22 siblings — that run one shared pipeline, [`shared/pipeline.md`](../shared/pipeline.md), against a repository's git history and its GitHub tracker. The doors write what they learn into files the next run reads back: `PROJECT_MAP.md`, ADRs, dated reports and per-branch checkpoints. Two optional helpers sit beside them: the `dev` CLI, which records checkpoints and computes the board, and four Claude Code hooks, which check tool calls at the points the pipeline names. Dev Desk, a Mac app, reads the same records and shows them.
+The family is a set of doors — `/dev` and 21 siblings — that run one shared pipeline, [`shared/pipeline.md`](../shared/pipeline.md), against a repository's git history and its GitHub tracker. The doors write what they learn into files the next run reads back: `PROJECT_MAP.md`, ADRs, dated reports and per-branch checkpoints. Two optional helpers sit beside them: the `dev` CLI, which records checkpoints and computes the board, and four Claude Code hooks, which check tool calls at the points the pipeline names. Dev Desk, a Mac app, reads the same records and shows them.
 
 ## The five layers
 
@@ -13,7 +13,7 @@ The family is a set of doors — `/dev` and 22 siblings — that run one shared 
 | 1 · Truth | git branches and commits; GitHub issues, milestones and PRs | git and GitHub, through the doors |
 | 2 · Memory | `PROJECT_MAP.md`, `docs/adr/`, `docs/survey/` and `docs/ideation/` reports, `.dev/<branch>.json` | Phases 10 and 12, `dev:insights`, `dev:survey`, `dev:ideation`, `dev state checkpoint` |
 | 3 · Engine | the doors; `shared/pipeline.md`, Phases 0–16; four human gates: 5 discuss · 6 architecture · 14 merge · 16 prod | prose, executed by the agent |
-| 4 · Helpers | the `dev` CLI: `state · board · run · ui · project · doctor`; hooks: `branch-guard`, `pr-gates`, `teardown`, `context-load` | `scripts/dev.py`, `hooks/` |
+| 4 · Helpers | the `dev` CLI: `state · board · run · project · doctor`; hooks: `branch-guard`, `pr-gates`, `teardown`, `context-load` | `scripts/dev.py`, `hooks/` |
 | 5 · Container | Dev Desk's project windows and its own preferences, never repository truth | the app, in `apps/desk/` |
 
 Each layer is authoritative over every layer numbered above it, so when a checkpoint, a map or the app disagrees with git, git wins.

@@ -41,6 +41,9 @@ is absent, do Phases 3–5 by hand from the prose below** — the CLI is optiona
 work without it. Never report a number the CLI gave you as if you had checked it, and never skip a
 rule below because you assume the CLI applied it.
 
+Without `--milestone` the CLI resolves the active milestone by `dev:roadmap`'s rule and returns it
+as `active_milestone`, with the reason in `active_why`. Pass the flag only to override that choice.
+
 ### Optional — mirror to a GitHub Project v2 board
 
 If you want a draggable board on github.com, `dev project --number N` pushes the columns computed
@@ -277,14 +280,6 @@ queue records what was *decided*, and a decided order is never silently re-sorte
 **Cancel always writes the reason as a comment**, not just the state. A closed issue with no reason
 is indistinguishable from one closed by accident, and `dev:roadmap` reads these back so a declined
 direction is not re-proposed next quarter.
-
-**Dragging is the same two tiers.** `dev ui --serve` turns a drag on the board into a Move
-(BACKLOG ↔ QUEUE) or a Cancel (with its reason), re-derives the card's column from `gh` first, and
-refuses everything else — git-derived columns, epic cancels, delete. See `dev:ui`.
-
-**After any write, offer to refresh the snapshot:** `dev ui board` regenerates `.dev/ui/board.html`.
-It is generated output — never edit it, and never read it back as truth. Offer; do not run it
-unasked, because this door's contract is that writes are bounded and named.
 
 ### 7.1 — An epic's children come first
 

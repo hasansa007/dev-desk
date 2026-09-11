@@ -15,9 +15,9 @@ small deterministic helper.
 
 | | |
 |---|---|
-| Doors | 22 × `skills/<name>/SKILL.md`, plus the root `SKILL.md` |
+| Doors | 21 × `skills/<name>/SKILL.md`, plus the root `SKILL.md` |
 | Shared contracts | `shared/entry.md` (workspace + write boundary), `shared/pipeline.md` (17 phases; 11–14 each have a door), `shared/pipeline-{web,ios,android,kmp}.md`, `shared/prod-secrets*.md` |
-| Helper CLI | `scripts/dev.py` — **stdlib only**, Python 3.9-compatible. `state` · `board` · `run` · `doctor` · `project` · `ui` |
+| Helper CLI | `scripts/dev.py` — **stdlib only**, Python 3.9-compatible. `state` · `board` · `run` · `doctor` · `project` |
 | Compliance | `scripts/compliance_auditor.py` — stdlib only |
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
 | Tests | stdlib `unittest`, one file per script under `test-projects/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
@@ -91,13 +91,12 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
 - **No `roadmap-declined` label**, so the declined-theme round trip is untested.
 - **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
 - **0 open issues, 0 milestones** — every board render so far has been of an empty tracker.
-- **`dev board` and `dev ui board` never reach the `pr_created`/`human_review` columns.**
-  `cmd_board` (`scripts/dev.py:346-358`) and `collect_board` (`:565-576`) build each issue's `facts`
-  dict with only `unmerged` and `phase_group` — neither ever sets `facts["pr"]`, so `classify`'s PR
-  branch (`facts.get("pr")`) is always empty and those two columns are dead code from both callers.
-  Dev Desk's board (ADR 0013) does receive PR data and reaches Review correctly, so for an issue
-  with an open PR the app says Review while `dev board` says In progress or Backlog. A `dev.py` fix;
-  out of this branch's scope.
+- **`dev board` never reaches the `pr_created`/`human_review` columns.** `cmd_board`
+  (`scripts/dev.py:371-383`) builds each issue's `facts` dict with only `unmerged` and
+  `phase_group` — it never sets `facts["pr"]`, so `classify`'s PR branch (`facts.get("pr")`) is
+  always empty and those two columns are dead code. Dev Desk's board (ADR 0013) does receive PR
+  data and reaches Review correctly, so for an issue with an open PR the app says Review while
+  `dev board` says In progress or Backlog. A `dev.py` fix; out of this branch's scope.
 
 **Dev Desk (`apps/desk/`), not built yet:**
 
@@ -108,11 +107,16 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
   start, stop or answer a door yet.
 - **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
   mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both.
-- **`docs/arch/dev-system.html`'s Container node cites the design brief**, not `apps/desk/` — it
-  needs a re-pin once this branch merges.
+- **`docs/arch/dev-system.html` needs a re-pin.** Its Container node still cites the design brief
+  rather than `apps/desk/` (merged in #50), and its `scripts/dev.py` citations moved when `dev ui`
+  was removed (ADR 0014). Re-pin it once the paths settle, after the folder reorganisation.
 - **The Notifications and Execution settings panes store values**
   (`desk.notifyDecisions`/`notifyCompletion`/`notifyFailures`, `desk.worktreeLocation`) that nothing
   reads yet — no notification is posted, no worktree is created at the configured path.
+- **No Ideation or PROJECT_MAP view.** `/dev:ui` rendered `docs/ideation/` reports and
+  `PROJECT_MAP.md`'s sections as pages until it was retired on 2026-09-11 (ADR 0014). Dev Desk's
+  Findings reads only `docs/survey/` and Insights is unavailable for real projects, so both are read
+  as files until the app adds those screens.
 
 **Deferred deliberately:**
 
@@ -120,8 +124,8 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
   needs both; without a licence nobody may use it even once public.
 - **The CLI never edits a *target* repo's `.gitignore`.** It does not need to: the first write into
   `.dev/` also writes `.dev/.gitignore` (`*`), inside the family's own folder, so `.dev/` — phase
-  state and the `.dev/ui/` pages — ignores itself. State written by hand, without the CLI, lacks
-  it; `dev doctor` still reports that case.
+  state — ignores itself. State written by hand, without the CLI, lacks it; `dev doctor` still
+  reports that case.
 - **Changelog generation** — deferred, not rejected.
 
 **Known environment gaps:**
@@ -134,6 +138,9 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
   a commit that is not an ancestor of `main` or this branch — an earlier squash merge likely dropped
   it from history while the commit object itself is still present locally (`git cat-file -t`
   succeeds), which is why `archify validate` still reads `ok` today. Neither pin resolves for a
-  fresh clone, or after this machine's next `git gc`. Not caused by this branch: none of the 115
-  files this branch changed intersect either diagram's cited paths. Needs a re-pin at a reachable
-  commit; `docs/arch/` is out of this task's touch-list.
+  fresh clone, or after this machine's next `git gc`. Not caused by PR #50: none of the 115 files
+  it changed intersect either diagram's cited paths. Needs a re-pin at a reachable commit;
+  `docs/arch/` is out of this task's touch-list. **`dev-family` needs a redraw, not only a re-pin:**
+  it still draws a `dev:ui` component citing `skills/ui/SKILL.md`, and its CLI note lists `ui` —
+  both retired 2026-09-11 (ADR 0014). README's caption, *"has all 22 doors"*, counts that diagram
+  and changes with the redraw.

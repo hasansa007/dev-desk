@@ -180,40 +180,19 @@ separate door for it.
 The board's columns are computed from `git` and `gh` every run, so they cannot go stale. If a run
 checkpointed its phase into `.dev/`, the card also shows `planning` / `coding` / `validation` — but
 **git wins any disagreement**, and no state file means no phase claim at all.
+`.dev/` ignores itself, so nothing needs adding to your `.gitignore`.
 
-### Seeing it in a browser — no setup
+### Seeing it in a window
 
-```bash
-python3 ~/.claude/skills/dev/scripts/dev.py ui --open
-```
-
-That regenerates four local pages in `.dev/ui/` — board, roadmap, ideation, insights — plus an
-`index.html` that links them, and opens the index. Every page has a nav bar to the others.
-Self-contained files: no server, no network, no account. `.dev/` holds everything the CLI generates
-and ignores itself, so nothing needs adding to your `.gitignore`.
-After `install.sh` it is just `dev ui --open` — the installer links `dev` into `~/.local/bin` when
-that is on your `PATH`, and prints the alias to use if it can't.
-
-**They are a snapshot, not the source.** Each page shows the commit it was built from; run `dev ui`
-again to refresh. Nothing reads them back, so a stale page can never change what the board says.
-After `dev:kanban`, `dev:roadmap`, `dev:ideation` or `dev:insights` writes something, it offers to
-regenerate the matching page.
-
-### Dragging cards
-
-```bash
-dev ui --serve --open
-```
-
-Same pages, served from `127.0.0.1` instead of opened as files. On the board you can drag a card
-from BACKLOG to QUEUE (it joins the active milestone), back again, or onto CANCEL (it asks why, then
-closes the issue as *not planned* with your reason as the comment). Each write is printed in the
-terminal. IN FLIGHT, PR OPEN and HUMAN REVIEW follow git, so those cards stay put — start work
-with `/dev #N`. Ctrl-C stops the server; the files keep working as a read-only snapshot.
+Dev Desk, the Mac app in `apps/desk/`, shows the board and the roadmap — see
+[System model](SYSTEM-MODEL.md). To move a card between QUEUE and BACKLOG, or cancel one with a
+reason, ask `/dev:kanban`: its Move and Cancel happen in the conversation. Ideation reports and the
+project map have no screen yet — read them where they live, `docs/ideation/<date>.md` and
+`PROJECT_MAP.md`.
 
 ### Seeing it as a real board on github.com
 
-The board above is text. If you want a draggable one, `dev project` mirrors the same columns into a
+The `/dev:kanban` board is text. If you want a draggable one, `dev project` mirrors the same columns into a
 GitHub Projects v2 board. **One-time setup:**
 
 ```bash

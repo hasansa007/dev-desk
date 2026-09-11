@@ -79,6 +79,8 @@ public struct ProcessRunner: CommandRunner {
         env["GIT_TERMINAL_PROMPT"] = "0"
         env["GH_PROMPT_DISABLED"] = "1"
         env["NO_COLOR"] = "1"
+        // Stops a partial clone from fetching a missing object mid-read, which would run its remote's uploadpack (git 2.44+).
+        env["GIT_NO_LAZY_FETCH"] = "1"
         for (key, value) in extraEnvironment { env[key] = value }
         return env
     }
