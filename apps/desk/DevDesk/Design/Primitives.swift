@@ -109,6 +109,15 @@ extension View {
             .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(border))
     }
 
+    /// One height, radius and border for the controls that are not buttons, so a header never mixes a capsule with a rounded rectangle.
+    func controlChrome(fill: Color = DeskColor.surface, border: Color = DeskColor.controlBorder,
+                       height: CGFloat = DeskMetric.controlHeight) -> some View {
+        let shape = RoundedRectangle(cornerRadius: DeskMetric.controlRadius)
+        return frame(height: height)
+            .background(fill, in: shape)
+            .overlay(shape.strokeBorder(border))
+    }
+
     fileprivate func pill(fill: Color, border: Color, vertical: CGFloat, horizontal: CGFloat) -> some View {
         padding(.vertical, vertical)
             .padding(.horizontal, horizontal)

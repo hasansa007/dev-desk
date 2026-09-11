@@ -109,7 +109,9 @@ enum DeskMetric {
     static let insightsFloatingSize = CGSize(width: 404, height: 520)
     static let insightsDockedWidth: CGFloat = 392
     static let boardColumnWidth: CGFloat = 246
-    static let controlRadius: CGFloat = 5
+    /// Every small control shares these: search fields, toggles and the toolbar's pill. Buttons carry their own table in `DeskButtonStyle.Size`.
+    static let controlHeight: CGFloat = 26
+    static let controlRadius: CGFloat = 6
     static let cardRadius: CGFloat = 8
     static let pillRadius: CGFloat = 10
     static let sheetRadius: CGFloat = 12

@@ -10,6 +10,7 @@ struct Sidebar: View {
             if let snapshot = model.snapshot {
                 destinations
                 Spacer(minLength: 12)
+                settingsRow
                 connections(snapshot)
             } else {
                 Spacer(minLength: 0)
@@ -45,12 +46,19 @@ struct Sidebar: View {
 
     private var destinations: some View {
         VStack(spacing: 2) {
-            ForEach(Destination.allCases, id: \.self) { destination in
+            ForEach(Destination.allCases.filter { $0 != .settings }, id: \.self) { destination in
                 destinationButton(destination)
             }
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 8)
+    }
+
+    /// Settings sits at the bottom, away from the destinations that answer "what is happening"; its ⌘ shortcut is unchanged.
+    private var settingsRow: some View {
+        destinationButton(.settings)
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
     }
 
     private func destinationButton(_ destination: Destination) -> some View {

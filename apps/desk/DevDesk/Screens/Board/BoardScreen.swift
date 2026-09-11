@@ -3,6 +3,7 @@ import SwiftUI
 
 struct BoardScreen: View {
     @Bindable var model: ProjectWindowModel
+    @State private var showsRules = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,14 +21,10 @@ struct BoardScreen: View {
                 .foregroundStyle(DeskColor.ink)
             searchField
             BacklogToggle(isOn: $model.showBacklog)
-            Spacer(minLength: 0)
             if let note = model.snapshot?.boardNote, !note.isEmpty {
-                Text(note)
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                rulesButton(note)
             }
+            Spacer(minLength: 0)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -43,9 +40,31 @@ struct BoardScreen: View {
             .font(DeskFont.secondary)
             .foregroundStyle(DeskColor.ink)
             .padding(.horizontal, 10)
-            .frame(width: 200, height: 26, alignment: .leading)
-            .background(DeskColor.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(DeskColor.border))
+            .frame(width: 200, alignment: .leading)
+            .controlChrome()
+    }
+
+    /// The column rules are a paragraph; the header carries the control and shows the paragraph on demand.
+    private func rulesButton(_ note: String) -> some View {
+        Button { showsRules = true } label: {
+            Image(systemName: "info.circle")
+                .imageScale(.medium)
+                .foregroundStyle(DeskColor.mutedInk)
+                .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("How these columns are decided")
+        .accessibilityLabel("How these columns are decided")
+        .popover(isPresented: $showsRules) {
+            Text(note)
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.secondaryInk)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 320)
+                .padding(12)
+        }
     }
 
     @ViewBuilder
@@ -126,9 +145,7 @@ private struct BacklogToggle: View {
                 .font(DeskFont.secondary)
                 .foregroundStyle(isOn ? Color.white : DeskColor.ink)
                 .padding(.horizontal, 10)
-                .frame(height: 26)
-                .background(isOn ? DeskColor.accent : DeskColor.surface, in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(DeskColor.controlBorder))
+                .controlChrome(fill: isOn ? DeskColor.accent : DeskColor.surface)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Show backlog")

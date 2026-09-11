@@ -43,9 +43,7 @@ private struct ActivitySummary: View {
         .font(DeskFont.secondary)
         .foregroundStyle(DeskColor.navInk)
         .padding(.horizontal, 10)
-        .frame(height: 28)
-        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(DeskColor.controlBorder))
+        .controlChrome(height: 28)
         .accessibilityElement(children: .combine)
     }
 }
