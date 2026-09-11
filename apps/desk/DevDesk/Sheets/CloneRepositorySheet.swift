@@ -10,11 +10,13 @@ struct CloneRepositorySheet: View {
     @State private var destination = Self.defaultDestination()
     @State private var isCloning = false
     @State private var errorMessage: String?
+    @State private var cloneTask: Task<Void, Never>?
 
     var body: some View {
         SheetChrome(title: "Clone repository", confirmTitle: "Clone", width: 720,
                     confirmDisabled: urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCloning,
-                    onCancel: onDismiss, onConfirm: { Task { await clone() } }) {
+                    cancelHelp: isCloning ? "Stops waiting; a clone already under way may still finish in the chosen folder." : nil,
+                    onCancel: cancel, onConfirm: { cloneTask = Task { await clone() } }) {
             VStack(alignment: .leading, spacing: 14) {
                 row("Repository URL") {
                     TextField("https://github.com/org/repo.git", text: $urlText)
@@ -45,6 +47,7 @@ struct CloneRepositorySheet: View {
                 }
             }
         }
+        .onDisappear { cloneTask?.cancel() }
     }
 
     private func row<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
@@ -64,6 +67,12 @@ struct CloneRepositorySheet: View {
         destination = url
     }
 
+    private func cancel() {
+        cloneTask?.cancel()
+        onDismiss()
+    }
+
+    /// A cancelled wait never opens a window, even when the clone itself finishes afterwards.
     private func clone() async {
         let trimmed = urlText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -71,10 +80,12 @@ struct CloneRepositorySheet: View {
         errorMessage = nil
         do {
             let path = try await ProjectOperations.cloneRepository(url: trimmed, into: destination)
+            guard !Task.isCancelled else { return }
             isCloning = false
             openWindow(value: ProjectRef.local(path: path.path))
             onDismiss()
         } catch {
+            guard !Task.isCancelled else { return }
             isCloning = false
             errorMessage = error.localizedDescription
         }

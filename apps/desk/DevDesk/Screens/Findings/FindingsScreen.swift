@@ -6,7 +6,7 @@ struct FindingsScreen: View {
 
     var body: some View {
         if let snapshot = model.snapshot {
-            SurfaceView(snapshot.findings) { report in
+            SurfaceView(snapshot.findings, fillsScreen: true) { report in
                 if report.runs.isEmpty {
                     EmptyStateView(title: "No survey runs yet",
                                    message: "Run `/dev:survey` to write a report to `docs/survey/`; it appears here.")
@@ -65,14 +65,15 @@ private struct FindingsSplitView: View {
                             model.selectedFindingID = finding.id
                         }
                     }
+                    if let note = report.searchNote {
+                        Text(note)
+                            .font(DeskFont.small)
+                            .foregroundStyle(DeskColor.faintInk)
+                            .lineSpacing(3)
+                            .fixedSize(horizontal: false, vertical: true)
+                            .padding(14)
+                    }
                 }
-            }
-            if let note = report.searchNote {
-                Text(note)
-                    .font(DeskFont.small)
-                    .foregroundStyle(DeskColor.faintInk)
-                    .lineSpacing(3)
-                    .padding(14)
             }
         }
         .frame(width: 300, alignment: .leading)
@@ -81,12 +82,12 @@ private struct FindingsSplitView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Text("Findings").font(DeskFont.section)
                 Spacer()
                 Button("Run survey") { showSurveyPopover = true }
-                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .smallWide))
                     .popover(isPresented: $showSurveyPopover) {
                         MarkdownText("Run `/dev:survey` in your coding agent. Its report lands in `docs/survey/`, and Dev Desk reads it from there.",
                                      font: DeskFont.secondary, color: DeskColor.secondaryInk)
@@ -95,18 +96,17 @@ private struct FindingsSplitView: View {
                     }
             }
             runLine
+                .padding(.top, 8)
             FlowLayout(spacing: 5) {
                 ForEach(FindingCategory.allCases, id: \.self) { category in
                     let isSelected = model.findingFilter == category
-                    Button {
+                    FindingFilterChip(title: "\(category.rawValue) \(report.count(of: category, run: model.selectedRunID))",
+                                      category: category, isSelected: isSelected) {
                         model.findingFilter = isSelected ? nil : category
-                    } label: {
-                        PropertyChip("\(category.rawValue) \(report.count(of: category, run: model.selectedRunID))",
-                                     tone: isSelected ? .info : .neutral)
                     }
-                    .buttonStyle(.plain)
                 }
             }
+            .padding(.top, 9)
         }
         .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
@@ -139,6 +139,33 @@ private struct FindingsSplitView: View {
     }
 }
 
+/// New findings carry the info tone (D:535); the active filter takes the accent fill the design uses for selected controls.
+private struct FindingFilterChip: View {
+    let title: String
+    let category: FindingCategory
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            if isSelected {
+                Text(title)
+                    .font(.system(size: 11))
+                    .foregroundStyle(Color.white)
+                    .padding(.vertical, 2)
+                    .padding(.horizontal, 8)
+                    .background(DeskColor.accent, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
+                    .fixedSize()
+            } else {
+                PropertyChip(title, tone: category == .new ? .info : .neutral,
+                             fill: category == .new ? nil : DeskColor.neutralChipFill2, verticalPadding: 2)
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+}
+
 private struct FindingRow: View {
     let finding: Finding
     let isSelected: Bool
@@ -165,48 +192,6 @@ private struct FindingRow: View {
         }
         .buttonStyle(.plain)
     }
-}
-
-/// Wraps subviews left-to-right, starting a new row when the next one would overflow.
-struct FlowLayout: Layout {
-    var spacing: CGFloat = 6
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? .infinity
-        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > 0, x + size.width > width {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-        return CGSize(width: width.isFinite ? width : x, height: y + rowHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x > bounds.minX, x + size.width > bounds.maxX {
-                x = bounds.minX
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            subview.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-    }
-}
-
-/// Splits a two-sentence note into a bold lead and a supporting detail for `NoticeBanner`.
-func splitLeadSentence(_ text: String) -> (title: String, message: String) {
-    guard let range = text.range(of: ". ") else { return (text, "") }
-    return (String(text[..<range.upperBound]), String(text[range.upperBound...]))
 }
 
 struct FindingsScreen_Previews: PreviewProvider {

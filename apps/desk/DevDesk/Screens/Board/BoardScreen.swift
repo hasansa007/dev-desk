@@ -9,7 +9,7 @@ struct BoardScreen: View {
             header
             boardArea
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
     }
 
@@ -43,8 +43,7 @@ struct BoardScreen: View {
             .font(DeskFont.secondary)
             .foregroundStyle(DeskColor.ink)
             .padding(.horizontal, 10)
-            .frame(height: 26)
-            .frame(minWidth: 200, alignment: .leading)
+            .frame(width: 200, height: 26, alignment: .leading)
             .background(DeskColor.surface, in: Capsule())
             .overlay(Capsule().strokeBorder(DeskColor.border))
     }
@@ -81,13 +80,16 @@ struct BoardScreen: View {
                     .padding(16)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
-                ScrollView(.horizontal) {
-                    HStack(alignment: .top, spacing: 14) {
-                        ForEach(columns) { entry in
-                            BoardColumnView(column: entry.column, tasks: entry.tasks, model: model)
+                GeometryReader { proxy in
+                    ScrollView([.horizontal, .vertical]) {
+                        HStack(alignment: .top, spacing: 14) {
+                            ForEach(columns) { entry in
+                                BoardColumnView(column: entry.column, tasks: entry.tasks, model: model)
+                            }
                         }
+                        .padding(16)
+                        .frame(minWidth: proxy.size.width, minHeight: proxy.size.height, alignment: .topLeading)
                     }
-                    .padding(16)
                 }
             }
         }

@@ -9,6 +9,7 @@ struct DevDeskApp: App {
         Window("Open Project", id: "launcher") {
             LauncherView(context: .window)
                 .environment(registry)
+                .modifier(SnapshotBootstrap())
         }
         .windowResizability(.contentSize)
         .defaultPosition(.center)

@@ -6,17 +6,19 @@ struct SheetChrome<Content: View>: View {
     let title: String
     let confirmTitle: String
     let width: CGFloat
-    var confirmDisabled = false
+    let confirmDisabled: Bool
+    let cancelHelp: String?
     let onCancel: () -> Void
     let onConfirm: () -> Void
     let content: Content
 
-    init(title: String, confirmTitle: String, width: CGFloat, confirmDisabled: Bool = false,
+    init(title: String, confirmTitle: String, width: CGFloat, confirmDisabled: Bool = false, cancelHelp: String? = nil,
          onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void, @ViewBuilder content: () -> Content) {
         self.title = title
         self.confirmTitle = confirmTitle
         self.width = width
         self.confirmDisabled = confirmDisabled
+        self.cancelHelp = cancelHelp
         self.onCancel = onCancel
         self.onConfirm = onConfirm
         self.content = content()
@@ -43,37 +45,18 @@ struct SheetChrome<Content: View>: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(DeskColor.ink)
             Spacer(minLength: 8)
-            SheetHeaderButton(title: "Cancel", kind: .secondary, action: onCancel)
-            SheetHeaderButton(title: confirmTitle, kind: .primary, action: onConfirm, disabled: confirmDisabled)
+            Button("Cancel", action: onCancel)
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .sheetHeader))
+                .keyboardShortcut(.cancelAction)
+                .help(cancelHelp ?? "")
+            Button(confirmTitle, action: onConfirm)
+                .buttonStyle(DeskButtonStyle(kind: .primary, size: .sheetHeader))
+                .keyboardShortcut(.defaultAction)
+                .disabled(confirmDisabled)
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 13)
         .background(DeskColor.headerFill)
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
-    }
-}
-
-/// The sheet header's own button size (27pt) sits between the primitive's `.small` (26) and `.regular` (28).
-private struct SheetHeaderButton: View {
-    enum Kind { case primary, secondary }
-    let title: String
-    let kind: Kind
-    let action: () -> Void
-    var disabled = false
-
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 12, weight: kind == .primary ? .semibold : .regular))
-                .foregroundStyle(kind == .primary ? Color.white : DeskColor.ink)
-                .padding(.horizontal, 12)
-                .frame(height: 27)
-        }
-        .buttonStyle(.plain)
-        .background(kind == .primary ? DeskColor.accent : DeskColor.surface, in: RoundedRectangle(cornerRadius: 6))
-        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(kind == .primary ? DeskColor.accent : DeskColor.controlBorder))
-        .opacity(disabled ? 0.5 : 1)
-        .disabled(disabled)
-        .accessibilityLabel(title)
     }
 }

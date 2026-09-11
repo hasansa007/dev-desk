@@ -79,7 +79,7 @@ private struct TaskExternalConnectionPanel: View {
             }
             .padding(.top, 14)
         }
-        .padding(15)
+        .padding(14)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(DeskColor.neutralChipFill, in: RoundedRectangle(cornerRadius: 9))
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(DeskColor.border))
@@ -108,7 +108,7 @@ private struct TaskConnectionLevelCard: View {
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .deskCard(padding: 11)
+        .deskCard(padding: 10)
         .opacity(level.isAvailable ? 1 : 0.75)
         .accessibilityElement(children: .combine)
     }

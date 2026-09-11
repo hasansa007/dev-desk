@@ -2,13 +2,15 @@ import DeskCore
 import SwiftUI
 
 struct ReconcileFindingSheet: View {
+    let title: String
     let reconcile: Reconciliation?
     let onCancel: () -> Void
     let onConfirm: () -> Void
 
     @State private var selectedRelationship: String
 
-    init(reconcile: Reconciliation?, onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void) {
+    init(title: String, reconcile: Reconciliation?, onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void) {
+        self.title = title
         self.reconcile = reconcile
         self.onCancel = onCancel
         self.onConfirm = onConfirm
@@ -16,7 +18,7 @@ struct ReconcileFindingSheet: View {
     }
 
     var body: some View {
-        SheetChrome(title: "Reconcile with the tracker", confirmTitle: "Queue proposed update", width: 1000,
+        SheetChrome(title: title, confirmTitle: "Queue proposed update", width: 1000,
                     confirmDisabled: reconcile == nil, onCancel: onCancel, onConfirm: onConfirm) {
             if let reconcile {
                 content(reconcile)
@@ -107,7 +109,7 @@ struct ReconcileFindingSheet: View {
 struct ReconcileFindingSheet_Previews: PreviewProvider {
     static var previews: some View {
         let finding = SampleData.studyHub().findings.value!.findings.first { $0.id == "F-108" }!
-        ReconcileFindingSheet(reconcile: finding.reconcile, onCancel: {}, onConfirm: {})
+        ReconcileFindingSheet(title: "Compare finding F-108 with issue #42", reconcile: finding.reconcile, onCancel: {}, onConfirm: {})
             .frame(width: 1000)
     }
 }

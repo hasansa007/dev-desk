@@ -122,6 +122,43 @@ final class ProjectWindowModelTests: XCTestCase {
         await model.load()
         model.recordAnswer(decisionID: "d-1", optionID: nil, rationale: "test")
         XCTAssertEqual(model.snapshot?.decisions.value?.first?.state, .needsAttention)
+        XCTAssertNil(model.answeredDecisionID)
+    }
+
+    func testConcurrentLoadsReadTheSourceOnce() async {
+        let source = CountingSource(snapshot: SampleData.studyHub())
+        let model = ProjectWindowModel(ref: .sample(.studyHub), source: source, insightsDelay: .zero)
+        async let first: Void = model.load()
+        async let second: Void = model.load()
+        _ = await (first, second)
+        let loads = await source.counter.value
+        XCTAssertEqual(loads, 1)
+        XCTAssertNotNil(model.snapshot)
+    }
+
+    func testCancelledLoadLeavesStateAsItWasAndAllowsTheNextLoad() async {
+        let model = ProjectWindowModel(ref: .sample(.studyHub), source: SleepThenReturnSource(snapshot: SampleData.studyHub()), insightsDelay: .zero)
+        let loading = Task { await model.load() }
+        try? await Task.sleep(for: .milliseconds(20))
+        loading.cancel()
+        await loading.value
+        guard case .loading = model.loadState else {
+            XCTFail("a cancelled load must leave the state as it was")
+            return
+        }
+        XCTAssertNil(model.selectedTaskID)
+        XCTAssertNil(model.reloadError)
+        await model.load()
+        XCTAssertNotNil(model.snapshot)
+    }
+
+    func testSequentialLoadsEachReadTheSource() async {
+        let source = CountingSource(snapshot: SampleData.studyHub())
+        let model = ProjectWindowModel(ref: .sample(.studyHub), source: source, insightsDelay: .zero)
+        await model.load()
+        await model.load()
+        let loads = await source.counter.value
+        XCTAssertEqual(loads, 2)
     }
 
     func testLinkRoutesToFinding() async {
@@ -139,5 +176,31 @@ final class ProjectWindowModelTests: XCTestCase {
             return
         }
         XCTAssertTrue(message.contains("boom"))
+    }
+}
+
+private actor LoadCounter {
+    private(set) var value = 0
+    func increment() { value += 1 }
+}
+
+/// Like a local read that turns cancellation into a result instead of throwing.
+private struct SleepThenReturnSource: ProjectDataSource {
+    let snapshot: ProjectSnapshot
+
+    func load() async throws -> ProjectSnapshot {
+        try? await Task.sleep(for: .milliseconds(300))
+        return snapshot
+    }
+}
+
+private struct CountingSource: ProjectDataSource {
+    let snapshot: ProjectSnapshot
+    let counter = LoadCounter()
+
+    func load() async throws -> ProjectSnapshot {
+        await counter.increment()
+        try await Task.sleep(for: .milliseconds(50))
+        return snapshot
     }
 }

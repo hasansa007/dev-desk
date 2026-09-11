@@ -12,13 +12,14 @@ struct ContentRouter: View {
             }
             HStack(spacing: 0) {
                 content
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 if model.insightsOpen && model.insightsDocked {
                     InsightsPanel(model: model, placement: .docked)
                         .frame(width: DeskMetric.insightsDockedWidth)
                 }
             }
         }
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         .background(DeskColor.canvas)
         .overlay(alignment: .bottomTrailing) {
             if model.insightsOpen && !model.insightsDocked {

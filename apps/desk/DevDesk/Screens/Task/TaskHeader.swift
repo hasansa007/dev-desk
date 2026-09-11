@@ -53,7 +53,7 @@ struct TaskHeader: View {
                     .foregroundStyle(DeskColor.mutedInk)
                     .fixedSize()
             }
-            StatusPill(badge: task.headerBadge)
+            StatusPill(badge: task.headerBadge, showsDot: false, verticalPadding: 2, horizontalPadding: 8)
             Spacer(minLength: 0)
             if let nextAction = task.nextAction {
                 Button(nextAction.title) {
@@ -61,6 +61,7 @@ struct TaskHeader: View {
                 }
                 .buttonStyle(DeskButtonStyle(kind: .primary))
                 .fixedSize()
+                .help(nextActionHelp(nextAction))
             }
             Button(dockIsShown ? "Hide agents dock" : "Show agents dock") { model.toggleDock() }
                 .buttonStyle(DeskButtonStyle(kind: .secondary))
@@ -81,6 +82,11 @@ struct TaskHeader: View {
     }
 
     private var dockIsShown: Bool { model.dockOpen && task.dock != nil }
+
+    private func nextActionHelp(_ action: NextAction) -> String {
+        guard case .openURL(let url, _) = action else { return "" }
+        return url.absoluteString
+    }
 }
 
 private struct TaskTabButton: View {

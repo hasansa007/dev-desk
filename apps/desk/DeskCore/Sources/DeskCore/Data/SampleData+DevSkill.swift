@@ -27,7 +27,7 @@ extension SampleData {
                 headerBadge: StatusBadge(.neutral, "In progress"), branchLine: "feat/run-summary · base main",
                 requirements: .available(Requirements(goal: "Survey run summaries", sources: "Issue #12")),
                 changes: .available(ChangeSet(files: [], baseNote: "No diff is included for this task in the demo.")),
-                evidence: .available(Evidence(isDemo: true, limitations: "No checks recorded for this task.")),
+                evidence: .available(Evidence(isDemo: true)),
                 agentsNote: "No agent assigned",
                 parallel: .none("No agent assigned")
             ),
@@ -37,7 +37,7 @@ extension SampleData {
                 headerBadge: StatusBadge(.info, "In review"), branchLine: "docs/gates · base main",
                 requirements: .available(Requirements(goal: "Decision gate copy pass", sources: "Issue #9")),
                 changes: .available(ChangeSet(files: [], baseNote: "No diff is included for this task in the demo.")),
-                evidence: .available(Evidence(isDemo: true, limitations: "No checks recorded for this task.")),
+                evidence: .available(Evidence(isDemo: true)),
                 agentsNote: "No agent assigned",
                 parallel: .none("No agent assigned")
             ),
@@ -47,7 +47,7 @@ extension SampleData {
                 headerBadge: StatusBadge(.ended, "Done"), branchLine: "main",
                 requirements: .available(Requirements(goal: "CLI discovery handshake", sources: "Issue #4")),
                 changes: .available(ChangeSet(files: [], baseNote: "No diff is included for this task in the demo.")),
-                evidence: .available(Evidence(isDemo: true, limitations: "No checks recorded for this task.")),
+                evidence: .available(Evidence(isDemo: true)),
                 agentsNote: "No agent assigned",
                 parallel: .none("No agent assigned")
             ),

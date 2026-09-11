@@ -23,7 +23,8 @@ struct SettingsScreen: View {
                 sectionRow(section)
             }
         }
-        .padding(10)
+        .padding(.vertical, 12)
+        .padding(.horizontal, 10)
         .frame(width: 230, alignment: .top)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(DeskColor.surface)

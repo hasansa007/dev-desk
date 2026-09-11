@@ -6,7 +6,7 @@ struct RoadmapScreen: View {
 
     var body: some View {
         if let snapshot = model.snapshot {
-            SurfaceView(snapshot.roadmap) { roadmap in
+            SurfaceView(snapshot.roadmap, fillsScreen: true) { roadmap in
                 if roadmap.themes.isEmpty && roadmap.milestones.isEmpty {
                     EmptyStateView(title: "No roadmap yet",
                                    message: "Run `/dev:roadmap` to turn recorded gaps into milestones and epics.")
@@ -59,11 +59,14 @@ private struct ThemeColumn: View {
     let theme: RoadmapTheme
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 0) {
             SectionLabel(theme.title)
-            ForEach(theme.items) { item in
-                RoadmapItemCard(item: item)
+            VStack(alignment: .leading, spacing: 9) {
+                ForEach(theme.items) { item in
+                    RoadmapItemCard(item: item)
+                }
             }
+            .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
@@ -73,23 +76,34 @@ private struct RoadmapItemCard: View {
     let item: RoadmapItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(item.title)
                 .font(DeskFont.body.weight(.semibold))
                 .foregroundStyle(item.isCritical ? DeskColor.tone(.failed).foreground : DeskColor.ink)
             FlowLayout(spacing: 6) {
-                PropertyChip(item.workType, tone: workTypeTone)
-                PropertyChip(item.priority, tone: .neutral)
+                PropertyChip(item.workType, tone: workTypeTone, fill: chipFill(for: workTypeTone))
+                PropertyChip(item.priority, fill: DeskColor.neutralChipFill2)
                 PropertyChip(item.commitment.rawValue, tone: item.commitment == .committed ? .running : .waiting)
             }
+            .padding(.top, 8)
             if let linkText = item.linkText {
                 MarkdownText(linkText, font: .system(size: 12), color: DeskColor.secondaryInk)
+                    .padding(.top, 9)
             }
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 9))
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(item.isCritical ? DeskColor.tone(.failed).border : DeskColor.border))
+    }
+
+    /// D:605–629: neutral chips use the lighter fill, and the Defect chip the stronger red fill.
+    private func chipFill(for tone: StatusTone) -> Color? {
+        switch tone {
+        case .neutral: return DeskColor.neutralChipFill2
+        case .failed: return DeskColor.diffDeleteFill
+        default: return nil
+        }
     }
 
     private var workTypeTone: StatusTone {

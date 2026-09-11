@@ -6,7 +6,7 @@ struct DecisionsScreen: View {
 
     var body: some View {
         if let snapshot = model.snapshot {
-            SurfaceView(snapshot.decisions) { decisions in
+            SurfaceView(snapshot.decisions, fillsScreen: true) { decisions in
                 DecisionsSplitView(model: model, decisions: decisions)
             }
         }
@@ -63,12 +63,7 @@ private struct DecisionsSplitView: View {
                 .padding(18)
             }
         } else {
-            Text(emptyMessage)
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .frame(maxWidth: 420, alignment: .leading)
-                .padding(24)
+            Color.clear
         }
     }
 
@@ -76,9 +71,9 @@ private struct DecisionsSplitView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 6) {
                 Button("Needs attention") { model.decisionsTab = .needsAttention }
-                    .buttonStyle(DeskButtonStyle(kind: model.decisionsTab == .needsAttention ? .primary : .secondary, size: .small))
+                    .buttonStyle(DeskButtonStyle(kind: model.decisionsTab == .needsAttention ? .primary : .secondary, size: .smallWide))
                 Button("History") { model.decisionsTab = .history }
-                    .buttonStyle(DeskButtonStyle(kind: model.decisionsTab == .history ? .primary : .secondary, size: .small))
+                    .buttonStyle(DeskButtonStyle(kind: model.decisionsTab == .history ? .primary : .secondary, size: .smallWide))
             }
             .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
             .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
@@ -101,7 +96,8 @@ private struct DecisionsSplitView: View {
                 }
             }
         }
-        .frame(width: 288, alignment: .leading)
+        .frame(width: 288)
+        .frame(maxHeight: .infinity, alignment: .top)
         .background(DeskColor.surface)
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
     }

@@ -9,7 +9,7 @@ extension SampleData {
         .available(ChangeSet(files: [], baseNote: note))
     }
 
-    private static func emptyEvidence(limitations: String) -> Surface<Evidence> {
+    private static func emptyEvidence(limitations: String? = nil) -> Surface<Evidence> {
         .available(Evidence(isDemo: true, limitations: limitations))
     }
 
@@ -20,7 +20,7 @@ extension SampleData {
                 headerBadge: StatusBadge(.neutral, "Backlog"), branchLine: "No branch yet",
                 requirements: emptyRequirements(goal: "Offline lesson cache", sources: "Issue #71 · roadmap item “Offline lesson cache” (considered)"),
                 changes: emptyChanges(note: "No branch yet."),
-                evidence: emptyEvidence(limitations: "No checks recorded for this task."),
+                evidence: emptyEvidence(),
                 agentsNote: "No agent assigned",
                 parallel: .none("No agent assigned")
             ),
@@ -29,7 +29,7 @@ extension SampleData {
                 headerBadge: StatusBadge(.neutral, "Backlog"), branchLine: "No branch yet",
                 requirements: emptyRequirements(goal: "Flashcard deck import", sources: "Issue #68"),
                 changes: emptyChanges(note: "No branch yet."),
-                evidence: emptyEvidence(limitations: "No checks recorded for this task."),
+                evidence: emptyEvidence(),
                 agentsNote: "No agent assigned",
                 parallel: .none("No agent assigned")
             ),
@@ -39,7 +39,7 @@ extension SampleData {
                 headerBadge: StatusBadge(.neutral, "Queued"), branchLine: "No branch yet",
                 requirements: emptyRequirements(goal: "Reduce initial bundle size", sources: "Issue #65"),
                 changes: emptyChanges(note: "No branch yet."),
-                evidence: emptyEvidence(limitations: "No checks recorded for this task."),
+                evidence: emptyEvidence(),
                 agentsNote: "No agent assigned",
                 parallel: .none("No agent assigned")
             ),
@@ -276,7 +276,7 @@ extension SampleData {
                 nextAction: .reviewChanges,
                 requirements: emptyRequirements(goal: "Fix streak calculation across time zones", sources: "Issue #59"),
                 changes: emptyChanges(note: "No diff is included for this task in the demo."),
-                evidence: emptyEvidence(limitations: "No checks recorded for this task."),
+                evidence: emptyEvidence(),
                 agentsNote: "Agent ended.",
                 dependencies: [Dependency(text: "Blocks [#42](desk://task/42) — shared date helpers.", taskID: "42")],
                 parallel: .none("Agent ended")
@@ -287,7 +287,7 @@ extension SampleData {
                 headerBadge: StatusBadge(.ended, "Merged"), branchLine: "Merged into main",
                 requirements: emptyRequirements(goal: "Migrate settings store", sources: "Issue #38"),
                 changes: emptyChanges(note: "Merged into `main`."),
-                evidence: emptyEvidence(limitations: "No checks recorded for this task."),
+                evidence: emptyEvidence(),
                 agentsNote: "No agent assigned",
                 parallel: .none("No agent assigned")
             ),

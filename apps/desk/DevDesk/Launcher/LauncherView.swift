@@ -13,6 +13,7 @@ struct LauncherView: View {
     @AppStorage(PreferenceKey.showSamples) private var showSamples = true
     @State private var selectedID: String?
     @State private var activeSubSheet: SubSheet?
+    @FocusState private var listFocused: Bool
 
     private enum SubSheet: Identifiable { case clone, create
         var id: Self { self }
@@ -32,6 +33,7 @@ struct LauncherView: View {
                     Spacer()
                     Button("Open") { openSelected() }
                         .buttonStyle(DeskButtonStyle(kind: .primary))
+                        .keyboardShortcut(.defaultAction)
                         .disabled(selectedRef == nil)
                 }
                 .padding(.top, 14)
@@ -67,17 +69,46 @@ struct LauncherView: View {
             case .create: CreateProjectSheet(onDismiss: { activeSubSheet = nil })
             }
         }
+        .onAppear {
+            if selectedID == nil { selectedID = rows.first { !$0.isMissing }?.id }
+            listFocused = true
+        }
     }
 
+    /// Arrow keys move the selection, Return opens it; the list draws its own focus ring around the card.
     private var recentList: some View {
-        VStack(spacing: 0) {
+        let shape = RoundedRectangle(cornerRadius: DeskMetric.cardRadius)
+        return VStack(spacing: 0) {
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
                 if index > 0 { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
                 row(item)
             }
         }
-        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
+        .clipShape(shape)
+        .background(DeskColor.surface, in: shape)
+        .overlay(shape.strokeBorder(listFocused ? DeskColor.accent : DeskColor.border))
+        .overlay {
+            if listFocused {
+                shape.inset(by: -1.5).stroke(DeskColor.accent.opacity(0.14), lineWidth: 3)
+            }
+        }
+        .focusable()
+        .focused($listFocused)
+        .focusEffectDisabled()
+        .onKeyPress(.upArrow) {
+            moveSelection(by: -1)
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            moveSelection(by: 1)
+            return .handled
+        }
+        .onKeyPress(.return) {
+            openSelected()
+            return .handled
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Recent projects")
     }
 
     private func row(_ item: LauncherRow) -> some View {
@@ -97,7 +128,7 @@ struct LauncherView: View {
                 Text("Missing").font(DeskFont.secondary).foregroundStyle(DeskColor.faintInk)
             } else {
                 Text(registry.isOpen(item.ref) ? "Open · focuses its window" : "Open")
-                    .font(DeskFont.secondary)
+                    .font(.system(size: 11))
                     .foregroundStyle(DeskColor.tone(.info).foreground)
             }
         }
@@ -108,9 +139,11 @@ struct LauncherView: View {
         .contentShape(Rectangle())
         .opacity(item.isMissing ? 0.6 : 1)
         .onTapGesture(count: 2) { if !item.isMissing { open(item.ref) } }
-        .onTapGesture(count: 1) { if !item.isMissing { selectedID = item.id } }
+        .onTapGesture(count: 1) { select(item) }
         .accessibilityElement(children: .combine)
-        .accessibilityAddTraits(.isButton)
+        .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { select(item) }
+        .accessibilityAction(named: "Open") { if !item.isMissing { open(item.ref) } }
     }
 
     private func startCard(title: String, detail: String, action: @escaping () -> Void) -> some View {
@@ -154,7 +187,23 @@ struct LauncherView: View {
         return FileManager.default.fileExists(atPath: path)
     }
 
-    private var selectedRef: ProjectRef? { rows.first { $0.id == selectedID }?.ref }
+    private var selectedRef: ProjectRef? { rows.first { $0.id == selectedID && !$0.isMissing }?.ref }
+
+    private func select(_ item: LauncherRow) {
+        listFocused = true
+        guard !item.isMissing else { return }
+        selectedID = item.id
+    }
+
+    private func moveSelection(by step: Int) {
+        let available = rows.filter { !$0.isMissing }
+        guard !available.isEmpty else { return }
+        guard let index = available.firstIndex(where: { $0.id == selectedID }) else {
+            selectedID = (step > 0 ? available.first : available.last)?.id
+            return
+        }
+        selectedID = available[min(max(index + step, 0), available.count - 1)].id
+    }
 
     private func openSelected() {
         guard let ref = selectedRef else { return }

@@ -44,8 +44,8 @@ private struct ActivitySummary: View {
         .foregroundStyle(DeskColor.navInk)
         .padding(.horizontal, 10)
         .frame(height: 28)
-        .background(DeskColor.surface, in: Capsule())
-        .overlay(Capsule().strokeBorder(DeskColor.controlBorder))
+        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 6))
+        .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(DeskColor.controlBorder))
         .accessibilityElement(children: .combine)
     }
 }

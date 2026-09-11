@@ -15,7 +15,7 @@ struct Sidebar: View {
                 Spacer(minLength: 0)
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
         .background(DeskColor.sidebar)
         .overlay(alignment: .trailing) {
             Rectangle().fill(DeskColor.border).frame(width: 1)

@@ -4,6 +4,7 @@ import SwiftUI
 struct ProjectWindow: View {
     let ref: ProjectRef
     @State private var model: ProjectWindowModel
+    @State private var layoutRestored = false
     @Environment(OpenProjectRegistry.self) private var registry
     @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
     @SceneStorage("desk.destination") private var storedDestination: Destination?
@@ -30,26 +31,22 @@ struct ProjectWindow: View {
         .sheet(item: $model.sheet) { kind in
             SheetHost(model: model, kind: kind)
         }
-        .environment(\.openURL, OpenURLAction { url in
-            guard let link = DeskLink(url: url) else { return .systemAction }
-            model.handle(link)
-            return .handled
-        })
+        .modifier(DeskLinkRouting(model: model))
         .focusedSceneValue(\.projectModel, model)
-        .preferredColorScheme(appearance.colorScheme)
+        .preferredColorScheme(SnapshotMode.shared.colorScheme ?? appearance.colorScheme)
         .frame(minWidth: 1100, minHeight: 720)
-        .task {
-            await model.load()
-            restoreLayout()
-            recordRecent()
+        .background { SnapshotWindowHook(ref: ref, model: model) }
+        .task { await model.load() }
+        .onChange(of: model.snapshot != nil) { _, isLoaded in
+            if isLoaded { applyFirstLoad() }
         }
         .onAppear { registry.windowOpened(ref) }
         .onDisappear { registry.windowClosed(ref) }
-        .onChange(of: model.destination) { _, value in storedDestination = value }
-        .onChange(of: model.selectedTaskID) { _, value in storedTaskID = value ?? "" }
-        .onChange(of: model.tab) { _, value in storedTab = value }
-        .onChange(of: model.dockPlacement) { _, value in storedDockPlacement = value }
-        .onChange(of: model.dockOpen) { _, value in storedDockOpen = value }
+        .onChange(of: model.destination) { _, value in if layoutRestored { storedDestination = value } }
+        .onChange(of: model.selectedTaskID) { _, value in if layoutRestored { storedTaskID = value ?? "" } }
+        .onChange(of: model.tab) { _, value in if layoutRestored { storedTab = value } }
+        .onChange(of: model.dockPlacement) { _, value in if layoutRestored { storedDockPlacement = value } }
+        .onChange(of: model.dockOpen) { _, value in if layoutRestored { storedDockOpen = value } }
     }
 
     private var subtitle: String {
@@ -57,9 +54,17 @@ struct ProjectWindow: View {
         return "\(project.displayPath) · \(project.branch)"
     }
 
+    /// Runs once, after whichever load succeeds first, so a Retry after a failed first load still restores and records.
+    private func applyFirstLoad() {
+        guard !layoutRestored else { return }
+        layoutRestored = true
+        guard !SnapshotMode.shared.isActive else { return }
+        restoreLayout()
+        recordRecent()
+    }
+
     /// An empty stored task id means the board was showing no task; an id that no longer exists is ignored.
     private func restoreLayout() {
-        guard model.snapshot != nil else { return }
         if let storedTaskID {
             if storedTaskID.isEmpty {
                 model.selectedTaskID = nil
@@ -76,6 +81,25 @@ struct ProjectWindow: View {
     private func recordRecent() {
         guard case .local = ref, let project = model.snapshot?.project else { return }
         AppServices.recents.record(ref, name: project.name, displayPath: project.displayPath)
+    }
+}
+
+/// Routes `desk://` links in-app and lets only web and mail links leave it; any other scheme a repository's text carries is discarded unopened.
+struct DeskLinkRouting: ViewModifier {
+    let model: ProjectWindowModel
+
+    static func opensExternally(_ url: URL) -> Bool {
+        ["http", "https", "mailto"].contains(url.scheme?.lowercased() ?? "")
+    }
+
+    func body(content: Content) -> some View {
+        content.environment(\.openURL, OpenURLAction { url in
+            if let link = DeskLink(url: url) {
+                model.handle(link)
+                return .handled
+            }
+            return Self.opensExternally(url) ? .systemAction : .discarded
+        })
     }
 }
 

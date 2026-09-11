@@ -61,8 +61,10 @@ struct InsightsPanel: View {
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .background(DeskColor.headerFill)
-        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+        .background(placement == .floating ? DeskColor.titlebarFill : DeskColor.surface)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(placement == .floating ? DeskColor.titlebarBorder : DeskColor.divider).frame(height: 1)
+        }
     }
 
     private var chipsRow: some View {
@@ -93,7 +95,7 @@ struct InsightsPanel: View {
 
     private var displayChips: [ContextChip] {
         guard insights.script != nil else {
-            return [ContextChip(id: "project", label: "Project \(model.snapshot?.project.name ?? projectDisplayName(model.ref))")]
+            return [ContextChip(id: "project", label: "Project \(model.snapshot?.project.name ?? model.ref.displayName)")]
         }
         return insights.chips
     }
@@ -115,6 +117,7 @@ struct InsightsPanel: View {
         .padding(.horizontal, 8)
         .background(chip.isTask ? DeskColor.tone(.info).fill : DeskColor.neutralChipFill, in: Capsule())
         .overlay(Capsule().strokeBorder(chip.isTask ? DeskColor.tone(.info).border : DeskColor.border))
+        .fixedSize()
     }
 
     private func providerMenu(_ script: InsightsScript) -> some View {
@@ -126,6 +129,7 @@ struct InsightsPanel: View {
             Text("\(insights.provider) ▾").font(.system(size: 11)).foregroundStyle(DeskColor.mutedInk)
         }
         .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
         .fixedSize()
     }
 
@@ -164,11 +168,13 @@ struct InsightsPanel: View {
     }
 
     private func messageBubble(_ message: InsightsMessage) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 0) {
             Text(message.author).font(.system(size: 11)).foregroundStyle(DeskColor.mutedInk)
             Text(message.text).font(DeskFont.body).foregroundStyle(DeskColor.ink)
+                .padding(.top, 4)
             if let citation = message.citation {
                 Text(citation).font(DeskFont.mono(11.5)).foregroundStyle(DeskColor.accent)
+                    .padding(.top, 6)
             }
         }
         .lineSpacing(3)
@@ -176,7 +182,7 @@ struct InsightsPanel: View {
         .padding(.horizontal, 11)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(message.isUser ? DeskColor.neutralChipFill2 : DeskColor.surface, in: RoundedRectangle(cornerRadius: 9))
-        .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(message.isUser ? Color.clear : DeskColor.border))
+        .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(DeskColor.border))
     }
 
     private var readingIndicator: some View {
@@ -214,13 +220,15 @@ struct InsightsPanel: View {
                     .onSubmit { insights.send() }
                     .disabled(insights.script == nil)
                 Button("Send") { insights.send() }
-                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .composer))
                     .disabled(insights.script == nil || insights.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            Text(insights.script?.footnote ?? "Exploration is read-only.")
-                .font(.system(size: 11))
-                .foregroundStyle(DeskColor.faintInk)
-                .lineSpacing(3)
+            if placement == .docked {
+                Text(insights.script?.footnote ?? "Exploration is read-only.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.faintInk)
+                    .lineSpacing(3)
+            }
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
@@ -238,50 +246,6 @@ private struct QuickActionButtonStyle: ButtonStyle {
             .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 12))
             .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(DeskColor.controlBorder))
             .opacity(configuration.isPressed ? 0.7 : 1)
-    }
-}
-
-/// `ProjectRef.displayName` lives in the App layer, outside this task's typecheck baseline.
-private func projectDisplayName(_ ref: ProjectRef) -> String {
-    switch ref {
-    case .sample(let project): return project.title
-    case .local(let path): return URL(fileURLWithPath: path).lastPathComponent
-    }
-}
-
-/// Wraps its children onto new rows instead of clipping or scrolling horizontally.
-private struct FlowLayout: Layout {
-    var spacing: CGFloat = 6
-
-    func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
-        let width = proposal.width ?? .infinity
-        var x: CGFloat = 0, y: CGFloat = 0, rowHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > width, x > 0 {
-                x = 0
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
-        return CGSize(width: width.isFinite ? width : x, height: y + rowHeight)
-    }
-
-    func placeSubviews(in bounds: CGRect, proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) {
-        var x = bounds.minX, y = bounds.minY, rowHeight: CGFloat = 0
-        for subview in subviews {
-            let size = subview.sizeThatFits(.unspecified)
-            if x + size.width > bounds.maxX, x > bounds.minX {
-                x = bounds.minX
-                y += rowHeight + spacing
-                rowHeight = 0
-            }
-            subview.place(at: CGPoint(x: x, y: y), proposal: .unspecified)
-            x += size.width + spacing
-            rowHeight = max(rowHeight, size.height)
-        }
     }
 }
 

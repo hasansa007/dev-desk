@@ -75,7 +75,7 @@ private struct TaskCriterionCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .font(DeskFont.body)
-        .deskCard(padding: 11)
+        .deskCard(padding: 10)
         .accessibilityElement(children: .combine)
     }
 }

@@ -10,11 +10,12 @@ struct CreateProjectSheet: View {
     @State private var parent = Self.defaultParent()
     @State private var isCreating = false
     @State private var errorMessage: String?
+    @State private var createTask: Task<Void, Never>?
 
     var body: some View {
         SheetChrome(title: "Create new project", confirmTitle: "Create", width: 720,
                     confirmDisabled: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating,
-                    onCancel: onDismiss, onConfirm: { Task { await create() } }) {
+                    onCancel: cancel, onConfirm: { createTask = Task { await create() } }) {
             VStack(alignment: .leading, spacing: 14) {
                 row("Project name") {
                     TextField("my-project", text: $name)
@@ -45,6 +46,7 @@ struct CreateProjectSheet: View {
                 }
             }
         }
+        .onDisappear { createTask?.cancel() }
     }
 
     private func row<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
@@ -64,6 +66,12 @@ struct CreateProjectSheet: View {
         parent = url
     }
 
+    private func cancel() {
+        createTask?.cancel()
+        onDismiss()
+    }
+
+    /// A cancelled wait never opens a window, even when the folder is created afterwards.
     private func create() async {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -71,10 +79,12 @@ struct CreateProjectSheet: View {
         errorMessage = nil
         do {
             let path = try await ProjectOperations.createProject(named: trimmed, in: parent)
+            guard !Task.isCancelled else { return }
             isCreating = false
             openWindow(value: ProjectRef.local(path: path.path))
             onDismiss()
         } catch {
+            guard !Task.isCancelled else { return }
             isCreating = false
             errorMessage = error.localizedDescription
         }

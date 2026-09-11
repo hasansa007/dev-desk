@@ -2,12 +2,13 @@ import DeskCore
 import SwiftUI
 
 struct CompareOutputsSheet: View {
+    let title: String
     let comparison: OutputComparison
     let onCancel: () -> Void
     let onConfirm: () -> Void
 
     var body: some View {
-        SheetChrome(title: "Compare outputs", confirmTitle: comparison.confirmTitle, width: 1000,
+        SheetChrome(title: title, confirmTitle: comparison.confirmTitle, width: 1000,
                     onCancel: onCancel, onConfirm: onConfirm) {
             VStack(alignment: .leading, spacing: 14) {
                 Text(comparison.intro)
@@ -33,7 +34,7 @@ struct CompareOutputsSheet: View {
                 Text(output.title).fontWeight(.semibold)
                 Text(output.stateLabel)
                     .font(.system(size: 11))
-                    .foregroundStyle(DeskColor.tone(output.tone).foreground)
+                    .foregroundStyle(output.tone == .ended ? DeskColor.mutedInk : DeskColor.tone(output.tone).foreground)
             }
             .padding(.vertical, 10)
             .padding(.horizontal, 12)
@@ -62,7 +63,7 @@ struct CompareOutputsSheet: View {
 struct CompareOutputsSheet_Previews: PreviewProvider {
     static var previews: some View {
         let task = SampleData.studyHub().board.value!.first { $0.id == "42" }!
-        CompareOutputsSheet(comparison: task.comparison!, onCancel: {}, onConfirm: {})
+        CompareOutputsSheet(title: "Compare agent outputs · #42", comparison: task.comparison!, onCancel: {}, onConfirm: {})
             .frame(width: 1000)
     }
 }

@@ -27,7 +27,7 @@ struct DeskCommands: Commands {
                 Button("Ask About This Project") { model?.toggleInsights() }
                     .keyboardShortcut("i", modifiers: [.shift, .command])
                 Button("Show Agents Dock") { model?.toggleDock() }
-                    .keyboardShortcut("d", modifiers: [.option, .command])
+                    .keyboardShortcut("j", modifiers: [.option, .command])
             }
             .disabled(model == nil)
         }

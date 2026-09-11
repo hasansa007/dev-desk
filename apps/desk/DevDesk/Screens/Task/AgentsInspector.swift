@@ -130,6 +130,6 @@ private struct TaskAgentCard<ActionButton: View>: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .deskCard(padding: 11)
+        .deskCard(padding: 10)
     }
 }

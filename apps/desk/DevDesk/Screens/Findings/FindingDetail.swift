@@ -6,14 +6,16 @@ struct FindingDetail: View {
     let model: ProjectWindowModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
             header
             HStack(alignment: .top, spacing: 14) {
                 sourceLocationsCard
                 verificationLimitsCard
             }
+            .padding(.top, 16)
             if let reconcile = finding.reconcile {
                 ReconcileCard(finding: finding, reconcile: reconcile, model: model)
+                    .padding(.top, 16)
             }
             if let historyNote = finding.historyNote {
                 Text(historyNote)
@@ -21,6 +23,7 @@ struct FindingDetail: View {
                     .foregroundStyle(DeskColor.mutedInk)
                     .lineSpacing(4)
                     .frame(maxWidth: 760, alignment: .leading)
+                    .padding(.top, 14)
             }
         }
     }
@@ -36,7 +39,7 @@ struct FindingDetail: View {
                     .frame(maxWidth: 720, alignment: .leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            PropertyChip(finding.verificationLabel)
+            PropertyChip(finding.verificationLabel, verticalPadding: 2, horizontalPadding: 9)
         }
     }
 
@@ -84,7 +87,7 @@ private struct ReconcileCard: View {
                 Button("Compare with #\(reconcile.candidateIssue)…") {
                     model.present(.reconcileFinding(finding.id))
                 }
-                .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                .buttonStyle(DeskButtonStyle(kind: .primary, size: .sheetHeader))
             }
             .padding(EdgeInsets(top: 11, leading: 14, bottom: 11, trailing: 14))
             .background(DeskColor.headerFill)
@@ -100,8 +103,7 @@ private struct ReconcileCard: View {
             .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
 
             if let queuedNote = reconcile.queuedNote {
-                let (title, message) = splitLeadSentence(queuedNote)
-                NoticeBanner(tone: .running, title: title, message: message)
+                NoticeBanner(tone: .running, title: "", message: queuedNote, style: .compact)
                     .padding(EdgeInsets(top: 0, leading: 14, bottom: 12, trailing: 14))
             }
         }

@@ -7,17 +7,20 @@ struct DecisionDetail: View {
     let model: ProjectWindowModel
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
             header
             switch decision.state {
             case .needsAttention:
                 NeedsAttentionBody(decision: decision, model: model)
                     .id(decision.id)
+                    .padding(.top, 14)
                 staleFollowUps
             case .stale:
                 staleBody
+                    .padding(.top, 14)
             case .answered:
                 answeredBody
+                    .padding(.top, 14)
             }
         }
     }
@@ -28,13 +31,14 @@ struct DecisionDetail: View {
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(DeskColor.ink)
             MarkdownText(decision.context, font: DeskFont.secondary, color: DeskColor.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
     @ViewBuilder private var staleFollowUps: some View {
         let staleDecisions = allDecisions.filter { $0.state == .stale }
         ForEach(staleDecisions) { stale in
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 0) {
                 Text("Stale decision · context changed")
                     .font(DeskFont.body.weight(.semibold))
                     .foregroundStyle(DeskColor.tone(.waiting).foreground)
@@ -42,9 +46,13 @@ struct DecisionDetail: View {
                     .font(DeskFont.body)
                     .foregroundStyle(DeskColor.secondaryInk)
                     .lineSpacing(5)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.top, 5)
                 Button("Review this decision") { model.selectedDecisionID = stale.id }
-                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .smallWide))
+                    .padding(.top, 9)
             }
+            .frame(maxWidth: 820, alignment: .leading)
             .padding(.top, 14)
             .overlay(alignment: .top) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
             .padding(.top, 20)
@@ -53,7 +61,7 @@ struct DecisionDetail: View {
 
     private var staleBody: some View {
         VStack(alignment: .leading, spacing: 16) {
-            noticeBanner(for: decision.staleReason ?? "", tone: .waiting)
+            NoticeBanner(tone: .waiting, title: "Stale decision · context changed", message: decision.staleReason ?? "", style: .compact)
             if let answer = decision.answer {
                 VStack(alignment: .leading, spacing: 6) {
                     SectionLabel("Previous answer")
@@ -98,12 +106,6 @@ struct DecisionDetail: View {
     }
 }
 
-/// Renders a single-string note as a bold lead sentence plus supporting detail.
-private func noticeBanner(for text: String, tone: StatusTone) -> some View {
-    let (title, message) = splitLeadSentence(text)
-    return NoticeBanner(tone: tone, title: title, message: message)
-}
-
 private struct NeedsAttentionBody: View {
     let decision: Decision
     let model: ProjectWindowModel
@@ -111,17 +113,20 @@ private struct NeedsAttentionBody: View {
     @State private var rationale = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
+        VStack(alignment: .leading, spacing: 0) {
             if let notice = decision.notice {
-                noticeBanner(for: notice, tone: .waiting)
+                NoticeBanner(tone: .waiting, title: "", message: notice, style: .compact)
+                    .padding(.bottom, 16)
             }
             if let evidence = decision.evidence {
                 VStack(alignment: .leading, spacing: 7) {
                     SectionLabel("Evidence considered")
                     MarkdownText(evidence, color: DeskColor.secondaryInk)
                         .lineSpacing(5)
+                        .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: 760, alignment: .leading)
                 }
+                .padding(.bottom, 16)
             }
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(decision.options) { option in
@@ -137,22 +142,26 @@ private struct NeedsAttentionBody: View {
                 RationaleEditor(text: $rationale)
             }
             .frame(maxWidth: 820, alignment: .leading)
+            .padding(.top, 12)
 
             HStack(spacing: 8) {
                 Button(recordButtonTitle) {
                     model.recordAnswer(decisionID: decision.id, optionID: selectedOptionID, rationale: rationale)
                 }
-                .buttonStyle(DeskButtonStyle(kind: .primary))
+                .buttonStyle(DeskButtonStyle(kind: .primary, size: .decisionPrimary))
                 .disabled(selectedOptionID == nil)
+                .help(selectedOptionID == nil ? "Choose an option first" : "Record the answer with its rationale")
 
                 Button("Ask the agent for more evidence") {
                     model.requestMoreEvidence(decisionID: decision.id)
                 }
-                .buttonStyle(DeskButtonStyle(kind: .secondary))
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .decision))
             }
+            .padding(.top, 14)
 
             if model.answeredDecisionID == decision.id {
-                noticeBanner(for: answeredMessage, tone: .running)
+                NoticeBanner(tone: .running, title: "", message: answeredMessage, style: .compact)
+                    .padding(.top, 12)
             }
         }
     }
@@ -182,7 +191,9 @@ private struct OptionCard: View {
                     .padding(.top, 2)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(option.title).font(DeskFont.body.weight(.semibold)).foregroundStyle(DeskColor.ink)
+                        .fixedSize(horizontal: false, vertical: true)
                     Text(option.detail).font(DeskFont.body).foregroundStyle(DeskColor.secondaryInk).lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
             }
             .padding(12)
@@ -192,6 +203,7 @@ private struct OptionCard: View {
             .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(isSelected ? DeskColor.accent : DeskColor.border))
         }
         .buttonStyle(.plain)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
 
@@ -215,17 +227,17 @@ private struct RationaleEditor: View {
             TextEditor(text: $text)
                 .font(DeskFont.body)
                 .scrollContentBackground(.hidden)
-                .padding(6)
+                .padding(.horizontal, 5)
+                .padding(.vertical, 10)
             if text.isEmpty {
                 Text("Explain the choice so a later review can judge it…")
                     .font(DeskFont.body)
                     .foregroundStyle(DeskColor.faintInk)
-                    .padding(.horizontal, 11)
-                    .padding(.vertical, 14)
+                    .padding(10)
                     .allowsHitTesting(false)
             }
         }
-        .frame(minHeight: 60)
+        .frame(minHeight: 40)
         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
         .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
         .accessibilityLabel("Rationale")

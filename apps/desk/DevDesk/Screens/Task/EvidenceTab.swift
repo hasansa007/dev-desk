@@ -24,7 +24,7 @@ struct EvidenceTab: View {
                         .padding(.top, 8)
                 }
                 if let failure = evidence.failure {
-                    NoticeBanner(tone: .failed, title: failure.title, message: failure.message) {
+                    NoticeBanner(tone: .failed, title: failure.title, message: failure.message, style: .compact) {
                         HStack(spacing: 8) {
                             runnerButton("View log")
                             runnerButton("Retry run")
@@ -133,6 +133,6 @@ private struct TaskLinkedEvidenceRow: View {
                     .fixedSize()
             }
         }
-        .deskCard(padding: 11)
+        .deskCard(padding: 10)
     }
 }

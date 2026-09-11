@@ -39,6 +39,8 @@ enum DeskColor {
     static let disabledDot = Color.desk(0xB9BEC6, 0x5A606A)
     static let neutralChipFill = Color.desk(0xEEF0F3, 0x2A2D33)
     static let neutralChipFill2 = Color.desk(0xF2F3F5, 0x292C32)
+    static let titlebarFill = Color.desk(0xEDEFF2, 0x2A2D33)
+    static let titlebarBorder = Color.desk(0xD3D7DD, 0x3A3E45)
 
     static let diffAddFill = Color.desk(0xE7F6EC, 0x17301F)
     static let diffAddInk = Color.desk(0x1F5C36, 0x9FDDB2)
@@ -69,7 +71,7 @@ enum DeskColor {
 
     private static let running = ToneColors(
         foreground: .desk(0x1F6B41, 0x7FD19B), fill: .desk(0xE4F4EA, 0x16301F),
-        border: .desk(0xBFE3CD, 0x245C38), dot: .desk(0x1F8B4C, 0x1F8B4C), body: ink)
+        border: .desk(0xBFE3CD, 0x245C38), dot: .desk(0x1F8B4C, 0x1F8B4C), body: .desk(0x1F5C36, 0x9FDDB2))
     private static let waiting = ToneColors(
         foreground: .desk(0x8A6114, 0xE7C067), fill: .desk(0xFBF2DE, 0x33280F),
         border: .desk(0xEBDAAE, 0x5C4718), dot: .desk(0xB7791F, 0xB7791F), body: .desk(0x5C4A1A, 0xD9C79A))

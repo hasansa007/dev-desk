@@ -83,6 +83,7 @@ public final class ProjectWindowModel {
     public private(set) var answeredDecisionID: String?
 
     @ObservationIgnored private let source: ProjectDataSource
+    @ObservationIgnored private var isLoading = false
 
     public init(ref: ProjectRef, source: ProjectDataSource, insightsDelay: Duration = .milliseconds(900)) {
         self.ref = ref
@@ -103,11 +104,15 @@ public final class ProjectWindowModel {
     public var pendingDecisionCount: Int { (snapshot?.decisions.value ?? []).filter { $0.state == .needsAttention }.count }
     public var parallelTasks: [DeskTask] { Array(tasks.filter { $0.column == .inProgress && !$0.parallel.isNone }.prefix(4)) }
 
-    /// Loads or reloads the snapshot; the launch selection applies only to the first load.
+    /// Loads or reloads the snapshot; the launch selection applies only to the first load. A call made while one runs, or a cancelled load, changes nothing.
     public func load() async {
+        guard !isLoading else { return }
+        isLoading = true
+        defer { isLoading = false }
         let isFirstLoad = snapshot == nil
         do {
             let loaded = try await source.load()
+            guard !Task.isCancelled else { return }
             loadState = .loaded(loaded)
             reloadError = nil
             guard isFirstLoad else { return }
@@ -119,6 +124,7 @@ public final class ProjectWindowModel {
             selectedFindingID = loaded.findings.value?.findings.first?.id
             selectedDecisionID = loaded.decisions.value?.first { $0.state != .answered }?.id
         } catch {
+            guard !Task.isCancelled else { return }
             if isFirstLoad { loadState = .failed(error.localizedDescription) } else { reloadError = error.localizedDescription }
         }
     }
@@ -246,6 +252,7 @@ public final class ProjectWindowModel {
 
     /// Demo only: records the answer and moves the waiting task back to running.
     public func recordAnswer(decisionID: String, optionID: String?, rationale: String) {
+        guard snapshot?.isDemo == true else { return }
         mutateDemoSnapshot { snapshot in
             guard var decisions = snapshot.decisions.value,
                   let index = decisions.firstIndex(where: { $0.id == decisionID }) else { return }

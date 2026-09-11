@@ -1,7 +1,7 @@
 import DeskCore
 import SwiftUI
 
-/// Fades to 35% and back once per `period`; holds still under Reduce Motion.
+/// Fades to 35% and back once per `period`, driven by the clock so a dot that moves never animates its position; still under Reduce Motion.
 struct Pulse: ViewModifier {
     let period: Double
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -10,10 +10,9 @@ struct Pulse: ViewModifier {
         if reduceMotion {
             content
         } else {
-            content.phaseAnimator([false, true]) { view, faded in
-                view.opacity(faded ? 0.35 : 1)
-            } animation: { _ in
-                .easeInOut(duration: period / 2)
+            TimelineView(.animation(minimumInterval: 1.0 / 30)) { context in
+                let phase = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: period) / period
+                content.opacity(1 - 0.325 * (1 - cos(2 * .pi * phase)))
             }
         }
     }
@@ -37,8 +36,12 @@ struct StatusDot: View {
     }
 }
 
+/// Board cards show the pulsing dot; the task header and parallel panes show the label alone (D:191, D:248, D:286).
 struct StatusPill: View {
     let badge: StatusBadge
+    var showsDot = true
+    var verticalPadding: CGFloat = 1
+    var horizontalPadding: CGFloat = 7
 
     var body: some View {
         let colors = DeskColor.tone(badge.tone)
@@ -47,25 +50,32 @@ struct StatusPill: View {
                 Image(systemName: symbol)
                     .imageScale(.small)
                     .accessibilityHidden(true)
-            } else if badge.pulses {
+            } else if badge.pulses && showsDot {
                 StatusDot(tone: badge.tone, pulses: true, size: 6)
             }
             Text(badge.label)
         }
         .font(.system(size: 11))
         .foregroundStyle(colors.foreground)
-        .pill(fill: colors.fill, border: colors.border, horizontalPadding: 7)
+        .pill(fill: colors.fill, border: colors.border, vertical: verticalPadding, horizontal: horizontalPadding)
         .accessibilityElement(children: .combine)
     }
 }
 
+/// A neutral chip takes the badge fill (D:426); filter and roadmap chips pass `DeskColor.neutralChipFill2` (D:536, D:605).
 struct PropertyChip: View {
     let text: String
     let tone: StatusTone
+    let fill: Color?
+    let verticalPadding: CGFloat
+    let horizontalPadding: CGFloat
 
-    init(_ text: String, tone: StatusTone = .neutral) {
+    init(_ text: String, tone: StatusTone = .neutral, fill: Color? = nil, verticalPadding: CGFloat = 1, horizontalPadding: CGFloat = 8) {
         self.text = text
         self.tone = tone
+        self.fill = fill
+        self.verticalPadding = verticalPadding
+        self.horizontalPadding = horizontalPadding
     }
 
     var body: some View {
@@ -73,7 +83,7 @@ struct PropertyChip: View {
         Text(text)
             .font(.system(size: 11))
             .foregroundStyle(colors.foreground)
-            .pill(fill: tone == .neutral ? DeskColor.neutralChipFill2 : colors.fill, border: colors.border, horizontalPadding: 8)
+            .pill(fill: fill ?? colors.fill, border: colors.border, vertical: verticalPadding, horizontal: horizontalPadding)
     }
 }
 
@@ -99,9 +109,9 @@ extension View {
             .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(border))
     }
 
-    fileprivate func pill(fill: Color, border: Color, horizontalPadding: CGFloat) -> some View {
-        padding(.vertical, 1)
-            .padding(.horizontal, horizontalPadding)
+    fileprivate func pill(fill: Color, border: Color, vertical: CGFloat, horizontal: CGFloat) -> some View {
+        padding(.vertical, vertical)
+            .padding(.horizontal, horizontal)
             .background(fill, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
             .overlay(RoundedRectangle(cornerRadius: DeskMetric.pillRadius).strokeBorder(border))
             .fixedSize()
@@ -110,7 +120,23 @@ extension View {
 
 struct DeskButtonStyle: ButtonStyle {
     enum Kind { case primary, secondary }
-    enum Size { case regular, small, mini }
+
+    /// The design's button geometries: height, corner radius, horizontal padding and label size.
+    struct Size {
+        let height: CGFloat
+        let radius: CGFloat
+        let padding: CGFloat
+        let fontSize: CGFloat
+
+        static let regular = Size(height: 28, radius: 6, padding: 12, fontSize: 12)
+        static let small = Size(height: 26, radius: 6, padding: 10, fontSize: 12)
+        static let smallWide = Size(height: 26, radius: 6, padding: 11, fontSize: 12)
+        static let mini = Size(height: 24, radius: 5, padding: 9, fontSize: 11)
+        static let sheetHeader = Size(height: 27, radius: 6, padding: 12, fontSize: 12)
+        static let decision = Size(height: 29, radius: 6, padding: 12, fontSize: 12)
+        static let decisionPrimary = Size(height: 29, radius: 6, padding: 14, fontSize: 12)
+        static let composer = Size(height: 30, radius: 7, padding: 12, fontSize: 12)
+    }
 
     let kind: Kind
     var size: Size = .regular
@@ -128,13 +154,13 @@ private struct DeskButtonBody: View {
     @Environment(\.isEnabled) private var isEnabled
 
     var body: some View {
-        let shape = RoundedRectangle(cornerRadius: size == .regular ? 6 : DeskMetric.controlRadius)
+        let shape = RoundedRectangle(cornerRadius: size.radius)
         configuration.label
-            .font(.system(size: size == .mini ? 11 : 12, weight: kind == .primary ? .semibold : .regular))
+            .font(.system(size: size.fontSize, weight: kind == .primary ? .semibold : .regular))
             .foregroundStyle(kind == .primary ? Color.white : DeskColor.ink)
             .lineLimit(1)
-            .padding(.horizontal, horizontalPadding)
-            .frame(height: height)
+            .padding(.horizontal, size.padding)
+            .frame(height: size.height)
             .background(fill, in: shape)
             .overlay {
                 if kind == .secondary { shape.strokeBorder(DeskColor.controlBorder) }
@@ -149,22 +175,6 @@ private struct DeskButtonBody: View {
         switch kind {
         case .primary: return hovered ? DeskColor.accentHover : DeskColor.accent
         case .secondary: return hovered ? DeskColor.headerFill : DeskColor.surface
-        }
-    }
-
-    private var height: CGFloat {
-        switch size {
-        case .regular: return 28
-        case .small: return 26
-        case .mini: return 24
-        }
-    }
-
-    private var horizontalPadding: CGFloat {
-        switch size {
-        case .regular: return 12
-        case .small: return 10
-        case .mini: return 8
         }
     }
 }
@@ -209,44 +219,82 @@ struct KeyValueTable: View {
     }
 }
 
+/// Where a banner's actions sit, with its padding and radius, per the design's variants (D:332, D:266, D:434, D:732).
+struct NoticeStyle {
+    let stacksActions: Bool
+    let padding: CGFloat
+    let radius: CGFloat
+    let titleGap: CGFloat
+    let actionsGap: CGFloat
+
+    static let inline = NoticeStyle(stacksActions: false, padding: 14, radius: 9, titleGap: 6, actionsGap: 14)
+    static let stacked = NoticeStyle(stacksActions: true, padding: 12, radius: 9, titleGap: 6, actionsGap: 10)
+    static let compact = NoticeStyle(stacksActions: true, padding: 11, radius: 8, titleGap: 5, actionsGap: 10)
+    static let callout = NoticeStyle(stacksActions: true, padding: 12, radius: 8, titleGap: 5, actionsGap: 9)
+}
+
+/// An empty title renders the message alone, as the design's single-paragraph notes do (D:673, D:690).
 struct NoticeBanner<Actions: View>: View {
     let tone: StatusTone
     let title: String
     let message: String
+    let style: NoticeStyle
     let actions: Actions
 
-    init(tone: StatusTone, title: String, message: String, @ViewBuilder actions: () -> Actions) {
+    init(tone: StatusTone, title: String, message: String, style: NoticeStyle = .inline, @ViewBuilder actions: () -> Actions) {
         self.tone = tone
         self.title = title
         self.message = message
+        self.style = style
         self.actions = actions()
     }
 
     var body: some View {
         let colors = DeskColor.tone(tone)
-        HStack(alignment: .top, spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
+        let shape = RoundedRectangle(cornerRadius: style.radius)
+        content
+            .padding(style.padding)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(colors.fill, in: shape)
+            .overlay(shape.strokeBorder(colors.border))
+    }
+
+    @ViewBuilder private var content: some View {
+        if style.stacksActions {
+            VStack(alignment: .leading, spacing: 0) {
+                text
+                if Actions.self != EmptyView.self {
+                    actions.padding(.top, style.actionsGap)
+                }
+            }
+        } else {
+            HStack(alignment: .top, spacing: style.actionsGap) {
+                text.frame(maxWidth: .infinity, alignment: .leading)
+                actions
+            }
+        }
+    }
+
+    private var text: some View {
+        let colors = DeskColor.tone(tone)
+        return VStack(alignment: .leading, spacing: style.titleGap) {
+            if !title.isEmpty {
                 Text(title)
                     .font(DeskFont.body.weight(.semibold))
                     .foregroundStyle(colors.foreground)
-                if !message.isEmpty {
-                    MarkdownText(message, color: colors.body)
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            actions
+            if !message.isEmpty {
+                MarkdownText(message, color: colors.body)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding(12)
-        .background(colors.fill, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(colors.border))
     }
 }
 
 extension NoticeBanner where Actions == EmptyView {
-    init(tone: StatusTone, title: String, message: String) {
-        self.init(tone: tone, title: title, message: message) { EmptyView() }
+    init(tone: StatusTone, title: String, message: String, style: NoticeStyle = .inline) {
+        self.init(tone: tone, title: title, message: message, style: style) { EmptyView() }
     }
 }
 

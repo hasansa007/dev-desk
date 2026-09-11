@@ -35,21 +35,29 @@ private struct ToolDetailDisclosure: View {
     @State private var isExpanded = false
 
     var body: some View {
-        DisclosureGroup(isExpanded: $isExpanded) {
-            Text(detail.lines.joined(separator: "\n"))
-                .font(DeskFont.mono(11.5))
-                .foregroundStyle(DeskColor.secondaryInk)
-                .lineSpacing(4.5)
-                .textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, 4)
-        } label: {
-            Button(detail.title) { isExpanded.toggle() }
-                .buttonStyle(LinkButtonStyle())
-                .font(DeskFont.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            Button { isExpanded.toggle() } label: {
+                Text(detail.title)
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(DeskColor.accent)
+                    .padding(.vertical, 7)
+                    .padding(.horizontal, 10)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityValue(isExpanded ? "Expanded" : "Collapsed")
+            if isExpanded {
+                Text(detail.lines.joined(separator: "\n"))
+                    .font(DeskFont.mono(11.5))
+                    .foregroundStyle(DeskColor.secondaryInk)
+                    .lineSpacing(4.5)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 10)
+                    .padding(.bottom, 10)
+            }
         }
-        .padding(.vertical, 7)
-        .padding(.horizontal, 10)
         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 7))
         .overlay(RoundedRectangle(cornerRadius: 7).strokeBorder(DeskColor.border))
     }

@@ -1,0 +1,27 @@
+name: desk
+
+# Installed ON ITS OWN, like tests.yml: DeskCore's tests and the Dev Desk app build, run only when apps/desk/ changes.
+
+on:
+  pull_request:
+    paths: ['apps/desk/**', '.github/workflows/desk.yml']
+  push:
+    branches: [main]
+    paths: ['apps/desk/**', '.github/workflows/desk.yml']
+
+jobs:
+  core-tests:
+    name: DeskCore package tests
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test --package-path apps/desk/DeskCore
+
+  app-build:
+    name: Dev Desk app builds
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: brew install xcodegen
+      - run: xcodegen generate --spec apps/desk/project.yml
+      - run: xcodebuild -project apps/desk/DevDesk.xcodeproj -scheme DevDesk -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO build

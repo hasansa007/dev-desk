@@ -43,7 +43,7 @@ struct TerminalTranscriptView: View {
 
     private func color(for kind: TerminalLine.Kind) -> Color {
         switch kind {
-        case .plain: return DeskColor.terminalInk
+        case .plain: return transcript.isReadOnly ? DeskColor.terminalDim2 : DeskColor.terminalInk
         case .success: return DeskColor.terminalOK
         case .failure: return DeskColor.terminalError
         case .dim: return DeskColor.terminalDim2

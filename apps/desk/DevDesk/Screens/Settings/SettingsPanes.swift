@@ -27,25 +27,18 @@ private func isGitHubUnavailable(_ model: ProjectWindowModel) -> Bool {
     model.snapshot?.connections.first { $0.id == "github" }?.state == .unavailable
 }
 
-/// `ProjectRef.displayName` lives in the App layer, outside this task's typecheck baseline.
-private func projectDisplayName(_ ref: ProjectRef) -> String {
-    switch ref {
-    case .sample(let project): return project.title
-    case .local(let path): return URL(fileURLWithPath: path).lastPathComponent
-    }
-}
-
 /// The failed "GitHub is unavailable" callout and its Reconnect popover, shared by two panes.
 private struct GitHubUnavailableNotice: View {
     @State private var showHelp = false
 
     var body: some View {
         NoticeBanner(tone: .failed, title: "GitHub is unavailable",
-                     message: "Issue search, issue links, and proposed tracker updates are disabled. Local repository facts are still available.") {
+                     message: "Issue search, issue links, and proposed tracker updates are disabled. Local repository facts are still available.",
+                     style: .callout) {
             Button("Reconnect…") { showHelp = true }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .smallWide))
                 .popover(isPresented: $showHelp) {
-                    MarkdownText("Run `gh auth login` in Terminal, then reload this window (⌘R).")
+                    MarkdownText("Run `gh auth login` in Terminal, or add a GitHub remote to this repository, then reload this window (⌘R).")
                         .padding(12)
                         .frame(width: 280)
                 }
@@ -148,7 +141,7 @@ struct AgentsAndDefaultsPane: View {
     }
 
     private var providers: [String] { model.snapshot?.capabilities.providers ?? [] }
-    private var projectName: String { model.snapshot?.project.name ?? projectDisplayName(model.ref) }
+    private var projectName: String { model.snapshot?.project.name ?? model.ref.displayName }
 
     private var overrideBinding: Binding<String> {
         let key = PreferenceKey.connectionOverride(model.ref)

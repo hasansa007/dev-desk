@@ -23,7 +23,9 @@ struct ParallelScreen: View {
             Text(explanation)
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
+                .lineLimit(1)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
         .background(DeskColor.surface)
@@ -42,7 +44,11 @@ struct ParallelScreen: View {
     @ViewBuilder
     private var panes: some View {
         let tasks = model.parallelTasks
-        if tasks.isEmpty {
+        if let reason = model.snapshot?.board.unavailableReason {
+            UnavailableView(reason: reason)
+                .padding(16)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        } else if tasks.isEmpty {
             EmptyStateView(title: "Nothing is running in parallel", message: "Parallel view shows in-progress tasks that have their own branch and checkout.")
         } else {
             HStack(spacing: 0) {
@@ -77,7 +83,7 @@ private struct ParallelPane: View {
                     Text("\(task.issueLabel) \(task.title)")
                         .font(.system(size: 13, weight: .semibold))
                         .foregroundStyle(DeskColor.ink)
-                    StatusPill(badge: task.headerBadge)
+                    StatusPill(badge: task.headerBadge, showsDot: false)
                 }
                 Text(task.parallelLine)
                     .font(DeskFont.mono(11))
@@ -100,24 +106,30 @@ private struct ParallelPane: View {
         case .transcript(let transcript):
             TerminalTranscriptView(transcript: transcript)
         case .decision(let title, let question, let decisionID, let note):
-            VStack(alignment: .leading, spacing: 0) {
-                NoticeBanner(tone: .waiting, title: title, message: question) {
-                    Button("Answer decision") { model.openDecision(decisionID) }
-                        .buttonStyle(DeskButtonStyle(kind: .primary))
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    NoticeBanner(tone: .waiting, title: title, message: question, style: .stacked) {
+                        Button("Answer decision") { model.openDecision(decisionID) }
+                            .buttonStyle(DeskButtonStyle(kind: .primary))
+                    }
+                    Text(note)
+                        .font(DeskFont.secondary)
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.top, 12)
                 }
-                Text(note)
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .padding(.top, 12)
+                .padding(14)
             }
-            .padding(14)
         case .activity(let events):
-            VStack(alignment: .leading, spacing: 12) {
-                ForEach(events) { event in
-                    ActivityEventRow(event: event)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 12) {
+                    ForEach(events) { event in
+                        ActivityEventRow(event: event)
+                    }
                 }
+                .padding(14)
             }
-            .padding(14)
         case .none(let text):
             EmptyStateView(title: text, message: "")
         }
