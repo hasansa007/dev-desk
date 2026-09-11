@@ -110,7 +110,7 @@ enum GitHubJSON {
         if let checks = decode([GitHubCheck].self, from: result.stdout) { return .read(checks) }
         if result.stderr.contains("no checks reported") { return .read([]) }
         if result.succeeded { return .failed("gh returned unreadable output") }
-        return .failed(GitOutput.lastNonEmptyLine(result.stderr) ?? "gh exited with status \(result.status)")
+        return .failed(Markdown.reason(GitOutput.lastNonEmptyLine(result.stderr) ?? "gh exited with status \(result.status)"))
     }
 }
 
@@ -139,6 +139,7 @@ struct GitHubReader {
         }
         if auth.toolMissing { return .unavailable("gh not installed") }
         let status = auth.stdout + "\n" + auth.stderr
+        // authFailureReason returns fixed prose, so the account name in `status` never reaches a reason.
         guard auth.succeeded else { return .unavailable(GitHubJSON.authFailureReason(status)) }
 
         var data = GitHubData(slug: slug, account: GitHubJSON.account(fromAuthStatus: status))
@@ -182,7 +183,7 @@ struct GitHubReader {
             throw GitHubReadFailure(what: what, detail: Self.describe(error))
         }
         guard result.succeeded else {
-            throw GitHubReadFailure(what: what, detail: GitOutput.lastNonEmptyLine(result.stderr) ?? "gh exited with status \(result.status)")
+            throw GitHubReadFailure(what: what, detail: Markdown.reason(GitOutput.lastNonEmptyLine(result.stderr) ?? "gh exited with status \(result.status)"))
         }
         guard let value = GitHubJSON.decode(type, from: result.stdout) else {
             throw GitHubReadFailure(what: what, detail: "gh returned unreadable JSON")
@@ -202,9 +203,10 @@ struct GitHubReader {
         try await runner.run("gh", arguments, in: directory, timeout: CommandTimeout.gh)
     }
 
+    /// A thrown error's message, escaped because it becomes a markdown-rendered GitHub reason.
     private static func describe(_ error: Error) -> String {
         var text = error.localizedDescription
         if text.hasSuffix(".") { text.removeLast() }
-        return text
+        return Markdown.reason(text)
     }
 }

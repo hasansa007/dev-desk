@@ -334,13 +334,13 @@ struct GitReader {
         do {
             let result = try await runner.run("git", GitCommand.read(arguments), in: root, timeout: CommandTimeout.git)
             guard result.succeeded else {
-                return .failure(GitReadFailure(detail: GitOutput.lastNonEmptyLine(result.stderr) ?? "git exited with status \(result.status)"))
+                return .failure(GitReadFailure(detail: Markdown.reason(GitOutput.lastNonEmptyLine(result.stderr) ?? "git exited with status \(result.status)")))
             }
             return .success(result.stdout)
         } catch {
             var text = error.localizedDescription
             if text.hasSuffix(".") { text.removeLast() }
-            return .failure(GitReadFailure(detail: text))
+            return .failure(GitReadFailure(detail: Markdown.reason(text)))
         }
     }
 

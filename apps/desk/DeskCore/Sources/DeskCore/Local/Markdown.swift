@@ -9,4 +9,7 @@ enum Markdown {
         }
         return escaped
     }
+
+    /// A fragment of command output (git or gh stderr/stdout) made safe for a markdown-rendered reason.
+    static func reason(_ commandOutput: String) -> String { escape(commandOutput) }
 }
