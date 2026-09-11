@@ -254,7 +254,9 @@ private struct BoardContext {
             evidence: evidence(pullRequest: pullRequest?.number, state: state),
             agentsNote: BoardBuilder.agentsNote,
             dependencies: BoardBuilder.dependencies(issue.body),
-            parallel: parallel(head, local: local))
+            parallel: parallel(head, local: local),
+            impact: DeskTask.rating("impact", in: issue.labelNames),
+            complexity: DeskTask.rating("complexity", in: issue.labelNames))
     }
 
     private func pullRequestTask(_ pullRequest: GitHubPullRequest) -> DeskTask {

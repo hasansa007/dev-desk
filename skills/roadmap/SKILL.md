@@ -188,7 +188,9 @@ Write it so it can be: observable, epic-level, true only when every child is clo
 
 **Labels are read, never assumed** — `gh label list`. If the repo has no `epic` label, offer to
 create it; `dev:kanban` 4.1 keys on it, and without it an epic parent will be offered as startable
-work. Same for `roadmap-declined`.
+work. Same for `roadmap-declined`, and for `impact:` and `complexity:`, which every parent carries at
+epic level — proposed from the theme's own evidence and corrected by the developer, never invented
+(`docs/guide/WORKFLOW.md` → *Rating an issue*).
 
 ## Phase 7 — Render, then hand off
 

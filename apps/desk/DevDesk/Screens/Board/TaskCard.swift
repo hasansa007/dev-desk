@@ -64,6 +64,8 @@ struct TaskCard: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             metaRow
                 .padding(.top, 9)
+            ratingRow
+                .padding(.top, 7)
             if let note = task.cardNote {
                 Text(note)
                     .font(.system(size: 11))
@@ -97,6 +99,16 @@ struct TaskCard: View {
                 Text(inline)
                     .font(.system(size: 11))
                     .foregroundStyle(DeskColor.mutedInk)
+            }
+        }
+    }
+
+    /// Shown for anything still open with an issue behind it: a dash where the tracker has no rating, never a guess (ADR 0018).
+    @ViewBuilder private var ratingRow: some View {
+        if task.issueNumber != nil, task.column != .done {
+            HStack(spacing: 6) {
+                PropertyChip("impact \(task.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+                PropertyChip("complexity \(task.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             }
         }
     }

@@ -125,6 +125,24 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.parallel, .none("No branch yet"))
     }
 
+    func testRatingLabelsAreReadFromTheIssueAndAnUnratedOneStaysNil() {
+        let input = BoardInput(git: nil, github: GitHubData(slug: "acme/app", issues: [
+            issue(30, "Rated", labels: ["impact:high", "complexity:Low"]),
+            issue(31, "Unrated", labels: ["enhancement"]),
+        ]))
+        let tasks = BoardBuilder.build(input)
+        XCTAssertEqual(tasks.first { $0.id == "30" }?.impact, "High")
+        XCTAssertEqual(tasks.first { $0.id == "30" }?.complexity, "Low")
+        XCTAssertNil(tasks.first { $0.id == "31" }?.impact)
+        XCTAssertNil(tasks.first { $0.id == "31" }?.complexity)
+    }
+
+    func testARatingLabelWithNoValueIsNotARating() {
+        XCTAssertNil(DeskTask.rating("impact", in: ["impact:"]))
+        XCTAssertNil(DeskTask.rating("impact", in: ["impactful"]))
+        XCTAssertEqual(DeskTask.rating("complexity", in: ["Complexity:MEDIUM"]), "Medium")
+    }
+
     func testBacklogAndDeferredBadges() throws {
         let plain = try XCTUnwrap(tasks()["15"])
         XCTAssertNil(plain.cardBadge)

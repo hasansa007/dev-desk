@@ -24,6 +24,9 @@ epic-sized.
 2. Read `~/.claude/skills/dev/shared/pipeline.md` → execute **Phase 0 — Filing** in full.
 3. Fill the template below. Default type label: whatever this repo uses for features
    (`enhancement` / `feature` / `task`) — read `gh label list`, do not assume which.
+4. **Propose `impact:` and `complexity:`** from what the work is worth and how big it looks, marked
+   as assumptions for the developer to correct (`docs/guide/WORKFLOW.md` → *Rating an issue*). Offer
+   to create either label the repo lacks; never create one silently.
 
 ## Template
 

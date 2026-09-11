@@ -429,6 +429,16 @@ public struct DeskTask: Identifiable, Hashable {
     public var comparison: OutputComparison?
     public var followUp: FollowUpDraft?
     public var handoff: HandoffPlan?
+    /// "High", "Medium" or "Low" from the issue's `impact:` label; nil when nobody has rated it (ADR 0018).
+    public var impact: String?
+    public var complexity: String?
+
+    /// The value of a `kind:value` label, capitalised: `impact:high` becomes "High".
+    public static func rating(_ kind: String, in labels: [String]) -> String? {
+        guard let label = labels.first(where: { $0.lowercased().hasPrefix("\(kind):") }) else { return nil }
+        let value = label.dropFirst(kind.count + 1).trimmingCharacters(in: .whitespaces)
+        return value.isEmpty ? nil : value.prefix(1).uppercased() + value.dropFirst().lowercased()
+    }
 
     public var issueLabel: String { issueNumber.map { "#\($0)" } ?? "" }
 
@@ -457,7 +467,10 @@ public struct DeskTask: Identifiable, Hashable {
                 requirements: Surface<Requirements>, changes: Surface<ChangeSet>, evidence: Surface<Evidence>,
                 agents: [AgentSession] = [], agentsNote: String? = nil, dependencies: [Dependency] = [],
                 dock: DockContent? = nil, parallel: ParallelPreview, comparison: OutputComparison? = nil,
-                followUp: FollowUpDraft? = nil, handoff: HandoffPlan? = nil) {
+                followUp: FollowUpDraft? = nil, handoff: HandoffPlan? = nil,
+                impact: String? = nil, complexity: String? = nil) {
+        self.impact = impact
+        self.complexity = complexity
         self.id = id
         self.issueNumber = issueNumber
         self.title = title
