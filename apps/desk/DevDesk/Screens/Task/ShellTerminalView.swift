@@ -25,8 +25,11 @@ struct ShellTerminalView: NSViewRepresentable {
     }
 }
 
-/// Holds the registry's terminal as its only subview, taking it from whichever pane showed it last.
+/// Holds the registry's terminal as its only subview, taking it from whichever pane showed it last. It also makes a click on the terminal
+/// reliably give it focus, since SwiftTerm's own mouseDown only selects.
 final class ShellTerminalHost: NSView {
+    private var clickMonitor: LocalEventMonitor?
+
     func show(_ terminal: NSView) {
         guard terminal.superview !== self else { return }
         subviews.forEach { $0.removeFromSuperview() }
@@ -34,15 +37,61 @@ final class ShellTerminalHost: NSView {
         terminal.autoresizingMask = [.width, .height]
         addSubview(terminal)
     }
+
+    /// The app's events reach a local monitor before any view, so this holds whatever SwiftUI draws around the terminal.
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        clickMonitor = window == nil ? nil : LocalEventMonitor([.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            self?.focusTerminal(clickedBy: event)
+        }
+    }
+
+    private func focusTerminal(clickedBy event: NSEvent) {
+        guard let window, event.window === window, let terminal = subviews.first, window.firstResponder !== terminal,
+              let hit = (window.contentView?.superview ?? window.contentView)?.hitTest(event.locationInWindow),
+              hit === terminal || hit.isDescendant(of: terminal) else { return }
+        window.makeFirstResponder(terminal)
+    }
 }
 
-/// One window's shells, keyed by task id. Each outlives its pane, so switching tasks or hiding the dock keeps it running.
+/// A local monitor of the app's events, removed when this is released, so the view holding one leaves none behind.
+final class LocalEventMonitor {
+    private let token: Any?
+
+    init(_ mask: NSEvent.EventTypeMask, handler: @escaping @MainActor (NSEvent) -> Void) {
+        token = NSEvent.addLocalMonitorForEvents(matching: mask) { event in
+            // Local monitors run on the main thread.
+            MainActor.assumeIsolated { handler(event) }
+            return event
+        }
+    }
+
+    deinit {
+        if let token { NSEvent.removeMonitor(token) }
+    }
+}
+
+/// How an agent start came out, which Auto keeps track of.
+enum AgentStart {
+    case launched
+    /// The folder would have been the project root, which Auto refuses: the session failed with the folder's note.
+    case refusedAtRoot
+    /// Auto was turned off while the folder was prepared: the session ended without launching anything.
+    case cancelled
+    /// Another start had the session, or the window closed.
+    case skipped
+}
+
+/// One window's shells, or its agents, keyed by task id; the window keeps one registry of each, so a task can have both.
+/// Each outlives its pane, so switching tasks or hiding the dock keeps it running.
 @MainActor
 final class ShellTerminalRegistry {
     private let sessions: ShellSessions
     private var terminals: [String: ShellTerminal] = [:]
     /// Set when the window closes, so a start still preparing its folder then launches nothing.
-    private var isClosed = false
+    private(set) var isClosed = false
+    /// The program each task's last command ran, which the Agents tab names when the shell couldn't find it.
+    private(set) var executables: [String: String] = [:]
 
     init(sessions: ShellSessions) {
         self.sessions = sessions
@@ -54,19 +103,63 @@ final class ShellTerminalRegistry {
     }
 
     /// Called once the session is running, so the generation read here is the one this process belongs to.
-    func start(taskID: String, folder: URL) {
+    /// An empty command runs the login shell itself; otherwise the login shell runs the command.
+    func start(taskID: String, folder: URL, command: [String] = []) {
         guard !isClosed else { return }
-        terminal(for: taskID).start(in: folder, generation: sessions.generation(for: taskID))
+        if let executable = command.first { executables[taskID] = executable }
+        terminal(for: taskID).start(in: folder, generation: sessions.generation(for: taskID), command: command)
+    }
+
+    /// Prepares the task's folder, then runs the agent there. The start counts towards the app's agents from this call, so Auto's limit
+    /// holds while the folder is prepared. Auto passes `refusingRoot`, so a folder that would fall back to the project root fails instead,
+    /// and `stillWanted`, read again just before the launch, so turning Auto off meanwhile launches nothing.
+    @discardableResult
+    func startAgent(for task: DeskTask, agent: AgentKind, worktreeLocation: String, refusingRoot: Bool = false,
+                    stillWanted: (() -> Bool)? = nil) -> Task<AgentStart, Never> {
+        let live = LiveShells.shared
+        live.track(agentSessions: sessions)
+        live.agentStartPending()
+        let command = Self.command(agent, for: task)
+        return Task {
+            // Nothing suspends between this and the session's move to preparing, which then holds the place in the count.
+            live.agentStartBegan()
+            guard !isClosed else { return .skipped }
+            let previous = sessions.generation(for: task.id)
+            await sessions.start(taskID: task.id, branch: task.branch, taskNumber: task.taskNumber, noBranchNote: task.noBranchNote,
+                                 worktreeLocation: worktreeLocation, baseRef: task.baseRef, refusingRoot: refusingRoot)
+            // An unchanged generation means this start ran nothing: another start had the session, or the root was refused.
+            guard sessions.generation(for: task.id) != previous, case .running(let folder) = sessions.state(for: task.id) else {
+                if refusingRoot, case .failed = sessions.state(for: task.id) { return .refusedAtRoot }
+                return .skipped
+            }
+            if let stillWanted, !stillWanted() {
+                sessions.markEnded(taskID: task.id, status: nil, generation: sessions.generation(for: task.id))
+                return .cancelled
+            }
+            guard !isClosed else { return .skipped }
+            start(taskID: task.id, folder: folder.url, command: command)
+            return .launched
+        }
+    }
+
+    /// `claude <prompt>` or `codex <prompt>`; a Debug build's `-DevDeskAgentExecutable` stands in for the CLI.
+    static func command(_ agent: AgentKind, for task: DeskTask) -> [String] {
+        let prompt = AgentLaunch.prompt(skillRoot: AgentLaunch.skillRoot, taskNumber: task.taskNumber, hasBranch: !(task.branch ?? "").isEmpty)
+        var arguments = AgentLaunch.arguments(agent: agent, prompt: prompt)
+        if let executable = DebugLaunch.agentExecutable, !arguments.isEmpty { arguments[0] = executable }
+        return arguments
     }
 
     func end(taskID: String) {
         terminals[taskID]?.end()
     }
 
-    /// The window is closing: ends every shell, and refuses the starts that are still preparing their folder.
+    /// The window is closing: ends every process, refuses the starts still preparing their folder, and takes this window's agents out of
+    /// the app's count at once, so Auto in other windows can use their places.
     func endAll() {
         isClosed = true
         terminals.values.forEach { $0.end() }
+        LiveShells.shared.untrack(agentSessions: sessions)
     }
 
     private func terminal(for taskID: String) -> ShellTerminal {
@@ -82,13 +175,18 @@ final class ShellTerminalRegistry {
     }
 }
 
-/// Every live shell in the app, across windows. Holding them here keeps a shell that is being ended alive until it is gone,
-/// and lets quit end them all with one wait of at most 2 s rather than one per window.
+/// Every live shell and agent in the app, across windows. Holding them here keeps one that is being ended alive until it is gone,
+/// and lets quit end them all with one wait of at most 2 s rather than one per window. It also counts the app's agents for Auto.
 @MainActor
+@Observable
 final class LiveShells {
     static let shared = LiveShells()
-    private var shells: [ObjectIdentifier: ShellTerminal] = [:]
-    private var terminateObserver: NSObjectProtocol?
+    @ObservationIgnored private var shells: [ObjectIdentifier: ShellTerminal] = [:]
+    @ObservationIgnored private var terminateObserver: NSObjectProtocol?
+    /// Each window's agent sessions, held weakly. Observed, so a window that closes changes the count at once.
+    private var agentSessions: [WeakSessions] = []
+    /// Starts asked for whose session hasn't yet moved to preparing.
+    private var pendingAgentStarts = 0
 
     private init() {
         terminateObserver = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
@@ -97,8 +195,32 @@ final class LiveShells {
         }
     }
 
+    /// Agents preparing their folder or running, in every window, plus starts about to prepare: what Auto's limit counts.
+    var agentCount: Int {
+        pendingAgentStarts + agentSessions.reduce(0) { $0 + ($1.sessions?.activeTaskIDs.count ?? 0) }
+    }
+
     func insert(_ shell: ShellTerminal) { shells[ObjectIdentifier(shell)] = shell }
     func remove(_ shell: ShellTerminal) { shells[ObjectIdentifier(shell)] = nil }
+
+    func track(agentSessions sessions: ShellSessions) {
+        guard !agentSessions.contains(where: { $0.sessions === sessions }) else { return }
+        agentSessions.removeAll { $0.sessions == nil }
+        agentSessions.append(WeakSessions(sessions: sessions))
+    }
+
+    /// A closing window's agents leave the count now, rather than whenever its sessions are freed, which nothing would notice.
+    func untrack(agentSessions sessions: ShellSessions) {
+        guard agentSessions.contains(where: { $0.sessions === sessions }) else { return }
+        agentSessions.removeAll { $0.sessions === sessions || $0.sessions == nil }
+    }
+
+    func agentStartPending() { pendingAgentStarts += 1 }
+    func agentStartBegan() { pendingAgentStarts -= 1 }
+
+    private struct WeakSessions {
+        weak var sessions: ShellSessions?
+    }
 
     /// Quit leaves no time for a timer and holds the main queue, so no exit monitor fires: SIGHUP every shell and its job,
     /// reap for at most 2 s in all, then SIGKILL whatever is left.
@@ -112,6 +234,30 @@ final class LiveShells {
             if !waiting.isEmpty { usleep(20_000) }
         }
         all.forEach { $0.send(SIGKILL) }
+    }
+}
+
+/// The user's login shell, which runs every shell and agent so they get the user's PATH.
+enum LoginShell {
+    /// $SHELL, else /bin/zsh.
+    static var path: String {
+        ProcessInfo.processInfo.environment["SHELL"].flatMap { $0.isEmpty ? nil : $0 } ?? "/bin/zsh"
+    }
+
+    static var name: String { (path as NSString).lastPathComponent }
+
+    /// What follows the shell's path to have it exec `command` as an interactive login shell, so a PATH set in ~/.zshrc applies as well as
+    /// one set in ~/.zprofile. Each word stays an argument of its own. Nil for a shell other than zsh, bash or fish.
+    static func arguments(running command: [String]) -> [String]? {
+        switch name {
+        case "zsh", "bash": return ["-l", "-i", "-c", #"exec "$0" "$@""#] + command
+        case "fish": return ["-l", "-i", "-c", "exec $argv"] + command
+        default: return nil
+        }
+    }
+
+    static var unsupportedReason: String? {
+        arguments(running: []) == nil ? "Dev Desk can start agents through zsh, bash or fish; your login shell is \(name)." : nil
     }
 }
 
@@ -146,20 +292,31 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
         return pid > 0 && jobGroups.contains { getsid($0) == pid }
     }
 
-    /// Runs `$SHELL -l` in `folder` with the user's environment and TERM=xterm-256color. SwiftTerm ignores a failed chdir and execs anyway,
-    /// so `/bin/sh` changes directory first: a folder that has gone missing ends the shell instead of opening it wherever the app was launched.
-    func start(in folder: URL, generation: Int) {
+    /// Runs `$SHELL -l` in `folder` with the user's environment and TERM=xterm-256color, or has that shell exec `command` as an interactive
+    /// login shell, so an agent finds what ~/.zprofile and ~/.zshrc put on the PATH. SwiftTerm ignores a failed chdir and execs anyway,
+    /// so `/bin/sh` changes directory first: a folder that has gone missing ends the process instead of opening it wherever the app was launched.
+    func start(in folder: URL, generation: Int, command: [String] = []) {
         guard view.process.shellPid == 0 else { return }
         self.generation = generation
+        let shell = LoginShell.path
+        // The folder, the shell and each word of the command are arguments of their own, never text of the script.
+        let script: [String]
+        if command.isEmpty {
+            script = [#"cd -- "$1" && exec "$2" -l"#, "sh", folder.path, shell]
+        } else if let words = LoginShell.arguments(running: command) {
+            script = [#"cd -- "$1" && shift && exec "$@""#, "sh", folder.path, shell] + words
+        } else {
+            // The Agents tab already says this shell can't run one; nothing launches.
+            return exited(rawStatus: nil)
+        }
         var environment = ProcessInfo.processInfo.environment
-        let shell = environment["SHELL"].flatMap { $0.isEmpty ? nil : $0 } ?? "/bin/zsh"
         environment["TERM"] = "xterm-256color"
         // An app opened from Finder gets no locale; a locale that is set is never replaced.
         if ["LANG", "LC_ALL", "LC_CTYPE"].allSatisfy({ (environment[$0] ?? "").isEmpty }) {
             environment["LANG"] = Self.utf8Locale()
         }
         view.startProcess(executable: "/bin/sh",
-                          args: ["-c", #"cd -- "$1" && exec "$2" -l"#, "sh", folder.path, shell],
+                          args: ["-c"] + script,
                           environment: environment.map { "\($0.key)=\($0.value)" },
                           currentDirectory: folder.path)
         let pid = view.process.shellPid
@@ -267,19 +424,19 @@ final class FocusingTerminalView: LocalProcessTerminalView {
     }
 }
 
-/// Ends the window's shells when it closes (⌘W or the close button). Quit is handled once for every window by `LiveShells`.
+/// Ends the window's shells and agents when it closes (⌘W or the close button). Quit is handled once for every window by `LiveShells`.
 struct ShellLifetimeHook: NSViewRepresentable {
-    let terminals: ShellTerminalRegistry
+    let registries: [ShellTerminalRegistry]
 
-    func makeNSView(context: Context) -> ShellLifetimeView { ShellLifetimeView(terminals: terminals) }
+    func makeNSView(context: Context) -> ShellLifetimeView { ShellLifetimeView(registries: registries) }
     func updateNSView(_ nsView: ShellLifetimeView, context: Context) {}
 }
 
 final class ShellLifetimeView: NSView {
-    private let terminals: ShellTerminalRegistry
+    private let registries: [ShellTerminalRegistry]
 
-    init(terminals: ShellTerminalRegistry) {
-        self.terminals = terminals
+    init(registries: [ShellTerminalRegistry]) {
+        self.registries = registries
         super.init(frame: .zero)
     }
 
@@ -294,10 +451,14 @@ final class ShellLifetimeView: NSView {
         }
     }
 
-    @objc private func windowWillClose(_ notification: Notification) { terminals.endAll() }
+    @objc private func windowWillClose(_ notification: Notification) { registries.forEach { $0.endAll() } }
 }
 
 private struct ShellTerminalsKey: EnvironmentKey {
+    static let defaultValue: ShellTerminalRegistry? = nil
+}
+
+private struct AgentTerminalsKey: EnvironmentKey {
     static let defaultValue: ShellTerminalRegistry? = nil
 }
 
@@ -306,5 +467,11 @@ extension EnvironmentValues {
     var shellTerminals: ShellTerminalRegistry? {
         get { self[ShellTerminalsKey.self] }
         set { self[ShellTerminalsKey.self] = newValue }
+    }
+
+    /// The window's agents; nil outside a project window, where the Agents tab can't start one.
+    var agentTerminals: ShellTerminalRegistry? {
+        get { self[AgentTerminalsKey.self] }
+        set { self[AgentTerminalsKey.self] = newValue }
     }
 }

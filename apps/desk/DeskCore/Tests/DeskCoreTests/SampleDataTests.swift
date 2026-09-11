@@ -41,6 +41,7 @@ final class SampleDataTests: XCTestCase {
         for snapshot in [SampleData.studyHub(), SampleData.devSkill()] {
             for task in snapshot.board.value ?? [] {
                 XCTAssertNil(task.branch, task.id)
+                XCTAssertNil(task.baseRef, task.id)
                 for tab in task.dock?.tabs ?? [] {
                     XCTAssertNotNil(tab.transcript, "\(task.id) \(tab.id) is still a transcript")
                 }

@@ -91,10 +91,18 @@ git remote get-url origin                          # a remote?
 gh issue list --state open --limit 1 --json number # a reachable tracker, and is it stocked?
 git branch --format='%(refname:short)'             # branches to resume
 ls .dev/*.json                                     # a run that checkpointed
+git rev-parse --abbrev-ref HEAD                    # the branch you are on
+git rev-list --count origin/<base>..HEAD           # its work not yet in the base
 ```
 
 `dev board --json` and `dev state read` supply the same facts when the CLI is installed. **A failed
 query and an empty result are different answers** — say which you got.
+
+**The branch you are on comes first.** On any branch other than the base, that branch is the work:
+if it carries commits not in `origin/<base>`, or has `.dev/<branch>.json`, offer to resume it (name
+it, the phase it reached, what comes next) and offer nothing else; if `origin/<base>` already holds
+it, say it is merged and stop. Survey the other branches only from the base. *2026-09-11: an agent
+started on a merged task's branch surveyed every branch instead of stopping.*
 
 Then match the FIRST situation that applies:
 

@@ -364,7 +364,7 @@ def cmd_board(args) -> int:
         milestone, why = (resolve_active_milestone(found) if found is not None
                           else (None, "could not read milestones — pass --milestone"))
 
-    base = resolve_base()
+    base = origin_ref(resolve_base())
     facts: Dict[int, Dict] = {}
     code, out = run(["git", "branch", "--format=%(refname:short)"])
     branches = out.splitlines() if code == 0 else []
@@ -604,6 +604,14 @@ def build_prompt(door_path: str, door: str, args: List[str]) -> str:
 
 def build_command(agent: str, prompt: str) -> List[str]:
     return AGENTS[agent] + [prompt]
+
+
+def origin_ref(base: Optional[str], cwd: Optional[str] = None) -> Optional[str]:
+    """origin/<base> when the remote has it, so a local copy that lags never counts merged work as unmerged."""
+    if not base:
+        return base
+    code, _ = run(["git", "rev-parse", "--verify", "--quiet", "refs/remotes/origin/%s" % base], cwd)
+    return "refs/remotes/origin/%s" % base if code == 0 else base
 
 
 def cmd_run(args) -> int:

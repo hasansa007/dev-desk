@@ -69,9 +69,10 @@ pre-flight moves up into Phase 14.
 its decision. Skills still probe `git check-ignore -q docs/` per repo, because the answer differs.
 
 **The container.** Dev Desk (`apps/desk/`) reads what the doors and `dev` already wrote — git,
-GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and starts no agents itself. The one thing it
-runs inside a repository is a shell you start from a task's dock, in that task's own worktree
-(ADR 0017). Its two sample projects demo the whole design on labelled sample data; a real opened
+GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and runs two
+things inside a repository, each in the task's own worktree: a shell you start from the task's dock,
+and the task's agent, started by you or by Auto in a project where you turned it on (ADRs 0017,
+0018). Its two sample projects demo the whole design on labelled sample data; a real opened
 folder shows only what it can actually read, with the reason next to anything it can't yet (see
 ORPHANS).
 
@@ -106,11 +107,19 @@ ORPHANS).
 - **Runner-dependent surfaces work only in the sample projects** — the agents list, decisions
   waiting on an answer, Insights' answers, and tracker updates from the app. A real opened project
   shows each as unavailable, with the reason (ADR 0013). Its dock has a real shell per task, which
-  you start (ADR 0017). Starting agents from the app, by hand or in an Auto mode, is step 2.
-- **`dev snapshot`, `dev jobs` and `dev events`** (container spec §3) are not built — the app cannot
-  start, stop or answer a door yet.
+  you start (ADR 0017). Its Agents tab runs Claude Code or Codex in the task's folder, started by you or, in a project with Auto on, by Dev Desk (ADR 0018).
+- **`dev snapshot`, `dev jobs` and `dev events`** (container spec §3) are not built. The app starts
+  and stops agents as terminal processes (ADR 0018), but it can't tell a working agent from a
+  waiting one, resume an ended session, or answer a door from its own UI.
+- **Auto needs a GitHub milestone.** It starts tasks from the Queued column, which is the active
+  milestone's issues, so a repo with no milestone gives Auto nothing to start (ADR 0018).
 - **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
-  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both.
+  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both. Both measure a branch
+  against `origin/<base>`, never a local copy that can lag. One rule is Dev Desk's alone: a branch
+  still at a merged pull request's head goes to Done, which covers squash merges. `dev board` reads
+  no merged pull requests, so it can't apply it.
+- **The agent prompt is duplicated.** `AgentLaunch.prompt` mirrors `scripts/dev.py`'s `build_prompt`
+  byte for byte (ADR 0018), so a change to one needs both.
 - **`docs/arch/dev-system.html` needs a re-pin.** Its Container node still cites the design brief
   rather than `apps/desk/` (merged in #50), and its `scripts/dev.py` citations moved when `dev ui`
   was removed (ADR 0014). The folder reorganisation (ADR 0015) moved none of its cited paths, so

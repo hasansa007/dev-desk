@@ -25,6 +25,8 @@ struct BranchFacts: Equatable {
     var logFailure: String? = nil
     /// Why `git diff` failed, so Changes says so instead of showing no files.
     var diffFailure: String? = nil
+    /// The commit the branch points at, so a branch still at a merged pull request's head reads as merged.
+    var head: String? = nil
 }
 
 struct GitFacts: Equatable {
@@ -68,10 +70,6 @@ enum GitOutput {
     }
 
     /// Names from `for-each-ref --format=%(refname) refs/heads`; the full form stays exact when a tag shares a branch's name.
-    static func localBranches(_ output: String) -> [String] {
-        lines(output).compactMap { $0.hasPrefix("refs/heads/") ? String($0.dropFirst("refs/heads/".count)) : nil }
-    }
-
     static func preferredBase(remoteBranches output: String) -> String? {
         preferredBase(among: lines(output).compactMap { line in
             let name = line.trimmingCharacters(in: .whitespaces)
@@ -283,9 +281,11 @@ struct GitReader {
 
     func read(toplevel: String, currentBranch: String) async -> GitFacts {
         async let remote = output(["branch", "-r", "--format=%(refname:short)"])
-        async let local = output(["for-each-ref", "--format=%(refname)", "--sort=-committerdate", "refs/heads"])
+        async let local = output(["for-each-ref", "--format=%(refname) %(objectname)", "--sort=-committerdate", "refs/heads"])
         async let porcelain = output(["worktree", "list", "--porcelain"])
-        let localNames = GitOutput.localBranches(await local ?? "")
+        let refs = GitOutput.lines(await local ?? "").compactMap(Self.refAndHead)
+        let localNames = refs.map(\.name)
+        let heads = Dictionary(refs.compactMap { ref in ref.head.map { (ref.name, $0) } }, uniquingKeysWith: { first, _ in first })
         let (base, baseRef) = await resolveBase(remote: await remote ?? "", local: localNames, current: currentBranch)
         var baseShort: String?
         if let baseRef { baseShort = trimmed(await output(["rev-parse", "--short", baseRef])) }
@@ -296,18 +296,25 @@ struct GitReader {
         let shown = Array(candidates.prefix(GitOutput.maxBranches))
         let branches = await shown.concurrentMap { name in
             let elsewhere = worktrees[name].flatMap { Self.canonical($0) == here ? nil : $0 }
-            return await branchFacts(name, baseRef: baseRef, worktree: elsewhere)
+            var facts = await branchFacts(name, baseRef: baseRef, worktree: elsewhere)
+            facts.head = heads[name]
+            return facts
         }
         return GitFacts(base: base, baseRef: baseRef, baseShort: baseShort, branches: branches,
                         truncatedBranchCount: candidates.count > GitOutput.maxBranches ? candidates.count : nil)
     }
 
+    /// A `for-each-ref --format=%(refname) %(objectname)` line; ref names can't hold spaces, and a line with no commit keeps a nil head.
+    private static func refAndHead(_ line: String) -> (name: String, head: String?)? {
+        let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
+        guard let ref = parts.first, ref.hasPrefix("refs/heads/") else { return nil }
+        return (String(ref.dropFirst("refs/heads/".count)), parts.count > 1 ? parts[1] : nil)
+    }
+
     /// dev.py's resolve_base plus a local candidate before the current branch; refs are fully qualified so no name can read as an option.
     private func resolveBase(remote: String, local: [String], current: String) async -> (name: String?, ref: String?) {
-        if let name = GitOutput.preferredBase(remoteBranches: remote) {
-            let isLocal = await output(["rev-parse", "--verify", "--quiet", "refs/heads/\(name)"]) != nil
-            return (name, isLocal ? "refs/heads/\(name)" : "refs/remotes/origin/\(name)")
-        }
+        // Origin's copy even when a local branch shares its name: a local base that lags counts merged work as unmerged.
+        if let name = GitOutput.preferredBase(remoteBranches: remote) { return (name, "refs/remotes/origin/\(name)") }
         if let name = GitOutput.preferredBase(among: local) { return (name, "refs/heads/\(name)") }
         if current.isEmpty { return (nil, nil) }
         return (current, current == "HEAD" ? "HEAD" : "refs/heads/\(current)")

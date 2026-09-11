@@ -11,7 +11,7 @@ struct BoardInput {
 
 /// Pure: git and GitHub facts in, tasks out. Columns mirror scripts/dev.py (`classify`, `build_board`, `order_next`).
 enum BoardBuilder {
-    static let agentsNote = "No managed sessions. Dev Desk doesn't start agents yet."
+    static let agentsNote = "Start this task's agent from the Agents tab in the dock."
     static let checksLimitation = "CI results reported by GitHub for this pull request. Dev Desk has not verified behaviour in a running app."
     static let unlinkedRequirements = "No linked issue. Name the branch gh-<number>-… to link one."
     static let checksNotRead = "Checks are read for the \(GitHubReader.checkedPullRequests) newest open pull requests; this one was not read."
@@ -27,16 +27,24 @@ enum BoardBuilder {
         BoardContext(input).tasks()
     }
 
-    static let dockCaption = "Agents & Terminals · a shell in this task's folder"
+    static let dockCaption = "Agents & Terminals · your shell and the task's agent, in the task's folder"
     static let forkNote = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
 
-    /// A real task's dock: a shell in the task's folder, and an Agents tab saying agents don't start from here yet.
-    static func dock(taskNumber: Int?) -> DockContent {
-        let example = taskNumber.map { "claude \"/dev #\($0)\"" } ?? "claude \"/dev\""
-        return DockContent(tabs: [
+    /// A real task's dock: the user's shell and the task's agent, both in the task's folder.
+    static var dock: DockContent {
+        DockContent(tabs: [
             DockTab(id: "shell", title: "Shell", kind: .liveShell),
-            DockTab(id: "agents", title: "Agents", kind: .unavailable(reason: "Dev Desk doesn't start agents yet. You can run one in the Shell tab, "
-                                                                      + "for example \(example). Starting agents from here, by hand or automatically, comes next.")),
+            DockTab(id: "agents", title: "Agents", kind: .liveAgent),
+        ], caption: dockCaption)
+    }
+
+    static let mergedAgentReason = "This work is merged, so there's no agent to start for it."
+
+    /// Merged work keeps its shell, but leaves an agent nothing to do.
+    static var mergedDock: DockContent {
+        DockContent(tabs: [
+            DockTab(id: "shell", title: "Shell", kind: .liveShell),
+            DockTab(id: "agents", title: "Agents", kind: .unavailable(reason: mergedAgentReason)),
         ], caption: dockCaption)
     }
 
@@ -197,12 +205,19 @@ private struct BoardContext {
             }
         }
         let heads = Set(openPullRequests.map(\.headRefName))
+        let mergedPullRequests = input.github?.mergedPullRequests ?? []
+        // A squash merge leaves a branch's own commits outside the base, so a branch still at a merged head is that merge, not new work.
+        let mergedHeads = Set(mergedPullRequests.compactMap(\.headRefOid))
         let pullRequestTasks = openPullRequests.filter { !claimedPullRequests.contains($0.number) }.map(pullRequestTask)
-        let branchTasks = branches.filter { $0.unmerged > 0 && !claimedBranches.contains($0.name) && !heads.contains($0.name) }.map(branchTask)
-        let merged = (input.github?.mergedPullRequests ?? []).map(mergedTask)
+        let branchTasks = branches.filter { branch in
+            branch.unmerged > 0 && !claimedBranches.contains(branch.name) && !heads.contains(branch.name)
+                && !(branch.head.map(mergedHeads.contains) ?? false)
+        }.map(branchTask)
+        let merged = mergedPullRequests.map(mergedTask)
         return (active + pullRequestTasks + branchTasks + orderNext(backlog) + deferred + merged).map { task in
             var task = task
-            task.dock = BoardBuilder.dock(taskNumber: task.taskNumber)
+            task.dock = task.column == .done ? BoardBuilder.mergedDock : BoardBuilder.dock
+            task.baseRef = input.git?.baseRef
             return task
         }
     }

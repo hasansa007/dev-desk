@@ -27,14 +27,14 @@ It opens two sample projects, StudyHub and dev-skill, which show the whole desig
 - **Findings** reads `docs/survey/` reports.
 - **Decisions** shows `docs/adr/` as history.
 - **Insights** is unavailable for real projects.
-- It does not start agents.
-- It never writes to a repository or tracker. Clone and Create project are the only actions that write, and each writes a new folder.
+- **Each task has a Shell tab and an Agents tab.** Both run in the task's own worktree. They start only when you start them ([ADR 0017](../adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)), or when Auto starts a queued task's agent in a project where you turned Auto on ([ADR 0018](../adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).
+- **It never writes to a tracker.** In a repository it creates only worktrees, one per task, under the Execution setting's location. Clone and Create project each write a new folder. The agents it starts can change files, as they would in your terminal.
 
 ## Not built yet
 
 The [container spec](../superpowers/specs/2026-09-11-container-design.md) describes these. None of them exists:
 
-- the shared runner and its jobs, so the app cannot start, stop or answer a door;
+- the shared runner and its jobs. The app starts and stops agents only as terminal processes, so it can't tell a working agent from a waiting one, resume an ended session, or answer a door from its own UI;
 - `dev snapshot` and `dev events` (container spec §3);
 - agent provider integrations;
 - tracker writes from the app.

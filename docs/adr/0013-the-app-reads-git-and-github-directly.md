@@ -80,3 +80,7 @@ no PR number, branch name or "done" column is produced.
 
 `resolve_base` moved to `scripts/dev.py:57-66` when `dev ui` was retired
 ([ADR 0014](0014-dev-desk-replaces-dev-ui.md)); the Decision above keeps the citation as merged.
+
+## Later (2026-09-12)
+
+**Both measure a branch against origin's copy of the base** when the remote has one (`GitReader.resolveBase`; `origin_ref` in `scripts/dev.py`), never a local branch of that name. A local copy lags behind pull requests merged on GitHub and counts their work as unmerged: until 2026-09-12 both used a local base whenever it existed, so a merged task showed as in progress.

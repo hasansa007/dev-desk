@@ -3,7 +3,7 @@ import Foundation
 /// Which agent CLIs are on this Mac, and the GitHub row; nothing here connects to an agent.
 enum ToolDetection {
     static let tools: [(id: String, name: String)] = [("codex", "Codex"), ("claude", "Claude"), ("gemini", "Gemini")]
-    static let note = "Detected on this Mac. Dev Desk doesn't connect to agents yet."
+    static let note = "Detected on this Mac. Dev Desk runs Claude Code and Codex in a task's terminal; it doesn't sign in to them."
 
     static let capabilities: CapabilityMatrix = {
         let unvalidated = [CapabilityValue](repeating: .notValidated, count: tools.count)

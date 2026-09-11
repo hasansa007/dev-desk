@@ -4,8 +4,10 @@ import SwiftUI
 struct ProjectWindow: View {
     let ref: ProjectRef
     @State private var model: ProjectWindowModel
-    /// This window's shells; closing the window or quitting ends them.
+    /// This window's shells and agents; closing the window or quitting ends them.
     @State private var terminals: ShellTerminalRegistry
+    @State private var agents: ShellTerminalRegistry
+    @State private var auto: AutoAgents
     @State private var layoutRestored = false
     @Environment(OpenProjectRegistry.self) private var registry
     @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
@@ -20,6 +22,9 @@ struct ProjectWindow: View {
         let model = ProjectWindowModel(ref: ref, source: DataSources.make(for: ref))
         _model = State(initialValue: model)
         _terminals = State(initialValue: ShellTerminalRegistry(sessions: model.shellSessions))
+        let agents = ShellTerminalRegistry(sessions: model.agentSessions)
+        _agents = State(initialValue: agents)
+        _auto = State(initialValue: AutoAgents(model: model, agents: agents))
     }
 
     var body: some View {
@@ -37,12 +42,13 @@ struct ProjectWindow: View {
         }
         .modifier(DeskLinkRouting(model: model))
         .environment(\.shellTerminals, terminals)
+        .environment(\.agentTerminals, agents)
         .focusedSceneValue(\.projectModel, model)
         .preferredColorScheme(SnapshotMode.shared.colorScheme ?? appearance.colorScheme)
         .frame(minWidth: 1100, minHeight: 720)
-        .background { SnapshotWindowHook(ref: ref, model: model) }
-        .background { ShellLifetimeHook(terminals: terminals) }
+        .background { windowHooks }
         .task { await model.load() }
+        .task { if !SnapshotMode.shared.isActive { await model.refresh(every: .seconds(120)) } }
         .onChange(of: model.snapshot != nil) { _, isLoaded in
             if isLoaded { applyFirstLoad() }
         }
@@ -53,6 +59,13 @@ struct ProjectWindow: View {
         .onChange(of: model.tab) { _, value in if layoutRestored { storedTab = value } }
         .onChange(of: model.dockPlacement) { _, value in if layoutRestored { storedDockPlacement = value } }
         .onChange(of: model.dockOpen) { _, value in if layoutRestored { storedDockOpen = value } }
+    }
+
+    /// Snapshot mode's capture, ending the window's shells and agents when it closes, and its Auto loop.
+    @ViewBuilder private var windowHooks: some View {
+        SnapshotWindowHook(ref: ref, model: model)
+        ShellLifetimeHook(registries: [terminals, agents])
+        AutoAgentsHook(auto: auto, ref: ref)
     }
 
     private var subtitle: String {

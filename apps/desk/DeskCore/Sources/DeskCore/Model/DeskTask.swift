@@ -288,6 +288,8 @@ public struct DockTab: Identifiable, Hashable {
         case transcript(TerminalTranscript)
         /// A shell the app runs in the task's folder, once the user starts it.
         case liveShell
+        /// The task's agent, which the app runs in the task's folder once the user or Auto starts it.
+        case liveAgent
         case unavailable(reason: String)
     }
 
@@ -413,6 +415,8 @@ public struct DeskTask: Identifiable, Hashable {
     public var branch: String?
     /// Why the task has no branch to open when it isn't that nobody has branched yet, such as a pull request from a fork.
     public var noBranchNote: String?
+    /// The ref a detached agent worktree starts from, e.g. "refs/remotes/origin/main"; nil for samples.
+    public var baseRef: String?
     public var nextAction: NextAction?
     public var notice: TaskNotice?
     public var pipeline: PipelineProgress?
@@ -448,7 +452,7 @@ public struct DeskTask: Identifiable, Hashable {
                 cardMeta: String? = nil, cardBadge: StatusBadge? = nil, cardInlineText: String? = nil,
                 cardNote: String? = nil, cardNoteIsWarning: Bool = false, isDimmed: Bool = false,
                 headerBadge: StatusBadge, branchLine: String, parallelLine: String = "", branch: String? = nil, noBranchNote: String? = nil,
-                nextAction: NextAction? = nil, notice: TaskNotice? = nil, pipeline: PipelineProgress? = nil,
+                baseRef: String? = nil, nextAction: NextAction? = nil, notice: TaskNotice? = nil, pipeline: PipelineProgress? = nil,
                 activity: Surface<[ActivityEvent]> = .available([]), canCompareOutputs: Bool = false,
                 requirements: Surface<Requirements>, changes: Surface<ChangeSet>, evidence: Surface<Evidence>,
                 agents: [AgentSession] = [], agentsNote: String? = nil, dependencies: [Dependency] = [],
@@ -469,6 +473,7 @@ public struct DeskTask: Identifiable, Hashable {
         self.parallelLine = parallelLine
         self.branch = branch
         self.noBranchNote = noBranchNote
+        self.baseRef = baseRef
         self.nextAction = nextAction
         self.notice = notice
         self.pipeline = pipeline
