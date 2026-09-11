@@ -284,13 +284,31 @@ public struct TerminalTranscript: Hashable {
 }
 
 public struct DockTab: Identifiable, Hashable {
+    public enum Kind: Hashable {
+        case transcript(TerminalTranscript)
+        /// A shell the app runs in the task's folder, once the user starts it.
+        case liveShell
+        case unavailable(reason: String)
+    }
+
     public var id: String
     public var title: String
-    public var transcript: TerminalTranscript
+    public var kind: Kind
+
     public init(id: String, title: String, transcript: TerminalTranscript) {
+        self.init(id: id, title: title, kind: .transcript(transcript))
+    }
+
+    public init(id: String, title: String, kind: Kind) {
         self.id = id
         self.title = title
-        self.transcript = transcript
+        self.kind = kind
+    }
+
+    /// Non-nil only for a transcript tab.
+    public var transcript: TerminalTranscript? {
+        if case .transcript(let transcript) = kind { return transcript }
+        return nil
     }
 }
 
@@ -391,6 +409,8 @@ public struct DeskTask: Identifiable, Hashable {
     public var headerBadge: StatusBadge
     public var branchLine: String
     public var parallelLine: String
+    /// The task's git branch when one is known; nil for an issue nobody has branched yet, and for samples.
+    public var branch: String?
     public var nextAction: NextAction?
     public var notice: TaskNotice?
     public var pipeline: PipelineProgress?
@@ -410,10 +430,22 @@ public struct DeskTask: Identifiable, Hashable {
 
     public var issueLabel: String { issueNumber.map { "#\($0)" } ?? "" }
 
+    /// What the task's shell and `/dev` call it: the issue number, else the N of a gh-N-… branch.
+    public var taskNumber: Int? { issueNumber ?? branch.flatMap { Self.ghNumber($0) } }
+
+    /// The N of a branch named gh-N-…, the form /dev cuts.
+    static func ghNumber(_ branch: String) -> Int? {
+        guard branch.hasPrefix("gh-") else { return nil }
+        let rest = branch.dropFirst(3)
+        let digits = rest.prefix { $0.isASCII && $0.isNumber }
+        guard !digits.isEmpty, rest.dropFirst(digits.count).hasPrefix("-") else { return nil }
+        return Int(digits)
+    }
+
     public init(id: String, issueNumber: Int? = nil, title: String, column: BoardColumn,
                 cardMeta: String? = nil, cardBadge: StatusBadge? = nil, cardInlineText: String? = nil,
                 cardNote: String? = nil, cardNoteIsWarning: Bool = false, isDimmed: Bool = false,
-                headerBadge: StatusBadge, branchLine: String, parallelLine: String = "",
+                headerBadge: StatusBadge, branchLine: String, parallelLine: String = "", branch: String? = nil,
                 nextAction: NextAction? = nil, notice: TaskNotice? = nil, pipeline: PipelineProgress? = nil,
                 activity: Surface<[ActivityEvent]> = .available([]), canCompareOutputs: Bool = false,
                 requirements: Surface<Requirements>, changes: Surface<ChangeSet>, evidence: Surface<Evidence>,
@@ -433,6 +465,7 @@ public struct DeskTask: Identifiable, Hashable {
         self.headerBadge = headerBadge
         self.branchLine = branchLine
         self.parallelLine = parallelLine
+        self.branch = branch
         self.nextAction = nextAction
         self.notice = notice
         self.pipeline = pipeline

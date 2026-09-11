@@ -37,6 +37,19 @@ final class SampleDataTests: XCTestCase {
         XCTAssertEqual(task.dock?.splitTabID, "reviewer")
     }
 
+    func testSampleTasksKeepTheirDemoTranscriptsAndHaveNoBranch() {
+        for snapshot in [SampleData.studyHub(), SampleData.devSkill()] {
+            for task in snapshot.board.value ?? [] {
+                XCTAssertNil(task.branch, task.id)
+                for tab in task.dock?.tabs ?? [] {
+                    XCTAssertNotNil(tab.transcript, "\(task.id) \(tab.id) is still a transcript")
+                }
+            }
+        }
+        let codex = SampleData.studyHub().board.value?.first { $0.id == "42" }?.dock?.tabs.first
+        XCTAssertEqual(codex?.transcript?.header, "codex session 3f9a · attached · demo output")
+    }
+
     func testDevSkillBoardHasThreeTasks() {
         let tasks = SampleData.devSkill().board.value ?? []
         XCTAssertEqual(tasks.map(\.id), ["12", "9", "4"])

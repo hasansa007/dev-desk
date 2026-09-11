@@ -58,6 +58,8 @@ public enum LoadState {
 public final class ProjectWindowModel {
     public let ref: ProjectRef
     public let insights: InsightsConversation
+    /// Each task's shell in this window. A sample has no folder, so none of its sessions can start.
+    public let shellSessions: ShellSessions
     public private(set) var loadState: LoadState = .loading
     public private(set) var reloadError: String?
     public var destination: Destination = .board
@@ -89,6 +91,11 @@ public final class ProjectWindowModel {
         self.ref = ref
         self.source = source
         self.insights = InsightsConversation(delay: insightsDelay)
+        if case .local(let path) = ref {
+            shellSessions = ShellSessions(projectRoot: URL(fileURLWithPath: path, isDirectory: true))
+        } else {
+            shellSessions = ShellSessions(projectRoot: nil)
+        }
     }
 
     public var snapshot: ProjectSnapshot? {

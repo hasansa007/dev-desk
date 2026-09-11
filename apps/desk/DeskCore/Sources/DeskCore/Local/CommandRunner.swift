@@ -4,6 +4,7 @@ public enum CommandTimeout {
     public static let git: TimeInterval = 15
     public static let gh: TimeInterval = 20
     public static let clone: TimeInterval = 300
+    public static let worktreeAdd: TimeInterval = 60
 }
 
 public struct CommandResult: Equatable {
