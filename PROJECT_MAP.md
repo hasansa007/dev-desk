@@ -16,13 +16,14 @@ small deterministic helper.
 | | |
 |---|---|
 | Doors | 21 × `skills/<name>/SKILL.md`, plus the root `SKILL.md` |
-| Shared contracts | `shared/entry.md` (workspace + write boundary), `shared/pipeline.md` (17 phases; 11–14 each have a door), `shared/pipeline-{web,ios,android,kmp}.md`, `shared/prod-secrets*.md` |
+| Shared contracts | `shared/entry.md` (workspace + write boundary) and `shared/pipeline.md` (17 phases; 11–14 each have a door) — the files nearly every door reads |
+| Flow files | a file one flow reads lives with that flow ([ADR 0015](docs/adr/0015-files-live-with-the-flow-that-reads-them.md)): `platforms/web/` and `platforms/mobile/` hold each platform's `MASTER_PROMPT.md`, `FEATURE_PROMPT.md` and Phase 10/11/14 overlays (`pipeline-web.md`; `pipeline-{ios,android,kmp}.md`); `skills/prod/prod-secrets*.md` is the production secrets pre-flight |
 | Helper CLI | `scripts/dev.py` — **stdlib only**, Python 3.9-compatible. `state` · `board` · `run` · `doctor` · `project` |
-| Compliance | `scripts/compliance_auditor.py` — stdlib only |
+| Compliance | `skills/audit/compliance_auditor.py` — stdlib only |
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
-| Tests | stdlib `unittest`, one file per script under `test-projects/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
+| Tests | stdlib `unittest`, one file per script under `tests/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
 | Mac app | `apps/desk/` — Dev Desk, a native macOS app: SwiftUI with AppKit where needed, macOS 14+, Swift 5 mode. `project.yml` generates the Xcode project with xcodegen (gitignored, not committed); `DeskCore` is the local Swift package — models, sample data, the git/GitHub reader — tested with `swift test --package-path apps/desk/DeskCore` (see [ADR 0012](docs/adr/0012-the-mac-app-lives-in-apps-desk.md)) |
-| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
+| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `hooks/pr-gates.yml`, beside the `pr-gates.sh` hook that mirrors it, is a template for *other* repos and is deliberately never installed here |
 | Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev`, and links `scripts/dev.py` as the `dev` command into `~/.local/bin` (or `~/bin`) when one is already on `PATH` |
 
 **Paths inside the family are the INSTALL path** (`~/.claude/skills/dev/…`), never the clone path.
@@ -109,7 +110,8 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
   mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both.
 - **`docs/arch/dev-system.html` needs a re-pin.** Its Container node still cites the design brief
   rather than `apps/desk/` (merged in #50), and its `scripts/dev.py` citations moved when `dev ui`
-  was removed (ADR 0014). Re-pin it once the paths settle, after the folder reorganisation.
+  was removed (ADR 0014). The folder reorganisation (ADR 0015) moved none of its cited paths, so
+  the re-pin no longer waits on it.
 - **The Notifications and Execution settings panes store values**
   (`desk.notifyDecisions`/`notifyCompletion`/`notifyFailures`, `desk.worktreeLocation`) that nothing
   reads yet — no notification is posted, no worktree is created at the configured path.
@@ -142,5 +144,9 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
   it changed intersect either diagram's cited paths. Needs a re-pin at a reachable commit;
   `docs/arch/` is out of this task's touch-list. **`dev-family` needs a redraw, not only a re-pin:**
   it still draws a `dev:ui` component citing `skills/ui/SKILL.md`, and its CLI note lists `ui` —
-  both retired 2026-09-11 (ADR 0014). README's caption, *"has all 22 doors"*, counts that diagram
-  and changes with the redraw.
+  both retired 2026-09-11 (ADR 0014). README's caption now gives the family's count, 21 doors; the
+  diagram still draws 22 until the redraw drops `dev:ui`. **Both IRs also cite files that moved on
+  2026-09-11** ([ADR 0015](docs/adr/0015-files-live-with-the-flow-that-reads-them.md)): `dev-family`
+  cites the iOS, Android and web overlays and the secrets pre-flight at their old `shared/` paths, now
+  under `platforms/mobile/`, `platforms/web/` and `skills/prod/`; `dev-journey` cites the secrets
+  pre-flight. Each IR must name the new paths before it can be re-pinned at a commit after the move.

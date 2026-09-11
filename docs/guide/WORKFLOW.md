@@ -1,6 +1,6 @@
 # Development workflow
 
-The pipeline takes a task through investigation, planning, implementation, verification, documentation, review, and release. Its authoritative procedures live in [`shared/pipeline.md`](../shared/pipeline.md).
+The pipeline takes a task through investigation, planning, implementation, verification, documentation, review, and release. Its authoritative procedures live in [`shared/pipeline.md`](../../shared/pipeline.md).
 
 ## Phases
 
@@ -48,7 +48,7 @@ Phase 15 loops back to Phase 14. It does not advance directly to production.
 
 ## Release environments
 
-[`shared/entry.md`](../shared/entry.md) resolves repository boundaries and branches. In a two-stage repository, Phase 14 reaches pre-production and Phase 16 promotes to production. When both resolve to the same branch, Phase 16 skips a separate promotion.
+[`shared/entry.md`](../../shared/entry.md) resolves repository boundaries and branches. In a two-stage repository, Phase 14 reaches pre-production and Phase 16 promotes to production. When both resolve to the same branch, Phase 16 skips a separate promotion.
 
 ## Known gaps
 
@@ -106,7 +106,7 @@ Honest, as of 2026-08-04:
   mechanical **where they touch a tool call**. That qualifier is the whole limit: a hook checks
   presence of state at a tool boundary, so Phases 4–8 are unreachable by construction, on the same
   seam that gives them no `dev-*` door. Pipe-tested only, **zero real runs**; `hooks/README.md`
-  separates the three dated fixes from the undated design. `ci/pr-gates.yml`'s `required-sections` job stays
+  separates the three dated fixes from the undated design. `hooks/pr-gates.yml`'s `required-sections` job stays
   **uninstalled** — `hooks/pr-gates.sh` supersedes it locally, and it would fail every PR here since
   these are not `/dev` runs. Its `line-budget` job **is** installed, at
   `.github/workflows/line-budget.yml` (2026-09-06): it reads three files and compares three numbers,

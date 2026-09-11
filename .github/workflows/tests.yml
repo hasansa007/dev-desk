@@ -1,7 +1,7 @@
 name: tests
 
 # Installed ON ITS OWN, like line-budget.yml and for the same reason: it applies to THIS repo's PRs
-# rather than to a /dev pipeline run, so it does not belong in the uninstalled ci/pr-gates.yml.
+# rather than to a /dev pipeline run, so it does not belong in the uninstalled hooks/pr-gates.yml.
 #
 # Installed 2026-09-10, when scripts/dev.py was added. Until then the suite —
 # test_compliance_auditor.py (7) and test_rollback_engine.py (5) — passed only because someone
@@ -20,7 +20,7 @@ on:
 
 jobs:
   unit:
-    name: stdlib unittest suites under test-projects/
+    name: stdlib unittest suites under tests/
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -34,9 +34,9 @@ jobs:
         shell: bash
         run: |
           shopt -s nullglob
-          files=(test-projects/*/test_*.py)
+          files=(tests/*/test_*.py)
           if [ ${#files[@]} -eq 0 ]; then
-            echo "::error::No test files found under test-projects/ — the glob or the layout changed."
+            echo "::error::No test files found under tests/ — the glob or the layout changed."
             exit 1
           fi
           fail=0

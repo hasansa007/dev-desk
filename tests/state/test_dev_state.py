@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for scripts/dev.py — run with: PYTHONPATH=. python3 test-projects/state/test_dev_state.py"""
+"""Tests for scripts/dev.py — run with: PYTHONPATH=. python3 tests/state/test_dev_state.py"""
 
 import json
 import os

@@ -208,10 +208,10 @@ Always run, regardless of source:
 
 | Detected stack | Platform pipeline |
 |---|---|
-| `*.xcodeproj` / `Package.swift` (Swift only) | `pipeline-ios.md` |
-| `build.gradle*` + Android manifest only | `pipeline-android.md` |
-| `androidApp/` + `iOSApp/` + `shared/` (KMP) | `pipeline-kmp.md` |
-| `package.json` → Next.js / React / Vue | `pipeline-web.md` |
+| `*.xcodeproj` / `Package.swift` (Swift only) | `platforms/mobile/pipeline-ios.md` |
+| `build.gradle*` + Android manifest only | `platforms/mobile/pipeline-android.md` |
+| `androidApp/` + `iOSApp/` + `shared/` (KMP) | `platforms/mobile/pipeline-kmp.md` |
+| `package.json` → Next.js / React / Vue | `platforms/web/pipeline-web.md` |
 
 ### Exploration Fan-Out (conditional)
 
@@ -747,7 +747,7 @@ EITHER direction: some repos reach prod on the merge itself (the merge IS the ga
 a manual workflow_dispatch after merge. Get this wrong and you either reach prod by surprise or
 believe you released when you didn't. Never skip the runbook's pre-prod verification steps.
 **When THIS merge releases prod** — single-branch repo, or a runbook that deploys on it — run
-`shared/prod-secrets.md` before merging: Phase 16 normally hosts it and is skipped here.
+`skills/prod/prod-secrets.md` before merging: Phase 16 normally hosts it and is skipped here.
 
 **Pre-merge gates (REQUIRED, before any merge)** — both are defined in full above. Run them against
 the final PR diff (`git diff <BASE_BRANCH>...HEAD`); do not re-derive them here:
@@ -782,7 +782,7 @@ Gates:   10 flagged 2 → ran as rows 4-5 · 12 wrote the ADR · 13 clean (1 PLA
   written; a gate missing from this line was not run.
 
 `Gates:` is also this pipeline's only measurement — `gh pr list --json body | grep '^Gates:'` is
-what makes a rule *removable* later. Rationale in `GUIDE.md` → *How to propose a change*.
+what makes a rule *removable* later. Rationale in `~/.claude/skills/dev/docs/guide/CONTRIBUTING.md` → *How to propose a change*.
 
 **PR body format:**
 ```
@@ -921,7 +921,7 @@ data volume).
 
 1. **Verify in pre prod first.** Run the rows only a deployed environment can answer — the ones
    Phase 11 handed over as unreachable. A green local suite is not pre-prod verification.
-2. **Check the release's secrets BEFORE anything irreversible** — `shared/prod-secrets.md`, in full.
+2. **Check the release's secrets BEFORE anything irreversible** — `skills/prod/prod-secrets.md`, in full.
    A miss stops the promotion; it is not a warning beside the ask at step 6.
 
 3. **Migrations reach prod BEFORE the promotion merge** — never after, never during. The merge

@@ -2,7 +2,7 @@
 
 Shared behaviour belongs in `shared/`; command entry points reference it. The sections below preserve the design rationale, policy, and incident history behind the workflow.
 
-Paths and shell examples are relative to the repository root. Reader documentation is tracked under `documentation/`; `docs/` remains for local generated artifacts.
+Paths and shell examples are relative to the repository root. Reader documentation lives in `docs/guide/`, beside the ADRs (`docs/adr/`), diagrams (`docs/arch/`) and validation reports (`docs/validation/`).
 
 [User guide](GUIDE.md) · [Commands](COMMANDS.md) · [Workflow](WORKFLOW.md)
 
@@ -87,9 +87,9 @@ skip a judgment — building, architecture, merging, promoting.
 | Change | Edit |
 |---|---|
 | Behaviour of any phase | `shared/pipeline.md` — **once**; all 7 entry points read it |
-| A stack-specific addition | `shared/pipeline-{web,ios,android,kmp}.md` — these overlay Phases 10, 11, 14 only |
-| A gate that belongs to an **event**, not a phase number | `shared/<topic>.md`, with its own *When this runs* table — `prod-secrets.md` binds to the merge that releases production, which is Phase 16 in a two-stage repo and Phase 14 in a single-branch one. Both phases point at it in two lines each. Bolting such a gate to one phase is how it misses the repo shape it was written for; that cost two review passes on 2026-08-12 |
-| Platform know-how a phase needs **only sometimes** | `shared/<topic>.md`, a **lookup table read on demand** — `prod-secrets-apple.md` is read only when a missing secret matches a name in it. Not an overlay: it modifies no phase, so the phase stays stack-agnostic and costs nothing on repos that never hit it. Reach for this instead of an overlay when the content is *reference*, not *behaviour* |
+| A stack-specific addition | `platforms/web/pipeline-web.md`, `platforms/mobile/pipeline-{ios,android,kmp}.md` — these overlay Phases 10, 11, 14 only. Each platform's `MASTER_PROMPT.md` and `FEATURE_PROMPT.md` sit beside its overlays |
+| A gate that belongs to an **event**, not a phase number | `skills/<door>/<topic>.md`, in the folder of the door that owns the event, with its own *When this runs* table — `skills/prod/prod-secrets.md` binds to the merge that releases production, which is Phase 16 in a two-stage repo and Phase 14 in a single-branch one. Both phases point at it in two lines each. Bolting such a gate to one phase is how it misses the repo shape it was written for; that cost two review passes on 2026-08-12 |
+| Platform know-how a phase needs **only sometimes** | `<topic>.md` beside the file that reads it, a **lookup table read on demand** — `skills/prod/prod-secrets-apple.md` is read only when a missing secret matches a name in it. Not an overlay: it modifies no phase, so the phase stays stack-agnostic and costs nothing on repos that never hit it. Reach for this instead of an overlay when the content is *reference*, not *behaviour* |
 | Branch/environment resolution | `shared/entry.md` |
 | A new standalone member | `skills/<name>/SKILL.md` + a row in both family tables. **Only worth it for Phase 0 or a phase ≥ 11** — the rest pass reasoning, which cannot be handed over |
 | A new **tool** (no phase) | Same, but it points at another tool rather than at `pipeline.md` — `launch-kill` reads `launch`'s Phase 2 for discovery. The no-copy rule is the same rule |
@@ -183,6 +183,7 @@ and it now returns *not ignored* here.
 > silent. The window closes when the branch merges and `main` tracks them too.
 
 **Anything under `docs/` you want other people to have must be copied somewhere tracked.** The
-journey GIF is the worked example: it lives at `assets/dev-journey.gif` precisely so the README still
-renders on GitHub. A decision's losing options belong in the **PR body** for the same reason — see
+journey image was the worked example: it sat in a root `assets/` folder so the README rendered on
+GitHub while `docs/` was ignored, and moved to `docs/assets/` once `docs/` was tracked (ADR 0015).
+A decision's losing options belong in the **PR body** for the same reason — see
 `dev:docs`.

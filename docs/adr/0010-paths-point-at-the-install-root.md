@@ -43,3 +43,16 @@ worse trade. Worth revisiting with a real test.
 literally correct, zero inference. Lost because it abandons the symlink, so edits to the clone stop
 taking effect until the installer is re-run — it would break the workflow of the person developing
 this family.
+
+## Later (2026-09-11)
+
+The rule stands; two of the paths verified above moved, with nine others, when files started living
+with the flow that reads them ([ADR 0015](0015-files-live-with-the-flow-that-reads-them.md)). The
+new install paths:
+
+- `~/.claude/skills/dev/platforms/web/` — `MASTER_PROMPT.md`, `FEATURE_PROMPT.md`, `pipeline-web.md`
+- `~/.claude/skills/dev/platforms/mobile/` — `MASTER_PROMPT.md`, `FEATURE_PROMPT.md`, `pipeline-{ios,android,kmp}.md`
+- `~/.claude/skills/dev/skills/prod/` — `prod-secrets.md`, `prod-secrets-apple.md`
+- `~/.claude/skills/dev/skills/audit/` — `compliance_auditor.py`
+
+The Decision above keeps the paths as they were on 2026-09-10.

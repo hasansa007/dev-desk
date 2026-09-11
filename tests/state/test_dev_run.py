@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for `dev run` — run with: PYTHONPATH=. python3 test-projects/state/test_dev_run.py"""
+"""Tests for `dev run` — run with: PYTHONPATH=. python3 tests/state/test_dev_run.py"""
 
 import os
 import shutil

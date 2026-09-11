@@ -159,8 +159,23 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.cardBadge, StatusBadge(.info, "PR open"))
         XCTAssertEqual(task.branchLine, "feature/retry · base main@abc1234")
         XCTAssertEqual(task.nextAction, .openURL(URL(string: "https://github.com/acme/app/pull/31")!, title: "Open pull request"))
-        XCTAssertEqual(task.changes, .unavailable("The branch `feature/retry` is not in this checkout. Fetch it to see its diff."))
-        XCTAssertEqual(task.activity, .unavailable("The branch `feature/retry` is not in this checkout. Fetch it to see its commits."))
+        XCTAssertEqual(task.changes, .unavailable("The branch feature/retry is not in this checkout. Fetch it to see its diff."))
+        XCTAssertEqual(task.activity, .unavailable("The branch feature/retry is not in this checkout. Fetch it to see its commits."))
+    }
+
+    func testMissingBranchNameIsEscapedNotPlacedInACodeSpan() throws {
+        let head = "feat/`[x](file:///Applications/Calculator.app)"
+        let input = BoardInput(git: GitFacts(base: "main", baseRef: "refs/heads/main", baseShort: "abc1234", branches: []),
+                               github: GitHubData(slug: "acme/app", openPullRequests: [pr(7, "Spiky", head: head)]),
+                               activeMilestone: nil, now: date("2026-09-11T12:00:00Z"), timeZone: TimeZone(identifier: "UTC")!)
+        let task = try XCTUnwrap(tasks(input)["pr:7"])
+        let changes = try XCTUnwrap(task.changes.unavailableReason)
+        let activity = try XCTUnwrap(task.activity.unavailableReason)
+        for reason in [changes, activity] {
+            XCTAssertFalse(reason.contains("[x]("), "a raw link would render as a one-click launch")
+            XCTAssertFalse(reason.contains("The branch `"), "the branch name must not open a code span")
+            XCTAssertTrue(reason.contains("feat/\\`\\[x\\]"), "the branch name is escaped literally")
+        }
     }
 
     func testUnlinkedPullRequestBecomesItsOwnReviewTask() throws {
@@ -171,7 +186,7 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.cardBadge, StatusBadge(.info, "Review requested"))
         XCTAssertEqual(task.requirements, .available(Requirements(goal: "Moves the client.", criteria: [AcceptanceCriterion("Tests pass", isMet: false)],
                                                                   sources: "Pull request #20", body: "Moves the client.\n\n- [ ] Tests pass")))
-        XCTAssertEqual(task.changes, .unavailable("The branch `refactor/net` is not in this checkout. Fetch it to see its diff."))
+        XCTAssertEqual(task.changes, .unavailable("The branch refactor/net is not in this checkout. Fetch it to see its diff."))
     }
 
     func testBranchWithoutAnIssueIsInProgress() throws {

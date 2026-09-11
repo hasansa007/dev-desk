@@ -121,6 +121,16 @@ final class GitParsersTests: XCTestCase {
         XCTAssertEqual(GitOutput.worktrees(output), ["main": "/Users/me/app", "gh-12-x": "/Users/me/wt/app 12"])
     }
 
+    func testTruePromisorIsDetectedFromGetRegexpOutput() {
+        XCTAssertTrue(GitOutput.hasTruePromisor("remote.origin.promisor true\n"))
+        XCTAssertTrue(GitOutput.hasTruePromisor("remote.origin.promisor 1\nremote.up.promisor false\n"))
+        XCTAssertTrue(GitOutput.hasTruePromisor("remote.origin.promisor\n"), "a bool key with no value is git-true")
+        XCTAssertTrue(GitOutput.hasTruePromisor("remote.origin.promisor YES\n"))
+        XCTAssertFalse(GitOutput.hasTruePromisor("remote.origin.promisor false\n"))
+        XCTAssertFalse(GitOutput.hasTruePromisor("remote.origin.promisor 0\n"))
+        XCTAssertFalse(GitOutput.hasTruePromisor(""))
+    }
+
     func testBasePrefersStagingThenDevelopThenMainThenMaster() {
         XCTAssertEqual(GitOutput.preferredBase(remoteBranches: "origin\norigin/master\norigin/main\norigin/develop\norigin/staging\n"), "staging")
         XCTAssertEqual(GitOutput.preferredBase(remoteBranches: "origin/master\norigin/main\norigin/develop\n"), "develop")

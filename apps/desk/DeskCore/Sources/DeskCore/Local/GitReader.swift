@@ -59,6 +59,15 @@ enum GitOutput {
         lines(text).map { $0.trimmingCharacters(in: .whitespaces) }.last { !$0.isEmpty }
     }
 
+    /// True when `git config --get-regexp` output lists a promisor remote whose value is a git-true boolean.
+    static func hasTruePromisor(_ configOutput: String) -> Bool {
+        lines(configOutput).contains { line in
+            guard let space = line.firstIndex(of: " ") else { return !line.isEmpty }
+            let value = line[line.index(after: space)...].trimmingCharacters(in: .whitespaces).lowercased()
+            return value.isEmpty || ["true", "yes", "on", "1"].contains(value)
+        }
+    }
+
     /// Names from `for-each-ref --format=%(refname) refs/heads`; the full form stays exact when a tag shares a branch's name.
     static func localBranches(_ output: String) -> [String] {
         lines(output).compactMap { $0.hasPrefix("refs/heads/") ? String($0.dropFirst("refs/heads/".count)) : nil }

@@ -3,10 +3,14 @@
 Four Claude Code hooks — the mechanical half of six phases. **Not installed by the plugin symlink.**
 Hooks are harness config, so they need their own two settings blocks (below).
 
-They live here for the reason `ci/pr-gates.yml` does: beside the rules they enforce. `pr-gates.sh`
+They live here for the reason `pr-gates.yml` does: beside the rules they enforce. `pr-gates.sh`
 greps `^## PIPELINE`, `teardown.sh` mirrors Phase 11's kill commands, `context-load.sh` parses
 PROJECT_MAP's headings. Rename any of those in `shared/` and the hook is right there, visibly stale
 — instead of drifting unnoticed in `~/.claude/`.
+
+`pr-gates.yml` is not a hook. It is the CI template for *other* repos (its header says how to
+install it there), kept beside `pr-gates.sh`, which mirrors its PR-body check. Only the four `.sh`
+files are linked into `~/.claude/hooks/` (below).
 
 ## What a hook can and cannot do
 
@@ -89,7 +93,7 @@ awk -F'\t' '{print $2, $3}' ~/.claude/hooks/fired.log | sort | uniq -c | sort -r
 ```
 
 This is `## PIPELINE`'s `Gates:` line, for the hooks themselves. *How to propose a change* in
-`GUIDE.md` makes deletion safe only with evidence — and a hook that denies silently supplies none,
+`docs/guide/CONTRIBUTING.md` makes deletion safe only with evidence — and a hook that denies silently supplies none,
 which would put pruning back on nerve. A hook reading `pass` two hundred times and `deny` zero is
 retirable on data.
 
@@ -99,14 +103,14 @@ retirable on data.
 touch <repo>/.claude/hooks-off      # every hook honours it, and LOGS the bypass
 ```
 
-`ci/pr-gates.yml` already says it: *a check that fires on correct work is how a check gets ignored.*
+`pr-gates.yml` already says it: *a check that fires on correct work is how a check gets ignored.*
 In CI that costs you a red X; here you can delete the file outright. So the escape hatch has to be
 cheaper than deletion, and visible in the log when used. Every deny message ends with the override
 line.
 
 ## Scar tissue vs design
 
-Dated = paid for by a real failure (`GUIDE.md`, principle 1). All three below were found by the
+Dated = paid for by a real failure (`docs/guide/CONTRIBUTING.md`, principle 1). All three below were found by the
 falsification pass, not by the happy path.
 
 - **2026-08-05 — `teardown.sh` counts the LAUNCH FLAG, not the profile path.** The first version
@@ -116,7 +120,7 @@ falsification pass, not by the happy path.
   exclusion of the hook's own process tree.
 - **2026-08-05 — `branch-guard.sh` uses `git branch --show-current`.** `rev-parse --abbrev-ref HEAD`
   fails on an unborn branch, so the first write into a fresh repo's `main` passed silently.
-- **2026-08-05 — `^## PIPELINE` stays anchored.** Inherited from `ci/pr-gates.yml`, whose unanchored
+- **2026-08-05 — `^## PIPELINE` stays anchored.** Inherited from `pr-gates.yml`, whose unanchored
   grep passed a body whose heading had been deleted because the string appeared in prose.
 
 **Undated, therefore unproven:** everything else — the phase-to-event mapping, the ask/deny split on

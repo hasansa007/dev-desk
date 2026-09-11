@@ -22,7 +22,7 @@ same-day-tie refusal to pick silently.
 
 **One deliberate difference.** `dev.py`'s `resolve_base` checks only the remote: the first of
 `staging`/`develop`/`main`/`master` present under `origin/`, else the current branch
-(`scripts/dev.py:57-66`). `GitReader.resolveBase` adds a step for a repo with **no origin**: before
+(`scripts/dev.py:59-68`). `GitReader.resolveBase` adds a step for a repo with **no origin**: before
 falling back to the current branch, it checks the same four names among **local** branches
 (`apps/desk/DeskCore/Sources/DeskCore/Local/GitReader.swift`, `resolveBase`, and
 `GitOutput.preferredBase(among:)`). Without that step, a locally-created repo with a `main` branch
@@ -75,3 +75,8 @@ against `apps/desk/DeskCore/Sources/DeskCore/Local/GitReader.swift` (`resolveBas
 column rules, same tie refusal, the one no-origin fallback added and named above.
 `dev board --json`'s row shape confirmed by reading `cmd_board`'s call to `build_board` directly;
 no PR number, branch name or "done" column is produced.
+
+## Later (2026-09-11)
+
+`resolve_base` moved to `scripts/dev.py:57-66` when `dev ui` was retired
+([ADR 0014](0014-dev-desk-replaces-dev-ui.md)); the Decision above keeps the citation as merged.

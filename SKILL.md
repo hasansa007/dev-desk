@@ -237,15 +237,15 @@ Apply only when `ARCHITECTURE.md` is **missing** from the repo root (first featu
 
 | Detected stack | Variant | Prompt location |
 |---|---|---|
-| `*.xcodeproj` / `Package.swift` only | A — iOS only | `~/.claude/skills/dev/mobile/MASTER_PROMPT.md` |
-| `build.gradle*` + Android manifest only | B — Android only | `~/.claude/skills/dev/mobile/MASTER_PROMPT.md` |
-| `androidApp/` + `iOSApp/` + `shared/` (KMP) | C — iOS + Android + KMP | `~/.claude/skills/dev/mobile/MASTER_PROMPT.md` |
+| `*.xcodeproj` / `Package.swift` only | A — iOS only | `~/.claude/skills/dev/platforms/mobile/MASTER_PROMPT.md` |
+| `build.gradle*` + Android manifest only | B — Android only | `~/.claude/skills/dev/platforms/mobile/MASTER_PROMPT.md` |
+| `androidApp/` + `iOSApp/` + `shared/` (KMP) | C — iOS + Android + KMP | `~/.claude/skills/dev/platforms/mobile/MASTER_PROMPT.md` |
 
 ### Web
 
 | Detected stack | Prompt location |
 |---|---|
-| `package.json` → Next.js / React / Vue | `~/.claude/skills/dev/web/MASTER_PROMPT.md` |
+| `package.json` → Next.js / React / Vue | `~/.claude/skills/dev/platforms/web/MASTER_PROMPT.md` |
 
 ### Per-Feature Prompts
 
@@ -253,7 +253,7 @@ For every feature (regardless of whether ARCHITECTURE.md exists), use the matchi
 
 | Stack | Feature prompt |
 |---|---|
-| Mobile (iOS / Android / KMP) | `~/.claude/skills/dev/mobile/FEATURE_PROMPT.md` |
-| Web (Next.js / React / Vue) | `~/.claude/skills/dev/web/FEATURE_PROMPT.md` |
+| Mobile (iOS / Android / KMP) | `~/.claude/skills/dev/platforms/mobile/FEATURE_PROMPT.md` |
+| Web (Next.js / React / Vue) | `~/.claude/skills/dev/platforms/web/FEATURE_PROMPT.md` |
 
 Do not invoke architecture or feature prompts for trivial changes (typos, copy edits, dependency bumps).

@@ -19,7 +19,7 @@ ROOT=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null) || ROOT=$CWD
 if grep -qE '(^|[;&|])[[:space:]]*gh[[:space:]]+pr[[:space:]]+create\b' <<<"$CMD"; then
   # A promotion PR (pre prod -> prod) carries already-reviewed commits rather than one branch's
   # work, so the sections belong on the feature PRs it is made of, not on it. Mirrors
-  # ci/pr-gates.yml's `if: github.head_ref != 'staging'`, which this hook otherwise supersedes.
+  # pr-gates.yml's `if: github.head_ref != 'staging'`, which this hook otherwise supersedes.
   HEAD_BR=$(grep -oE -- '--head[= ][^[:space:]]+' <<<"$CMD" | sed -E 's/^--head[= ]//' | tr -d "\"'")
   [ -n "$HEAD_BR" ] || HEAD_BR=$(git -C "$ROOT" branch --show-current 2>/dev/null)
   case "$HEAD_BR" in
@@ -85,7 +85,7 @@ if grep -qE '(^|[;&|])[[:space:]]*gh[[:space:]]+pr[[:space:]]+merge\b' <<<"$CMD"
   if [ -z "$BASE" ]; then
     ask merge-unknown "Phase 16 - could not read this PR's base branch. Confirm it is not the prod promotion."
   elif [ "$IS_PROD" = yes ]; then
-    ask merge-prod "Phase 16 - this merges into '$BASE', which AUTO-DEPLOYS PROD. Secrets pre-flight run (shared/prod-secrets.md)? Migrations already applied? Pre prod verified? This approves the RELEASE, not the work."
+    ask merge-prod "Phase 16 - this merges into '$BASE', which AUTO-DEPLOYS PROD. Secrets pre-flight run (skills/prod/prod-secrets.md)? Migrations already applied? Pre prod verified? This approves the RELEASE, not the work."
   else
     log pass "merge->$BASE"
   fi
