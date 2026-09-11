@@ -265,9 +265,9 @@ when it applies, otherwise targeted reads. The evidence ladder below is for **bu
 
 **For bugs — REQUIRED SUB-SKILL:** use `superpowers:systematic-debugging`. Reproduce BEFORE theorizing, and never assert a cause without a verifying probe (prefer the direct probe over inference).
 
-**When the issue names a `dev:survey` run, layers 1–2 are already done** — two checkers each tried to
-refute the mechanism against the code and could not. Start at layer 3. **Never skip 3–5 on that
-basis:** survey verifies against the CODE and never runs the app, so a CONFIRMED finding is a
+**When `## Suspected` names a `dev:survey` OR `dev:ideation` run, layers 1–2 are already done** —
+two checkers each tried to refute it against the code and could not. Start at layer 3. **Never skip
+3–5 on that basis:** both verify against the CODE and never run the app, so a CONFIRMED finding is a
 twice-checked hypothesis, not a reproduction. Its report holds the `blocks:` set and the PLAUSIBLE
 siblings the issue does not — read it when present, and say so when it is not, since a repo may keep
 `docs/` untracked.
@@ -713,11 +713,11 @@ only because the developer asked — "suites green + evidence table done" is NOT
 
 ## Phase 13 — Code Review Gate (AI, verified findings)
 
-Run the `code-review` skill (`/code-review`) against the branch diff (`git diff <BASE_BRANCH>...HEAD`). It fans out reviewers and adversarially VERIFIES findings before reporting — prefer it over a single self-review pass. Supplement with one **spec-compliance check**: re-read the ticket/issue and confirm each acceptance criterion maps to actual code in the diff (not implementer claims).
+`dev:code-review` owns this gate: it runs the `code-review` skill against `git diff <BASE_BRANCH>...HEAD` as its engine — a verified fan-out beats a single self-review pass — then adds the **spec-compliance check** (each acceptance criterion mapped to real code in the diff, never to an implementer's claim) and the conditional security pass. Invoke the door, not the engine, or the protocol around it is skipped.
 
 **Deep tier — add a security pass.** When the diff touches money, auth or entitlements, migrations,
 file upload/storage, or anything that accepts untrusted input, also run `security-review` against
-the same diff. `/code-review` optimises for correctness and is not a substitute for someone reading
+the same diff. The review engine optimises for correctness and is not a substitute for someone reading
 the diff specifically looking for the exploit.
 
 Address findings by verdict and severity:

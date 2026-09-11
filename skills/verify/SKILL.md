@@ -25,8 +25,8 @@ working state. They are different claims.
 
 ## Run
 
-1. Read `~/Developer/skills/dev-skill/shared/entry.md` and apply it.
-2. Read `~/Developer/skills/dev-skill/shared/pipeline.md` → execute **Phase 11 — Verification Gate**
+1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
+2. Read `~/.claude/skills/dev/shared/pipeline.md` → execute **Phase 11 — Verification Gate**
    in full, including the platform additions from the matching `pipeline-<platform>.md`.
 3. Present the evidence table. Hand back only the rows you genuinely cannot reach.
 
@@ -65,7 +65,7 @@ Verification clean — running dev:docs (Phase 12) on the same diff.
   developer decide whether to proceed
 - the developer asked for verification *only*
 
-Chaining stops there. `/code-review` (Phase 13) and `dev:pre-prod` (Phase 14) are separate
+Chaining stops there. `dev:code-review` (Phase 13) and `dev:pre-prod` (Phase 14) are separate
 decisions — Phase 14 merges, and nothing auto-runs a merge.
 
 ## Next — ask, never stop flat
@@ -73,7 +73,7 @@ decisions — Phase 14 merges, and nothing auto-runs a merge.
 Verification passing is not permission to merge. After the `dev:docs` chain, end by naming the rest
 and asking (`entry.md` → *Never end silently*):
 
-> "Rows green, docs gate clean. Next is Phase 13 (`/code-review`) on the same diff, then
+> "Rows green, docs gate clean. Next is Phase 13 (`dev:code-review`) on the same diff, then
 > `dev:pre-prod` (Phase 14) opens the PR and merges to `<pre-prod branch>`. Continue?"
 
 If any row was ❌ or handed back as unreachable, say that FIRST — the question is then whether to

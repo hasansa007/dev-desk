@@ -1,4 +1,16 @@
 .DS_Store
 
-# Local working artifacts — ADRs, diagrams, survey reports. Kept on disk, not tracked.
-/docs/
+# docs/ IS tracked: the docs gate requires an ADR to be part of the diff that
+# introduces the decision, which an ignored path can never be.
+
+# Third-party agent framework working directory — not part of this family, holds credentials.
+.auto-claude/
+
+# Per-machine Claude Code settings, not project config: the file here holds only
+# outputStyle, which is a local editor preference and differs per clone.
+.claude/settings.local.json
+
+# Everything the dev CLI generates: per-branch pipeline state and the .dev/ui/ pages.
+# Machine-local; git is authoritative. The CLI also writes .dev/.gitignore, so repos without
+# this line stay clean too.
+.dev/

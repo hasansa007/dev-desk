@@ -1,0 +1,937 @@
+{
+ "schema_version": 1,
+ "diagram_type": "architecture",
+ "meta": {
+  "title": "The dev skill family",
+  "subtitle": "Every door, its kind, and the phase it owns",
+  "quality_profile": "standard",
+  "viewBox": [
+   1360,
+   950
+  ],
+  "output": "dev-family.html",
+  "repository": {
+   "url": "https://github.com/hasansa007/dev-skill",
+   "revision": "90bcc4fa7ad3b5cf7e20ebaa3ba54f3dda29846c"
+  }
+ },
+ "components": [
+  {
+   "id": "launchkill",
+   "type": "cloud",
+   "label": "dev:launch-kill",
+   "sublabel": "stop a project",
+   "pos": [
+    40,
+    110
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/launch-kill/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 156,
+     "end_line": 156,
+     "label": "reads launch's discovery"
+    }
+   ],
+   "tag": "tool"
+  },
+  {
+   "id": "launch",
+   "type": "cloud",
+   "label": "dev:launch",
+   "sublabel": "build + run",
+   "pos": [
+    305,
+    110
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/launch/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 176,
+     "end_line": 185,
+     "label": "a different KIND"
+    }
+   ],
+   "tag": "tool"
+  },
+  {
+   "id": "shots",
+   "type": "cloud",
+   "label": "dev:shots",
+   "sublabel": "a running app",
+   "pos": [
+    570,
+    110
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/shots/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 157,
+     "end_line": 157,
+     "label": "reads launch's discovery"
+    }
+   ],
+   "tag": "tool"
+  },
+  {
+   "id": "kanban",
+   "type": "cloud",
+   "label": "dev:kanban",
+   "sublabel": "the board",
+   "pos": [
+    835,
+    110
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/kanban/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 158,
+     "end_line": 158,
+     "label": "Universal Rules only"
+    }
+   ],
+   "tag": "writes: bounded"
+  },
+  {
+   "id": "survey",
+   "type": "cloud",
+   "label": "dev:survey",
+   "sublabel": "an existing app",
+   "pos": [
+    40,
+    250
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/survey/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 234,
+     "end_line": 234,
+     "label": "feeds Phase 0"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 161,
+     "end_line": 161,
+     "label": "loads Right-Size too"
+    }
+   ],
+   "tag": "→ Phase 0"
+  },
+  {
+   "id": "trim",
+   "type": "cloud",
+   "label": "dev:comment-budget",
+   "sublabel": "comments + docstrings",
+   "pos": [
+    305,
+    250
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/comment-budget/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 159,
+     "end_line": 159,
+     "label": "applies a rule"
+    }
+   ],
+   "tag": "tool"
+  },
+  {
+   "id": "arch",
+   "type": "cloud",
+   "label": "dev:arch",
+   "sublabel": "a system to draw",
+   "pos": [
+    570,
+    250
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/arch/SKILL.md",
+     "line": 41,
+     "end_line": 115,
+     "label": "target + renderer"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 186,
+     "end_line": 192,
+     "label": "third-party dep"
+    }
+   ],
+   "tag": "tool"
+  },
+  {
+   "id": "archify",
+   "type": "external",
+   "label": "Archify",
+   "sublabel": "external MIT pkg",
+   "pos": [
+    835,
+    250
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "shared/entry.md",
+     "line": 186,
+     "end_line": 192,
+     "label": "declared here only"
+    }
+   ],
+   "tag": "no fallback"
+  },
+  {
+   "id": "entry",
+   "type": "security",
+   "label": "shared/entry.md",
+   "sublabel": "entry contract",
+   "pos": [
+    305,
+    390
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "shared/entry.md",
+     "line": 8,
+     "end_line": 85,
+     "label": "workspace + boundary"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 125,
+     "end_line": 199,
+     "label": "preamble load map"
+    },
+    {
+     "path": "shared/entry.md",
+     "line": 215,
+     "end_line": 244,
+     "label": "the family table"
+    }
+   ],
+   "tag": "write boundary"
+  },
+  {
+   "id": "pipeline",
+   "type": "backend",
+   "label": "shared/pipeline.md",
+   "sublabel": "Phases 0 – 16",
+   "pos": [
+    570,
+    390
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "shared/pipeline.md",
+     "line": 110,
+     "end_line": 953,
+     "label": "Phases 0-16"
+    },
+    {
+     "path": "shared/pipeline.md",
+     "line": 3,
+     "end_line": 69,
+     "label": "principles + tier"
+    },
+    {
+     "path": "shared/pipeline.md",
+     "line": 972,
+     "end_line": 995,
+     "label": "Universal Rules"
+    }
+   ]
+  },
+  {
+   "id": "overlays",
+   "type": "backend",
+   "label": "Platform overlays",
+   "sublabel": "ios·android·web·kmp",
+   "pos": [
+    835,
+    390
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "shared/pipeline-ios.md",
+     "label": "iOS"
+    },
+    {
+     "path": "shared/pipeline-android.md",
+     "label": "Android"
+    },
+    {
+     "path": "shared/pipeline-web.md",
+     "label": "Web"
+    }
+   ],
+   "tag": "10 · 11 · 14"
+  },
+  {
+   "id": "createissue",
+   "type": "frontend",
+   "label": "dev:create-issue",
+   "sublabel": "a feature or task",
+   "pos": [
+    40,
+    530
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/create-issue/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "Phase 0"
+  },
+  {
+   "id": "createbug",
+   "type": "frontend",
+   "label": "dev:create-bug",
+   "sublabel": "something broken",
+   "pos": [
+    305,
+    530
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/create-bug/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "Phase 0"
+  },
+  {
+   "id": "createepic",
+   "type": "frontend",
+   "label": "dev:create-epic",
+   "sublabel": "spans several tasks",
+   "pos": [
+    570,
+    530
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/create-epic/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "Phase 0"
+  },
+  {
+   "id": "dev",
+   "type": "frontend",
+   "label": "dev",
+   "sublabel": "full run",
+   "pos": [
+    40,
+    670
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "SKILL.md",
+     "line": 29,
+     "end_line": 101,
+     "label": "Entry 1-2 routing"
+    },
+    {
+     "path": "SKILL.md",
+     "line": 112,
+     "end_line": 152,
+     "label": "family + pipeline"
+    }
+   ],
+   "tag": "Entry 1-2 → 1-16"
+  },
+  {
+   "id": "verify",
+   "type": "frontend",
+   "label": "dev:verify",
+   "sublabel": "a branch",
+   "pos": [
+    305,
+    670
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/verify/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/pipeline.md",
+     "line": 563,
+     "end_line": 661,
+     "label": "Phase 11"
+    }
+   ],
+   "tag": "Phase 11"
+  },
+  {
+   "id": "docs",
+   "type": "frontend",
+   "label": "dev:docs",
+   "sublabel": "a diff",
+   "pos": [
+    570,
+    670
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/docs/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/pipeline.md",
+     "line": 662,
+     "end_line": 713,
+     "label": "Phase 12"
+    }
+   ],
+   "tag": "Phase 12"
+  },
+  {
+   "id": "preprod",
+   "type": "frontend",
+   "label": "dev:pre-prod",
+   "sublabel": "a branch",
+   "pos": [
+    835,
+    670
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/pre-prod/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/pipeline.md",
+     "line": 734,
+     "end_line": 866,
+     "label": "Phase 14"
+    }
+   ],
+   "tag": "Phase 14"
+  },
+  {
+   "id": "prod",
+   "type": "frontend",
+   "label": "dev:prod",
+   "sublabel": "pre-prod → prod",
+   "pos": [
+    1100,
+    670
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/prod/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/pipeline.md",
+     "line": 911,
+     "end_line": 953,
+     "label": "Phase 16"
+    },
+    {
+     "path": "shared/prod-secrets.md",
+     "label": "release runbook"
+    }
+   ],
+   "tag": "Phase 16"
+  },
+  {
+   "id": "review",
+   "type": "frontend",
+   "label": "dev:review",
+   "sublabel": "a PR number",
+   "pos": [
+    835,
+    800
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/review/SKILL.md",
+     "label": "the door"
+    },
+    {
+     "path": "shared/pipeline.md",
+     "line": 867,
+     "end_line": 910,
+     "label": "Phase 15"
+    }
+   ],
+   "tag": "Phase 15 ↺"
+  },
+  {
+   "id": "ideation",
+   "type": "cloud",
+   "label": "dev:ideation",
+   "sublabel": "what is worth doing",
+   "pos": [
+    1100,
+    110
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/ideation/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "→ Phase 0"
+  },
+  {
+   "id": "roadmap",
+   "type": "cloud",
+   "label": "dev:roadmap",
+   "sublabel": "themes → milestones",
+   "pos": [
+    1100,
+    250
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/roadmap/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "→ Phase 0"
+  },
+  {
+   "id": "insights",
+   "type": "cloud",
+   "label": "dev:insights",
+   "sublabel": "answer · route · keep",
+   "pos": [
+    1100,
+    390
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/insights/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "maintains PROJECT_MAP"
+  },
+  {
+   "id": "codereview",
+   "type": "cloud",
+   "label": "dev:code-review",
+   "sublabel": "verified findings",
+   "pos": [
+    570,
+    800
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/code-review/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "Phase 13"
+  },
+  {
+   "id": "ui",
+   "type": "cloud",
+   "label": "dev:ui",
+   "sublabel": "the ui/ pages",
+   "pos": [
+    1100,
+    530
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/ui/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "tool"
+  },
+  {
+   "id": "rollback",
+   "type": "cloud",
+   "label": "dev:rollback",
+   "sublabel": "recover a release",
+   "pos": [
+    1100,
+    800
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/rollback/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "Phase 16 ↺"
+  },
+  {
+   "id": "audit",
+   "type": "cloud",
+   "label": "dev:audit",
+   "sublabel": "checks ## PIPELINE",
+   "pos": [
+    305,
+    800
+   ],
+   "size": [
+    215,
+    72
+   ],
+   "sources": [
+    {
+     "path": "skills/audit/SKILL.md",
+     "label": "the door"
+    }
+   ],
+   "tag": "PR compliance"
+  }
+ ],
+ "boundaries": [
+  {
+   "kind": "region",
+   "label": "Tool doors — no phase number; load only what they consume",
+   "wraps": [
+    "launchkill",
+    "launch",
+    "shots",
+    "kanban",
+    "survey",
+    "trim",
+    "arch"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "shared/ — read by every door",
+   "wraps": [
+    "entry",
+    "pipeline",
+    "overlays"
+   ]
+  },
+  {
+   "kind": "region",
+   "label": "Filing — Phase 0, and the one group that takes no tier",
+   "wraps": [
+    "createissue",
+    "createbug",
+    "createepic"
+   ]
+  },
+  {
+   "kind": "security-group",
+   "label": "Phase doors — each takes a durable artifact",
+   "wraps": [
+    "verify",
+    "docs",
+    "preprod",
+    "prod",
+    "review",
+    "codereview",
+    "rollback",
+    "audit"
+   ]
+  }
+ ],
+ "connections": [
+  {
+   "id": "launch-kill",
+   "from": "launch",
+   "to": "launchkill",
+   "label": "its discovery",
+   "variant": "dashed",
+   "labelDy": 62
+  },
+  {
+   "id": "launch-shots",
+   "from": "launch",
+   "to": "shots",
+   "label": "its discovery",
+   "variant": "dashed",
+   "labelDy": 62
+  },
+  {
+   "id": "arch-archify",
+   "from": "arch",
+   "to": "archify",
+   "label": "never degrades",
+   "variant": "security",
+   "labelDy": 62
+  },
+  {
+   "id": "survey-filing",
+   "from": "survey",
+   "to": "createissue",
+   "label": "files via create-*",
+   "variant": "emphasis",
+   "labelDy": 130
+  },
+  {
+   "id": "entry-pipeline",
+   "from": "entry",
+   "to": "pipeline",
+   "label": "loads sections",
+   "variant": "emphasis",
+   "labelDy": 62
+  },
+  {
+   "id": "pipeline-overlays",
+   "from": "pipeline",
+   "to": "overlays",
+   "label": "only 10·11·14",
+   "variant": "dashed",
+   "labelDy": 62
+  },
+  {
+   "id": "entry-createbug",
+   "from": "entry",
+   "to": "createbug",
+   "label": "no tier",
+   "variant": "dashed",
+   "labelDy": 60
+  },
+  {
+   "id": "filing-dev",
+   "from": "createissue",
+   "to": "dev",
+   "label": "issue number",
+   "labelDy": 60
+  },
+  {
+   "id": "dev-verify",
+   "from": "dev",
+   "to": "verify",
+   "label": "reaches 11",
+   "labelDy": 62
+  },
+  {
+   "id": "verify-docs",
+   "from": "verify",
+   "to": "docs",
+   "label": "11 → 12 · chains",
+   "variant": "emphasis",
+   "labelDy": 62
+  },
+  {
+   "id": "docs-preprod",
+   "from": "docs",
+   "to": "preprod",
+   "label": "12 → 14 · asks",
+   "labelDy": 62
+  },
+  {
+   "id": "preprod-prod",
+   "from": "preprod",
+   "to": "prod",
+   "label": "merged",
+   "labelDy": 62
+  },
+  {
+   "id": "review-preprod",
+   "from": "review",
+   "to": "preprod",
+   "label": "↺ 15 → 14",
+   "variant": "dashed"
+  },
+  {
+   "id": "docs-codereview",
+   "from": "docs",
+   "to": "codereview",
+   "label": "12 → 13 · chains",
+   "variant": "emphasis",
+   "labelDy": 24
+  },
+  {
+   "id": "prod-rollback",
+   "from": "prod",
+   "to": "rollback",
+   "variant": "dashed"
+  }
+ ],
+ "cards": [
+  {
+   "dot": "cyan",
+   "title": "Two kinds of door",
+   "items": [
+    "Phases take a durable artifact — branch, diff, PR number",
+    "Tools map to no phase and run none of the pipeline",
+    "Phases 1–8 pass reasoning, which has no artifact to hand on"
+   ]
+  },
+  {
+   "dot": "amber",
+   "title": "What each tool loads",
+   "items": [
+    "launch · launch-kill · shots — nothing",
+    "kanban — Universal Rules only",
+    "comment-budget · arch — Guiding Principles + Universal Rules",
+    "survey · ideation — those plus Right-Size, the widest fan-out"
+   ]
+  },
+  {
+   "dot": "violet",
+   "title": "The one wired pair",
+   "items": [
+    "verify (11) → docs (12) chains without asking",
+    "Same diff, both read-only, two halves of one PR body",
+    "Nothing ever chains into a merge or a promotion"
+   ]
+  },
+  {
+   "dot": "rose",
+   "title": "By design",
+   "items": [
+    "Phase 13 is dev:code-review — the door owns the protocol, the engine fans out",
+    "launch-kill and shots read launch's discovery, not the pipeline",
+    "Archify is the family's only third-party dependency"
+   ]
+  },
+  {
+   "dot": "amber",
+   "title": "Stocking the board",
+   "items": [
+    "dev:survey finds defects; dev:ideation finds opportunities",
+    "dev:roadmap turns their reports into milestones + epic parents",
+    "The milestone IS dev:kanban's QUEUE column",
+    "All three file through dev:create-* — never directly"
+   ]
+  },
+  {
+   "dot": "violet",
+   "title": "Optional surfaces — neither is a door",
+   "items": [
+    "scripts/dev.py: state · board · run · doctor · project · ui. Stdlib; every door but dev:ui works without it",
+    "dev project mirrors the computed columns OUTWARD to a GitHub Projects v2 board",
+    "It is never read back as truth — drag a card and the next run moves it back",
+    "Dry run by default; it will not invent a Status option that does not exist"
+   ]
+  }
+ ]
+}

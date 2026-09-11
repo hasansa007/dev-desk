@@ -5,7 +5,7 @@ description: >
   drift between the patterns actually in use — then files the confirmed ones. It suggests and never
   implements: no fix, no refactor, no rewrite.
   Every finding is adversarially verified against the code before it can be filed, because a tracker
-  full of plausible-but-wrong issues is worse than an empty one and `dev:issues` will rank it either
+  full of plausible-but-wrong issues is worse than an empty one and `dev:kanban` will rank it either
   way. Unverified findings are held in the report with the reason, never filed.
   Writes `docs/survey/<date>.md` first; filing to GitHub is a separate confirmed step. Fans out one
   surveyor per flow, and shapes what it files so several issues can be started at once.
@@ -17,12 +17,19 @@ allowed-tools: [git, gh, rg, grep, Read, Write, Agent]   # Read: every verdict i
 
 # survey — read the app, report what is wrong, file the confirmed
 
-A **tool**, not a phase, and it sits **upstream of Phase 0**. `dev:issues` renders the board;
+A **tool**, not a phase, and it sits **upstream of Phase 0**. `dev:kanban` renders the board;
 nothing stocked it. Every door from Phase 0 on assumes you already know what is wrong — this is the
 one that finds out.
 
 **It suggests. It never implements.** No fix, no refactor, no rewrite, not even an obvious one.
 The output is a report and, on confirmation, issues. `/dev #N` does the work afterwards.
+
+> **Sibling: `dev:ideation`.** This door asks *what does this do that it should not?* — defects and
+> architectural drift. That one asks *what does this do adequately that could be materially better?*
+> — performance, security and quality opportunities, filed as `enhancement`. They discover the same
+> flows and fan out the same way, so **run one, not both, unless you mean to.** Defects first: what
+> is broken changes which improvements are worth making. This door is the source of truth for the
+> protocol they share — Phases 2, 3, 4, 5 and 8.
 
 ## Phase 1 — Arguments
 
@@ -35,11 +42,11 @@ The output is a report and, on confirmation, issues. `/dev #N` does the work aft
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
-Read `~/Developer/skills/dev-skill/shared/entry.md` — **the absolute path, because this skill runs
+Read `~/.claude/skills/dev/shared/entry.md` — **the absolute path, because this skill runs
 inside somebody else's repo**, where a bare `shared/entry.md` resolves to a file that does not
 exist. The resolved repo is the boundary, for reading, for writing and for filing.
 
-Also read `~/Developer/skills/dev-skill/shared/pipeline.md` → **Guiding Principles, Universal Rules,
+Also read `~/.claude/skills/dev/shared/pipeline.md` → **Guiding Principles, Universal Rules,
 and Right-Size the Process**. Right-Size is not optional here despite this being a tool: it owns the
 fan-out rule, and Phases 4 and 5 are the largest fan-out in the family.
 
@@ -58,7 +65,7 @@ behind, which `shared/entry.md`'s *scope limiter* rule forbids relying on. `--re
 because the surveyed repo is the resolved one, not whatever `cwd` points at.
 
 **If `gh` errors or the repo has Issues disabled, say so and stop.** An empty result and a failed
-query must never render the same — `dev:issues` Phase 3's rule, and the reason it exists is that a
+query must never render the same — `dev:kanban` Phase 3's rule, and the reason it exists is that a
 failed dedupe files every finding as new.
 
 When a match is uncertain, file nothing and report **possible duplicate of #N**: a wrong merge hides
@@ -82,6 +89,18 @@ for is one you invented, and every finding under it inherits that.
 If nothing declares flows, say so and fall back to **one directory below the source root** — the
 same unit `dev:comment-budget` uses, and for the same reason: it has to be small enough that one surveyor's
 pass fits one context.
+
+**A nested project is not a flow of THIS one.** A tracked directory carrying its own manifest —
+`package.json`, `Package.swift`, `build.gradle`, `pyproject.toml`, `ARCHITECTURE.md`,
+`PROJECT_MAP.md` — is a separate project: a test fixture, an example app, a vendored sample. **Print
+it as excluded, with the manifest that identified it**, and survey it only if asked by name.
+
+> **2026-09-10, found by the verification gate.** This family's own repo tracks
+> `test-projects/e2e-project/`, a complete Next.js app with its own `package.json` and
+> `ARCHITECTURE.md`, used to exercise the doors. `git ls-files` includes it and
+> `src/app/status/page.tsx` is a genuine declared route — so an unguarded run reports a **fixture's**
+> flow as this repo's, and every finding under it is real code that nobody ships. Excluding build
+> output by construction does not exclude a whole application checked in as a test.
 
 **Enumerate with `git ls-files`, never with a directory walk.** Tracked files only means build
 output, vendored trees and anything `.gitignore`d are excluded *by construction* — `node_modules`,
@@ -305,11 +324,11 @@ Ask before filing anything. Then, for the confirmed set:
   and let whoever starts second rebase. Blocking is a real dependency — B's fix does not apply until
   A's has landed — and it is directional, which "same file" never tells you. Calling every shared
   file a block serialises a codebase behind its utils module, the opposite of what this list is for.
-- **Set a priority label on each filed issue, from the cost ranking.** `dev:issues` Phase 5 orders
+- **Set a priority label on each filed issue, from the cost ranking.** `dev:kanban` Phase 5 orders
   NEXT by `P1 → P2 → P3`, then slice, then oldest `updatedAt` — ten issues filed the same minute
   share a timestamp, so without labels the order it shows is arbitrary and this phase's ranking dies
   in the report. If the repo has no priority labels, say so: the ranking then lives only here.
-- **File at most 10 per run, and name what was held.** `dev:issues` shows the top 2–3 of NEXT, so
+- **File at most 10 per run, and name what was held.** `dev:kanban` shows the top 2–3 of BACKLOG, so
   ten is already more board than anyone reads at once; thirty is a backlog that gets skipped
   wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim
   that can be argued with. The rest stay in the report, which is why the report is written first.
@@ -331,5 +350,5 @@ Ask before filing anything. Then, for the confirmed set:
 
 Report written → **walk the findings through (Phase 8)** → offer the filing, naming the branch it would cut. Filed → name the first issue by
 cost and hand to `/dev #N`. **Nothing found → say so plainly, name what was covered and what was
-not, and offer `dev:issues`** — a clean survey is a real answer, but the board may still hold work,
+not, and offer `dev:kanban`** — a clean survey is a real answer, but the board may still hold work,
 and stopping at "nothing" makes the developer remember there is somewhere else to look.

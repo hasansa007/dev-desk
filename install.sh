@@ -36,6 +36,32 @@ for i in "${!NAMES[@]}"; do
   ln -sfn "$SRC" "$link" && printf '  %-12s linked  %s\n' "$cli" "$link" && ok=$((ok+1))
 done
 
+# The `dev` command: link scripts/dev.py into the first user bin dir ALREADY on PATH.
+# Never edits a shell profile, never adds a PATH entry, never replaces something that is not ours —
+# a `dev` belonging to another tool is reported and left alone.
+link_dev_command() {
+  local target="$SRC/scripts/dev.py" existing
+  existing="$(command -v dev 2>/dev/null || true)"
+  for b in "$HOME/.local/bin" "$HOME/bin"; do
+    case ":$PATH:" in *":$b:"*) ;; *) continue ;; esac
+    [ -d "$b" ] && [ -w "$b" ] || continue
+    local t="$b/dev"
+    if [ -L "$t" ] && [ "$(readlink "$t")" = "$target" ]; then
+      printf '  %-12s already linked, unchanged\n' "dev command"; return
+    fi
+    if [ -e "$t" ] || [ -L "$t" ]; then
+      printf '  %-12s SKIPPED — %s exists and is not this family'"'"'s\n' "dev command" "$t"; return
+    fi
+    if [ -n "$existing" ]; then
+      printf '  %-12s SKIPPED — another `dev` is already on PATH at %s\n' "dev command" "$existing"; return
+    fi
+    ln -s "$target" "$t" && printf '  %-12s linked  %s\n' "dev command" "$t"; return
+  done
+  printf '  %-12s not linked — no writable ~/.local/bin or ~/bin on PATH\n' "dev command"
+  printf '               add to your shell profile: alias dev='"'"'python3 %s'"'"'\n' "$target"
+}
+link_dev_command
+
 echo
 echo "done: $ok installed, $same already linked, $skip skipped"
 [ $ok -gt 0 ] && echo "reload with /reload-skills (claude) or restart the CLI"

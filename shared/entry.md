@@ -5,6 +5,26 @@ workspace resolution and for which pipeline sections always load.
 
 ---
 
+## Where these paths point
+
+Every `~/.claude/skills/dev/...` path in this family is the **install** path, not the clone path.
+`install.sh` symlinks this repo into each CLI's skills directory under the fixed name `dev`, so the
+path resolves the same on every machine regardless of where the repo was cloned:
+
+| CLI | Root |
+|---|---|
+| Claude Code | `~/.claude/skills/dev/` |
+| Codex | `~/.codex/skills/dev/` |
+| Antigravity | its registered skills path (`install.sh` reads it from config) — else `~/.agents/skills/dev/` |
+
+**The paths stay absolute on purpose.** These doors run inside somebody else's repo, where a bare
+`shared/entry.md` resolves to a file that does not exist — `dev:survey` Phase 2 and `dev:arch`
+Phase 0 both carry that scar. Absolute is the fix; a home-directory prefix was the accident.
+
+A clone that has never been installed has no such root. Run `install.sh` first.
+
+---
+
 ## Workspace Resolution
 
 ```
@@ -74,7 +94,7 @@ that branch deliberately, say so in the PR body, and target the PR at it. The ru
 > dependency nobody agreed to.**
 
 > **2026-08-05 → 06 — read-boundary written, write-boundary missing.** A boundary rule was added to
-> `dev:issues` after it rendered another repo's board — read-only, and the user still had to ask
+> `dev:kanban`'s predecessor after it rendered another repo's board — read-only, and the user still had to ask
 > *"what branch, what repo?"*. Hours later the same session opened and merged **two PRs** into that
 > other repo on a two-word instruction, without naming the repo first. Both were docs-only; both
 > reached `main` via a promotion, and in that repo merging to `main` auto-deploys production.
@@ -151,21 +171,22 @@ this pipeline exists to refuse.
 | `dev:pre-prod` | 14 | always + Phase 2 → platform pipeline |
 | `dev:review` | 15 | always + Phase 1 |
 | `dev:docs` | 12 | always only |
+| `dev:code-review` | 13 | always only — the diff is the whole subject |
 | `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
 | `dev:rollback` | 16 ↺ | always + Phase 1 — plus classification and dual-branch sync |
 | `dev:audit` | — | always only — mechanical phase compliance verification against evidence |
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
 | `dev:launch-kill` | — | **nothing** — a tool; it reads `dev:launch`'s discovery, not this pipeline |
 | `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
-| `dev:issues` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
+| `dev:kanban` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
 | `dev:comment-budget` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
 | `dev:arch` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size; it consumes Simplicity First, which is what lets it REFUSE a diagram the target does not need |
-| `dev:survey` | — | **Guiding Principles + Universal Rules + Right-Size** — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
+| `dev:survey` · `dev:ideation` | — | **Guiding Principles + Universal Rules + Right-Size** — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
 
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
 are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the
 ceremony GUIDE principle 4 refuses. That is why every tool row above reads `nothing` — except
-`dev:comment-budget`, `dev:survey` and `dev:arch`. `comment-budget` **applies a rule**, and a rule it has not read is a
+`dev:comment-budget`, `dev:survey`, `dev:ideation` and `dev:arch`. `comment-budget` **applies a rule**, and a rule it has not read is a
 rule it will improvise; `survey` **fans out wider than any phase does**, so the one section a tool
 would normally skip — Right-Size — is the one it most needs; `arch` **refuses targets**, and
 Simplicity First is the rule it refuses them with. Read what you consume; name it in the row, and let the
@@ -181,7 +202,7 @@ and 11 call it for mobile targets (`/dev:launch ios sim`, `/dev:launch android e
 equally useful on its own for a throwaway prototype.
 
 It belongs in this repo because it is the pipeline's only **personal-skill** dependency: everything
-else the pipeline calls (`superpowers:*`, `/code-review`, `security-review`, `frontend-design`,
+else the pipeline calls (`superpowers:*`, `code-review` as `dev:code-review`'s engine, `security-review`, `frontend-design`,
 `supabase`, `feature-dev:*`) is a plugin that installs anywhere. `dev:launch` is the one that would
 simply be missing after a clone, taking mobile verification down with it.
 
@@ -224,6 +245,7 @@ fields you inferred rather than resolved.
 | `dev` | Entry 1–2 → 1–16 | issue ref or a description | full run |
 | `dev:verify` | 11 | a branch | stage |
 | `dev:docs` | 12 | a diff | gate |
+| `dev:code-review` | 13 | a branch | gate |
 | `dev:pre-prod` | 14 | a branch | stage |
 | `dev:review` | 15 | a PR number | **loop** ↺ |
 | `dev:prod` | 16 | pre-prod + prod branches | stage |
@@ -232,17 +254,21 @@ fields you inferred rather than resolved.
 | `dev:launch` | — | a project to launch | **tool** |
 | `dev:launch-kill` | — | a project to stop | **tool** |
 | `dev:shots` | — | a running app | **tool** |
-| `dev:issues` | — | the repo's tracker | **tool** |
+| `dev:kanban` | — | the repo's tracker | **tool** |
 | `dev:comment-budget` | — | a repo or a path | **tool** |
 | `dev:arch` | — | a system to draw | **tool** |
 | `dev:survey` | — | an existing app | **tool** → feeds Phase 0 |
+| `dev:roadmap` | — | the repo's own evidence | **tool** → feeds Phase 0 |
+| `dev:insights` | — | a question | **tool** → maintains `PROJECT_MAP.md` |
+| `dev:ui` | — | a repo | **tool** → renders `.dev/ui/`, never read back |
+| `dev:ideation` | — | an existing app | **tool** → feeds Phase 0 |
 
 **Why these phases and not more:** Phases 1–8 pass *reasoning* between each other, and reasoning
 lives only in the conversation that produced it — there is no artifact to hand a fresh session.
 From Phase 11 on, every phase takes a durable artifact (branch, diff, PR number), which is exactly
 what makes it independently invocable. Phase 0 qualifies from the opposite side of that seam: it
 runs before any reasoning exists, takes only a description, and produces an issue number. Phase 13 is deliberately absent: it is 20 lines that mostly
-say "run `/code-review`", so run `/code-review`.
+say "run Phase 13", so run `dev:code-review`.
 
 ---
 
@@ -260,7 +286,7 @@ means the developer is standing in the MIDDLE of a pipeline when your phase fini
 of one. So close every invocation by naming **the next phase, what it would do, and where it ends**
 — then ask:
 
-> "Phase 12 clean. Next is Phase 13 (`/code-review`) on the same diff, then Phase 14 opens the PR
+> "Phase 12 clean. Next is Phase 13 (`dev:code-review`) on the same diff, then Phase 14 opens the PR
 > and merges to `staging`. Continue?"
 
 Stopping flat is the failure this closes: it makes the developer remember both that there IS more
@@ -272,5 +298,5 @@ This is an **ask**, not a chain:
 - **Chaining — proceeding WITHOUT asking — is allowed only between adjacent READ-ONLY gates, and
   only one hop.** `dev:verify` → `dev:docs` is the one wired pair: same diff, adjacent phases
   (11 → 12), both read-only, and their outputs are the two halves of one PR body. Everywhere else,
-  you ask. Nothing chains into `/code-review`, and **nothing ever chains into a merge or a
+  you ask. `dev:docs` chains into `dev:code-review`, and **nothing ever chains into a merge or a
   promotion** — those are decisions, not steps.

@@ -50,7 +50,7 @@ hard filesystem/git artifacts and phases that legitimately operate through conve
 | **4** | Investigation | Search/grep operations, log inspection, reading reproduction scripts. | Exempt if bug reproduction was trivial or provided by user. |
 | **5** | Discuss Before Building | User interaction, prompts, architectural alignment questions. | **Conversational Gate:** Zero tool-call artifacts expected in git diff. Attested if Phases 7/9 proceed cleanly. |
 | **6** | Architecture Alternatives | ADR file in `docs/` or design section in spec. | If skipped, MUST have parenthetical reason in `Skipped:`. |
-| **7** | Plan Output | Spec file in `specs/`, `.auto-claude/specs/`, or structured plan in chat. | Written plan artifact or structured prompt outline. |
+| **7** | Plan Output | Spec file in `specs/` or `docs/superpowers/specs/`, or a structured plan in chat. | Written plan artifact or structured prompt outline. |
 | **8** | Task Breakdown | Checklists, subtasks in plan, or phased task list. | Inline breakdown accepted; exempt on Light tier. |
 | **9** | Implement | Modified source code in `git diff` (excluding docs/specs/tests). | **Mandatory:** Non-empty git diff outside documentation. |
 | **10** | Pre-PR Quality Checks | Linter/static analysis tool execution, or `Gates: 10 clean`. | Tool call in transcript, or verified clean in PR Gates. |

@@ -1,0 +1,48 @@
+name: tests
+
+# Installed ON ITS OWN, like line-budget.yml and for the same reason: it applies to THIS repo's PRs
+# rather than to a /dev pipeline run, so it does not belong in the uninstalled ci/pr-gates.yml.
+#
+# Installed 2026-09-10, when scripts/dev.py was added. Until then the suite —
+# test_compliance_auditor.py (7) and test_rollback_engine.py (5) — passed only because someone
+# remembered to run it by hand. That is the honour system the family's own Design principle 2
+# rejects: a gate is only real if it produces an artifact. Two tested scripts had shipped with no
+# check that they still worked.
+#
+# Discovers rather than lists. A hardcoded file list is a gate that silently stops covering the
+# test someone adds next, which is the same defect as a stale line count.
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+  push:
+    branches: [main]
+
+jobs:
+  unit:
+    name: stdlib unittest suites under test-projects/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # 3.9 is what macOS ships as system python3, and these scripts are stdlib-only on purpose.
+          # Testing on newer alone would let a 3.10+ syntax feature through and break the machine
+          # the family is actually run from.
+          python-version: '3.9'
+      - name: Run every test file
+        shell: bash
+        run: |
+          shopt -s nullglob
+          files=(test-projects/*/test_*.py)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No test files found under test-projects/ — the glob or the layout changed."
+            exit 1
+          fi
+          fail=0
+          for f in "${files[@]}"; do
+            echo "--- $f"
+            PYTHONPATH=. python3 "$f" || fail=1
+          done
+          [ "$fail" -eq 0 ] && echo "${#files[@]} suites passed."
+          exit $fail
