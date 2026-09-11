@@ -42,6 +42,18 @@ TIER_REQUIRED_PHASES = {
     "deep": {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 16},
 }
 
+# Phases a Deep-tier feature may not list under Skipped:, whatever the reason, and the rule each alert cites
+DEEP_FEATURE_REQUIRED = {
+    5: "Phase 5 is required for Deep features; only a trivial change skips it, and a Deep feature is not one.",
+    6: 'Phase 6 is required for Deep features; only "lighter" at the cost declaration skips it, and that changes Tier.',
+}
+
+# Tier words, mapped to the tier they name (Quick is an alias for Light)
+TIER_WORDS = {"light": "light", "quick": "light", "standard": "standard", "deep": "deep"}
+
+# A whole tier word; the possessive "Deep's" names the tier's cost, not a tier
+TIER_WORD = re.compile(r"\b(light|quick|standard|deep)\b(?!['’]s\b)", re.IGNORECASE)
+
 # Phases that legitimately produce zero filesystem/git tool-call artifacts
 ZERO_ARTIFACT_PHASES = {
     0: "Standalone entry only; conversational or tracker action",
@@ -118,19 +130,42 @@ def parse_skipped_section(text: str) -> Tuple[Dict[int, str], List[int]]:
     return valid_skips, bare_skips
 
 
+def is_feature_title(title: str) -> bool:
+    """A conventional-commit feature title: `feat:`, `feat(scope):` or `feat!:`."""
+    return re.match(r'feat(\(|!?:)', title.strip(), re.IGNORECASE) is not None
+
+
+def declared_tiers(tier_text: str) -> Set[str]:
+    """Tiers named by whole words in Tier:'s first sentence; (reasons) and possessives never count."""
+    named = re.sub(r'\([^)]*\)', ' ', tier_text).split('.', 1)[0]
+    return {TIER_WORDS[word.lower()] for word in TIER_WORD.findall(named)}
+
+
+# A PIPELINE field line: plain `Key:`, or bold `**Key:**`, `**Key**:` or `**Key: value**`
+FIELD_LINE = re.compile(r'\*{0,2}([A-Za-z][A-Za-z ]{0,30}?)\s*\*{0,2}\s*:\s*\*{0,2}\s*(.*)')
+PIPELINE_FIELDS = {"tier", "ran", "skipped", "gates"}
+
+
 def extract_pipeline_section(body: str) -> Optional[Dict[str, str]]:
-    """Extract ## PIPELINE section lines from a markdown PR body."""
+    """Extract ## PIPELINE fields; a more-indented line continues the field above until the next field line."""
     match = re.search(r'##\s+PIPELINE\s*\n(.*?)(?=\n##|\Z)', body, re.DOTALL | re.IGNORECASE)
     if not match:
         return None
 
-    section_text = match.group(1).strip()
     data = {}
-    for line in section_text.splitlines():
-        line = line.strip()
-        if ':' in line:
-            key, val = line.split(':', 1)
-            data[key.strip().lower()] = val.strip()
+    key, key_indent = None, 0
+    for raw in match.group(1).splitlines():
+        line = raw.strip()
+        indent = len(raw) - len(raw.lstrip())
+        field = FIELD_LINE.match(line)
+        name = field.group(1).strip().lower() if field else None
+        if key and line and not line.startswith('```') and indent > key_indent and name not in PIPELINE_FIELDS:
+            data[key] = f"{data[key]} {line}"
+        elif field:
+            key, key_indent = name, indent
+            data[key] = field.group(2).strip()
+        else:
+            key = None
 
     return data
 
@@ -224,6 +259,7 @@ def audit_pipeline(
     base_branch: str = "origin/main",
     git_evidence: Optional[Dict] = None,
     transcript_evidence: Optional[Dict] = None,
+    pr_title: str = "",
 ) -> Dict:
     """
     Core auditing engine:
@@ -242,14 +278,9 @@ def audit_pipeline(
             "alerts": ["Critical: PR body has no ## PIPELINE section."],
         }
 
-    # Extract tier (default standard)
-    tier = pipeline_info.get("tier", "standard").lower()
-    if "light" in tier:
-        active_tier = "light"
-    elif "deep" in tier:
-        active_tier = "deep"
-    else:
-        active_tier = "standard"
+    # The strictest tier Tier: names governs; none named means Standard
+    tiers = declared_tiers(pipeline_info.get("tier", ""))
+    active_tier = next((t for t in ("deep", "standard", "light") if t in tiers), "standard")
 
     # Extract Ran:
     ran_text = pipeline_info.get("ran", "")
@@ -259,6 +290,12 @@ def audit_pipeline(
     skipped_text = pipeline_info.get("skipped", "")
     valid_skips, bare_skips = parse_skipped_section(skipped_text)
 
+    # A Deep-tier feature may not skip Phase 5 or 6, with or without a reason; a bare one is reported once, as that
+    forbidden_skips = []
+    if is_feature_title(pr_title) and "deep" in tiers:
+        forbidden_skips = [p for p in sorted(DEEP_FEATURE_REQUIRED) if p in valid_skips or p in bare_skips]
+        bare_skips = [p for p in bare_skips if p not in forbidden_skips]
+
     # Extract Gates:
     gates_text = pipeline_info.get("gates", "")
 
@@ -266,7 +303,7 @@ def audit_pipeline(
     verification_text = extract_section(pr_body, "VERIFICATION") or ""
     docs_text = extract_section(pr_body, "DOCS") or ""
 
-    required_phases = sorted(list(TIER_REQUIRED_PHASES.get(active_tier, TIER_REQUIRED_PHASES["standard"])))
+    required_phases = sorted(TIER_REQUIRED_PHASES.get(active_tier, TIER_REQUIRED_PHASES["standard"]) | set(forbidden_skips))
 
     phase_results = {}
     matched_count = 0
@@ -274,7 +311,11 @@ def audit_pipeline(
     unmatched_count = 0
     hidden_skip_count = 0
     bare_skip_count = len(bare_skips)
-    alerts = []
+    forbidden_skip_count = len(forbidden_skips)
+    alerts = [
+        f"Critical: Deep-tier feature skipped Phase {p} ({PHASE_NAMES[p]}). {DEEP_FEATURE_REQUIRED[p]}"
+        for p in forbidden_skips
+    ]
 
     if bare_skips:
         for p in bare_skips:
@@ -285,8 +326,13 @@ def audit_pipeline(
         status = "UNKNOWN"
         evidence_note = ""
 
+        # Case 0: a skip the tier forbids, with or without a reason
+        if p in forbidden_skips:
+            status = "FORBIDDEN_SKIP"
+            evidence_note = "A Deep-tier feature may not skip this phase"
+
         # Case 1: Legitimate Declared Skip
-        if p in valid_skips:
+        elif p in valid_skips:
             status = "DECLARED_SKIP"
             declared_skip_count += 1
             evidence_note = f"Reason: ({valid_skips[p]})"
@@ -432,7 +478,7 @@ def audit_pipeline(
     valid_total = matched_count + declared_skip_count
     score = (valid_total / total_evaluated * 100.0) if total_evaluated > 0 else 0.0
 
-    is_compliant = (hidden_skip_count == 0) and (bare_skip_count == 0) and (unmatched_count == 0)
+    is_compliant = (hidden_skip_count == 0) and (bare_skip_count == 0) and (unmatched_count == 0) and (forbidden_skip_count == 0)
 
     return {
         "compliant": is_compliant,
@@ -444,6 +490,7 @@ def audit_pipeline(
         "unmatched": unmatched_count,
         "hidden_skips": hidden_skip_count,
         "bare_skips": bare_skip_count,
+        "forbidden_skips": forbidden_skip_count,
         "phases": phase_results,
         "alerts": alerts,
     }
@@ -461,11 +508,14 @@ def format_compliance_markdown(audit_result: Dict) -> str:
     hidden = audit_result.get("hidden_skips", 0)
     bare = audit_result.get("bare_skips", 0)
     unmatched = audit_result.get("unmatched", 0)
+    forbidden = audit_result.get("forbidden_skips", 0)
 
     if audit_result.get("compliant"):
         lines.append(f"**Compliance Status:** ✅ **100% Compliant** ({matched} Matched, {skips} Declared Skips, 0 Hidden Skips)")
     else:
         issues = []
+        if forbidden:
+            issues.append(f"{forbidden} Forbidden Skip{'s' if forbidden > 1 else ''}")
         if hidden:
             issues.append(f"{hidden} Hidden Skip{'s' if hidden > 1 else ''}")
         if bare:
@@ -485,6 +535,7 @@ def format_compliance_markdown(audit_result: Dict) -> str:
         "UNMATCHED": "⚠️ Unmatched",
         "HIDDEN_SKIP": "❌ Hidden Skip",
         "BARE_SKIP": "❌ Bare Skip",
+        "FORBIDDEN_SKIP": "❌ Forbidden Skip",
     }
 
     for p, data in sorted(audit_result.get("phases", {}).items()):
@@ -539,6 +590,7 @@ def main():
     parser.add_argument("--pr", help="GitHub PR number or URL to audit")
     parser.add_argument("--file", help="Path to markdown file containing PR body")
     parser.add_argument("--text", help="Raw PR body text to audit")
+    parser.add_argument("--title", help="PR title, for a body given by --file, --text or stdin; --pr reads it from GitHub")
     parser.add_argument("--base", default="origin/main", help="Base git branch for diff verification (default: origin/main)")
     parser.add_argument("--append-pr", action="store_true", help="Append the ## COMPLIANCE section to the GitHub PR body")
     parser.add_argument("--format", choices=["markdown", "json", "summary"], default="markdown", help="Output format")
@@ -547,6 +599,7 @@ def main():
     args = parser.parse_args()
 
     pr_body = ""
+    pr_title = args.title or ""
     pr_num = args.pr
 
     pr_evidence = None
@@ -557,11 +610,12 @@ def main():
             pr_num = pr_match.group(1)
         try:
             raw_pr_json = subprocess.check_output(
-                ["gh", "pr", "view", pr_num, "--json", "body,files,headRefName,baseRefName"],
+                ["gh", "pr", "view", pr_num, "--json", "body,files,headRefName,baseRefName,title"],
                 text=True,
             )
             pr_data = json.loads(raw_pr_json)
             pr_body = pr_data.get("body", "")
+            pr_title = pr_title or pr_data.get("title", "")
             pr_evidence = collect_pr_evidence(pr_data)
         except Exception as e:
             print(f"Error fetching PR {args.pr}: {e}", file=sys.stderr)
@@ -583,13 +637,13 @@ def main():
             parser.print_help()
             sys.exit(1)
 
-    result = audit_pipeline(pr_body, base_branch=args.base, git_evidence=pr_evidence)
+    result = audit_pipeline(pr_body, base_branch=args.base, git_evidence=pr_evidence, pr_title=pr_title)
 
     if args.format == "json":
         print(json.dumps(result, indent=2))
     elif args.format == "summary":
         status_str = "COMPLIANT" if result["compliant"] else "NON-COMPLIANT"
-        print(f"Audit {status_str}: {result['score']}% (Matched: {result['matched']}, Skips: {result['declared_skips']}, Hidden: {result['hidden_skips']})")
+        print(f"Audit {status_str}: {result['score']}% (Matched: {result['matched']}, Skips: {result['declared_skips']}, Hidden: {result['hidden_skips']}, Forbidden: {result['forbidden_skips']})")
     else:
         md = format_compliance_markdown(result)
         print(md)
