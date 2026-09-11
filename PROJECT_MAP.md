@@ -120,6 +120,10 @@ ORPHANS).
   `desk.worktreeLocation` is live: task worktrees are created there (ADR 0017).
 - **Dev Desk never removes a worktree it created.** They stay under the worktree location until
   `git worktree remove <path>` (ADR 0017).
+- **A fork PR's head is still matched by name for what the board shows.** Its branch line, its
+  Activity and Changes, the pipeline-state lookup and the rule that hides a same-named local branch
+  all use `headRefName`. So a fork PR from `someone:main` shows the local `main`'s commits. Its shell
+  is safe: fork heads get no branch and open at the project root (ADR 0017).
 - **No Ideation or PROJECT_MAP view.** `/dev:ui` rendered `docs/ideation/` reports and
   `PROJECT_MAP.md`'s sections as pages until it was retired on 2026-09-11 (ADR 0014). Dev Desk's
   Findings reads only `docs/survey/` and Insights is unavailable for real projects, so both are read

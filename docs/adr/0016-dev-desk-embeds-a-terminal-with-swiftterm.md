@@ -61,3 +61,20 @@ imports SwiftTerm.
   touches only `ShellTerminalView.swift`.
 - **The licence is MIT, which is compatible.** This repo has no licence of its own yet (see
   PROJECT_MAP's ORPHANS & PENDING), and a public release has to settle that regardless.
+
+## Evidence
+
+```
+gh api repos/migueldeicaza/SwiftTerm/git/trees/<tag>?recursive=1   # .metal files, Plugins/
+→ v1.11.2 metal=0 plugins=0 · v1.12.0 metal=1 plugins=0 · v1.19.0 metal=1 plugins=2
+
+xcodebuild -showComponent MetalToolchain          # this Mac, Xcode 26.6
+→ Status: uninstalled
+
+cd apps/desk && xcodegen generate && xcodebuild -project DevDesk.xcodeproj -scheme DevDesk \
+  -destination 'platform=macOS' build             # SwiftTerm 1.11.2
+→ ** BUILD SUCCEEDED **, 0 warnings from DevDesk sources
+```
+
+With 1.20.0, the same build stopped at SwiftTerm's plugin validation. With the validation skipped,
+it failed compiling `Apple/Metal/Shaders.metal`.

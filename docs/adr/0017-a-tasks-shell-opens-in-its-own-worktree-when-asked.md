@@ -62,3 +62,20 @@ Execution (default `~/.devdesk/wt`), a setting that did nothing until now.
 - **Sample projects have no folder,** so their docks keep the demo transcripts.
 - **The Execution setting now does something.** The Notifications settings still do nothing
   (PROJECT_MAP ORPHANS & PENDING).
+
+## Evidence
+
+```
+swift test --package-path apps/desk/DeskCore
+→ 225 tests, 0 failures
+```
+
+Among them, a real repository under `$TMPDIR`: a branch not checked out plans `.create`, then
+`materialise` checks it out in a new worktree, and a second plan reuses it. A branch checked out at
+the root opens there. A symlink planted at the planned path is never used, a fork PR's head gets no
+branch, and a second click while the first start is preparing runs `git worktree list` and
+`git worktree add` once each.
+
+The real app was run against a throwaway repository. Start shell created the task's worktree, and
+`pwd` in the shell was that worktree. End shell showed `Shell ended (status 1).` When the old shell
+exited late, the restarted one kept running. Closing the window, or quitting, ended the shell.
