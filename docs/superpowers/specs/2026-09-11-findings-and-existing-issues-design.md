@@ -13,10 +13,10 @@ destination into a combined Survey/Ideation/Insights inbox.
 
 ## Context and acceptance boundary
 
-The maintainer already had dev-skill and found overlapping developer workflows in
-[Auto-Claude](https://github.com/B1tMaster/Auto-Claude). The discussion explored how a visual
-container could expose dev-skill's value without merely adding the same screens.
-The comparison used Auto-Claude's README and CLAUDE.md, not a running application audit.
+The maintainer already had dev-skill and compared it with a third-party desktop workflow tool
+that covers similar ground. The discussion explored how a visual container could expose
+dev-skill's value without merely adding the same screens. The comparison used that tool's
+README and agent instructions, not a running application audit.
 
 The maintainer accepted the proposed direction for filtering existing issues and reconciling
 survey/ideation findings with them. This records that direction, not approval of a schema,
