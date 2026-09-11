@@ -46,7 +46,9 @@ default, adjustable from 1 to 6.
 - **`/dev #N` as the prompt.** It isn't a verified Codex form. `dev run`'s prompt is verified for
   both CLIs.
 - **`--continue` for resuming.** It isn't a routed argument, and the front door's one-word guard
-  stops on it. A bare prompt inside the task's worktree resumes through Entry 0.
+  stops on it. A bare prompt inside the task's worktree resumes through Entry 0. That holds because
+  Entry 0 checks the branch it is on first; until 2026-09-11 it surveyed every branch, and an agent
+  started on a merged task did exactly that.
 - **Agents at the project root.** Parallel agents would switch branches under each other.
 - **Dev Desk cutting the branch.** The pipeline cuts it at the first write, and for a feature only
   after Phase 5.
