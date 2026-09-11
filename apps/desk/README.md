@@ -11,4 +11,6 @@ cd apps/desk && xcodegen generate && xcodebuild -project DevDesk.xcodeproj -sche
 
 The first app build resolves SwiftTerm from GitHub, so it needs network access.
 
+A Debug build launched with `-DevDeskAgentExecutable <absolute path>` runs that program instead of `claude` or `codex`, so a manual check never spends tokens.
+
 Open a sample project from the picker, or any local folder.
