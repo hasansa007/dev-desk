@@ -357,12 +357,12 @@ promotion.
 3. **Then file each as its own labelled issue and attach it to the parent:**
 
 ````bash
-CHILD=$(gh issue create --title "..." --label "..." --body "..." --json id -q .id)
-gh api repos/<owner>/<repo>/issues/<PARENT>/sub_issues -f sub_issue_id="$CHILD"
+N=$(gh issue create --title "..." --label "..." --body "..." | sed 's#.*/##')   # create prints the URL
+gh api repos/<owner>/<repo>/issues/<PARENT>/sub_issues -F sub_issue_id="$(gh api repos/<owner>/<repo>/issues/$N --jq .id)"
 ````
 
-   **`sub_issue_id` is the node `.id`, never the `number`.** Passing the number fails or silently
-   attaches the wrong issue, and it is the part of this that bites every time.
+   **`sub_issue_id` is the issue's DATABASE id, never its number** — and `gh issue create` has no
+   `--json`, so the id is read back with `gh api`. Verified 2026-09-12, gh 2.92.0, filing #60–#67.
 
 4. **Never `- [ ]` checkbox lines for slices.** A checklist in the parent body is invisible to every
    board query, carries no label, and cannot be worked by `/dev #N`.
