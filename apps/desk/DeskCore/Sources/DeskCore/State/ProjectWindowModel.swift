@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, roadmap, findings, ideation, decisions, settings
+    case board, roadmap, findings, ideation, files, decisions, settings
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
 
@@ -92,6 +92,8 @@ public final class ProjectWindowModel {
     public var selectedOpportunityID: String?
     public var selectedIdeationRunID: String?
     public var ideationFilter: OpportunityVerdict?
+    /// The browser's selected file, as a path relative to the project root.
+    public var selectedFilePath: String?
     public var settingsSection: SettingsSection = .agentsAndDefaults
     public private(set) var answeredDecisionID: String?
     /// Why the last tracker write failed, already escaped: it is rendered as markdown in a banner.

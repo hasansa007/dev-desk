@@ -160,6 +160,7 @@ final class SnapshotMode {
         Capture(name: "10-ideation") { $0.go(.ideation) },
         // Rated cards sit in Backlog, which the board hides until asked.
         Capture(name: "11-board-backlog") { $0.go(.board); $0.showBacklog = true },
+        Capture(name: "12-files") { $0.go(.files); $0.selectedFilePath = "README.md" },
     ]
 
     /// The first card nobody has started, so the sheet capture shows Start task against a real folder.

@@ -102,7 +102,7 @@ struct Sidebar: View {
             return (count, false)
         case .decisions:
             return model.pendingDecisionCount > 0 ? (model.pendingDecisionCount, true) : nil
-        case .roadmap, .settings:
+        case .roadmap, .files, .settings:
             return nil
         }
     }
@@ -118,6 +118,7 @@ struct Sidebar: View {
         case .roadmap: return "map"
         case .findings: return "scope"
         case .ideation: return "lightbulb"
+        case .files: return "folder"
         case .decisions: return "questionmark.diamond"
         case .settings: return "gearshape"
         }

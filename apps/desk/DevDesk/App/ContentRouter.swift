@@ -81,6 +81,8 @@ struct ContentRouter: View {
             FindingsScreen(model: model)
         case .ideation:
             IdeationScreen(model: model)
+        case .files:
+            FilesScreen(model: model)
         case .decisions:
             DecisionsScreen(model: model)
         case .settings:
