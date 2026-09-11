@@ -161,6 +161,27 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertEqual(loads, 2)
     }
 
+    func testDockingRunsOpensThePanel() async {
+        let model = await makeStudyHubModel()
+        model.dockRuns()
+        XCTAssertTrue(model.runsOpen)
+        XCTAssertTrue(model.runsDocked)
+        model.floatRuns()
+        XCTAssertTrue(model.runsOpen)
+        XCTAssertFalse(model.runsDocked)
+        model.toggleRuns()
+        XCTAssertFalse(model.runsOpen)
+    }
+
+    func testRunsAndInsightsOpenIndependently() async {
+        let model = await makeStudyHubModel()
+        model.dockRuns()
+        XCTAssertTrue(model.insightsOpen)
+        model.toggleInsights()
+        XCTAssertFalse(model.insightsOpen)
+        XCTAssertTrue(model.runsOpen)
+    }
+
     func testLinkRoutesToFinding() async {
         let model = await makeStudyHubModel()
         model.handle(.finding("F-093"))

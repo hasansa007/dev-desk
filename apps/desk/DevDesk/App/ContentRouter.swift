@@ -17,6 +17,10 @@ struct ContentRouter: View {
                     InsightsPanel(model: model, placement: .docked)
                         .frame(width: DeskMetric.insightsDockedWidth)
                 }
+                if model.runsOpen && model.runsDocked {
+                    RunsPanel(model: model, placement: .docked)
+                        .frame(width: DeskMetric.runsDockedWidth)
+                }
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
@@ -26,6 +30,15 @@ struct ContentRouter: View {
                 InsightsPanel(model: model, placement: .floating)
                     .frame(width: DeskMetric.insightsFloatingSize.width, height: DeskMetric.insightsFloatingSize.height)
                     .padding(.trailing, 36)
+                    .padding(.bottom, 34)
+            }
+        }
+        // Bottom leading, so a floating Runs panel and a floating Insights panel never cover each other.
+        .overlay(alignment: .bottomLeading) {
+            if model.runsOpen && !model.runsDocked {
+                RunsPanel(model: model, placement: .floating)
+                    .frame(width: DeskMetric.runsFloatingSize.width, height: DeskMetric.runsFloatingSize.height)
+                    .padding(.leading, 24)
                     .padding(.bottom, 34)
             }
         }

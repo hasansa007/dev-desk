@@ -63,6 +63,12 @@ final class ShellTerminalRegistry {
         terminals[taskID]?.end()
     }
 
+    /// Types into a running shell, exactly as the user would; a shell that has not started, or has exited, gets nothing.
+    func send(_ text: String, to taskID: String) {
+        guard let terminal = terminals[taskID], terminal.isRunning else { return }
+        terminal.view.send(txt: text)
+    }
+
     /// The window is closing: ends every shell, and refuses the starts that are still preparing their folder.
     func endAll() {
         isClosed = true

@@ -58,6 +58,8 @@ public enum LoadState {
 public final class ProjectWindowModel {
     public let ref: ProjectRef
     public let insights: InsightsConversation
+    /// The doors this window has started; their shells live in `shellSessions` under the same ids.
+    public let runs = DoorRuns()
     /// Each task's shell in this window. A sample has no folder, so none of its sessions can start.
     public let shellSessions: ShellSessions
     public private(set) var loadState: LoadState = .loading
@@ -75,6 +77,8 @@ public final class ProjectWindowModel {
     public var searchText = ""
     public var insightsOpen = false
     public var insightsDocked = false
+    public var runsOpen = false
+    public var runsDocked = false
     public var sheet: SheetKind?
     public var decisionsTab: DecisionsTab = .needsAttention
     public var selectedDecisionID: String?
@@ -250,6 +254,18 @@ public final class ProjectWindowModel {
     public func dockInsights() {
         insightsDocked = true
         insightsOpen = true
+    }
+
+    public func toggleRuns() { runsOpen.toggle() }
+
+    public func dockRuns() {
+        runsDocked = true
+        runsOpen = true
+    }
+
+    public func floatRuns() {
+        runsDocked = false
+        runsOpen = true
     }
 
     public func floatInsights() {

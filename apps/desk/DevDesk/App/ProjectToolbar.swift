@@ -4,6 +4,17 @@ import SwiftUI
 struct ProjectToolbar: ToolbarContent {
     let model: ProjectWindowModel
 
+    /// Counts only what is actually live, so the toolbar never claims a finished run is still going.
+    private var runsTitle: String {
+        let live = model.runs.runs.filter {
+            switch model.shellSessions.state(for: $0.id) {
+            case .running, .preparing: return true
+            default: return false
+            }
+        }.count
+        return live > 0 ? "Runs (\(live))" : "Runs"
+    }
+
     var body: some ToolbarContent {
         ToolbarItem(placement: .navigation) {
             Button { model.present(.openProject) } label: {
@@ -23,6 +34,10 @@ struct ProjectToolbar: ToolbarContent {
             }
             .pickerStyle(.segmented)
             .labelsHidden()
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Button(runsTitle) { model.toggleRuns() }
+                .help("Show the doors this project has running")
         }
         ToolbarItem(placement: .primaryAction) {
             Button("Ask about this project") { model.toggleInsights() }

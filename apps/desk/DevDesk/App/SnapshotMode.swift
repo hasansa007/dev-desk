@@ -80,6 +80,8 @@ final class SnapshotMode {
         model.sheet = nil
         model.insightsOpen = false
         model.insightsDocked = false
+        model.runsOpen = false
+        model.runsDocked = false
         model.mode = .focus
         model.showBacklog = false
         model.searchText = ""
@@ -142,6 +144,12 @@ final class SnapshotMode {
         Capture(name: "07-first-task-shell") { model in
             if let id = firstTaskID(model) { model.openTask(id) }
             model.dockTabID = model.selectedTask?.dock?.tabs.first { $0.kind == .liveShell }?.id
+        },
+        // Idle, so the capture shows the run with the command it would type; nothing is started.
+        Capture(name: "08-runs-panel") { model in
+            model.go(.findings)
+            model.prepareRun(door: "survey", title: "Survey", agent: "Claude")
+            model.floatRuns()
         },
     ]
 
