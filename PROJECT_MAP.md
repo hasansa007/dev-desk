@@ -21,9 +21,9 @@ small deterministic helper.
 | Helper CLI | `scripts/dev.py` — **stdlib only**, Python 3.9-compatible. `state` · `board` · `run` · `doctor` · `project` |
 | Compliance | `skills/audit/compliance_auditor.py` — stdlib only |
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
-| Tests | stdlib `unittest`, one file per script under `test-projects/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
+| Tests | stdlib `unittest`, one file per script under `tests/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
 | Mac app | `apps/desk/` — Dev Desk, a native macOS app: SwiftUI with AppKit where needed, macOS 14+, Swift 5 mode. `project.yml` generates the Xcode project with xcodegen (gitignored, not committed); `DeskCore` is the local Swift package — models, sample data, the git/GitHub reader — tested with `swift test --package-path apps/desk/DeskCore` (see [ADR 0012](docs/adr/0012-the-mac-app-lives-in-apps-desk.md)) |
-| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
+| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `hooks/pr-gates.yml`, beside the `pr-gates.sh` hook that mirrors it, is a template for *other* repos and is deliberately never installed here |
 | Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev`, and links `scripts/dev.py` as the `dev` command into `~/.local/bin` (or `~/bin`) when one is already on `PATH` |
 
 **Paths inside the family are the INSTALL path** (`~/.claude/skills/dev/…`), never the clone path.

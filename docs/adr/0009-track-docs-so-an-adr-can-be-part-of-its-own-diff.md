@@ -42,3 +42,9 @@ would still mandate an untrackable `docs/adr/` path — the contradiction surviv
 
 **Leave everything untracked.** Honour the rule as written. Lost because the design work would have
 no reviewable object, and ADRs 0001 and 0002 would go on being false.
+
+## Later (2026-09-11)
+
+`documentation/CONTRIBUTING.md` moved to `docs/guide/CONTRIBUTING.md` when the repo root was tidied
+([ADR 0015](0015-files-live-with-the-flow-that-reads-them.md)); the Decision above keeps the path as
+merged.

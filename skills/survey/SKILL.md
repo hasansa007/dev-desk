@@ -96,7 +96,7 @@ pass fits one context.
 it as excluded, with the manifest that identified it**, and survey it only if asked by name.
 
 > **2026-09-10, found by the verification gate.** This family's own repo tracks
-> `test-projects/e2e-project/`, a complete Next.js app with its own `package.json` and
+> `tests/e2e-project/`, a complete Next.js app with its own `package.json` and
 > `ARCHITECTURE.md`, used to exercise the doors. `git ls-files` includes it and
 > `src/app/status/page.tsx` is a genuine declared route — so an unguarded run reports a **fixture's**
 > flow as this repo's, and every finding under it is real code that nobody ships. Excluding build
@@ -318,8 +318,8 @@ Ask before filing anything. Then, for the confirmed set:
 - Architecture → `dev:create-epic` for the drift, or an ADR when it is a decision rather than work.
   **`dev:docs` owns ADRs** — their numbering and location are its rules, not this skill's. Hand it over rather than inventing a path.
 - **Touched files go in `## Scope`** — `dev:create-bug`'s existing field for *where it bites*. Do
-  not invent a `touches:` field: per `GUIDE.md`, a per-type template field belongs to the
-  `dev:create-*` member, not to a caller asserting one from outside.
+  not invent a `touches:` field: per `~/.claude/skills/dev/docs/guide/CONTRIBUTING.md`, a per-type
+  template field belongs to the `dev:create-*` member, not to a caller asserting one from outside.
 - **Two issues touching one file are conflicting, not blocking.** Say so in both `## Scope` lines
   and let whoever starts second rebase. Blocking is a real dependency — B's fix does not apply until
   A's has landed — and it is directional, which "same file" never tells you. Calling every shared

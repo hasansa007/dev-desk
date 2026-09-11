@@ -16,7 +16,7 @@ This private repository requires GitHub access. The installer links the checkout
 
 Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check the loaded skill list.
 
-**New here?** [Getting started](documentation/GETTING-STARTED.md) walks through the first run and the four situations you can be in — a fresh project, one you know, one you inherited, and picking work up again.
+**New here?** [Getting started](docs/guide/GETTING-STARTED.md) walks through the first run and the four situations you can be in — a fresh project, one you know, one you inherited, and picking work up again.
 
 ## Start a task
 
@@ -27,7 +27,7 @@ Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check t
 
 Bare `/dev` **orients**: it detects where the repo actually is and offers the two or three doors that fit — resume work in flight, open the board, stock an empty tracker, or set up a fresh project. It is read-only and never starts work. Examples use Claude Code syntax; see the guide for other CLIs and dependencies.
 
-![The dev workflow, from discovery to production](assets/dev-journey.png)
+![The dev workflow, from discovery to production](docs/assets/dev-journey.png)
 
 *Rendered by [Archify](https://github.com/tt-a1i/archify) from `docs/arch/dev-journey.architecture.json`, where every box is pinned to a real file at a real commit. Step 1 is bare `/dev`, which detects which of four situations you are on; the numbered path that follows is the discovery route, for a codebase you do not know. `docs/arch/dev-family.html` has all 21 doors.*
 
@@ -73,7 +73,7 @@ A full `/dev` run includes these stages. You can also invoke them independently 
 | `/dev:comment-budget` | Report comments and docstrings that exceed the documentation budget. Add `--apply` to make changes. |
 | `/dev:arch` | Generate a diagram tied to verified source locations. Requires Archify. |
 
-See [command examples](documentation/COMMANDS.md) for practical usage and handoffs.
+See [command examples](docs/guide/COMMANDS.md) for practical usage and handoffs.
 
 ### `dev` — the optional helper
 
@@ -98,8 +98,8 @@ belongs to another tool — if it can't link, it says so and prints the alias to
 
 ## Learn more
 
-- [Getting started](documentation/GETTING-STARTED.md) — first install, first run, and the four situations.
-- [User guide](documentation/GUIDE.md) — usage, compatibility, and troubleshooting.
-- [Workflow](documentation/WORKFLOW.md) — phases, approvals, and known limitations.
-- [Contributing](documentation/CONTRIBUTING.md) — structure, design rules, and maintenance.
-- [System model](documentation/SYSTEM-MODEL.md) — the five layers, what Dev Desk (the Mac app) reads, and what's not built yet.
+- [Getting started](docs/guide/GETTING-STARTED.md) — first install, first run, and the four situations.
+- [User guide](docs/guide/GUIDE.md) — usage, compatibility, and troubleshooting.
+- [Workflow](docs/guide/WORKFLOW.md) — phases, approvals, and known limitations.
+- [Contributing](docs/guide/CONTRIBUTING.md) — structure, design rules, and maintenance.
+- [System model](docs/guide/SYSTEM-MODEL.md) — the five layers, what Dev Desk (the Mac app) reads, and what's not built yet.

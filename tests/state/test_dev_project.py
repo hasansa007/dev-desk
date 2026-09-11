@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for the Projects v2 adapter — PYTHONPATH=. python3 test-projects/state/test_dev_project.py
+"""Tests for the Projects v2 adapter — PYTHONPATH=. python3 tests/state/test_dev_project.py
 
 The adapter's core is pure: computed board + current project items in, the edits needed out. The
 live path cannot be tested without a `project` token scope, so everything decidable is a fixture.

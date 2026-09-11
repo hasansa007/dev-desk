@@ -782,7 +782,7 @@ Gates:   10 flagged 2 → ran as rows 4-5 · 12 wrote the ADR · 13 clean (1 PLA
   written; a gate missing from this line was not run.
 
 `Gates:` is also this pipeline's only measurement — `gh pr list --json body | grep '^Gates:'` is
-what makes a rule *removable* later. Rationale in `GUIDE.md` → *How to propose a change*.
+what makes a rule *removable* later. Rationale in `~/.claude/skills/dev/docs/guide/CONTRIBUTING.md` → *How to propose a change*.
 
 **PR body format:**
 ```

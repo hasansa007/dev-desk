@@ -1,9 +1,9 @@
 name: pipeline.md line budget
 
-# Installed ON ITS OWN, unlike the rest of ci/pr-gates.yml. That file stays uninstalled here because
+# Installed ON ITS OWN, unlike the rest of hooks/pr-gates.yml. That file stays uninstalled here because
 # its `required-sections` job demands a `## PIPELINE` body on every PR, and PRs opened against this
 # repo are not /dev pipeline runs. This job shares none of that: it reads shared/pipeline.md,
-# documentation/CONTRIBUTING.md and checks the declared count and ceiling.
+# docs/guide/CONTRIBUTING.md and checks the declared count and ceiling.
 #
 # Installed 2026-09-06, after the ceiling was breached for four consecutive PRs (#19-#23) with
 # nothing firing — because the only copy of this check sat in a file nobody had installed.
@@ -16,7 +16,7 @@ on:
 
 jobs:
   line-budget:
-    name: pipeline.md is within the budget documentation/CONTRIBUTING.md states
+    name: pipeline.md is within the budget docs/guide/CONTRIBUTING.md states
     runs-on: ubuntu-latest
     # Three wrong line counts shipped in three consecutive PRs (2026-08-23/24): GUIDE said 957/975
     # while README said 938/950, and a predicted 958 was written into both files against an actual
@@ -29,28 +29,28 @@ jobs:
         shell: bash
         run: |
           actual=$(wc -l < shared/pipeline.md | tr -d '[:space:]')
-          # The ceiling and the current-count parenthetical both live in documentation/CONTRIBUTING.md's budget
+          # The ceiling and the current-count parenthetical both live in docs/guide/CONTRIBUTING.md's budget
           # blockquote. Parse both: a stale parenthetical is the exact defect being caught.
           # `| head -1`: the budget blockquote accumulates one dated entry per raise, so a second
           # `(NNN at DATE)` would make `[` error out, take the else path, and pass the gate GREEN.
-          # `|| true`: shell is `bash -eo pipefail`, so an unparseable documentation/CONTRIBUTING.md would exit here and
+          # `|| true`: shell is `bash -eo pipefail`, so an unparseable docs/guide/CONTRIBUTING.md would exit here and
           # the `-z` annotation below would never print.
-          ceiling=$(grep -oE 'stays at or under [0-9]+ lines' documentation/CONTRIBUTING.md | grep -oE '[0-9]+' | head -1 || true)
-          stated=$(grep -oE '\([0-9]+ at [0-9]{4}-[0-9]{2}-[0-9]{2}\)' documentation/CONTRIBUTING.md | grep -oE '^\([0-9]+' | tr -d '(' | head -1 || true)
+          ceiling=$(grep -oE 'stays at or under [0-9]+ lines' docs/guide/CONTRIBUTING.md | grep -oE '[0-9]+' | head -1 || true)
+          stated=$(grep -oE '\([0-9]+ at [0-9]{4}-[0-9]{2}-[0-9]{2}\)' docs/guide/CONTRIBUTING.md | grep -oE '^\([0-9]+' | tr -d '(' | head -1 || true)
 
           fail=0
           if [ -z "$ceiling" ] || [ -z "$stated" ]; then
-            echo "::error::Could not parse the budget blockquote in documentation/CONTRIBUTING.md."
+            echo "::error::Could not parse the budget blockquote in docs/guide/CONTRIBUTING.md."
             exit 1
           fi
           if [ "$actual" -gt "$ceiling" ]; then
             echo "::error::shared/pipeline.md is $actual lines, over the $ceiling ceiling."
-            echo "documentation/CONTRIBUTING.md: at the ceiling, an addition is only allowed with a deletion in the same commit."
+            echo "docs/guide/CONTRIBUTING.md: at the ceiling, an addition is only allowed with a deletion in the same commit."
             fail=1
           fi
           if [ "$actual" -ne "$stated" ]; then
-            echo "::error::documentation/CONTRIBUTING.md says the file is $stated lines; it is $actual."
-            echo "Update the count parenthetical in documentation/CONTRIBUTING.md."
+            echo "::error::docs/guide/CONTRIBUTING.md says the file is $stated lines; it is $actual."
+            echo "Update the count parenthetical in docs/guide/CONTRIBUTING.md."
             fail=1
           fi
           [ "$fail" -eq 0 ] && echo "pipeline.md $actual / $ceiling — documented count and ceiling verified."

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tests for `dev board` — run with: PYTHONPATH=. python3 test-projects/state/test_dev_board.py
+"""Tests for `dev board` — run with: PYTHONPATH=. python3 tests/state/test_dev_board.py
 
 The board is pure: issues plus per-issue git facts in, columns out. Every case below is a fixture,
 so the classification rules are checked against known input rather than against a live tracker.

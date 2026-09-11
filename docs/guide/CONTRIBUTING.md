@@ -2,7 +2,7 @@
 
 Shared behaviour belongs in `shared/`; command entry points reference it. The sections below preserve the design rationale, policy, and incident history behind the workflow.
 
-Paths and shell examples are relative to the repository root. Reader documentation is tracked under `documentation/`; `docs/` remains for local generated artifacts.
+Paths and shell examples are relative to the repository root. Reader documentation lives in `docs/guide/`, beside the ADRs (`docs/adr/`), diagrams (`docs/arch/`) and validation reports (`docs/validation/`).
 
 [User guide](GUIDE.md) · [Commands](COMMANDS.md) · [Workflow](WORKFLOW.md)
 
@@ -183,6 +183,7 @@ and it now returns *not ignored* here.
 > silent. The window closes when the branch merges and `main` tracks them too.
 
 **Anything under `docs/` you want other people to have must be copied somewhere tracked.** The
-journey GIF is the worked example: it lives at `assets/dev-journey.gif` precisely so the README still
-renders on GitHub. A decision's losing options belong in the **PR body** for the same reason — see
+journey image was the worked example: it sat in a root `assets/` folder so the README rendered on
+GitHub while `docs/` was ignored, and moved to `docs/assets/` once `docs/` was tracked (ADR 0015).
+A decision's losing options belong in the **PR body** for the same reason — see
 `dev:docs`.
