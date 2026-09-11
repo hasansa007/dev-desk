@@ -38,6 +38,16 @@ enum BoardBuilder {
         ], caption: dockCaption)
     }
 
+    static let mergedAgentReason = "This work is merged, so there's no agent to start for it."
+
+    /// Merged work keeps its shell, but leaves an agent nothing to do.
+    static var mergedDock: DockContent {
+        DockContent(tabs: [
+            DockTab(id: "shell", title: "Shell", kind: .liveShell),
+            DockTab(id: "agents", title: "Agents", kind: .unavailable(reason: mergedAgentReason)),
+        ], caption: dockCaption)
+    }
+
     static func note(github: GitHubState, activeMilestone: (title: String?, why: String), localBranchNote: String? = nil) -> String {
         let suffix = localBranchNote.map { " \($0)" } ?? ""
         guard let data = github.data else {
@@ -195,12 +205,18 @@ private struct BoardContext {
             }
         }
         let heads = Set(openPullRequests.map(\.headRefName))
+        let mergedPullRequests = input.github?.mergedPullRequests ?? []
+        // A squash merge leaves a branch's own commits outside the base, so a branch still at a merged head is that merge, not new work.
+        let mergedHeads = Set(mergedPullRequests.compactMap(\.headRefOid))
         let pullRequestTasks = openPullRequests.filter { !claimedPullRequests.contains($0.number) }.map(pullRequestTask)
-        let branchTasks = branches.filter { $0.unmerged > 0 && !claimedBranches.contains($0.name) && !heads.contains($0.name) }.map(branchTask)
-        let merged = (input.github?.mergedPullRequests ?? []).map(mergedTask)
+        let branchTasks = branches.filter { branch in
+            branch.unmerged > 0 && !claimedBranches.contains(branch.name) && !heads.contains(branch.name)
+                && !(branch.head.map(mergedHeads.contains) ?? false)
+        }.map(branchTask)
+        let merged = mergedPullRequests.map(mergedTask)
         return (active + pullRequestTasks + branchTasks + orderNext(backlog) + deferred + merged).map { task in
             var task = task
-            task.dock = BoardBuilder.dock
+            task.dock = task.column == .done ? BoardBuilder.mergedDock : BoardBuilder.dock
             task.baseRef = input.git?.baseRef
             return task
         }

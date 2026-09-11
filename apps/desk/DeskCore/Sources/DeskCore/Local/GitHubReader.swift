@@ -39,6 +39,8 @@ struct GitHubMergedPullRequest: Decodable, Equatable {
     var isCrossRepository: Bool = false
     var mergedAt: String? = nil
     var url: String = ""
+    /// The commit GitHub merged, so a local branch still pointing at it reads as merged.
+    var headRefOid: String? = nil
 }
 
 struct GitHubMilestone: Decodable, Equatable {
@@ -152,7 +154,7 @@ struct GitHubReader {
                               ["pr", "list", "--repo", slug, "--state", "open", "--limit", "100", "--json",
                                "number,title,headRefName,isCrossRepository,reviewDecision,isDraft,url,body"])
         async let merged = list([GitHubMergedPullRequest].self, "merged pull requests",
-                                ["pr", "list", "--repo", slug, "--state", "merged", "--limit", "10", "--json", "number,title,headRefName,isCrossRepository,mergedAt,url"])
+                                ["pr", "list", "--repo", slug, "--state", "merged", "--limit", "10", "--json", "number,title,headRefName,isCrossRepository,mergedAt,url,headRefOid"])
         async let milestones = list([GitHubMilestone].self, "milestones", ["api", "repos/\(slug)/milestones?state=open"])
         do {
             data.issues = try await issues

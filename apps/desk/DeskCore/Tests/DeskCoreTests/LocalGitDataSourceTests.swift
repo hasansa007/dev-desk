@@ -84,13 +84,12 @@ final class LocalGitDataSourceTests: XCTestCase {
             FakeRunner.partialCloneRead: .failed(1),
             FakeRunner.promisorRead: .failed(1),
             FakeRunner.gitRead("branch -r --format=%(refname:short)"): .ok("origin\norigin/main\n"),
-            FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"): .ok("refs/heads/main\n"),
-            FakeRunner.gitRead("rev-parse --verify --quiet refs/heads/main"): .ok("0123456789abcdef0123456789abcdef01234567\n"),
-            FakeRunner.gitRead("rev-parse --short refs/heads/main"): .ok("abc1234\n"),
+            FakeRunner.gitRead("for-each-ref --format=%(refname) %(objectname) --sort=-committerdate refs/heads"): .ok("refs/heads/main\n"),
+            FakeRunner.gitRead("rev-parse --short refs/remotes/origin/main"): .ok("abc1234\n"),
             activeAuth: .ok("github.com\n  ✓ Logged in to github.com account octo (keyring)\n"),
             issueList: .ok("[]"),
             openPRs: .ok("[]"),
-            "gh pr list --repo acme/app --state merged --limit 10 --json number,title,headRefName,isCrossRepository,mergedAt,url": .ok("[]"),
+            "gh pr list --repo acme/app --state merged --limit 10 --json number,title,headRefName,isCrossRepository,mergedAt,url,headRefOid": .ok("[]"),
             "gh api repos/acme/app/milestones?state=open": .ok("[]"),
             "which claude": .ok("/usr/local/bin/claude\n"),
         ])
@@ -533,12 +532,12 @@ final class LocalGitDataSourceTests: XCTestCase {
     func testGitLogFailureReasonIsEscapedForMarkdown() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
-        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/spike\n"))
-        runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/spike"), .ok("1\n"))
-        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/spike"),
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) %(objectname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/spike\n"))
+        runner.script(FakeRunner.gitRead("rev-list --count refs/remotes/origin/main..refs/heads/spike"), .ok("1\n"))
+        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/remotes/origin/main..refs/heads/spike"),
                       .failed(128, stderr: "fatal: [pwn](file:///Applications/Calculator.app)\n"))
-        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/spike"), .ok(""))
-        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/spike"), .ok(""))
+        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/remotes/origin/main...refs/heads/spike"), .ok(""))
+        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/remotes/origin/main...refs/heads/spike"), .ok(""))
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         let reason = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:spike" }?.activity.unavailableReason)
@@ -549,11 +548,11 @@ final class LocalGitDataSourceTests: XCTestCase {
     func testEveryGitReadIsHardenedAndDiffsDisableTextconv() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
-        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/feat/12-x\n"))
-        runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/feat/12-x"), .ok("1\n"))
-        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/feat/12-x"), .ok(""))
-        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/feat/12-x"), .ok(""))
-        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/feat/12-x"), .ok(""))
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) %(objectname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/feat/12-x\n"))
+        runner.script(FakeRunner.gitRead("rev-list --count refs/remotes/origin/main..refs/heads/feat/12-x"), .ok("1\n"))
+        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/remotes/origin/main..refs/heads/feat/12-x"), .ok(""))
+        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/remotes/origin/main...refs/heads/feat/12-x"), .ok(""))
+        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/remotes/origin/main...refs/heads/feat/12-x"), .ok(""))
 
         _ = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         let gitKeys = runner.keys.filter { $0.hasPrefix("git ") }
@@ -570,12 +569,12 @@ final class LocalGitDataSourceTests: XCTestCase {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
         let refs = (["refs/heads/main"] + (1...250).map { "refs/heads/b\($0)" }).joined(separator: "\n") + "\n"
-        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok(refs))
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) %(objectname) --sort=-committerdate refs/heads"), .ok(refs))
         for i in 1...250 {
-            runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/b\(i)"), .ok("1\n"))
-            runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/b\(i)"), .ok(""))
-            runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/b\(i)"), .ok(""))
-            runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/b\(i)"), .ok(""))
+            runner.script(FakeRunner.gitRead("rev-list --count refs/remotes/origin/main..refs/heads/b\(i)"), .ok("1\n"))
+            runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/remotes/origin/main..refs/heads/b\(i)"), .ok(""))
+            runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/remotes/origin/main...refs/heads/b\(i)"), .ok(""))
+            runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/remotes/origin/main...refs/heads/b\(i)"), .ok(""))
         }
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
@@ -588,12 +587,12 @@ final class LocalGitDataSourceTests: XCTestCase {
         let folder = try TempGitRepo()
         try folder.write(".dev/feat-12-x.json", #"{"phase":9,"phase_group":"coding","tier":"standard"}"#)
         let runner = githubReadyRunner(root: folder.url)
-        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/feat/12-x\n"))
-        runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/feat/12-x"), .ok("2\n"))
-        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/feat/12-x"),
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) %(objectname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/feat/12-x\n"))
+        runner.script(FakeRunner.gitRead("rev-list --count refs/remotes/origin/main..refs/heads/feat/12-x"), .ok("2\n"))
+        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/remotes/origin/main..refs/heads/feat/12-x"),
                       .ok("abc1234\u{1F}Ada\u{1F}2026-09-11T09:00:00Z\u{1F}Start\n"))
-        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/feat/12-x"), .ok("1\t0\tA.swift\n"))
-        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/feat/12-x"),
+        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/remotes/origin/main...refs/heads/feat/12-x"), .ok("1\t0\tA.swift\n"))
+        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/remotes/origin/main...refs/heads/feat/12-x"),
                       .ok("diff --git a/A.swift b/A.swift\n--- /dev/null\n+++ b/A.swift\n@@ -0,0 +1 @@\n+x\n"))
         runner.script(issueList, .ok(#"[{"number":12,"title":"Crash","labels":[],"milestone":null,"updatedAt":"2026-09-01T00:00:00Z","body":"","url":"https://github.com/acme/app/issues/12"}]"#))
 
@@ -628,12 +627,12 @@ final class LocalGitDataSourceTests: XCTestCase {
     func testFailedLogAndDiffReadsAreUnavailableRatherThanEmpty() async throws {
         let folder = try TempGitRepo()
         let runner = githubReadyRunner(root: folder.url)
-        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/spike\n"))
-        runner.script(FakeRunner.gitRead("rev-list --count refs/heads/main..refs/heads/spike"), .ok("3\n"))
-        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/heads/main..refs/heads/spike"),
+        runner.script(FakeRunner.gitRead("for-each-ref --format=%(refname) %(objectname) --sort=-committerdate refs/heads"), .ok("refs/heads/main\nrefs/heads/spike\n"))
+        runner.script(FakeRunner.gitRead("rev-list --count refs/remotes/origin/main..refs/heads/spike"), .ok("3\n"))
+        runner.script(FakeRunner.gitRead("log --format=%h%x1f%an%x1f%aI%x1f%s -n 50 refs/remotes/origin/main..refs/heads/spike"),
                       .failed(128, stderr: "fatal: bad object refs/heads/spike\n"))
-        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/heads/main...refs/heads/spike"), .ok("1\t0\tA.swift\n"))
-        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/heads/main...refs/heads/spike"),
+        runner.script(FakeRunner.gitRead("diff --numstat --no-textconv refs/remotes/origin/main...refs/heads/spike"), .ok("1\t0\tA.swift\n"))
+        runner.script(FakeRunner.gitRead("diff --no-color --no-ext-diff --no-textconv -U3 refs/remotes/origin/main...refs/heads/spike"),
                       .failed(128, stderr: "fatal: unable to read tree 1234567\n"))
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
@@ -650,7 +649,7 @@ final class LocalGitDataSourceTests: XCTestCase {
             FakeRunner.gitRead("rev-parse --abbrev-ref HEAD"): .ok("--output=/tmp/pwned\n"),
             FakeRunner.partialCloneRead: .failed(1),
             FakeRunner.promisorRead: .failed(1),
-            FakeRunner.gitRead("for-each-ref --format=%(refname) --sort=-committerdate refs/heads"): .ok("refs/heads/--output=/tmp/pwned\nrefs/heads/feature\n"),
+            FakeRunner.gitRead("for-each-ref --format=%(refname) %(objectname) --sort=-committerdate refs/heads"): .ok("refs/heads/--output=/tmp/pwned\nrefs/heads/feature\n"),
             FakeRunner.gitRead("rev-list --count refs/heads/--output=/tmp/pwned..refs/heads/feature"): .ok("0\n"),
         ])
         _ = try await LocalGitDataSource(root: folder.url, runner: runner).load()

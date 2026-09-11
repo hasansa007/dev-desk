@@ -64,6 +64,10 @@ public final class ProjectWindowModel {
     public let agentSessions: ShellSessions
     public private(set) var loadState: LoadState = .loading
     public private(set) var reloadError: String?
+    /// When the last load succeeded; nil until one has.
+    public private(set) var lastLoadedAt: Date?
+    /// True while a load runs, for the toolbar's progress indicator.
+    public private(set) var isRefreshing = false
     public var destination: Destination = .board
     public var selectedTaskID: String?
     public private(set) var lastOpenedTaskID: String?
@@ -87,7 +91,6 @@ public final class ProjectWindowModel {
     public private(set) var answeredDecisionID: String?
 
     @ObservationIgnored private let source: ProjectDataSource
-    @ObservationIgnored private var isLoading = false
 
     public init(ref: ProjectRef, source: ProjectDataSource, insightsDelay: Duration = .milliseconds(900)) {
         self.ref = ref
@@ -114,15 +117,16 @@ public final class ProjectWindowModel {
 
     /// Loads or reloads the snapshot; the launch selection applies only to the first load. A call made while one runs, or a cancelled load, changes nothing.
     public func load() async {
-        guard !isLoading else { return }
-        isLoading = true
-        defer { isLoading = false }
+        guard !isRefreshing else { return }
+        isRefreshing = true
+        defer { isRefreshing = false }
         let isFirstLoad = snapshot == nil
         do {
             let loaded = try await source.load()
             guard !Task.isCancelled else { return }
             loadState = .loaded(loaded)
             reloadError = nil
+            lastLoadedAt = Date()
             guard isFirstLoad else { return }
             insights.configure(loaded.insights)
             selectedTaskID = loaded.launch.selectedTaskID
@@ -135,6 +139,24 @@ public final class ProjectWindowModel {
             guard !Task.isCancelled else { return }
             if isFirstLoad { loadState = .failed(error.localizedDescription) } else { reloadError = error.localizedDescription }
         }
+    }
+
+    /// Reloads a local project every `interval` until the calling task is cancelled; a sample has nothing new to read.
+    public func refresh(every interval: Duration) async {
+        guard case .local = ref else { return }
+        while !Task.isCancelled {
+            try? await Task.sleep(for: interval)
+            guard !Task.isCancelled else { return }
+            await load()
+        }
+    }
+
+    /// "Updated just now", then seconds, then whole minutes, for the toolbar.
+    public static func updatedLabel(since date: Date, now: Date) -> String {
+        let seconds = Int(now.timeIntervalSince(date))
+        if seconds < 5 { return "Updated just now" }
+        if seconds < 60 { return "Updated \(seconds) s ago" }
+        return "Updated \(seconds / 60) min ago"
     }
 
     public func go(_ destination: Destination) {

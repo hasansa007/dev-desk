@@ -17,6 +17,9 @@ struct ProjectToolbar: ToolbarContent {
             }
         }
         ToolbarItem(placement: .primaryAction) {
+            RefreshStatus(model: model)
+        }
+        ToolbarItem(placement: .primaryAction) {
             Picker("View mode", selection: Binding(get: { model.mode }, set: { model.setMode($0) })) {
                 Text("Focus").tag(ViewMode.focus)
                 Text("Parallel").tag(ViewMode.parallel)

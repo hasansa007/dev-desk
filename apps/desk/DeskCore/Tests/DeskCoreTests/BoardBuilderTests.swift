@@ -302,20 +302,45 @@ final class BoardBuilderTests: XCTestCase {
         DockTab(id: "agents", title: "Agents", kind: .liveAgent),
     ], caption: "Agents & Terminals · your shell and the task's agent, in the task's folder")
 
-    func testNoTaskShowsAgentRowsButEveryTaskGetsTheLiveDock() {
+    func testNoTaskShowsAgentRowsButEveryOpenTaskGetsTheLiveDock() {
         for task in BoardBuilder.build(fixture) {
             XCTAssertEqual(task.agents, [], task.id)
             XCTAssertEqual(task.agentsNote, "Start this task's agent from the Agents tab in the dock.", task.id)
-            XCTAssertEqual(task.dock, Self.liveDock, task.id)
+            if task.column != .done { XCTAssertEqual(task.dock, Self.liveDock, task.id) }
         }
     }
 
-    func testEveryKindOfTaskGetsTheShellAndAgentsTabsAndNoTranscript() throws {
-        for id in ["12", "14", "pr:20", "branch:spike/z", "merged:9"] {
+    func testEveryKindOfOpenTaskGetsTheShellAndAgentsTabsAndNoTranscript() throws {
+        for id in ["12", "14", "pr:20", "branch:spike/z"] {
             XCTAssertEqual(try XCTUnwrap(tasks()[id], id).dock, Self.liveDock, id)
         }
         XCTAssertEqual(try XCTUnwrap(tasks()["12"]?.dock).tabs.map(\.transcript), [nil, nil])
     }
+
+    func testMergedWorkKeepsItsShellButOffersNoAgent() throws {
+        let dock = try XCTUnwrap(tasks()["merged:9"]?.dock)
+        XCTAssertEqual(dock.tabs.map(\.kind), [.liveShell, .unavailable(reason: "This work is merged, so there's no agent to start for it.")])
+        XCTAssertEqual(dock.caption, Self.liveDock.caption)
+    }
+
+    func testABranchStillAtItsMergedPullRequestsHeadIsOnlyDone() {
+        var input = fixture
+        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, worktree: nil, head: Self.mergedHead))
+        input.github?.mergedPullRequests[0].headRefOid = Self.mergedHead
+        let built = tasks(input)
+        XCTAssertNil(built["branch:feat/onboarding"], "a squash merge leaves the branch's own commits outside the base")
+        XCTAssertNotNil(built["merged:9"])
+    }
+
+    func testABranchWithCommitsAfterItsMergeStaysInProgress() {
+        var input = fixture
+        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, worktree: nil,
+                                               head: "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"))
+        input.github?.mergedPullRequests[0].headRefOid = Self.mergedHead
+        XCTAssertEqual(tasks(input)["branch:feat/onboarding"]?.column, .inProgress)
+    }
+
+    private static let mergedHead = "9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f"
 
     func testEveryLocalTaskCarriesTheBaseRefItsAgentWorktreeStartsFrom() {
         var input = fixture

@@ -48,6 +48,7 @@ struct ProjectWindow: View {
         .frame(minWidth: 1100, minHeight: 720)
         .background { windowHooks }
         .task { await model.load() }
+        .task { if !SnapshotMode.shared.isActive { await model.refresh(every: .seconds(120)) } }
         .onChange(of: model.snapshot != nil) { _, isLoaded in
             if isLoaded { applyFirstLoad() }
         }
