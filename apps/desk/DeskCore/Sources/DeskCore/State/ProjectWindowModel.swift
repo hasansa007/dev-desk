@@ -60,6 +60,8 @@ public final class ProjectWindowModel {
     public let insights: InsightsConversation
     /// Each task's shell in this window. A sample has no folder, so none of its sessions can start.
     public let shellSessions: ShellSessions
+    /// Each task's agent in this window, in the same folders as the shells; a sample's can't start either.
+    public let agentSessions: ShellSessions
     public private(set) var loadState: LoadState = .loading
     public private(set) var reloadError: String?
     public var destination: Destination = .board
@@ -91,11 +93,10 @@ public final class ProjectWindowModel {
         self.ref = ref
         self.source = source
         self.insights = InsightsConversation(delay: insightsDelay)
-        if case .local(let path) = ref {
-            shellSessions = ShellSessions(projectRoot: URL(fileURLWithPath: path, isDirectory: true))
-        } else {
-            shellSessions = ShellSessions(projectRoot: nil)
-        }
+        var root: URL?
+        if case .local(let path) = ref { root = URL(fileURLWithPath: path, isDirectory: true) }
+        shellSessions = ShellSessions(projectRoot: root)
+        agentSessions = ShellSessions(projectRoot: root, purpose: .agent)
     }
 
     public var snapshot: ProjectSnapshot? {

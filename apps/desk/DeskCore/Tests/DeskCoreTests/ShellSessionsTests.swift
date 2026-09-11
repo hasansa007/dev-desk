@@ -74,7 +74,8 @@ final class ShellSessionsTests: XCTestCase {
         let fork = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
         await sessions.refreshPlan(taskID: "pr:60", branch: nil, taskNumber: nil, noBranchNote: fork, worktreeLocation: location.url.path)
         XCTAssertEqual(sessions.state(for: "pr:60"), .idle(.root(Self.root, note: fork)))
-        XCTAssertEqual(runner.keys, [Self.listKey], "only a task with a branch reads the worktree list")
+        XCTAssertEqual(runner.keys, [Self.listKey, Self.listKey],
+                       "a task with a branch or a number reads the worktree list (rules 1 and 1b); one with neither reads nothing")
     }
 
     func testACancelledRefreshKeepsThePlanItHad() async throws {
@@ -222,9 +223,70 @@ final class ShellSessionsTests: XCTestCase {
 
     func testTheWindowModelGivesALocalProjectItsFolderAndASampleNone() async {
         let local = ProjectWindowModel(ref: .local(path: "/work/My App"), source: FailingSource(message: "not loaded"))
+        let unbranched = ShellSessionState.idle(.root(Self.root, note: "No branch for this task yet. The shell opens at the project root."))
         await local.shellSessions.refreshPlan(taskID: "14", branch: nil, taskNumber: nil, worktreeLocation: "~/.devdesk/wt")
-        XCTAssertEqual(local.shellSessions.state(for: "14"), .idle(.root(Self.root, note: "No branch for this task yet. The shell opens at the project root.")))
+        XCTAssertEqual(local.shellSessions.state(for: "14"), unbranched)
+        await local.agentSessions.refreshPlan(taskID: "14", branch: nil, taskNumber: nil, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
+        XCTAssertEqual(local.agentSessions.state(for: "14"), unbranched, "the agents' sessions plan in the same project")
+        XCTAssertEqual(local.shellSessions.purpose, .shell)
+        XCTAssertEqual(local.agentSessions.purpose, .agent)
+        XCTAssertFalse(local.shellSessions === local.agentSessions)
         let sample = ProjectWindowModel(ref: .sample(.studyHub), source: SampleDataSource(project: .studyHub))
         XCTAssertEqual(sample.shellSessions.state(for: "42"), .failed(Self.noFolder))
+        XCTAssertEqual(sample.agentSessions.state(for: "42"), .failed(Self.noFolderForAgent))
+    }
+
+    // MARK: - Agent sessions
+
+    private static let base = "refs/remotes/origin/main"
+    private static let noFolderForAgent = "Sample projects have no folder, so there is no agent to start."
+
+    private func detachKey(_ path: URL) -> String { FakeRunner.gitRead("worktree add --detach \(path.path) \(Self.base)") }
+
+    func testAnAgentSessionPlansADetachedWorktreeWhereAShellPlansTheRoot() async throws {
+        let location = try TempGitRepo()
+        let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly)])
+        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        let shells = ShellSessions(projectRoot: Self.root, runner: runner)
+        await agents.refreshPlan(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
+        await shells.refreshPlan(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
+        XCTAssertEqual(agents.state(for: "7"), .idle(.createDetached(path: location.url.appendingPathComponent("my-app-7", isDirectory: true), baseRef: Self.base)))
+        XCTAssertEqual(shells.state(for: "7"), .idle(.root(Self.root, note: "No branch for #7 yet. The shell opens at the project root; "
+                                                          + "running /dev #7 there cuts gh-7-… at its first write.")),
+                       "a shell never makes a detached worktree")
+        await agents.refreshPlan(taskID: "8", branch: nil, taskNumber: 8, worktreeLocation: location.url.path)
+        XCTAssertEqual(agents.state(for: "8"), .idle(.root(Self.root, note: "No base branch is known, so the agent would open at the project root; "
+                                                          + "start it by hand if you want it there.")))
+    }
+
+    func testStartingAnAgentCreatesItsDetachedWorktreeAndAnotherStartReusesIt() async throws {
+        let location = try TempGitRepo()
+        let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
+        let fake = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .ok()])
+        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: fake)
+        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
+        let created = TaskFolder(url: path, note: nil, created: true)
+        XCTAssertEqual(agents.state(for: "7"), .running(created))
+        XCTAssertEqual(agents.runningTaskIDs, ["7"])
+        XCTAssertEqual(fake.keys, [Self.listKey, detachKey(path)])
+
+        agents.markEnded(taskID: "7", status: 0, generation: agents.generation(for: "7"))
+        XCTAssertEqual(agents.state(for: "7"), .ended(created, status: 0))
+
+        // git now lists the detached worktree at the task's own path, so starting again opens in it (rule 1b).
+        fake.script(Self.listKey, .ok(Self.mainOnly + "worktree \(path.path)\0HEAD \(String(repeating: "2", count: 40))\0detached\0\0"))
+        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
+        XCTAssertEqual(agents.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: false)))
+        XCTAssertEqual(fake.keys, [Self.listKey, detachKey(path), Self.listKey])
+    }
+
+    func testASampleAgentSessionFailsWithItsReasonAndNeverRunsACommand() async {
+        let runner = FakeRunner()
+        let agents = ShellSessions(projectRoot: nil, purpose: .agent, runner: runner)
+        await agents.refreshPlan(taskID: "42", branch: nil, taskNumber: 42, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
+        await agents.start(taskID: "42", branch: nil, taskNumber: 42, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
+        XCTAssertEqual(agents.state(for: "42"), .failed(Self.noFolderForAgent))
+        XCTAssertEqual(agents.runningTaskIDs, [])
+        XCTAssertEqual(runner.calls, [])
     }
 }

@@ -27,16 +27,14 @@ enum BoardBuilder {
         BoardContext(input).tasks()
     }
 
-    static let dockCaption = "Agents & Terminals · a shell in this task's folder"
+    static let dockCaption = "Agents & Terminals · your shell and the task's agent, in the task's folder"
     static let forkNote = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
 
-    /// A real task's dock: a shell in the task's folder, and an Agents tab saying agents don't start from here yet.
-    static func dock(taskNumber: Int?) -> DockContent {
-        let example = taskNumber.map { "claude \"/dev #\($0)\"" } ?? "claude \"/dev\""
-        return DockContent(tabs: [
+    /// A real task's dock: the user's shell and the task's agent, both in the task's folder.
+    static var dock: DockContent {
+        DockContent(tabs: [
             DockTab(id: "shell", title: "Shell", kind: .liveShell),
-            DockTab(id: "agents", title: "Agents", kind: .unavailable(reason: "Dev Desk doesn't start agents yet. You can run one in the Shell tab, "
-                                                                      + "for example \(example). Starting agents from here, by hand or automatically, comes next.")),
+            DockTab(id: "agents", title: "Agents", kind: .liveAgent),
         ], caption: dockCaption)
     }
 
@@ -202,7 +200,8 @@ private struct BoardContext {
         let merged = (input.github?.mergedPullRequests ?? []).map(mergedTask)
         return (active + pullRequestTasks + branchTasks + orderNext(backlog) + deferred + merged).map { task in
             var task = task
-            task.dock = BoardBuilder.dock(taskNumber: task.taskNumber)
+            task.dock = BoardBuilder.dock
+            task.baseRef = input.git?.baseRef
             return task
         }
     }

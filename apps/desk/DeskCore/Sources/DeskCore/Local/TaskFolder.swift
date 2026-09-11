@@ -50,10 +50,10 @@ public enum WorktreeList {
     }
 }
 
-/// The folder a task's shell opens in.
+/// The folder a task's shell or agent opens in.
 public struct TaskFolder: Equatable {
     public let url: URL
-    /// Why the shell opens at the project root rather than the task's own checkout; nil when it opens in that checkout.
+    /// Why it opens at the project root rather than the task's own checkout; nil when it opens in that checkout.
     public let note: String?
     /// True only when `materialise` created the worktree just now.
     public let created: Bool
@@ -67,11 +67,16 @@ public struct TaskFolder: Equatable {
 
 public enum TaskFolderPlan: Equatable {
     case existing(URL, branch: String)
+    /// Rule 1b: a worktree of this repository already at the task's own path, detached or not.
+    case existingOwn(URL)
     case create(path: URL, branch: String)
+    /// Rule 3, for an agent only: a new worktree at the task's own path, detached at the base ref.
+    case createDetached(path: URL, baseRef: String)
     case root(URL, note: String)
 }
 
-/// The task-folder rule: the branch's own checkout, else a new worktree for it, else the project root with a note saying why.
+/// The task-folder rule: the branch's own checkout, else a worktree already at the task's own path, else a new worktree for the branch
+/// (or, for an agent's task with no branch yet, one detached at the base), else the project root with a note saying why.
 public struct TaskFolderResolver {
     let projectRoot: URL
     let worktreeLocation: String
@@ -86,40 +91,71 @@ public struct TaskFolderResolver {
         self.homeDirectory = homeDirectory
     }
 
-    /// Rules 1–3 of the task-folder rule. It only reads git's worktree list, so the plan can be shown before anything starts.
-    /// `noBranchNote` replaces rule 3's note when the task says why it has no branch, as a pull request from a fork does.
+    /// The shell's plan: rules 1, 1b and 2, else the project root. It only reads git's worktree list, so the plan can be shown before anything starts.
+    /// `noBranchNote` replaces the no-branch note when the task says why it has no branch, as a pull request from a fork does.
     public func plan(branch: String?, taskNumber: Int?, noBranchNote: String? = nil) async -> TaskFolderPlan {
-        guard let branch, !branch.isEmpty else { return .root(projectRoot, note: noBranchNote ?? Self.unbranchedNote(taskNumber)) }
+        await plan(branch: branch, taskNumber: taskNumber, unbranched: { _ in
+            .root(projectRoot, note: noBranchNote ?? Self.unbranchedNote(taskNumber))
+        })
+    }
+
+    /// The agent's plan: the shell's, except that a numbered task with no branch, no reason for having none and a known base ref gets a
+    /// worktree detached at that ref at its own path (rule 3), where the pipeline cuts the task's branch. Anything else opens at the project root (rule 4).
+    public func planAgent(branch: String?, taskNumber: Int?, noBranchNote: String?, baseRef: String?) async -> TaskFolderPlan {
+        await plan(branch: branch, taskNumber: taskNumber, unbranched: { location in
+            guard noBranchNote == nil, let taskNumber else { return .root(projectRoot, note: noBranchNote ?? Self.unbranchedNote(taskNumber)) }
+            guard let baseRef else { return .root(projectRoot, note: Self.noBaseRefNote) }
+            guard let location else { return .root(projectRoot, note: Self.locationNote) }
+            return .createDetached(path: freePath(in: location, suffix: String(taskNumber)), baseRef: baseRef)
+        })
+    }
+
+    /// Rules 1, 1b and 2. `unbranched` plans a task with no branch and nothing at its own path; it gets the location, nil when unusable.
+    private func plan(branch: String?, taskNumber: Int?, unbranched: (URL?) -> TaskFolderPlan) async -> TaskFolderPlan {
+        let branch = branch.flatMap { $0.isEmpty ? nil : $0 }
+        let location = expandedLocation
+        // The task's own folder is named for its number, else its branch.
+        let suffix = taskNumber.map { String($0) } ?? branch.map(Self.slug)
+        guard branch != nil || (location != nil && suffix != nil) else { return unbranched(location) }
+        let worktrees = await worktrees()
         // A deleted worktree stays listed, as prunable, until it is pruned; a shell can't open in its missing folder.
-        if let checkout = await worktrees().first(where: { $0.branch == branch && Self.isDirectory($0.path) }) {
+        if let branch, let checkout = worktrees.first(where: { $0.branch == branch && Self.isDirectory($0.path) }) {
             return .existing(URL(fileURLWithPath: checkout.path, isDirectory: true), branch: branch)
         }
-        guard let location = expandedLocation else { return .root(projectRoot, note: Self.locationNote) }
-        return .create(path: freePath(in: location, suffix: taskNumber.map { String($0) } ?? Self.slug(branch)), branch: branch)
+        if let location, let suffix, let own = ownWorktree(in: worktrees, location: location, suffix: suffix) {
+            return .existingOwn(own)
+        }
+        guard let branch else { return unbranched(location) }
+        guard let location else { return .root(projectRoot, note: Self.locationNote) }
+        return .create(path: freePath(in: location, suffix: suffix ?? Self.slug(branch)), branch: branch)
     }
 
-    /// Runs `git worktree add` for `.create` only, into a folder it makes just before. A failure or a timeout opens the project root
-    /// instead, with the reason (rule 4).
+    /// Runs `git worktree add` for `.create` and `.createDetached` only, into a folder it makes just before. A failure or a timeout opens
+    /// the project root instead, with the reason (rule 4).
     public func materialise(_ plan: TaskFolderPlan) async -> TaskFolder {
         switch plan {
-        case .existing(let url, _): return TaskFolder(url: url, note: nil, created: false)
+        case .existing(let url, _), .existingOwn(let url): return TaskFolder(url: url, note: nil, created: false)
         case .root(let url, let note): return TaskFolder(url: url, note: note, created: false)
-        case .create(let path, let branch): return await addWorktree(at: path, branch: branch)
+        case .create(let path, let branch): return await addWorktree(at: path, revision: branch, detached: false)
+        case .createDetached(let path, let baseRef): return await addWorktree(at: path, revision: baseRef, detached: true)
         }
     }
 
-    private func addWorktree(at planned: URL, branch: String) async -> TaskFolder {
+    /// `git worktree add <path> <branch>`, or `git worktree add --detach <path> <base ref>`.
+    private func addWorktree(at planned: URL, revision: String, detached: Bool) async -> TaskFolder {
         // The arguments carry no "--", so git would read a leading "-" as an option: -Bmain resets main.
-        guard !branch.hasPrefix("-") else { return atRoot(branch, reason: "'\(branch)' is not a valid branch name") }
+        guard !revision.hasPrefix("-") else {
+            return atRoot(revision, reason: "'\(revision)' is not a valid \(detached ? "base ref" : "branch name")")
+        }
         let path: URL
         switch Self.claim(planned) {
         case .success(let claimed): path = claimed
-        case .failure(let failure): return atRoot(branch, reason: failure.reason)
+        case .failure(let failure): return atRoot(revision, reason: failure.reason)
         }
         let reason: String
         do {
-            let result = try await runner.run("git", GitCommand.read(["worktree", "add", path.path, branch]),
-                                              in: projectRoot, timeout: CommandTimeout.worktreeAdd)
+            let arguments = ["worktree", "add"] + (detached ? ["--detach"] : []) + [path.path, revision]
+            let result = try await runner.run("git", GitCommand.read(arguments), in: projectRoot, timeout: CommandTimeout.worktreeAdd)
             if result.succeeded { return TaskFolder(url: path, note: nil, created: true) }
             reason = Self.errorLine(result.stderr) ?? "git exited with status \(result.status)"
         } catch {
@@ -127,7 +163,7 @@ public struct TaskFolderResolver {
         }
         // rmdir removes only an empty folder, so nothing git wrote is ever deleted.
         rmdir(path.path)
-        return atRoot(branch, reason: reason)
+        return atRoot(revision, reason: reason)
     }
 
     private struct ClaimFailure: Error { let reason: String }
@@ -158,8 +194,8 @@ public struct TaskFolderResolver {
         return text
     }
 
-    private func atRoot(_ branch: String, reason: String) -> TaskFolder {
-        TaskFolder(url: projectRoot, note: "Couldn't create a worktree for \(branch), so the shell opens at the project root: \(reason)", created: false)
+    private func atRoot(_ revision: String, reason: String) -> TaskFolder {
+        TaskFolder(url: projectRoot, note: "Couldn't create a worktree for \(revision), so the shell opens at the project root: \(reason)", created: false)
     }
 
     /// git prints progress such as "Preparing worktree (checking out …)" before its error, so the first fatal: or error: line is the reason.
@@ -186,6 +222,11 @@ public struct TaskFolderResolver {
         return cut.isEmpty ? "task" : cut
     }
 
+    /// Rule 3's plan note: a detached worktree has no branch until the pipeline's first write cuts one.
+    public static let detachedNote = "The pipeline creates the task's branch here at its first write."
+
+    static let noBaseRefNote = "No base branch is known, so the agent would open at the project root; start it by hand if you want it there."
+
     static let locationNote = "The worktree location must be an absolute path or start with ~/, so the shell opens at the project root."
 
     static func unbranchedNote(_ number: Int?) -> String {
@@ -200,9 +241,37 @@ public struct TaskFolderResolver {
         return WorktreeList.parse(result.stdout)
     }
 
-    /// `<project>-<suffix>` in the worktree location, or the first of -2, -3, … that nothing occupies.
+    /// Rule 1b: a listed worktree at `<location>/<project>-<suffix>`, or at one of the -2, -3, … names rule 2 falls back to; the lowest wins.
+    /// Folders compare by real path, since git lists a worktree by its real path: /private/var/…, not /var/….
+    private func ownWorktree(in worktrees: [Worktree], location: URL, suffix: String) -> URL? {
+        guard let realLocation = Self.realPath(location.path) else { return nil }
+        let name = ownName(suffix)
+        let owned = worktrees.compactMap { worktree -> (rank: Int, url: URL)? in
+            let url = URL(fileURLWithPath: worktree.path, isDirectory: true)
+            guard !worktree.isBare, let rank = Self.collisionRank(url.lastPathComponent, of: name),
+                  Self.realPath(url.deletingLastPathComponent().path) == realLocation, Self.isDirectory(worktree.path) else { return nil }
+            return (rank, url)
+        }
+        return owned.min { $0.rank < $1.rank }?.url
+    }
+
+    /// 1 for the name itself, k for `<name>-k` with k ≥ 2 written as rule 2 writes it, nil otherwise: -1, -02 and -x are other names.
+    static func collisionRank(_ candidate: String, of name: String) -> Int? {
+        if candidate == name { return 1 }
+        guard candidate.hasPrefix(name + "-") else { return nil }
+        let rest = candidate.dropFirst(name.count + 1)
+        guard let k = Int(rest), k >= 2, String(k) == rest else { return nil }
+        return k
+    }
+
+    /// `<project>-<suffix>`, the task's own folder name.
+    private func ownName(_ suffix: String) -> String {
+        "\(Self.slug(projectRoot.lastPathComponent))-\(suffix)"
+    }
+
+    /// The task's own name in the worktree location, or the first of -2, -3, … that nothing occupies.
     private func freePath(in location: URL, suffix: String) -> URL {
-        let name = "\(Self.slug(projectRoot.lastPathComponent))-\(suffix)"
+        let name = ownName(suffix)
         var candidate = location.appendingPathComponent(name, isDirectory: true)
         var next = 2
         while Self.occupied(candidate.path) {
@@ -227,5 +296,12 @@ public struct TaskFolderResolver {
     private static func isDirectory(_ path: String) -> Bool {
         var isDirectory: ObjCBool = false
         return FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory) && isDirectory.boolValue
+    }
+
+    /// Every symlink resolved; nil when nothing is at the path.
+    private static func realPath(_ path: String) -> String? {
+        guard let resolved = realpath(path, nil) else { return nil }
+        defer { free(resolved) }
+        return String(cString: resolved)
     }
 }
