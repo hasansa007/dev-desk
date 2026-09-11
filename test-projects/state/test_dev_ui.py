@@ -46,8 +46,8 @@ class Escaping(unittest.TestCase):
     def test_an_issue_title_with_html_is_escaped_in_the_render(self):
         data = {"columns": {"backlog": [{"number": 1, "title": "<script>alert(1)</script>"}]}}
         html = render_ui_html("board", data, META)
-        self.assertNotIn("<script>", html)
-        self.assertIn("&lt;script&gt;", html)
+        self.assertNotIn("<script>alert(1)", html)  # the board's own drag script is expected
+        self.assertIn("&lt;script&gt;alert(1)", html)
 
 
 class Provenance(unittest.TestCase):
@@ -101,6 +101,16 @@ class OtherSurfaces(unittest.TestCase):
         html = render_ui_html("insights", data, META)
         self.assertIn("TECH_STACK", html)
         self.assertIn("python", html)
+        self.assertNotIn("<details>", html)  # a short section has nothing to fold
+
+    def test_a_long_section_shows_a_preview_and_folds_the_rest_without_dropping_it(self):
+        lines = ["line %02d" % i for i in range(30)]
+        html = render_ui_html("insights", {"sections": [{"heading": "H", "lines": lines}]}, META)
+        head, _, folded = html.partition("<details>")
+        self.assertIn("line 07", head)
+        self.assertNotIn("line 08", head)
+        self.assertIn("22 more lines", folded)
+        self.assertIn("line 29", folded)  # folded, not cut
 
 
 class OpenFlag(unittest.TestCase):

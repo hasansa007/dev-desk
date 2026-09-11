@@ -278,6 +278,10 @@ queue records what was *decided*, and a decided order is never silently re-sorte
 is indistinguishable from one closed by accident, and `dev:roadmap` reads these back so a declined
 direction is not re-proposed next quarter.
 
+**Dragging is the same two tiers.** `dev ui --serve` turns a drag on the board into a Move
+(BACKLOG ↔ QUEUE) or a Cancel (with its reason), re-derives the card's column from `gh` first, and
+refuses everything else — git-derived columns, epic cancels, delete. See `dev:ui`.
+
 **After any write, offer to refresh the snapshot:** `dev ui board` regenerates `.dev/ui/board.html`.
 It is generated output — never edit it, and never read it back as truth. Offer; do not run it
 unasked, because this door's contract is that writes are bounded and named.

@@ -199,6 +199,18 @@ again to refresh. Nothing reads them back, so a stale page can never change what
 After `dev:kanban`, `dev:roadmap`, `dev:ideation` or `dev:insights` writes something, it offers to
 regenerate the matching page.
 
+### Dragging cards
+
+```bash
+dev ui --serve --open
+```
+
+Same pages, served from `127.0.0.1` instead of opened as files. On the board you can drag a card
+from BACKLOG to QUEUE (it joins the active milestone), back again, or onto CANCEL (it asks why, then
+closes the issue as *not planned* with your reason as the comment). Each write is printed in the
+terminal. IN FLIGHT, PR OPEN and HUMAN REVIEW follow git, so those cards stay put — start work
+with `/dev #N`. Ctrl-C stops the server; the files keep working as a read-only snapshot.
+
 ### Seeing it as a real board on github.com
 
 The board above is text. If you want a draggable one, `dev project` mirrors the same columns into a

@@ -6,9 +6,11 @@ absent. Stdlib only, so it runs wherever python3 does.
 """
 
 import argparse
+import hmac
 import json
 import os
 import re
+import secrets
 import shutil
 import subprocess
 import sys
@@ -533,6 +535,7 @@ def cmd_project(args) -> int:
 # carries the commit it was built from, so a stale one is visible rather than assumed fresh.
 UI_DIR = os.path.join(STATE_DIR, "ui")
 UI_SURFACES = ("board", "roadmap", "ideation", "insights")
+UI_PREVIEW_LINES = 8  # a section's first lines stay visible; the rest fold, never cut
 
 
 def _headings(md: str) -> List[Dict]:
@@ -552,6 +555,9 @@ def collect_board(root: str, milestone: Optional[str] = None) -> Dict:
                        "--json", "number,title,labels,updatedAt,milestone,body"])
     if issues is None:
         return {"unavailable": "could not read issues — is gh authenticated?"}
+    why = "given with --milestone" if milestone else None
+    if not milestone:
+        milestone, why = resolve_active_milestone(_open_milestones() or [])
     facts: Dict[int, Dict] = {}
     base = resolve_base()
     code, out = run(["git", "branch", "--format=%(refname:short)"])
@@ -568,7 +574,28 @@ def collect_board(root: str, milestone: Optional[str] = None) -> Dict:
             if st:
                 f["phase_group"] = st.get("phase_group")
         facts[n] = f
-    return build_board(issues, facts, milestone)
+    board = build_board(issues, facts, milestone)
+    board["active_milestone"], board["active_why"] = milestone, why
+    return board
+
+
+def _open_milestones() -> Optional[List[Dict]]:
+    return _gh_json(["api", "repos/%s/milestones?state=open" % (remote_slug() or "/"),
+                     "--jq", "[.[] | {title, due_on, created_at}]"])
+
+
+def resolve_active_milestone(milestones: List[Dict]) -> Tuple[Optional[str], str]:
+    """dev:roadmap's rule: the open milestone due soonest, else the oldest open. A tie is never broken silently."""
+    if not milestones:
+        return None, "no open milestone; dev:roadmap sets one"
+    dated = sorted((m for m in milestones if m.get("due_on")), key=lambda m: m["due_on"])
+    if dated:
+        if len(dated) > 1 and dated[0]["due_on"][:10] == dated[1]["due_on"][:10]:
+            return None, ("%s and %s are due the same day — pass --milestone"
+                          % (dated[0]["title"], dated[1]["title"]))
+        return dated[0]["title"], "nearest due date (%s)" % dated[0]["due_on"][:10]
+    oldest = min(milestones, key=lambda m: m.get("created_at") or "")
+    return oldest["title"], "oldest open milestone; none has a due date"
 
 
 def collect_roadmap() -> Dict:
@@ -622,15 +649,25 @@ def render_ui_html(surface: str, data: Dict, meta: Dict) -> str:
     if data.get("unavailable"):
         body.append('<p class="empty">%s</p>' % _esc(data["unavailable"]))
     elif surface == "board":
+        ms = data.get("active_milestone")
+        body.append('<p class="hint">%s</p>' % (
+            "QUEUE = milestone <b>%s</b> — %s" % (_esc(ms), _esc(data.get("active_why") or ""))
+            if ms else "QUEUE is empty — %s" % _esc(data.get("active_why") or "no active milestone")))
+        body.append('<p class="hint" id="static-hint">Read-only file. Run <code>dev ui --serve</code>'
+                    " to drag cards between QUEUE and BACKLOG.</p>")
         for col, rows in data.get("columns", {}).items():
-            body.append('<section><h2>%s <span class="n">%d</span></h2>'
-                        % (_esc(col.replace("_", " ").upper()), len(rows)))
+            body.append('<section data-col="%s"><h2>%s <span class="n">%d</span></h2>'
+                        % (_esc(col), _esc(col.replace("_", " ").upper()), len(rows)))
             body.append("".join(
-                '<article><b>#%s</b> %s%s</article>'
-                % (r["number"], _esc(r["title"]),
+                '<article data-n="%s" data-col="%s"%s><b>#%s</b> %s%s</article>'
+                % (r["number"], _esc(col), ' data-epic="1"' if r.get("epic") else "",
+                   r["number"], _esc(r["title"]),
                    '<em>%s · advisory</em>' % _esc(r["phase"]) if r.get("phase") else "")
                 for r in rows) or '<p class="empty">nothing here</p>')
             body.append("</section>")
+        body.append('<section data-col="cancel" hidden><h2>CANCEL</h2><p class="empty">drop here to'
+                    " close as not planned — asks why, and posts it as the comment</p></section>")
+        body.append(BOARD_DRAG_JS)
     elif surface == "roadmap":
         body.append('<section><h2>MILESTONES</h2>')
         body.append("".join('<article><b>%s</b> %s open / %s closed</article>'
@@ -652,8 +689,11 @@ def render_ui_html(surface: str, data: Dict, meta: Dict) -> str:
         body.append("</section>")
     else:
         for s in data.get("sections", []):
-            body.append('<section><h2>%s</h2><pre>%s</pre></section>'
-                        % (_esc(s["heading"]), _esc("\n".join(s["lines"][:40]))))
+            shown, rest = s["lines"][:UI_PREVIEW_LINES], s["lines"][UI_PREVIEW_LINES:]
+            fold = ('<details><summary>%d more lines</summary><pre>%s</pre></details>'
+                    % (len(rest), _esc("\n".join(rest)))) if rest else ""
+            body.append('<section><h2>%s</h2><pre>%s</pre>%s</section>'
+                        % (_esc(s["heading"]), _esc("\n".join(shown)), fold))
 
     return UI_TEMPLATE % {
         "surface": _esc(surface),
@@ -709,6 +749,45 @@ def _esc(s) -> str:
             .replace(">", "&gt;").replace('"', "&quot;"))
 
 
+# Inert unless `dev ui --serve` injected DEV_LIVE — a file:// page has no server to write through.
+BOARD_DRAG_JS = """<script>
+(function () {
+  var live = window.DEV_LIVE;
+  if (!live) return;
+  document.getElementById('static-hint').textContent =
+    'Drag between QUEUE and BACKLOG · drop on CANCEL to close as not planned · other columns follow git.';
+  document.querySelector('section[data-col=cancel]').hidden = false;
+  var MOVABLE = ['queue', 'backlog'], TARGETS = ['queue', 'backlog', 'cancel'];
+  document.querySelectorAll('article[data-n]').forEach(function (a) {
+    if (MOVABLE.indexOf(a.dataset.col) < 0) { a.title = 'this column follows git'; return; }
+    a.draggable = true;
+    a.classList.add('drag');
+    a.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/plain', a.dataset.n); });
+  });
+  document.querySelectorAll('section[data-col]').forEach(function (s) {
+    if (TARGETS.indexOf(s.dataset.col) < 0) return;
+    s.addEventListener('dragover', function (e) { e.preventDefault(); s.classList.add('over'); });
+    s.addEventListener('dragleave', function () { s.classList.remove('over'); });
+    s.addEventListener('drop', function (e) {
+      e.preventDefault();
+      s.classList.remove('over');
+      var n = e.dataTransfer.getData('text/plain'), to = s.dataset.col, reason = '';
+      if (to === 'cancel') {
+        reason = prompt('Close #' + n + ' as not planned. Why? (posted as the closing comment)');
+        if (!reason || !reason.trim()) return;
+      }
+      fetch('/api/move', {method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-Dev-Token': live.token},
+        body: JSON.stringify({number: Number(n), to: to, reason: reason})})
+        .then(function (r) { return r.json(); })
+        .then(function (b) { if (b.ok) location.reload(); else alert(b.message); })
+        .catch(function () { alert('the dev ui server stopped — run dev ui --serve again'); });
+    });
+  });
+})();
+</script>"""
+
+
 UI_TEMPLATE = """<!doctype html>
 <meta charset="utf-8"><title>dev · %(surface)s</title>
 <style>
@@ -729,13 +808,21 @@ article b{color:#e9f07a;font-weight:600}
 article em{display:block;color:#6b7280;font-style:normal;font-size:.75rem;margin-top:.2rem}
 .empty{color:#4b5563;font-size:.8rem;margin:.2rem 0}
 pre{white-space:pre-wrap;color:#9aa3af;font-size:.78rem;margin:0}
+details summary{cursor:pointer;color:#6b7280;font-size:.75rem;margin-top:.4rem}
+details[open] summary{color:#e9f07a}
 footer{margin-top:2rem;color:#4b5563;font-size:.75rem}
 nav{margin-bottom:1.25rem;display:flex;gap:.4rem}
 nav a{color:#9aa3af;text-decoration:none;padding:.2rem .6rem;border:1px solid #232830;border-radius:6px}
 nav a.on,nav a:hover{color:#0d0f12;background:#e9f07a;border-color:#e9f07a}
 a.card{flex:1 1 260px;color:inherit;text-decoration:none;display:flex}
 a.card:hover section{border-color:#e9f07a}
+.hint{flex:1 1 100%%;color:#6b7280;font-size:.8rem;margin:0}
+.hint b{color:#e9f07a}
+article.drag{cursor:grab}
+section.over{border-color:#e9f07a}
+section[data-col=cancel]{border-style:dashed;border-color:#7f1d1d}
 </style>
+<!--dev-live-->
 %(nav)s
 <header><h1>dev · %(surface)s</h1>
 <span class="meta">%(repo)s · built from %(commit)s · %(at)s</span></header>
@@ -822,20 +909,10 @@ def cmd_ui(args) -> int:
             data = collect_reports(root, "ideation")
         else:
             data = collect_insights(root)
-        payload = dict(meta)
-        payload["surface"] = s
-        payload["data"] = data
-        with open(os.path.join(out_dir, s + ".json"), "w", encoding="utf-8") as fh:
-            json.dump(payload, fh, indent=2, sort_keys=True)
-            fh.write("\n")
-        with open(os.path.join(out_dir, s + ".html"), "w", encoding="utf-8") as fh:
-            fh.write(render_ui_html(s, data, meta))
+        write_ui_surface(root, s, data, meta)
         note = data.get("unavailable") or data.get("note") or "rebuilt — %s" % why
         print("  %-9s %s/%s.html  %s" % (s, UI_DIR, s, note))
-
-    # the index reads every snapshot on disk, so it is rebuilt whenever any page is
-    with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as fh:
-        fh.write(render_ui_index(root, meta))
+    write_ui_index(root, meta)
 
     # pages used to live in <root>/ui/; only a folder holding OUR snapshot counts — src/ui/ is someone's code
     try:
@@ -848,6 +925,21 @@ def cmd_ui(args) -> int:
               "\n      in %s/. Nothing deletes it for you; remove ui/ when you like." % UI_DIR)
 
     first = os.path.join(out_dir, (surfaces[0] if args.surface else "index") + ".html")
+    if getattr(args, "serve", False):
+        server, _ = make_ui_server(root, getattr(args, "port", 0) or 0, args.milestone)
+        url = "http://127.0.0.1:%d/%s" % (server.server_address[1], os.path.basename(first))
+        print("\nserving %s — board cards can be dragged; every write is printed here. Ctrl-C stops."
+              % url)
+        if args.open:
+            import webbrowser
+            webbrowser.open(url)
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            pass
+        finally:
+            server.server_close()
+        return 0
     if args.open:
         # stdlib, so it works on macOS, Linux and Windows without a platform switch
         import webbrowser
@@ -857,6 +949,141 @@ def cmd_ui(args) -> int:
         print("\n%s — add --open to launch it; regenerate, never edit by hand"
               % os.path.relpath(first, root))
     return 0
+
+
+def write_ui_surface(root: str, surface: str, data: Dict, meta: Dict) -> None:
+    out_dir = os.path.join(root, UI_DIR)
+    payload = dict(meta, surface=surface, data=data)
+    with open(os.path.join(out_dir, surface + ".json"), "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, indent=2, sort_keys=True)
+        fh.write("\n")
+    with open(os.path.join(out_dir, surface + ".html"), "w", encoding="utf-8") as fh:
+        fh.write(render_ui_html(surface, data, meta))
+
+
+def write_ui_index(root: str, meta: Dict) -> None:
+    # the index reads every snapshot on disk, so it is rebuilt whenever any page is
+    with open(os.path.join(root, UI_DIR, "index.html"), "w", encoding="utf-8") as fh:
+        fh.write(render_ui_index(root, meta))
+
+
+# ------------------------------------------------------------- ui --serve
+
+# The served board turns a drag into dev:kanban Phase 7's MOVE or CANCEL tier — nothing more.
+# The card's column is re-derived from gh on every request: the page is output, and a page that
+# could say where a card is would make it an input. Delete is never offered here; 7.2 needs a human.
+BOARD_MOVABLE = ("queue", "backlog")
+
+
+def plan_board_move(card: Dict, target: str, active_milestone: Optional[str],
+                    reason: str = "") -> Tuple[Optional[List[str]], str]:
+    """A drag → one bounded gh write, or the reason it is refused."""
+    n, col = str(card["number"]), card.get("column") or ""
+    if col not in BOARD_MOVABLE:
+        return None, ("#%s is in %s — that column is derived from git (or the epic-leftover label)"
+                      " and moves when they do" % (n, col.replace("_", " ").upper()))
+    if target == col:
+        return None, "#%s is already in %s" % (n, col.upper())
+    if target == "queue":
+        if not active_milestone:
+            return None, "no active milestone to queue into — set one with dev:roadmap or pass --milestone"
+        return (["issue", "edit", n, "--milestone", active_milestone],
+                "#%s → QUEUE (milestone %s)" % (n, active_milestone))
+    if target == "backlog":
+        return ["issue", "edit", n, "--remove-milestone"], "#%s → BACKLOG (milestone removed)" % n
+    if target == "cancel":
+        if card.get("epic"):
+            return None, "#%s is an epic — its children need a decision first; cancel it through dev:kanban" % n
+        if not reason.strip():
+            return None, "cancel needs a reason — it is posted as the closing comment"
+        return (["issue", "close", n, "--reason", "not planned", "--comment", reason.strip()],
+                "#%s closed as not planned" % n)
+    return None, "%s is not a board action — only QUEUE, BACKLOG and CANCEL are" % target
+
+
+def _host_ok(headers, port: int) -> bool:
+    # a rebinding attack reaches 127.0.0.1 but still sends its own Host
+    return headers.get("Host", "") in ("127.0.0.1:%d" % port, "localhost:%d" % port)
+
+
+def ui_request_allowed(headers, token: str, port: int) -> bool:
+    """A write needs this machine AND a page this server handed the token to."""
+    return _host_ok(headers, port) and hmac.compare_digest(headers.get("X-Dev-Token", ""), token)
+
+
+def gh_write(argv: List[str]) -> Tuple[bool, str]:
+    try:
+        p = subprocess.run(["gh"] + argv, capture_output=True, text=True)
+    except OSError as e:
+        return False, str(e)
+    return p.returncode == 0, (p.stderr or p.stdout).strip()
+
+
+def make_ui_server(root: str, port: int, milestone: Optional[str]):
+    """127.0.0.1 only. Serves the generated pages and one endpoint: POST /api/move."""
+    import http.server
+    token = secrets.token_urlsafe(24)
+    pages = {"/": "index.html", "/index.html": "index.html"}
+    pages.update({"/%s.html" % s: s + ".html" for s in UI_SURFACES})
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *a):
+            pass
+
+        def _send(self, code: int, body: str, ctype: str = "application/json") -> None:
+            data = body.encode("utf-8")
+            self.send_response(code)
+            self.send_header("Content-Type", ctype + "; charset=utf-8")
+            self.send_header("Content-Length", str(len(data)))
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            self.wfile.write(data)
+
+        def _reply(self, code: int, ok: bool, message: str) -> None:
+            self._send(code, json.dumps({"ok": ok, "message": message}))
+
+        def do_GET(self):
+            if not _host_ok(self.headers, self.server.server_address[1]):
+                return self._send(403, "{}")
+            name = pages.get(self.path.split("?")[0])
+            path = os.path.join(root, UI_DIR, name) if name else ""
+            if not name or not os.path.isfile(path):
+                return self._send(404, "{}")
+            with open(path, encoding="utf-8") as fh:
+                html = fh.read().replace(
+                    "<!--dev-live-->", "<script>window.DEV_LIVE={token:%s}</script>" % json.dumps(token))
+            self._send(200, html, "text/html")
+
+        def do_POST(self):
+            if self.path != "/api/move":
+                return self._send(404, "{}")
+            if not ui_request_allowed(self.headers, token, self.server.server_address[1]):
+                return self._reply(403, False, "refused — not from a page this server served")
+            try:
+                req = json.loads(self.rfile.read(int(self.headers.get("Content-Length") or 0)) or b"{}")
+                number, to = int(req["number"]), str(req["to"])
+            except (ValueError, KeyError, TypeError):
+                return self._reply(400, False, "expected {number, to}")
+            board = collect_board(root, milestone)
+            # the column is whichever list gh put the card in now — never what the page claims
+            col, card = next(((k, c) for k, rows in board.get("columns", {}).items() for c in rows
+                              if c.get("number") == number), (None, None))
+            if card is None:
+                return self._reply(409, False, "#%d is not an open card on this board" % number)
+            argv, message = plan_board_move(dict(card, column=col), to, board.get("active_milestone"),
+                                            str(req.get("reason") or ""))
+            if argv is None:
+                return self._reply(409, False, message)
+            print("  %s%s" % (remote_slug(root) or "", message))  # state owner/repo#N out loud
+            ok, err = gh_write(argv)
+            if not ok:
+                return self._reply(502, False, "gh refused: %s" % err)
+            meta = {"repo": remote_slug(root), "commit": head_sha(root), "generated_at": now()}
+            write_ui_surface(root, "board", collect_board(root, milestone), meta)
+            write_ui_index(root, meta)
+            self._reply(200, True, message)
+
+    return http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler), token
 
 # ------------------------------------------------------------------ dispatch
 
@@ -1028,12 +1255,15 @@ def build_parser() -> argparse.ArgumentParser:
     rn.add_argument("--execute", action="store_true", help="actually dispatch")
     rn.set_defaults(func=cmd_run)
 
-    ui = sub.add_parser("ui", help="regenerate ui/<surface>.json + .html")
+    ui = sub.add_parser("ui", help="regenerate .dev/ui/<surface>.json + .html and the index")
     ui.add_argument("surface", nargs="?", choices=list(UI_SURFACES))
     ui.add_argument("--milestone", help="the active milestone; its members are the queue")
     ui.add_argument("--open", action="store_true", help="open the result in a browser")
     ui.add_argument("--check", action="store_true", help="report what is stale; write nothing")
     ui.add_argument("--force", action="store_true", help="rebuild every surface, fresh or not")
+    ui.add_argument("--serve", action="store_true",
+                    help="serve on 127.0.0.1 so board cards can be dragged; Ctrl-C stops")
+    ui.add_argument("--port", type=int, default=0, help="port for --serve; default picks a free one")
     ui.set_defaults(func=cmd_ui)
 
     pj = sub.add_parser("project", help="mirror the computed board into a GitHub Project v2")

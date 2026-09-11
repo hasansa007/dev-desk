@@ -87,7 +87,7 @@ above works without it; when present, the doors use it instead of doing the same
 | `dev board [--json]` | Classify open issues into columns from git and `gh`. |
 | `dev state checkpoint\|read\|verify` | Record which pipeline phase a branch reached; `verify` fails when the record disagrees with git. |
 | `dev project [--number N] [--apply]` | Mirror the computed board into a GitHub Project v2 board. Dry run unless `--apply`. |
-| `dev ui [surface]` | Regenerate `.dev/ui/{board,roadmap,ideation,insights}.json` + `.html` and an `index.html` linking them — a local, offline snapshot. |
+| `dev ui [surface]` | Regenerate `.dev/ui/{board,roadmap,ideation,insights}.json` + `.html` and an `index.html` linking them — a local, offline snapshot. Add `--serve` to drag board cards between QUEUE and BACKLOG, or to CANCEL. |
 | `dev run <door> [args]` | Dispatch a door to an agent CLI for headless or CI use. Prints the command unless given `--execute`. |
 
 ```bash
