@@ -3,6 +3,10 @@
 **Date:** 2026-09-11 · **Status:** draft for review · **Decides:** the system model, the CLI contract a
 shell consumes, the first shell (a native Mac app), and where it lives.
 
+**Discussion follow-up:** [Findings and existing issues](2026-09-11-findings-and-existing-issues-design.md)
+records the accepted reconciliation direction and the remaining design questions. The job-state
+protocol and repository recommendation below remain draft proposals; see the follow-up before implementation.
+
 ## 1. Why
 
 The family has an engine (22 doors, 17 phases, 4 gates), a truth (git + GitHub), a memory
