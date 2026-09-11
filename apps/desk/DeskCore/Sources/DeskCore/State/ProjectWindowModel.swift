@@ -34,6 +34,7 @@ public enum SettingsSection: String, CaseIterable, Codable, Hashable {
 public enum SheetKind: Hashable, Identifiable {
     case openProject, compareOutputs, followUp, handoff, reconcileFinding(String), cloneRepository, createProject
     case unstartedTask(String)
+    case cancelTask(String)
 
     public var id: String {
         switch self {
@@ -45,6 +46,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .cloneRepository: return "cloneRepository"
         case .createProject: return "createProject"
         case .unstartedTask(let taskID): return "unstartedTask:\(taskID)"
+        case .cancelTask(let taskID): return "cancelTask:\(taskID)"
         }
     }
 }
@@ -89,11 +91,17 @@ public final class ProjectWindowModel {
     public var findingFilter: FindingCategory?
     public var settingsSection: SettingsSection = .agentsAndDefaults
     public private(set) var answeredDecisionID: String?
+    /// Why the last tracker write failed, already escaped: it is rendered as markdown in a banner.
+    public private(set) var trackerError: String?
+    public private(set) var isWritingTracker = false
 
     @ObservationIgnored private let source: ProjectDataSource
+    @ObservationIgnored private let runner: CommandRunner
     @ObservationIgnored private var isLoading = false
 
-    public init(ref: ProjectRef, source: ProjectDataSource, insightsDelay: Duration = .milliseconds(900)) {
+    public init(ref: ProjectRef, source: ProjectDataSource, insightsDelay: Duration = .milliseconds(900),
+                runner: CommandRunner = ProcessRunner()) {
+        self.runner = runner
         self.ref = ref
         self.source = source
         self.insights = InsightsConversation(delay: insightsDelay)
@@ -262,6 +270,31 @@ public final class ProjectWindowModel {
         insightsDocked = true
         insightsOpen = true
     }
+
+    /// The milestone a card would be queued into; nil when the board could not read one.
+    public var activeMilestone: String? { snapshot?.activeMilestone }
+
+    /// Runs one bounded write from `dev:kanban` Phase 7, then reloads so the board shows what GitHub now says.
+    /// A sample project, or a repository with no GitHub remote, is refused rather than half-written.
+    public func performTrackerWrite(issue: Int, action: TrackerAction) async {
+        guard !isWritingTracker else { return }
+        guard let slug = snapshot?.slug, case .local(let path) = ref else {
+            trackerError = TrackerWriteError.noRepository.localizedDescription
+            return
+        }
+        isWritingTracker = true
+        defer { isWritingTracker = false }
+        do {
+            let write = TrackerWrite(slug: slug, directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner)
+            try await write.perform(issue: issue, action: action)
+            trackerError = nil
+            await load()
+        } catch {
+            trackerError = Markdown.escape(error.localizedDescription)
+        }
+    }
+
+    public func dismissTrackerError() { trackerError = nil }
 
     public func toggleRuns() { runsOpen.toggle() }
 

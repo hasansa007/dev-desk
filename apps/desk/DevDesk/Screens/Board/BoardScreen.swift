@@ -158,6 +158,7 @@ private struct BoardColumnView: View {
     let column: BoardColumn
     let tasks: [DeskTask]
     let model: ProjectWindowModel
+    @State private var pending: PendingMove?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -169,12 +170,47 @@ private struct BoardColumnView: View {
                     .foregroundStyle(DeskColor.disabledDot)
             }
             ForEach(tasks) { task in
-                TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID) {
-                    model.openTask(task.id)
-                }
+                TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
+                         action: { model.openTask(task.id) }, moves: moves(for: task))
             }
         }
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
+        .confirmationDialog(pending.map { TrackerWrite.confirmation(issue: $0.issue, slug: model.snapshot?.slug ?? "", action: $0.action) } ?? "",
+                            isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
+                            titleVisibility: .visible) {
+            Button(pending?.confirmTitle ?? "Move") { commit() }
+            Button("Cancel", role: .cancel) { pending = nil }
+        }
+    }
+
+    /// Only an issue can be moved: a branch or a pull request card has no issue to edit, and a merged card is history.
+    private func moves(for task: DeskTask) -> CardMoves? {
+        guard let issue = task.issueNumber, task.column != .done else { return nil }
+        return CardMoves(
+            milestone: model.activeMilestone,
+            isQueued: task.column == .queued,
+            queue: { pending = PendingMove(issue: issue, action: .queue(milestone: model.activeMilestone ?? "")) },
+            backlog: { pending = PendingMove(issue: issue, action: .backlog) },
+            cancel: { model.present(.cancelTask(task.id)) })
+    }
+
+    private func commit() {
+        guard let move = pending else { return }
+        pending = nil
+        Task { await model.performTrackerWrite(issue: move.issue, action: move.action) }
+    }
+}
+
+private struct PendingMove {
+    let issue: Int
+    let action: TrackerAction
+
+    var confirmTitle: String {
+        switch action {
+        case .queue: return "Queue"
+        case .backlog: return "Return to backlog"
+        case .cancel: return "Close"
+        }
     }
 }
 

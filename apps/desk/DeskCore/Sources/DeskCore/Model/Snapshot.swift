@@ -41,12 +41,17 @@ public struct ProjectSnapshot: Hashable {
     public var insights: InsightsAvailability
     /// Settings › Project overrides: base branch, remote and similar read-only facts.
     public var projectFacts: [KeyValue]
+    /// `owner/repo`, for writes that must name the repository; nil when there is no GitHub remote to write to.
+    public var slug: String?
+    /// The milestone that decides the Queued column, so a card can be moved into or out of it.
+    public var activeMilestone: String?
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,
                 findings: Surface<FindingsReport>, roadmap: Surface<Roadmap>, decisions: Surface<[Decision]>,
                 connections: [Connection], connectionsNote: String, capabilities: CapabilityMatrix,
-                insights: InsightsAvailability, projectFacts: [KeyValue] = []) {
+                insights: InsightsAvailability, projectFacts: [KeyValue] = [],
+                slug: String? = nil, activeMilestone: String? = nil) {
         self.project = project
         self.isDemo = isDemo
         self.launch = launch
@@ -61,5 +66,7 @@ public struct ProjectSnapshot: Hashable {
         self.capabilities = capabilities
         self.insights = insights
         self.projectFacts = projectFacts
+        self.slug = slug
+        self.activeMilestone = activeMilestone
     }
 }

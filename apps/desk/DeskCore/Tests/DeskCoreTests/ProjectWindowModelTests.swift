@@ -161,6 +161,47 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertEqual(loads, 2)
     }
 
+    private func trackerSnapshot() -> ProjectSnapshot {
+        ProjectSnapshot(
+            project: ProjectInfo(name: "Real", displayPath: "~/real", branch: "main"),
+            isDemo: false, board: .available([]), boardNote: "",
+            findings: .unavailable("n/a"), roadmap: .unavailable("n/a"), decisions: .available([]),
+            connections: [], connectionsNote: "", capabilities: CapabilityMatrix(providers: [], rows: [], note: ""),
+            insights: .unavailable("n/a"), slug: "owner/repo", activeMilestone: "1.4")
+    }
+
+    func testQueueingACardWritesToTheTrackerAndReloads() async {
+        let runner = FakeRunner(["gh issue edit 7 --repo owner/repo --milestone 1.4": .ok()])
+        let model = ProjectWindowModel(ref: .local(path: "/tmp/real"), source: FixedSource(snapshot: trackerSnapshot()),
+                                       insightsDelay: .zero, runner: runner)
+        await model.load()
+        await model.performTrackerWrite(issue: 7, action: .queue(milestone: "1.4"))
+        XCTAssertEqual(runner.keys, ["gh issue edit 7 --repo owner/repo --milestone 1.4"])
+        XCTAssertNil(model.trackerError)
+        XCTAssertEqual(model.activeMilestone, "1.4")
+    }
+
+    func testAFailedTrackerWriteIsReported() async {
+        let runner = FakeRunner(["gh issue edit 7 --repo owner/repo --remove-milestone": .failed(1, stderr: "HTTP 403\n")])
+        let model = ProjectWindowModel(ref: .local(path: "/tmp/real"), source: FixedSource(snapshot: trackerSnapshot()),
+                                       insightsDelay: .zero, runner: runner)
+        await model.load()
+        await model.performTrackerWrite(issue: 7, action: .backlog)
+        XCTAssertEqual(model.trackerError?.contains("HTTP 403"), true)
+        model.dismissTrackerError()
+        XCTAssertNil(model.trackerError)
+    }
+
+    func testASampleProjectWritesNothingToTheTracker() async {
+        let runner = FakeRunner()
+        let model = ProjectWindowModel(ref: .sample(.studyHub), source: SampleDataSource(project: .studyHub),
+                                       insightsDelay: .zero, runner: runner)
+        await model.load()
+        await model.performTrackerWrite(issue: 42, action: .backlog)
+        XCTAssertTrue(runner.calls.isEmpty)
+        XCTAssertNotNil(model.trackerError)
+    }
+
     func testOpeningAnUnstartedCardShowsItsSheet() async {
         let model = await makeStudyHubModel()
         model.openTask("65")

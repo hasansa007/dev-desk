@@ -54,6 +54,15 @@ struct SheetHost: View {
                     UnavailableView(reason: "This task is no longer on the board.")
                 }
             }
+        case .cancelTask(let taskID):
+            if let task = model.task(taskID) {
+                CancelTaskSheet(model: model, task: task)
+            } else {
+                SheetChrome(title: "Close as not planned", confirmTitle: "Close", width: 560, confirmDisabled: true,
+                            onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
+                    UnavailableView(reason: "This task is no longer on the board.")
+                }
+            }
         case .cloneRepository:
             CloneRepositorySheet(onDismiss: model.dismissSheet)
         case .createProject:

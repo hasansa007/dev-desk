@@ -10,6 +10,13 @@ struct ContentRouter: View {
                 NoticeBanner(tone: .failed, title: "Reload failed", message: reloadError)
                     .padding([.horizontal, .top], 12)
             }
+            if let trackerError = model.trackerError {
+                NoticeBanner(tone: .failed, title: "The tracker was not changed", message: trackerError) {
+                    Button("Dismiss") { model.dismissTrackerError() }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                }
+                .padding([.horizontal, .top], 12)
+            }
             HStack(spacing: 0) {
                 content
                     .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)

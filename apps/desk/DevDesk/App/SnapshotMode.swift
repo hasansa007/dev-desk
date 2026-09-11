@@ -130,6 +130,7 @@ final class SnapshotMode {
         Capture(name: "23-dark-task42", isDark: true) { $0.openTask("42"); $0.insightsOpen = true },
         // #65 is queued with no branch, so opening it presents the sheet rather than a workspace.
         Capture(name: "24-unstarted-task-sheet", isSheet: true) { $0.go(.board); $0.openTask("65") },
+        Capture(name: "25-cancel-task-sheet", isSheet: true) { $0.go(.board); $0.present(.cancelTask("65")) },
     ]
 
     private static let localStates: [Capture] = [

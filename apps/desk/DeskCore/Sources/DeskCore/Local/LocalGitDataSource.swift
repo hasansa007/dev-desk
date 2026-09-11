@@ -61,7 +61,8 @@ public struct LocalGitDataSource: ProjectDataSource {
             findings: .available(await findings), roadmap: Self.roadmap(github), decisions: .available(await decisions),
             connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
-            projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github))
+            projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github),
+            slug: github.data?.slug, activeMilestone: active.title)
     }
 
     /// A partial clone, or any promisor remote, lazy-fetches missing objects mid-read, running remote.<name>.uploadpack — even without
