@@ -191,7 +191,7 @@ private struct SampleRecordingPane: View {
 }
 
 /// Runs `onClick` for a click anywhere over it without taking the click, so the recording keeps its own text selection and scrolling.
-/// A local monitor sees the app's events before any view does.
+/// A local monitor sees the app's events before any view does, and goes when this view does.
 private struct ClickSensor: NSViewRepresentable {
     let onClick: () -> Void
 
@@ -201,16 +201,15 @@ private struct ClickSensor: NSViewRepresentable {
 
 private final class ClickSensorView: NSView {
     var onClick: (() -> Void)?
-    private var monitor: Any?
+    private var monitor: LocalEventMonitor?
 
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if let monitor { NSEvent.removeMonitor(monitor) }
-        monitor = window == nil ? nil : NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
-            if let self, event.window === window, bounds.contains(convert(event.locationInWindow, from: nil)) { onClick?() }
-            return event
+        monitor = window == nil ? nil : LocalEventMonitor(.leftMouseDown) { [weak self] event in
+            guard let self, event.window === window, bounds.contains(convert(event.locationInWindow, from: nil)) else { return }
+            onClick?()
         }
     }
 }
@@ -331,22 +330,23 @@ private struct AgentPane: View {
                 }
             }
         case .ended(let folder, let status):
-            startable(status.map { "Agent ended (status \($0))." } ?? "Agent ended.", detail: folder.note, button: "Start again")
+            startable(Self.endedLine(status, executable: agents?.executables[task.id]), detail: { _ in folder.note }, button: "Start again")
         case .failed(let message):
-            // Auto won't run an agent at the project root, so its start fails here with the folder's note; starting by hand may run it there.
+            // Auto won't run an agent at the project root, so its start fails here with the folder's note. Starting by hand may run it
+            // there, so what starting does comes with it.
             if model.ref.isSample {
                 DockMessage(text: message)
             } else {
-                startable(message, detail: nil, button: "Start agent")
+                startable(message, detail: Self.startNote, button: "Start agent")
             }
         }
     }
 
     /// The message with the start button, or with the reason the agent can't start.
-    @ViewBuilder private func startable(_ text: String, detail: String?, button: String) -> some View {
+    @ViewBuilder private func startable(_ text: String, detail: (AgentKind) -> String?, button: String) -> some View {
         switch choice {
         case .ready(let agent):
-            DockMessage(text: text, detail: detail) {
+            DockMessage(text: text, detail: detail(agent)) {
                 Button(button) { start(agent) }
                     .disabled(agents == nil)
             }
@@ -370,6 +370,13 @@ private struct AgentPane: View {
     private static func startNote(_ agent: AgentKind) -> String {
         "Starting an agent runs \(AgentLaunch.displayName(agent)) in this task's folder under your account. It uses tokens and can change files; "
             + "it stops at the pipeline's approval gates and asks you here."
+    }
+
+    /// Status 127 is a shell's "command not found", so that line says where the PATH is set.
+    private static func endedLine(_ status: Int32?, executable: String?) -> String {
+        guard let status else { return "Agent ended." }
+        guard status == 127, let executable else { return "Agent ended (status \(status))." }
+        return "Agent ended (status 127): your login shell couldn't find \(executable). Put it on your PATH in ~/.zprofile or ~/.zshrc."
     }
 }
 

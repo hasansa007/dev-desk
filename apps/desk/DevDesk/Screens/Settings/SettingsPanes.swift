@@ -274,7 +274,7 @@ struct ExecutionPane: View {
                 }
             }
             .padding(.top, 16)
-            Text("Task worktrees are created here when you start a shell for a branch that isn't checked out.")
+            Text("Task worktrees are created here when you start a shell or an agent for a task that isn't checked out yet, including a detached one for a task with no branch.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)

@@ -27,14 +27,14 @@ enum AgentLimit {
     }
 }
 
-/// The agent a project's Agents tab and Auto run: the project's override when it names Claude or Codex, else the app default,
-/// and only when that CLI is installed.
+/// The agent a project's Agents tab and Auto run: the project's override unless it's empty ("Use app default"), else the app default.
+/// Only Claude and Codex, only when installed, and only through a login shell Dev Desk can drive.
 enum AgentChoice: Equatable {
     case ready(AgentKind)
     case unavailable(reason: String)
 
     static func resolve(override: String, defaultConnection: String, connections: [Connection]) -> AgentChoice {
-        let name = AgentLaunch.agent(forConnectionName: override) == nil ? defaultConnection : override
+        let name = override.isEmpty ? defaultConnection : override
         guard let agent = AgentLaunch.agent(forConnectionName: name) else {
             return .unavailable(reason: name == "Gemini"
                                 ? "Gemini has no confirmed way to run the dev pipeline, so Dev Desk doesn't start it."
@@ -45,6 +45,7 @@ enum AgentChoice: Equatable {
         guard installed || DebugLaunch.agentExecutable != nil else {
             return .unavailable(reason: "\(AgentLaunch.displayName(agent)) isn't installed here, so Dev Desk can't start it.")
         }
+        if let reason = LoginShell.unsupportedReason { return .unavailable(reason: reason) }
         return .ready(agent)
     }
 

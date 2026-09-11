@@ -268,7 +268,7 @@ final class LocalGitDataSourceTests: XCTestCase {
             Connection(id: "gemini", name: "Gemini", state: .missing, label: "not found"),
             Connection(id: "github", name: "GitHub", state: .connected, label: "connected"),
         ])
-        XCTAssertEqual(snapshot.connectionsNote, "Detected on this Mac. Dev Desk doesn't connect to agents yet.")
+        XCTAssertEqual(snapshot.connectionsNote, "Detected on this Mac. Dev Desk runs Claude Code and Codex in a task's terminal; it doesn't sign in to them.")
         XCTAssertEqual(snapshot.capabilities.providers, ["Codex", "Claude", "Gemini"])
         XCTAssertEqual(snapshot.capabilities.rows.map(\.name), ["Interactive terminal", "Resume an ended session", "Attach to an external session"])
         XCTAssertTrue(snapshot.capabilities.rows.allSatisfy { $0.values == [.notValidated, .notValidated, .notValidated] })
