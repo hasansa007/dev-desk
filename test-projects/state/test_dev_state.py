@@ -152,6 +152,26 @@ class DoctorTests(unittest.TestCase):
             self.assertFalse(os.path.exists(os.path.join(r.dir, ".gitignore")))
 
 
+class DotDevIgnoresItself(unittest.TestCase):
+    """.dev/ keeps itself out of git with its own .gitignore; the repo's is never touched."""
+
+    def test_a_checkpoint_is_ignored_without_a_repo_gitignore(self):
+        with TempRepo() as r:
+            main(["state", "checkpoint", "--phase", "1"])
+            ignored = subprocess.run(["git", "check-ignore", "-q", ".dev/main.json"], cwd=r.dir)
+            self.assertEqual(ignored.returncode, 0)
+            self.assertFalse(os.path.exists(os.path.join(r.dir, ".gitignore")))
+
+    def test_an_existing_dot_dev_gitignore_is_left_alone(self):
+        with TempRepo() as r:
+            os.makedirs(os.path.join(r.dir, ".dev"))
+            with open(os.path.join(r.dir, ".dev", ".gitignore"), "w") as fh:
+                fh.write("mine\n")
+            main(["state", "checkpoint", "--phase", "1"])
+            with open(os.path.join(r.dir, ".dev", ".gitignore")) as fh:
+                self.assertEqual(fh.read(), "mine\n")
+
+
 if __name__ == "__main__":
     result = unittest.main(exit=False, verbosity=0).result
     total = result.testsRun

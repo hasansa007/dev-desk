@@ -72,7 +72,6 @@ A full `/dev` run includes these stages. You can also invoke them independently 
 | `/dev:shots` | Capture screens from the running app. |
 | `/dev:comment-budget` | Report comments and docstrings that exceed the documentation budget. Add `--apply` to make changes. |
 | `/dev:arch` | Generate a diagram tied to verified source locations. Requires Archify. |
-| `/dev:ui` | Rebuild the stale `.dev/ui/` pages — board, roadmap, ideation, insights — and open their index in a browser. |
 
 See [command examples](documentation/COMMANDS.md) for practical usage and handoffs.
 
@@ -87,7 +86,6 @@ above works without it; when present, the doors use it instead of doing the same
 | `dev board [--json]` | Classify open issues into columns from git and `gh`. |
 | `dev state checkpoint\|read\|verify` | Record which pipeline phase a branch reached; `verify` fails when the record disagrees with git. |
 | `dev project [--number N] [--apply]` | Mirror the computed board into a GitHub Project v2 board. Dry run unless `--apply`. |
-| `dev ui [surface]` | Regenerate `.dev/ui/{board,roadmap,ideation,insights}.json` + `.html` and an `index.html` linking them — a local, offline snapshot. Add `--serve` to drag board cards between QUEUE and BACKLOG, or to CANCEL. |
 | `dev run <door> [args]` | Dispatch a door to an agent CLI for headless or CI use. Prints the command unless given `--execute`. |
 
 ```bash
@@ -97,8 +95,6 @@ python3 ~/.claude/skills/dev/scripts/dev.py doctor
 `install.sh` puts `dev` on your `PATH` by linking it into `~/.local/bin` (or `~/bin`) when one of
 those is already on your `PATH`. It never edits your shell profile and never replaces a `dev` that
 belongs to another tool — if it can't link, it says so and prints the alias to use instead.
-
-Then the UI is one command: `dev ui --open` regenerates all four surfaces and opens the board.
 
 ## Learn more
 

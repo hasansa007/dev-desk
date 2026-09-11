@@ -22,7 +22,7 @@ same-day-tie refusal to pick silently.
 
 **One deliberate difference.** `dev.py`'s `resolve_base` checks only the remote: the first of
 `staging`/`develop`/`main`/`master` present under `origin/`, else the current branch
-(`scripts/dev.py:59-68`). `GitReader.resolveBase` adds a step for a repo with **no origin**: before
+(`scripts/dev.py:57-66`). `GitReader.resolveBase` adds a step for a repo with **no origin**: before
 falling back to the current branch, it checks the same four names among **local** branches
 (`apps/desk/DeskCore/Sources/DeskCore/Local/GitReader.swift`, `resolveBase`, and
 `GitOutput.preferredBase(among:)`). Without that step, a locally-created repo with a `main` branch
@@ -67,8 +67,8 @@ remote), so the gap could not be left as a shared limitation.
 
 ## Evidence
 
-Read side by side: `scripts/dev.py:59-68` (`resolve_base`), `scripts/dev.py:269-284` (`classify`),
-`scripts/dev.py:287-318` (`build_board`), `scripts/dev.py:587-598` (`resolve_active_milestone`)
+Read side by side: `scripts/dev.py:57-66` (`resolve_base`), `scripts/dev.py:267-282` (`classify`),
+`scripts/dev.py:285-315` (`build_board`), `scripts/dev.py:333-344` (`resolve_active_milestone`)
 against `apps/desk/DeskCore/Sources/DeskCore/Local/GitReader.swift` (`resolveBase`, `baseCandidates
 = ["staging", "develop", "main", "master"]`), `BoardBuilder.swift` (`column(for:)`,
 `BoardContext.tasks()`), and `ActiveMilestone.swift` (`resolve`) — same candidate order, same

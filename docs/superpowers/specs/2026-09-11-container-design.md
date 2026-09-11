@@ -34,6 +34,7 @@ What it lacks is the place that holds them: to answer "where are we?" today you 
 output, `.dev/ui/*.html`, the GitHub board, the family diagram and a PR body, and assemble the
 picture yourself. Nothing shows *what is happening right now*, and nothing lets you start a door
 and watch it reach a gate. That is the missing container. It is a cockpit, not another tool.
+(`.dev/ui/*.html` was retired 2026-09-11, ADR 0014.)
 
 ## 2. System model
 
@@ -44,7 +45,7 @@ Five layers. Each lower layer is authoritative over the one above it.
 | **Truth** | branches, commits · issues, milestones, epics, PRs | git · GitHub, through the doors |
 | **Memory** | `PROJECT_MAP.md`, `docs/adr/`, `docs/{survey,ideation}/<date>.md`, `.dev/<branch>.json` | Phase 10/12, `dev:insights`, `dev state checkpoint` |
 | **Engine** | the 22 doors, `shared/pipeline.md` (17 phases), 4 human gates: 5 discuss · 6 architecture · 14 merge · 16 prod | prose, executed by `claude` / `codex` |
-| **Helpers** | `dev` CLI: `board · state · ui · run · project · doctor` · hooks: branch-guard, pr-gates, teardown, context-load | `scripts/dev.py`, `hooks/` |
+| **Helpers** | `dev` CLI: `board · state · ui · run · project · doctor` (`ui` retired 2026-09-11, ADR 0014) · hooks: branch-guard, pr-gates, teardown, context-load | `scripts/dev.py`, `hooks/` |
 | **Container** | project windows, work views, decisions, chat, and agent outputs | **new** |
 
 **The container does not own repository or tracker truth.** It reads through the shared contract
@@ -138,6 +139,9 @@ The `plan_board_move` the served board already uses, as a CLI verb, so the shell
 run the identical bounded write. Same refusals: git-derived columns, epic cancels, delete, a
 cancel with no reason.
 
+**Retired 2026-09-11, ADR 0014:** the served board and `plan_board_move` were deleted with
+`/dev:ui`, so this verb would re-add the planner rather than wrap it.
+
 ### 3.5 What the contract deliberately does not offer
 
 - No `delete` — 7.2's hard gate needs a conversation, and `dev:kanban` has it.
@@ -159,7 +163,8 @@ if terminal or dependency validation forces it.
 The design includes task-oriented terminal views, notifications, and a menubar badge. Terminal
 rendering and session transport require separate validation; no terminal library is selected yet.
 The app and CLI should use a shared runner independent of the app window lifecycle, as proposed
-in the task-continuity note. Existing CLI/browser surfaces remain available where supported;
+in the task-continuity note. Existing CLI/browser surfaces remain available where supported (the
+browser pages were retired 2026-09-11, ADR 0014);
 agent choice does not determine whether the Mac app can be used.
 
 The table below is historical, not the current navigation specification. The latest UI note
@@ -220,7 +225,7 @@ CLI on most PRs.
 | | Deliverable | Repo |
 |---|---|---|
 | A | `documentation/SYSTEM-MODEL.md` (section 2 as a page) + `docs/arch/dev-system.*` rendered with `dev:arch` | dev-skill |
-| B | `snapshot`, `jobs`, `events`, `board move`, `"contract": 1`, tests; the `/dev:ui` and `dev:kanban` doors learn the verbs | dev-skill |
+| B | `snapshot`, `jobs`, `events`, `board move`, `"contract": 1`, tests; the `/dev:ui` and `dev:kanban` doors learn the verbs (`/dev:ui` retired 2026-09-11, ADR 0014) | dev-skill |
 | C | Mac shell: project windows, Board, task details, agent outputs, Decisions, then remaining views from the latest UI note | `dev-skill` (`apps/desk/`, decided — ADR 0012) |
 
 Each was planned as its own PR. **A and C shipped together in one PR, at the developer's

@@ -124,7 +124,7 @@ a **feature name**: `/dev run` would branch `feature/run` and start building a f
 
 Before routing to Generic, STOP if the argument is:
 
-- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `kanban`, `survey`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, `ui`, with or without the
+- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `kanban`, `survey`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
 - **a RENAMED family name.** `trim` is still the advertised trigger (*"trim the comments"*) after the
@@ -134,6 +134,11 @@ Before routing to Generic, STOP if the argument is:
   **`issues` is the same case** after the board became `dev:kanban` on 2026-09-10 — "show the
   issues" is still how anyone asks for it, so `/dev issues` must map:
   *"`/dev issues` isn't a subcommand — did you mean `/dev:kanban`?"*
+- **a RETIRED family name.** `ui` was retired on 2026-09-11, and "open the ui" is still how anyone
+  would ask, so `/dev ui` must answer rather than fall through:
+  *"`/dev:ui` was retired on 2026-09-11 — Dev Desk (`apps/desk/`) shows the board and roadmap; card
+  moves are `/dev:kanban`."* A retired name dropped from this guard becomes a feature title, exactly
+  as a renamed one does.
 - **a single word with no verb and no object** (`deploy`, `test`, `fix`). Far likelier a mistyped
   command than a feature brief.
 
@@ -204,7 +209,6 @@ directly when the work already exists and only that phase is needed:
 | `dev:ideation` | — | an existing app | "what could we improve" — perf/security/quality opportunities, files the confirmed |
 | `dev:roadmap` | — | the repo's own evidence | "what should we build next" — themes → milestones + epic parents; **makes the QUEUE exist** |
 | `dev:insights` | — | a question | "how does this work?" — cited answer, routes to the owning door, folds durable findings into `PROJECT_MAP.md` |
-| `dev:ui` | — | a repo | "open the ui" — rebuilds only the stale `.dev/ui/` pages, says why, opens their index |
 | `dev:kanban` | — | the repo's tracker | "what should I work on?" — the board, plus bounded card writes; bare `/dev` offers it when the tracker has work |
 
 They all read the same `shared/pipeline.md`; none of them copies it. **Phases 1–8 have no sibling on
