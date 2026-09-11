@@ -24,6 +24,8 @@ struct GitHubPullRequest: Decodable, Equatable {
     var number: Int
     var title: String
     var headRefName: String = ""
+    /// The head is a fork's branch, so its name says nothing about this repository's branches.
+    var isCrossRepository: Bool = false
     var reviewDecision: String? = nil
     var isDraft: Bool = false
     var url: String = ""
@@ -34,6 +36,7 @@ struct GitHubMergedPullRequest: Decodable, Equatable {
     var number: Int
     var title: String
     var headRefName: String = ""
+    var isCrossRepository: Bool = false
     var mergedAt: String? = nil
     var url: String = ""
 }
@@ -146,9 +149,10 @@ struct GitHubReader {
         async let issues = list([GitHubIssue].self, "open issues",
                                 ["issue", "list", "--repo", slug, "--state", "open", "--limit", "200", "--json", "number,title,labels,milestone,updatedAt,body,url"])
         async let open = list([GitHubPullRequest].self, "open pull requests",
-                              ["pr", "list", "--repo", slug, "--state", "open", "--limit", "100", "--json", "number,title,headRefName,reviewDecision,isDraft,url,body"])
+                              ["pr", "list", "--repo", slug, "--state", "open", "--limit", "100", "--json",
+                               "number,title,headRefName,isCrossRepository,reviewDecision,isDraft,url,body"])
         async let merged = list([GitHubMergedPullRequest].self, "merged pull requests",
-                                ["pr", "list", "--repo", slug, "--state", "merged", "--limit", "10", "--json", "number,title,headRefName,mergedAt,url"])
+                                ["pr", "list", "--repo", slug, "--state", "merged", "--limit", "10", "--json", "number,title,headRefName,isCrossRepository,mergedAt,url"])
         async let milestones = list([GitHubMilestone].self, "milestones", ["api", "repos/\(slug)/milestones?state=open"])
         do {
             data.issues = try await issues

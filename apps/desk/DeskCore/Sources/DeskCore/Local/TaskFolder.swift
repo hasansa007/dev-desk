@@ -87,16 +87,19 @@ public struct TaskFolderResolver {
     }
 
     /// Rules 1–3 of the task-folder rule. It only reads git's worktree list, so the plan can be shown before anything starts.
-    public func plan(branch: String?, taskNumber: Int?) async -> TaskFolderPlan {
-        guard let branch, !branch.isEmpty else { return .root(projectRoot, note: Self.noBranchNote(taskNumber)) }
+    /// `noBranchNote` replaces rule 3's note when the task says why it has no branch, as a pull request from a fork does.
+    public func plan(branch: String?, taskNumber: Int?, noBranchNote: String? = nil) async -> TaskFolderPlan {
+        guard let branch, !branch.isEmpty else { return .root(projectRoot, note: noBranchNote ?? Self.unbranchedNote(taskNumber)) }
         // A deleted worktree stays listed, as prunable, until it is pruned; a shell can't open in its missing folder.
         if let checkout = await worktrees().first(where: { $0.branch == branch && Self.isDirectory($0.path) }) {
             return .existing(URL(fileURLWithPath: checkout.path, isDirectory: true), branch: branch)
         }
-        return .create(path: freePath(suffix: taskNumber.map { String($0) } ?? Self.slug(branch)), branch: branch)
+        guard let location = expandedLocation else { return .root(projectRoot, note: Self.locationNote) }
+        return .create(path: freePath(in: location, suffix: taskNumber.map { String($0) } ?? Self.slug(branch)), branch: branch)
     }
 
-    /// Runs `git worktree add` for `.create` only. A failure or a timeout opens the project root instead, with git's reason (rule 4).
+    /// Runs `git worktree add` for `.create` only, into a folder it makes just before. A failure or a timeout opens the project root
+    /// instead, with the reason (rule 4).
     public func materialise(_ plan: TaskFolderPlan) async -> TaskFolder {
         switch plan {
         case .existing(let url, _): return TaskFolder(url: url, note: nil, created: false)
@@ -105,19 +108,54 @@ public struct TaskFolderResolver {
         }
     }
 
-    private func addWorktree(at path: URL, branch: String) async -> TaskFolder {
+    private func addWorktree(at planned: URL, branch: String) async -> TaskFolder {
         // The arguments carry no "--", so git would read a leading "-" as an option: -Bmain resets main.
         guard !branch.hasPrefix("-") else { return atRoot(branch, reason: "'\(branch)' is not a valid branch name") }
+        let path: URL
+        switch Self.claim(planned) {
+        case .success(let claimed): path = claimed
+        case .failure(let failure): return atRoot(branch, reason: failure.reason)
+        }
+        let reason: String
         do {
             let result = try await runner.run("git", GitCommand.read(["worktree", "add", path.path, branch]),
                                               in: projectRoot, timeout: CommandTimeout.worktreeAdd)
             if result.succeeded { return TaskFolder(url: path, note: nil, created: true) }
-            return atRoot(branch, reason: Self.errorLine(result.stderr) ?? "git exited with status \(result.status)")
+            reason = Self.errorLine(result.stderr) ?? "git exited with status \(result.status)"
         } catch {
-            var text = error.localizedDescription
-            if text.hasSuffix(".") { text.removeLast() }
-            return atRoot(branch, reason: text)
+            reason = Self.describe(error)
         }
+        // rmdir removes only an empty folder, so nothing git wrote is ever deleted.
+        rmdir(path.path)
+        return atRoot(branch, reason: reason)
+    }
+
+    private struct ClaimFailure: Error { let reason: String }
+
+    /// Makes the folder itself just before git runs, so one that appeared after the plan is never shared: mkdir fails on anything
+    /// already at the path, a symlink included, and the next -N is tried. git accepts the empty folder.
+    private static func claim(_ planned: URL) -> Result<URL, ClaimFailure> {
+        let parent = planned.deletingLastPathComponent()
+        do {
+            try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
+        } catch {
+            return .failure(ClaimFailure(reason: describe(error)))
+        }
+        var candidate = planned
+        var next = 2
+        while mkdir(candidate.path, 0o755) != 0 {
+            let code = errno
+            guard code == EEXIST else { return .failure(ClaimFailure(reason: "\(candidate.path): \(String(cString: strerror(code)))")) }
+            candidate = parent.appendingPathComponent("\(planned.lastPathComponent)-\(next)", isDirectory: true)
+            next += 1
+        }
+        return .success(candidate)
+    }
+
+    private static func describe(_ error: Error) -> String {
+        var text = error.localizedDescription
+        if text.hasSuffix(".") { text.removeLast() }
+        return text
     }
 
     private func atRoot(_ branch: String, reason: String) -> TaskFolder {
@@ -148,7 +186,9 @@ public struct TaskFolderResolver {
         return cut.isEmpty ? "task" : cut
     }
 
-    static func noBranchNote(_ number: Int?) -> String {
+    static let locationNote = "The worktree location must be an absolute path or start with ~/, so the shell opens at the project root."
+
+    static func unbranchedNote(_ number: Int?) -> String {
         guard let number else { return "No branch for this task yet. The shell opens at the project root." }
         return "No branch for #\(number) yet. The shell opens at the project root; running /dev #\(number) there cuts gh-\(number)-… at its first write."
     }
@@ -161,8 +201,7 @@ public struct TaskFolderResolver {
     }
 
     /// `<project>-<suffix>` in the worktree location, or the first of -2, -3, … that nothing occupies.
-    private func freePath(suffix: String) -> URL {
-        let location = expandedLocation
+    private func freePath(in location: URL, suffix: String) -> URL {
         let name = "\(Self.slug(projectRoot.lastPathComponent))-\(suffix)"
         var candidate = location.appendingPathComponent(name, isDirectory: true)
         var next = 2
@@ -173,10 +212,11 @@ public struct TaskFolderResolver {
         return candidate
     }
 
-    private var expandedLocation: URL {
+    /// nil unless the location is absolute or starts with ~/ (or is ~ itself); anything else would resolve against the app's working directory, /.
+    private var expandedLocation: URL? {
         if worktreeLocation == "~" { return homeDirectory }
         if worktreeLocation.hasPrefix("~/") { return homeDirectory.appendingPathComponent(String(worktreeLocation.dropFirst(2)), isDirectory: true) }
-        return URL(fileURLWithPath: worktreeLocation, isDirectory: true)
+        return worktreeLocation.hasPrefix("/") ? URL(fileURLWithPath: worktreeLocation, isDirectory: true) : nil
     }
 
     /// lstat, not stat: a dangling symlink still occupies its name.

@@ -32,8 +32,9 @@ final class BoardBuilderTests: XCTestCase {
                     url: "https://github.com/acme/app/issues/\(number)")
     }
 
-    private func pr(_ number: Int, _ title: String, head: String, decision: String = "", draft: Bool = false, body: String = "") -> GitHubPullRequest {
-        GitHubPullRequest(number: number, title: title, headRefName: head, reviewDecision: decision, isDraft: draft,
+    private func pr(_ number: Int, _ title: String, head: String, decision: String = "", draft: Bool = false, fork: Bool = false,
+                    body: String = "") -> GitHubPullRequest {
+        GitHubPullRequest(number: number, title: title, headRefName: head, isCrossRepository: fork, reviewDecision: decision, isDraft: draft,
                           url: "https://github.com/acme/app/pull/\(number)", body: body)
     }
 
@@ -329,6 +330,7 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(built["merged:9"]).branch, "feat/onboarding")
         XCTAssertNil(try XCTUnwrap(built["14"]).branch, "no branch yet")
         XCTAssertNil(try XCTUnwrap(built["15"]).branch)
+        XCTAssertEqual(built.values.compactMap(\.noBranchNote), [], "no pull request here comes from a fork")
     }
 
     func testABranchOnlyTaskTakesItsNumberFromAGhPrefix() throws {
@@ -340,6 +342,29 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.branch, "gh-12-x")
         XCTAssertEqual(task.taskNumber, 12)
         XCTAssertEqual(task.dock, shellDock(example: "claude \"/dev #12\""))
+    }
+
+    func testAForkHeadIsNeverTakenForABranchHere() throws {
+        let fork = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
+        let git = GitFacts(base: "main", baseRef: "refs/heads/main", baseShort: "abc1234",
+                           branches: [BranchFacts(name: "gh-50-mine", unmerged: 1, worktree: nil)])
+        let github = GitHubData(slug: "acme/app", issues: [issue(51, "Linked to a fork")], openPullRequests: [
+            pr(60, "From someone's main", head: "main", fork: true),
+            // Its head has the name of a local branch of ours, which is not the fork's branch.
+            pr(61, "A fork's fix", head: "gh-50-mine", fork: true, body: "Fixes #51"),
+            pr(62, "From this repository", head: "feature/same"),
+        ], mergedPullRequests: [GitHubMergedPullRequest(number: 63, title: "Merged from a fork", headRefName: "main", isCrossRepository: true,
+                                                        mergedAt: "2026-09-10T08:00:00Z", url: "https://github.com/acme/app/pull/63")])
+        let built = tasks(BoardInput(git: git, github: github, activeMilestone: nil,
+                                     now: date("2026-09-11T12:00:00Z"), timeZone: TimeZone(identifier: "UTC")!))
+        for id in ["pr:60", "51", "merged:63"] {
+            let task = try XCTUnwrap(built[id], id)
+            XCTAssertNil(task.branch, id)
+            XCTAssertEqual(task.noBranchNote, fork, id)
+        }
+        let same = try XCTUnwrap(built["pr:62"])
+        XCTAssertEqual(same.branch, "feature/same")
+        XCTAssertNil(same.noBranchNote)
     }
 
     func testTaskNumberIsTheIssueElseAGhPrefixOnTheBranch() {

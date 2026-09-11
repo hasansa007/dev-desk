@@ -411,6 +411,8 @@ public struct DeskTask: Identifiable, Hashable {
     public var parallelLine: String
     /// The task's git branch when one is known; nil for an issue nobody has branched yet, and for samples.
     public var branch: String?
+    /// Why the task has no branch to open when it isn't that nobody has branched yet, such as a pull request from a fork.
+    public var noBranchNote: String?
     public var nextAction: NextAction?
     public var notice: TaskNotice?
     public var pipeline: PipelineProgress?
@@ -445,7 +447,7 @@ public struct DeskTask: Identifiable, Hashable {
     public init(id: String, issueNumber: Int? = nil, title: String, column: BoardColumn,
                 cardMeta: String? = nil, cardBadge: StatusBadge? = nil, cardInlineText: String? = nil,
                 cardNote: String? = nil, cardNoteIsWarning: Bool = false, isDimmed: Bool = false,
-                headerBadge: StatusBadge, branchLine: String, parallelLine: String = "", branch: String? = nil,
+                headerBadge: StatusBadge, branchLine: String, parallelLine: String = "", branch: String? = nil, noBranchNote: String? = nil,
                 nextAction: NextAction? = nil, notice: TaskNotice? = nil, pipeline: PipelineProgress? = nil,
                 activity: Surface<[ActivityEvent]> = .available([]), canCompareOutputs: Bool = false,
                 requirements: Surface<Requirements>, changes: Surface<ChangeSet>, evidence: Surface<Evidence>,
@@ -466,6 +468,7 @@ public struct DeskTask: Identifiable, Hashable {
         self.branchLine = branchLine
         self.parallelLine = parallelLine
         self.branch = branch
+        self.noBranchNote = noBranchNote
         self.nextAction = nextAction
         self.notice = notice
         self.pipeline = pipeline

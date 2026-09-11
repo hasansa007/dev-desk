@@ -107,6 +107,25 @@ final class TaskFolderTests: XCTestCase {
         XCTAssertEqual(atHome, .create(path: home.url.appendingPathComponent("my-app-12", isDirectory: true), branch: "gh-12-x"))
     }
 
+    func testAWorktreeLocationThatIsNotAbsoluteOpensTheProjectRoot() async throws {
+        let note = "The worktree location must be an absolute path or start with ~/, so the shell opens at the project root."
+        let home = try TempGitRepo()
+        let absolute = try TempGitRepo()
+        let checkout = try TempGitRepo()
+        let runner = FakeRunner([Self.listKey: .ok(mainOnly + "worktree \(checkout.url.path)\0HEAD \(head2)\0branch refs/heads/gh-42-x\0\0")])
+        for bad in ["", "wt/tasks", "~bob/wt"] {
+            let plan = await resolver(runner, location: bad, home: home.url).plan(branch: "gh-12-x", taskNumber: 12)
+            XCTAssertEqual(plan, .root(Self.root, note: note), "\"\(bad)\" would resolve against /")
+        }
+        let checkedOut = await resolver(runner, location: "", home: home.url).plan(branch: "gh-42-x", taskNumber: 42)
+        XCTAssertEqual(checkedOut, .existing(URL(fileURLWithPath: checkout.url.path, isDirectory: true), branch: "gh-42-x"),
+                       "a branch already checked out needs no location")
+        let underHome = await resolver(runner, location: "~/x", home: home.url).plan(branch: "gh-12-x", taskNumber: 12)
+        XCTAssertEqual(underHome, .create(path: home.url.appendingPathComponent("x/my-app-12", isDirectory: true), branch: "gh-12-x"))
+        let atPath = await resolver(runner, location: absolute.url.path, home: home.url).plan(branch: "gh-12-x", taskNumber: 12)
+        XCTAssertEqual(atPath, .create(path: absolute.url.appendingPathComponent("my-app-12", isDirectory: true), branch: "gh-12-x"))
+    }
+
     func testAWorktreeListThatFailsStillPlansANewWorktree() async throws {
         let location = try TempGitRepo()
         let runner = FakeRunner([Self.listKey: .failed(129, stderr: "error: unknown switch `z'")])
@@ -121,6 +140,9 @@ final class TaskFolderTests: XCTestCase {
         XCTAssertEqual(numbered, .root(Self.root, note: "No branch for #42 yet. The shell opens at the project root; running /dev #42 there cuts gh-42-… at its first write."))
         let unnumbered = await resolver(runner, location: "/unused").plan(branch: "", taskNumber: nil)
         XCTAssertEqual(unnumbered, .root(Self.root, note: "No branch for this task yet. The shell opens at the project root."))
+        let fork = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
+        let forked = await resolver(runner, location: "/unused").plan(branch: nil, taskNumber: 51, noBranchNote: fork)
+        XCTAssertEqual(forked, .root(Self.root, note: fork), "the task's own reason replaces the generic note")
         XCTAssertEqual(runner.calls, [])
     }
 
@@ -147,14 +169,23 @@ final class TaskFolderTests: XCTestCase {
         "Couldn't create a worktree for gh-7-demo, so the shell opens at the project root: \(reason)"
     }
 
-    func testMaterialiseRunsExactlyTheHardenedWorktreeAddWithinSixtySeconds() async {
-        let runner = FakeRunner([addKey(Self.wt, "gh-7-demo"): .ok()])
-        let folder = await resolver(runner, location: "/work/wt").materialise(.create(path: Self.wt, branch: "gh-7-demo"))
-        XCTAssertEqual(folder, TaskFolder(url: Self.wt, note: nil, created: true))
-        XCTAssertEqual(runner.calls, [FakeRunner.Call(key: addKey(Self.wt, "gh-7-demo"), directory: Self.root, timeout: 60)])
+    /// A worktree location on disk and the folder planned in it, since materialise makes that folder itself.
+    private func planned() throws -> (location: TempGitRepo, path: URL) {
+        let location = try TempGitRepo()
+        return (location, location.url.appendingPathComponent("my-app-7", isDirectory: true))
     }
 
-    func testAFailedAddOpensTheProjectRootWithGitsErrorLine() async {
+    func testMaterialiseMakesTheFolderThenRunsExactlyTheHardenedWorktreeAdd() async throws {
+        let location = try TempGitRepo()
+        let path = location.url.appendingPathComponent("not/yet/my-app-7", isDirectory: true)
+        let runner = FakeRunner([addKey(path, "gh-7-demo"): .ok()])
+        let folder = await resolver(runner, location: location.url.path).materialise(.create(path: path, branch: "gh-7-demo"))
+        XCTAssertEqual(folder, TaskFolder(url: path, note: nil, created: true))
+        XCTAssertEqual(runner.calls, [FakeRunner.Call(key: addKey(path, "gh-7-demo"), directory: Self.root, timeout: 60)])
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: path.path), [], "the folder and its parents exist before git runs")
+    }
+
+    func testAFailedAddOpensTheProjectRootWithGitsErrorLineAndGivesTheFolderBack() async throws {
         let cases: [(stderr: String, reason: String)] = [
             ("fatal: invalid reference: gh-7-demo\n", "fatal: invalid reference: gh-7-demo"),
             // git prints its progress line before the error, as a real `worktree add` onto an existing path does.
@@ -163,17 +194,69 @@ final class TaskFolderTests: XCTestCase {
             ("", "git exited with status 128"),
         ]
         for (stderr, reason) in cases {
-            let runner = FakeRunner([addKey(Self.wt, "gh-7-demo"): .failed(128, stderr: stderr)])
-            let folder = await resolver(runner, location: "/work/wt").materialise(.create(path: Self.wt, branch: "gh-7-demo"))
+            let (location, path) = try planned()
+            let runner = FakeRunner([addKey(path, "gh-7-demo"): .failed(128, stderr: stderr)])
+            let folder = await resolver(runner, location: location.url.path).materialise(.create(path: path, branch: "gh-7-demo"))
             XCTAssertEqual(folder, TaskFolder(url: Self.root, note: rootNote(reason), created: false), stderr)
+            XCTAssertFalse(FileManager.default.fileExists(atPath: path.path), "the empty folder it made is removed again")
         }
     }
 
-    func testATimedOutAddOpensTheProjectRoot() async {
+    func testATimedOutAddOpensTheProjectRoot() async throws {
+        let (location, path) = try planned()
         let runner = FakeRunner()
-        runner.script(addKey(Self.wt, "gh-7-demo"), throwing: CommandError.timedOut(tool: "git", seconds: 60))
-        let folder = await resolver(runner, location: "/work/wt").materialise(.create(path: Self.wt, branch: "gh-7-demo"))
+        runner.script(addKey(path, "gh-7-demo"), throwing: CommandError.timedOut(tool: "git", seconds: 60))
+        let folder = await resolver(runner, location: location.url.path).materialise(.create(path: path, branch: "gh-7-demo"))
         XCTAssertEqual(folder, TaskFolder(url: Self.root, note: rootNote("git did not finish within 60 seconds"), created: false))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path.path))
+    }
+
+    func testTwoStartsWhosePlansCollideGetTwoFolders() async throws {
+        let location = try TempGitRepo()
+        let first = location.url.appendingPathComponent("my-app-spike-x", isDirectory: true)
+        let second = location.url.appendingPathComponent("my-app-spike-x-2", isDirectory: true)
+        let runner = FakeRunner([Self.listKey: .ok(mainOnly), addKey(first, "Spike/X"): .ok(), addKey(second, "spike-x"): .ok()])
+        let resolver = resolver(runner, location: location.url.path)
+        // Both plans are read before either folder exists, as two quick starts of tasks with colliding slugs would be.
+        let a = await resolver.plan(branch: "Spike/X", taskNumber: nil)
+        let b = await resolver.plan(branch: "spike-x", taskNumber: nil)
+        XCTAssertEqual(a, .create(path: first, branch: "Spike/X"))
+        XCTAssertEqual(b, .create(path: first, branch: "spike-x"))
+        let folderA = await resolver.materialise(a)
+        let folderB = await resolver.materialise(b)
+        XCTAssertEqual(folderA, TaskFolder(url: first, note: nil, created: true))
+        XCTAssertEqual(folderB, TaskFolder(url: second, note: nil, created: true))
+        XCTAssertEqual(runner.keys, [Self.listKey, Self.listKey, addKey(first, "Spike/X"), addKey(second, "spike-x")])
+    }
+
+    func testALinkPlantedAtThePlannedPathIsNeverUsed() async throws {
+        let location = try TempGitRepo()
+        let target = try TempGitRepo()
+        let plannedPath = location.url.appendingPathComponent("my-app-12", isDirectory: true)
+        let claimed = location.url.appendingPathComponent("my-app-12-2", isDirectory: true)
+        let runner = FakeRunner([Self.listKey: .ok(mainOnly), addKey(claimed, "gh-12-x"): .ok()])
+        let resolver = resolver(runner, location: location.url.path)
+        let plan = await resolver.plan(branch: "gh-12-x", taskNumber: 12)
+        XCTAssertEqual(plan, .create(path: plannedPath, branch: "gh-12-x"))
+
+        // Planted after the plan, and pointing at an empty folder git would fill.
+        try FileManager.default.createSymbolicLink(atPath: plannedPath.path, withDestinationPath: target.url.path)
+        let folder = await resolver.materialise(plan)
+        XCTAssertEqual(folder, TaskFolder(url: claimed, note: nil, created: true))
+        XCTAssertEqual(runner.keys, [Self.listKey, addKey(claimed, "gh-12-x")])
+        XCTAssertEqual(try FileManager.default.destinationOfSymbolicLink(atPath: plannedPath.path), target.url.path, "the link is left as it was")
+    }
+
+    func testAFolderThatCannotBeMadeOpensTheProjectRootWithoutRunningGit() async throws {
+        let location = try TempGitRepo()
+        try location.write("taken", "a file where the worktree location's folder would go\n")
+        let path = location.url.appendingPathComponent("taken/my-app-7", isDirectory: true)
+        let runner = FakeRunner()
+        let folder = await resolver(runner, location: location.url.path).materialise(.create(path: path, branch: "gh-7-demo"))
+        XCTAssertEqual(folder.url, Self.root)
+        XCTAssertFalse(folder.created)
+        XCTAssertTrue(folder.note?.hasPrefix(rootNote("")) == true, folder.note ?? "no note")
+        XCTAssertEqual(runner.calls, [])
     }
 
     func testExistingAndRootPlansRunNothing() async {
@@ -187,12 +270,14 @@ final class TaskFolderTests: XCTestCase {
         XCTAssertEqual(runner.calls, [])
     }
 
-    func testABranchGitWouldReadAsAnOptionIsNeverPassedToIt() async {
+    func testABranchGitWouldReadAsAnOptionIsNeverPassedToIt() async throws {
+        let (location, path) = try planned()
         let runner = FakeRunner()
-        let folder = await resolver(runner, location: "/work/wt").materialise(.create(path: Self.wt, branch: "-Bmain"))
+        let folder = await resolver(runner, location: location.url.path).materialise(.create(path: path, branch: "-Bmain"))
         XCTAssertEqual(folder, TaskFolder(url: Self.root, note: "Couldn't create a worktree for -Bmain, so the shell opens at the project root: "
                                           + "'-Bmain' is not a valid branch name", created: false))
         XCTAssertEqual(runner.calls, [], "worktree add would read -Bmain as -B main and reset that branch")
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path.path), "nothing is made for a name it refuses")
     }
 
     func testARealRepositoryGetsAWorktreeThenReusesIt() async throws {

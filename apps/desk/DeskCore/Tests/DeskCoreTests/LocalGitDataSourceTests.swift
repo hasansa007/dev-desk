@@ -71,7 +71,7 @@ final class TempGitRepo {
 
 final class LocalGitDataSourceTests: XCTestCase {
     private let issueList = "gh issue list --repo acme/app --state open --limit 200 --json number,title,labels,milestone,updatedAt,body,url"
-    private let openPRs = "gh pr list --repo acme/app --state open --limit 100 --json number,title,headRefName,reviewDecision,isDraft,url,body"
+    private let openPRs = "gh pr list --repo acme/app --state open --limit 100 --json number,title,headRefName,isCrossRepository,reviewDecision,isDraft,url,body"
     private let activeAuth = "gh auth status --active --hostname github.com"
     private let plainAuth = "gh auth status --hostname github.com"
 
@@ -90,7 +90,7 @@ final class LocalGitDataSourceTests: XCTestCase {
             activeAuth: .ok("github.com\n  ✓ Logged in to github.com account octo (keyring)\n"),
             issueList: .ok("[]"),
             openPRs: .ok("[]"),
-            "gh pr list --repo acme/app --state merged --limit 10 --json number,title,headRefName,mergedAt,url": .ok("[]"),
+            "gh pr list --repo acme/app --state merged --limit 10 --json number,title,headRefName,isCrossRepository,mergedAt,url": .ok("[]"),
             "gh api repos/acme/app/milestones?state=open": .ok("[]"),
             "which claude": .ok("/usr/local/bin/claude\n"),
         ])
@@ -106,7 +106,7 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     private func pullRequestJSON(_ numbers: ClosedRange<Int>) -> String {
         let prs = numbers.map {
-            #"{"number":\#($0),"title":"PR \#($0)","headRefName":"b\#($0)","reviewDecision":"","isDraft":false,"url":"https://github.com/acme/app/pull/\#($0)","body":""}"#
+            #"{"number":\#($0),"title":"PR \#($0)","headRefName":"b\#($0)","isCrossRepository":false,"reviewDecision":"","isDraft":false,"url":"https://github.com/acme/app/pull/\#($0)","body":""}"#
         }
         return "[" + prs.joined(separator: ",") + "]"
     }

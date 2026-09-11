@@ -15,24 +15,31 @@ final class GitHubDecodingTests: XCTestCase {
         XCTAssertNil(issues[1].milestone)
     }
 
-    func testOpenPullRequestsDecodeReviewDecisionAndDraft() throws {
+    func testOpenPullRequestsDecodeReviewDecisionDraftAndFork() throws {
         let json = """
-        [{"body":"Closes #12","headRefName":"gh-12-x","isDraft":false,"number":20,"reviewDecision":"CHANGES_REQUESTED","title":"Fix crash","url":"https://github.com/acme/app/pull/20"},
-         {"body":"","headRefName":"spike","isDraft":true,"number":21,"reviewDecision":"","title":"Spike","url":"https://github.com/acme/app/pull/21"}]
+        [{"body":"Closes #12","headRefName":"gh-12-x","isCrossRepository":false,"isDraft":false,"number":20,"reviewDecision":"CHANGES_REQUESTED","title":"Fix crash","url":"https://github.com/acme/app/pull/20"},
+         {"body":"","headRefName":"spike","isCrossRepository":true,"isDraft":true,"number":21,"reviewDecision":"","title":"Spike","url":"https://github.com/acme/app/pull/21"}]
         """
         let prs = try XCTUnwrap(GitHubJSON.decode([GitHubPullRequest].self, from: json))
         XCTAssertEqual(prs[0].reviewDecision, "CHANGES_REQUESTED")
         XCTAssertEqual(prs[0].headRefName, "gh-12-x")
+        XCTAssertFalse(prs[0].isCrossRepository)
         XCTAssertTrue(prs[1].isDraft)
+        XCTAssertTrue(prs[1].isCrossRepository)
         XCTAssertEqual(prs[1].reviewDecision, "")
+    }
+
+    func testAPullRequestListWithoutTheForkFlagIsUnreadable() {
+        let json = #"[{"body":"","headRefName":"main","isDraft":false,"number":21,"reviewDecision":"","title":"Spike","url":""}]"#
+        XCTAssertNil(GitHubJSON.decode([GitHubPullRequest].self, from: json), "a head of unknown origin is never taken for a branch here")
     }
 
     func testMergedPullRequestsDecode() throws {
         let json = """
-        [{"headRefName":"feature/tracker","mergedAt":"2026-09-11T07:07:04Z","number":49,"title":"feat: tracker","url":"https://github.com/acme/app/pull/49"}]
+        [{"headRefName":"feature/tracker","isCrossRepository":true,"mergedAt":"2026-09-11T07:07:04Z","number":49,"title":"feat: tracker","url":"https://github.com/acme/app/pull/49"}]
         """
         let merged = try XCTUnwrap(GitHubJSON.decode([GitHubMergedPullRequest].self, from: json))
-        XCTAssertEqual(merged, [GitHubMergedPullRequest(number: 49, title: "feat: tracker", headRefName: "feature/tracker",
+        XCTAssertEqual(merged, [GitHubMergedPullRequest(number: 49, title: "feat: tracker", headRefName: "feature/tracker", isCrossRepository: true,
                                                         mergedAt: "2026-09-11T07:07:04Z", url: "https://github.com/acme/app/pull/49")])
     }
 
