@@ -315,7 +315,7 @@ private struct BoardContext {
     private func activity(_ head: String?, local: BranchFacts?) -> Surface<[ActivityEvent]> {
         if let failure = local?.logFailure { return .unavailable("git log failed: \(failure)") }
         if let local { return .available(activityEvents(local.commits)) }
-        if let head { return .unavailable("The branch `\(head)` is not in this checkout. Fetch it to see its commits.") }
+        if let head { return .unavailable("The branch \(Markdown.escape(head)) is not in this checkout. Fetch it to see its commits.") }
         return .available([])
     }
 
@@ -333,7 +333,7 @@ private struct BoardContext {
             }
             return .available(ChangeSet(files: files, baseNote: baseNote, diffs: local.diffs))
         }
-        if let head { return .unavailable("The branch `\(head)` is not in this checkout. Fetch it to see its diff.") }
+        if let head { return .unavailable("The branch \(Markdown.escape(head)) is not in this checkout. Fetch it to see its diff.") }
         return .available(ChangeSet(files: [], baseNote: "No branch yet."))
     }
 
