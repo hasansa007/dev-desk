@@ -184,7 +184,8 @@ checkpointed its phase into `.dev/`, the card also shows `planning` / `coding` /
 
 ### Seeing it in a window
 
-Dev Desk, the Mac app in `apps/desk/`, shows the board and the roadmap — see
+Dev Desk, the Mac app in `apps/desk/`, shows the board and the roadmap. It also runs a shell and the
+task's agent in each task's own folder. See [its README](../../apps/desk/README.md) and
 [System model](SYSTEM-MODEL.md). To move a card between QUEUE and BACKLOG, or cancel one with a
 reason, ask `/dev:kanban`: its Move and Cancel happen in the conversation. Ideation reports and the
 project map have no screen yet — read them where they live, `docs/ideation/<date>.md` and
