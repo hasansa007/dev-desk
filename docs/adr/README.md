@@ -24,3 +24,5 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0013](0013-the-app-reads-git-and-github-directly.md) | The app reads git and GitHub directly, until `dev snapshot` exists | Accepted |
 | [0014](0014-dev-desk-replaces-dev-ui.md) | Dev Desk replaces `/dev:ui`; card moves go through `/dev:kanban` | Accepted |
 | [0015](0015-files-live-with-the-flow-that-reads-them.md) | Files live with the flow that reads them; the root holds only entry points and folders with a reader | Accepted |
+| [0016](0016-dev-desk-embeds-a-terminal-with-swiftterm.md) | Dev Desk embeds a terminal with SwiftTerm, its first dependency; DeskCore stays dependency-free | Accepted |
+| [0017](0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md) | A task's shell opens in that task's own worktree, and only when asked | Accepted |
