@@ -51,8 +51,10 @@ public final class ShellSessions {
     }
 
     /// Plans again with the location the user has now, creates the worktree when the plan needs one, and leaves the session running there.
+    /// `refusingRoot`, which Auto passes, fails the session with the note instead when the folder falls back to the project root, whether
+    /// the plan said so or git refused the worktree, so nothing is launched there.
     public func start(taskID: String, branch: String?, taskNumber: Int?, noBranchNote: String? = nil, worktreeLocation: String,
-                      baseRef: String? = nil) async {
+                      baseRef: String? = nil, refusingRoot: Bool = false) async {
         guard let resolver = resolver(worktreeLocation) else { return }
         switch state(for: taskID) {
         case .preparing, .running: return
@@ -60,7 +62,12 @@ public final class ShellSessions {
         }
         states[taskID] = .preparing
         let plan = await readPlan(resolver, branch: branch, taskNumber: taskNumber, noBranchNote: noBranchNote, baseRef: baseRef)
-        let folder = await resolver.materialise(plan)
+        let folder = await resolver.materialise(plan, for: purpose)
+        // A folder with a note is the project root, where the task's own checkout should have been.
+        if refusingRoot, let note = folder.note {
+            states[taskID] = .failed(note)
+            return
+        }
         generations[taskID, default: 0] += 1
         states[taskID] = .running(folder)
     }
@@ -79,6 +86,16 @@ public final class ShellSessions {
         states.compactMap { id, state in
             if case .running = state { return id }
             return nil
+        }.sorted()
+    }
+
+    /// Tasks whose session is preparing or running: a start still waiting on git already holds one of Auto's slots.
+    public var activeTaskIDs: [String] {
+        states.compactMap { id, state in
+            switch state {
+            case .preparing, .running: return id
+            default: return nil
+            }
         }.sorted()
     }
 

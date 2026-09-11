@@ -67,7 +67,7 @@ public struct TaskFolder: Equatable {
 
 public enum TaskFolderPlan: Equatable {
     case existing(URL, branch: String)
-    /// Rule 1b: a worktree of this repository already at the task's own path, detached or not.
+    /// Rule 1b, for a task with no branch yet: a worktree of this repository already at the task's own path, detached or not.
     case existingOwn(URL)
     case create(path: URL, branch: String)
     /// Rule 3, for an agent only: a new worktree at the task's own path, detached at the base ref.
@@ -91,18 +91,20 @@ public struct TaskFolderResolver {
         self.homeDirectory = homeDirectory
     }
 
-    /// The shell's plan: rules 1, 1b and 2, else the project root. It only reads git's worktree list, so the plan can be shown before anything starts.
-    /// `noBranchNote` replaces the no-branch note when the task says why it has no branch, as a pull request from a fork does.
+    /// The shell's plan: rules 1 and 2 for a task with a branch, and 1b, else the project root, for one without. It only reads git's
+    /// worktree list, so the plan can be shown before anything starts. `noBranchNote` replaces the no-branch note when the task says why
+    /// it has no branch, as a pull request from a fork does.
     public func plan(branch: String?, taskNumber: Int?, noBranchNote: String? = nil) async -> TaskFolderPlan {
-        await plan(branch: branch, taskNumber: taskNumber, unbranched: { _ in
+        await plan(branch: branch, taskNumber: taskNumber, for: .shell, unbranched: { _ in
             .root(projectRoot, note: noBranchNote ?? Self.unbranchedNote(taskNumber))
         })
     }
 
     /// The agent's plan: the shell's, except that a numbered task with no branch, no reason for having none and a known base ref gets a
-    /// worktree detached at that ref at its own path (rule 3), where the pipeline cuts the task's branch. Anything else opens at the project root (rule 4).
+    /// worktree detached at that ref at its own path (rule 3), where the pipeline cuts the task's branch. Anything else opens at the
+    /// project root (rule 4), with a note that says so of the agent.
     public func planAgent(branch: String?, taskNumber: Int?, noBranchNote: String?, baseRef: String?) async -> TaskFolderPlan {
-        await plan(branch: branch, taskNumber: taskNumber, unbranched: { location in
+        await plan(branch: branch, taskNumber: taskNumber, for: .agent, unbranched: { location in
             guard noBranchNote == nil, let taskNumber else { return .root(projectRoot, note: noBranchNote ?? Self.unbranchedNote(taskNumber)) }
             guard let baseRef else { return .root(projectRoot, note: Self.noBaseRefNote) }
             guard let location else { return .root(projectRoot, note: Self.locationNote) }
@@ -110,47 +112,50 @@ public struct TaskFolderResolver {
         })
     }
 
-    /// Rules 1, 1b and 2. `unbranched` plans a task with no branch and nothing at its own path; it gets the location, nil when unusable.
-    private func plan(branch: String?, taskNumber: Int?, unbranched: (URL?) -> TaskFolderPlan) async -> TaskFolderPlan {
-        let branch = branch.flatMap { $0.isEmpty ? nil : $0 }
+    /// Rules 1 and 2 for a task with a branch; 1b, then `unbranched`, for one without. A branch never uses 1b: a second gh-N-… branch,
+    /// which becomes a task numbered N of its own, names the same folder. `unbranched` gets the location, nil when unusable.
+    private func plan(branch: String?, taskNumber: Int?, for purpose: SessionPurpose, unbranched: (URL?) -> TaskFolderPlan) async -> TaskFolderPlan {
         let location = expandedLocation
-        // The task's own folder is named for its number, else its branch.
-        let suffix = taskNumber.map { String($0) } ?? branch.map(Self.slug)
-        guard branch != nil || (location != nil && suffix != nil) else { return unbranched(location) }
-        let worktrees = await worktrees()
-        // A deleted worktree stays listed, as prunable, until it is pruned; a shell can't open in its missing folder.
-        if let branch, let checkout = worktrees.first(where: { $0.branch == branch && Self.isDirectory($0.path) }) {
-            return .existing(URL(fileURLWithPath: checkout.path, isDirectory: true), branch: branch)
+        let result: TaskFolderPlan
+        if let branch, !branch.isEmpty {
+            // A deleted worktree stays listed, as prunable, until it is pruned; a shell can't open in its missing folder.
+            if let checkout = await worktrees().first(where: { $0.branch == branch && Self.isDirectory($0.path) }) {
+                result = .existing(URL(fileURLWithPath: checkout.path, isDirectory: true), branch: branch)
+            } else if let location {
+                result = .create(path: freePath(in: location, suffix: taskNumber.map { String($0) } ?? Self.slug(branch)), branch: branch)
+            } else {
+                result = .root(projectRoot, note: Self.locationNote)
+            }
+        } else if let location, let taskNumber, let own = ownWorktree(in: await worktrees(), location: location, suffix: String(taskNumber)) {
+            result = .existingOwn(own)
+        } else {
+            result = unbranched(location)
         }
-        if let location, let suffix, let own = ownWorktree(in: worktrees, location: location, suffix: suffix) {
-            return .existingOwn(own)
-        }
-        guard let branch else { return unbranched(location) }
-        guard let location else { return .root(projectRoot, note: Self.locationNote) }
-        return .create(path: freePath(in: location, suffix: suffix ?? Self.slug(branch)), branch: branch)
+        guard case .root(let root, let note) = result else { return result }
+        return .root(root, note: Self.phrased(note, for: purpose))
     }
 
     /// Runs `git worktree add` for `.create` and `.createDetached` only, into a folder it makes just before. A failure or a timeout opens
-    /// the project root instead, with the reason (rule 4).
-    public func materialise(_ plan: TaskFolderPlan) async -> TaskFolder {
+    /// the project root instead, with the reason (rule 4), said of the shell or the agent that asked.
+    public func materialise(_ plan: TaskFolderPlan, for purpose: SessionPurpose = .shell) async -> TaskFolder {
         switch plan {
         case .existing(let url, _), .existingOwn(let url): return TaskFolder(url: url, note: nil, created: false)
-        case .root(let url, let note): return TaskFolder(url: url, note: note, created: false)
-        case .create(let path, let branch): return await addWorktree(at: path, revision: branch, detached: false)
-        case .createDetached(let path, let baseRef): return await addWorktree(at: path, revision: baseRef, detached: true)
+        case .root(let url, let note): return TaskFolder(url: url, note: Self.phrased(note, for: purpose), created: false)
+        case .create(let path, let branch): return await addWorktree(at: path, revision: branch, detached: false, for: purpose)
+        case .createDetached(let path, let baseRef): return await addWorktree(at: path, revision: baseRef, detached: true, for: purpose)
         }
     }
 
     /// `git worktree add <path> <branch>`, or `git worktree add --detach <path> <base ref>`.
-    private func addWorktree(at planned: URL, revision: String, detached: Bool) async -> TaskFolder {
+    private func addWorktree(at planned: URL, revision: String, detached: Bool, for purpose: SessionPurpose) async -> TaskFolder {
         // The arguments carry no "--", so git would read a leading "-" as an option: -Bmain resets main.
         guard !revision.hasPrefix("-") else {
-            return atRoot(revision, reason: "'\(revision)' is not a valid \(detached ? "base ref" : "branch name")")
+            return atRoot(revision, reason: "'\(revision)' is not a valid \(detached ? "base ref" : "branch name")", for: purpose)
         }
         let path: URL
-        switch Self.claim(planned) {
+        switch Self.claim(planned, stepping: family(of: planned.lastPathComponent, branch: detached ? nil : revision)) {
         case .success(let claimed): path = claimed
-        case .failure(let failure): return atRoot(revision, reason: failure.reason)
+        case .failure(let failure): return atRoot(revision, reason: failure.reason, for: purpose)
         }
         let reason: String
         do {
@@ -163,14 +168,14 @@ public struct TaskFolderResolver {
         }
         // rmdir removes only an empty folder, so nothing git wrote is ever deleted.
         rmdir(path.path)
-        return atRoot(revision, reason: reason)
+        return atRoot(revision, reason: reason, for: purpose)
     }
 
     private struct ClaimFailure: Error { let reason: String }
 
     /// Makes the folder itself just before git runs, so one that appeared after the plan is never shared: mkdir fails on anything
-    /// already at the path, a symlink included, and the next -N is tried. git accepts the empty folder.
-    private static func claim(_ planned: URL) -> Result<URL, ClaimFailure> {
+    /// already at the path, a symlink included, and the base name's next -k is tried, as `freePath` steps. git accepts the empty folder.
+    private static func claim(_ planned: URL, stepping family: (base: String, k: Int)) -> Result<URL, ClaimFailure> {
         let parent = planned.deletingLastPathComponent()
         do {
             try FileManager.default.createDirectory(at: parent, withIntermediateDirectories: true)
@@ -178,14 +183,26 @@ public struct TaskFolderResolver {
             return .failure(ClaimFailure(reason: describe(error)))
         }
         var candidate = planned
-        var next = 2
+        var next = family.k + 1
         while mkdir(candidate.path, 0o755) != 0 {
             let code = errno
             guard code == EEXIST else { return .failure(ClaimFailure(reason: "\(candidate.path): \(String(cString: strerror(code)))")) }
-            candidate = parent.appendingPathComponent("\(planned.lastPathComponent)-\(next)", isDirectory: true)
+            candidate = parent.appendingPathComponent("\(family.base)-\(next)", isDirectory: true)
             next += 1
         }
         return .success(candidate)
+    }
+
+    /// The name freePath stepped from to reach a planned folder, and which of its names that is: my-app-7-2 is my-app-7's second.
+    /// Only a task's own name is split off, the numbered one or a branch's slug, so my-app-72 and a branch's fix-2 are their own base.
+    private func family(of name: String, branch: String?) -> (base: String, k: Int) {
+        let prefix = Self.slug(projectRoot.lastPathComponent) + "-"
+        guard let dash = name.lastIndex(of: "-") else { return (name, 1) }
+        let base = String(name[..<dash])
+        guard base.hasPrefix(prefix), let k = Self.collisionRank(name, of: base), k >= 2 else { return (name, 1) }
+        let suffix = String(base.dropFirst(prefix.count))
+        let numbered = !suffix.isEmpty && suffix.allSatisfy { $0.isASCII && $0.isNumber }
+        return numbered || branch.map(Self.slug) == suffix ? (base, k) : (name, 1)
     }
 
     private static func describe(_ error: Error) -> String {
@@ -194,8 +211,17 @@ public struct TaskFolderResolver {
         return text
     }
 
-    private func atRoot(_ revision: String, reason: String) -> TaskFolder {
-        TaskFolder(url: projectRoot, note: "Couldn't create a worktree for \(revision), so the shell opens at the project root: \(reason)", created: false)
+    /// Only the sentence is phrased for the agent, never git's own reason after it.
+    private func atRoot(_ revision: String, reason: String, for purpose: SessionPurpose) -> TaskFolder {
+        let sentence = Self.phrased("Couldn't create a worktree for \(revision), so the shell opens at the project root: ", for: purpose)
+        return TaskFolder(url: projectRoot, note: sentence + reason, created: false)
+    }
+
+    /// The notes are written of the shell, a fork's note from the board included; an agent's say the agent opens at the project root.
+    static func phrased(_ note: String, for purpose: SessionPurpose) -> String {
+        guard purpose == .agent else { return note }
+        return note.replacingOccurrences(of: "The shell opens at the project root", with: "The agent opens at the project root")
+            .replacingOccurrences(of: "the shell opens at the project root", with: "the agent opens at the project root")
     }
 
     /// git prints progress such as "Preparing worktree (checking out …)" before its error, so the first fatal: or error: line is the reason.
@@ -225,7 +251,7 @@ public struct TaskFolderResolver {
     /// Rule 3's plan note: a detached worktree has no branch until the pipeline's first write cuts one.
     public static let detachedNote = "The pipeline creates the task's branch here at its first write."
 
-    static let noBaseRefNote = "No base branch is known, so the agent would open at the project root; start it by hand if you want it there."
+    static let noBaseRefNote = "No base branch is known, so the agent opens at the project root."
 
     static let locationNote = "The worktree location must be an absolute path or start with ~/, so the shell opens at the project root."
 

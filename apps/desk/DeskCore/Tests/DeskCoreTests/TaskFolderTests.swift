@@ -169,12 +169,15 @@ final class TaskFolderTests: XCTestCase {
 
         let shell = await resolver.plan(branch: nil, taskNumber: 7)
         XCTAssertEqual(shell, .existingOwn(own), "the shell opens where the task's agent works")
-        let shellWithBranch = await resolver.plan(branch: "gh-7-x", taskNumber: 7)
-        XCTAssertEqual(shellWithBranch, .existingOwn(own), "1b wins over a new worktree for a branch nothing has checked out")
         let agent = await resolver.planAgent(branch: nil, taskNumber: 7, noBranchNote: nil, baseRef: Self.baseRef)
         XCTAssertEqual(agent, .existingOwn(own), "1b wins over a new detached worktree")
+
+        // Another branch's task can share the folder name, so a task with a branch never uses 1b.
+        let next = location.url.appendingPathComponent("my-app-7-2", isDirectory: true)
+        let shellWithBranch = await resolver.plan(branch: "gh-7-x", taskNumber: 7)
+        XCTAssertEqual(shellWithBranch, .create(path: next, branch: "gh-7-x"))
         let agentWithBranch = await resolver.planAgent(branch: "gh-7-x", taskNumber: 7, noBranchNote: nil, baseRef: Self.baseRef)
-        XCTAssertEqual(agentWithBranch, .existingOwn(own))
+        XCTAssertEqual(agentWithBranch, .create(path: next, branch: "gh-7-x"))
 
         let folder = await resolver.materialise(.existingOwn(own))
         XCTAssertEqual(folder, TaskFolder(url: own, note: nil, created: false))
@@ -222,13 +225,42 @@ final class TaskFolderTests: XCTestCase {
         XCTAssertEqual(plan, .existingOwn(second), "git's list order doesn't decide which")
     }
 
-    func testABranchOnlyTasksOwnPathIsNamedForItsSlug() async throws {
+    func testABranchOnlyTaskNeverReusesAWorktreeAtItsSlugsPath() async throws {
         let location = try TempGitRepo()
-        let own = location.url.appendingPathComponent("my-app-spike-try-it", isDirectory: true)
-        try makeFolders([own])
-        let runner = FakeRunner([Self.listKey: .ok(mainAnd(detachedAt: [own]))])
+        let slugs = location.url.appendingPathComponent("my-app-spike-try-it", isDirectory: true)
+        try makeFolders([slugs])
+        let runner = FakeRunner([Self.listKey: .ok(mainAnd(detachedAt: [slugs]))])
         let plan = await resolver(runner, location: location.url.path).plan(branch: "Spike/Try_it", taskNumber: nil)
-        XCTAssertEqual(plan, .existingOwn(own))
+        XCTAssertEqual(plan, .create(path: location.url.appendingPathComponent("my-app-spike-try-it-2", isDirectory: true), branch: "Spike/Try_it"),
+                       "Spike/X and spike-x share a slug")
+    }
+
+    func testASecondBranchOfTheSameNumberNeverTakesTheFirstOnesWorktree() async throws {
+        // Issue #7 claims only its first gh-7-… branch; gh-7-y becomes a task of its own, numbered 7 too, so both name my-app-7.
+        let git = GitFacts(base: "main", baseRef: "refs/heads/main", baseShort: "abc1234", branches: [
+            BranchFacts(name: "gh-7-x", unmerged: 1, worktree: nil), BranchFacts(name: "gh-7-y", unmerged: 1, worktree: nil),
+        ])
+        let issue = GitHubIssue(number: 7, title: "Crash", labels: [], milestone: nil, updatedAt: "2026-09-01T00:00:00Z", body: "",
+                                url: "https://github.com/acme/app/issues/7")
+        let board = BoardBuilder.build(BoardInput(git: git, github: GitHubData(slug: "acme/app", issues: [issue]), activeMilestone: nil))
+        let first = try XCTUnwrap(board.first { $0.id == "7" })
+        let second = try XCTUnwrap(board.first { $0.id == "branch:gh-7-y" })
+        XCTAssertEqual([first.branch, second.branch], ["gh-7-x", "gh-7-y"])
+        XCTAssertEqual([first.taskNumber, second.taskNumber], [7, 7])
+
+        let location = try TempGitRepo()
+        let firsts = location.url.appendingPathComponent("my-app-7", isDirectory: true)
+        let seconds = location.url.appendingPathComponent("my-app-7-2", isDirectory: true)
+        try makeFolders([firsts])
+        // The first task's worktree on its branch, and as it was before the pipeline's first write, with nothing checked out.
+        for listing in [mainOnly + "worktree \(firsts.path)\0HEAD \(head2)\0branch refs/heads/gh-7-x\0\0", mainAnd(detachedAt: [firsts])] {
+            let resolver = resolver(FakeRunner([Self.listKey: .ok(listing)]), location: location.url.path)
+            let shell = await resolver.plan(branch: second.branch, taskNumber: second.taskNumber, noBranchNote: second.noBranchNote)
+            XCTAssertEqual(shell, .create(path: seconds, branch: "gh-7-y"))
+            let agent = await resolver.planAgent(branch: second.branch, taskNumber: second.taskNumber, noBranchNote: second.noBranchNote,
+                                                 baseRef: second.baseRef)
+            XCTAssertEqual(agent, .create(path: seconds, branch: "gh-7-y"))
+        }
     }
 
     func testTheBranchsOwnCheckoutWinsOverAWorktreeAtTheOwnPath() async throws {
@@ -274,14 +306,19 @@ final class TaskFolderTests: XCTestCase {
         let runner = FakeRunner([Self.listKey: .ok(mainOnly)])
         let resolver = resolver(runner, location: location.url.path)
         let noBase = await resolver.planAgent(branch: nil, taskNumber: 7, noBranchNote: nil, baseRef: nil)
-        XCTAssertEqual(noBase, .root(Self.root, note: "No base branch is known, so the agent would open at the project root; start it by hand if you want it there."))
+        XCTAssertEqual(noBase, .root(Self.root, note: "No base branch is known, so the agent opens at the project root."))
         let fork = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
         let forked = await resolver.planAgent(branch: nil, taskNumber: 51, noBranchNote: fork, baseRef: Self.baseRef)
-        XCTAssertEqual(forked, .root(Self.root, note: fork), "a fork's task keeps its own reason")
+        XCTAssertEqual(forked, .root(Self.root, note: "This pull request comes from a fork, so its branch isn't in this repository. "
+                                     + "The agent opens at the project root."), "a fork's task keeps its own reason, said of the agent")
         let unnumbered = await resolver.planAgent(branch: "", taskNumber: nil, noBranchNote: nil, baseRef: Self.baseRef)
-        XCTAssertEqual(unnumbered, .root(Self.root, note: "No branch for this task yet. The shell opens at the project root."))
-        let unplaced = await self.resolver(runner, location: "wt/tasks").planAgent(branch: nil, taskNumber: 7, noBranchNote: nil, baseRef: Self.baseRef)
-        XCTAssertEqual(unplaced, .root(Self.root, note: "The worktree location must be an absolute path or start with ~/, so the shell opens at the project root."))
+        XCTAssertEqual(unnumbered, .root(Self.root, note: "No branch for this task yet. The agent opens at the project root."))
+        let unplacedResolver = self.resolver(runner, location: "wt/tasks")
+        let locationNote = "The worktree location must be an absolute path or start with ~/, so the agent opens at the project root."
+        let unplaced = await unplacedResolver.planAgent(branch: nil, taskNumber: 7, noBranchNote: nil, baseRef: Self.baseRef)
+        XCTAssertEqual(unplaced, .root(Self.root, note: locationNote))
+        let unplacedBranch = await unplacedResolver.planAgent(branch: "gh-7-x", taskNumber: 7, noBranchNote: nil, baseRef: Self.baseRef)
+        XCTAssertEqual(unplacedBranch, .root(Self.root, note: locationNote))
     }
 
     func testAnAgentForATaskWithABranchPlansAsTheShellDoes() async throws {
@@ -434,7 +471,7 @@ final class TaskFolderTests: XCTestCase {
     }
 
     private func detachedRootNote(_ reason: String) -> String {
-        "Couldn't create a worktree for \(Self.baseRef), so the shell opens at the project root: \(reason)"
+        "Couldn't create a worktree for \(Self.baseRef), so the agent opens at the project root: \(reason)"
     }
 
     func testMaterialiseRunsExactlyTheHardenedDetachedAddIntoTheFolderItMakes() async throws {
@@ -451,14 +488,16 @@ final class TaskFolderTests: XCTestCase {
         let failing = try planned()
         let refused = FakeRunner([detachKey(failing.path, Self.baseRef): .failed(128, stderr: "Preparing worktree (detached HEAD 1234567)\n"
                                                                                       + "fatal: invalid reference: \(Self.baseRef)\n")])
-        let failed = await resolver(refused, location: failing.location.url.path).materialise(.createDetached(path: failing.path, baseRef: Self.baseRef))
+        let failed = await resolver(refused, location: failing.location.url.path).materialise(.createDetached(path: failing.path, baseRef: Self.baseRef),
+                                                                                              for: .agent)
         XCTAssertEqual(failed, TaskFolder(url: Self.root, note: detachedRootNote("fatal: invalid reference: \(Self.baseRef)"), created: false))
         XCTAssertFalse(FileManager.default.fileExists(atPath: failing.path.path), "the empty folder it made is removed again")
 
         let slow = try planned()
         let stalled = FakeRunner()
         stalled.script(detachKey(slow.path, Self.baseRef), throwing: CommandError.timedOut(tool: "git", seconds: 60))
-        let timedOut = await resolver(stalled, location: slow.location.url.path).materialise(.createDetached(path: slow.path, baseRef: Self.baseRef))
+        let timedOut = await resolver(stalled, location: slow.location.url.path).materialise(.createDetached(path: slow.path, baseRef: Self.baseRef),
+                                                                                              for: .agent)
         XCTAssertEqual(timedOut, TaskFolder(url: Self.root, note: detachedRootNote("git did not finish within 60 seconds"), created: false))
         XCTAssertFalse(FileManager.default.fileExists(atPath: slow.path.path))
     }
@@ -473,14 +512,64 @@ final class TaskFolderTests: XCTestCase {
         XCTAssertEqual(runner.keys, [detachKey(claimed, Self.baseRef)])
     }
 
+    func testARaceForASuffixedFolderStepsOnFromTheBaseName() async throws {
+        // The base name was taken when the plan was read, so it planned -2; -2 was taken too before the start.
+        let detached = try TempGitRepo()
+        let claimed = detached.url.appendingPathComponent("my-app-7-3", isDirectory: true)
+        try makeFolders(["my-app-7", "my-app-7-2"].map { detached.url.appendingPathComponent($0, isDirectory: true) })
+        let agentRunner = FakeRunner([detachKey(claimed, Self.baseRef): .ok()])
+        let agentFolder = await resolver(agentRunner, location: detached.url.path)
+            .materialise(.createDetached(path: detached.url.appendingPathComponent("my-app-7-2", isDirectory: true), baseRef: Self.baseRef))
+        XCTAssertEqual(agentFolder, TaskFolder(url: claimed, note: nil, created: true), "never my-app-7-2-2")
+
+        for (branch, base) in [("gh-12-x", "my-app-12"), ("spike-x", "my-app-spike-x")] {
+            let location = try TempGitRepo()
+            let third = location.url.appendingPathComponent("\(base)-3", isDirectory: true)
+            try makeFolders([base, "\(base)-2"].map { location.url.appendingPathComponent($0, isDirectory: true) })
+            let runner = FakeRunner([addKey(third, branch): .ok()])
+            let folder = await resolver(runner, location: location.url.path)
+                .materialise(.create(path: location.url.appendingPathComponent("\(base)-2", isDirectory: true), branch: branch))
+            XCTAssertEqual(folder, TaskFolder(url: third, note: nil, created: true), branch)
+        }
+    }
+
+    func testANameThatIsItsOwnBaseStepsFromItself() async throws {
+        // my-app-72 is task 72's own name, not my-app-7's; fix-2 is the branch's own slug.
+        let cases: [(planned: String, plan: (URL) -> TaskFolderPlan, key: (URL) -> String, next: String)] = [
+            ("my-app-72", { .create(path: $0, branch: "gh-72-x") }, { self.addKey($0, "gh-72-x") }, "my-app-72-2"),
+            ("my-app-72", { .createDetached(path: $0, baseRef: Self.baseRef) }, { self.detachKey($0, Self.baseRef) }, "my-app-72-2"),
+            ("my-app-fix-2", { .create(path: $0, branch: "fix-2") }, { self.addKey($0, "fix-2") }, "my-app-fix-2-2"),
+        ]
+        for (planned, plan, key, next) in cases {
+            let location = try TempGitRepo()
+            let path = location.url.appendingPathComponent(planned, isDirectory: true)
+            let claimed = location.url.appendingPathComponent(next, isDirectory: true)
+            try makeFolders([path])
+            let runner = FakeRunner([key(claimed): .ok()])
+            let folder = await resolver(runner, location: location.url.path).materialise(plan(path))
+            XCTAssertEqual(folder, TaskFolder(url: claimed, note: nil, created: true), "\(planned) → \(next)")
+        }
+    }
+
     func testABaseRefGitWouldReadAsAnOptionIsNeverPassedToIt() async throws {
         let (location, path) = try planned()
         let runner = FakeRunner()
-        let folder = await resolver(runner, location: location.url.path).materialise(.createDetached(path: path, baseRef: "--orphan"))
-        XCTAssertEqual(folder, TaskFolder(url: Self.root, note: "Couldn't create a worktree for --orphan, so the shell opens at the project root: "
+        let folder = await resolver(runner, location: location.url.path).materialise(.createDetached(path: path, baseRef: "--orphan"), for: .agent)
+        XCTAssertEqual(folder, TaskFolder(url: Self.root, note: "Couldn't create a worktree for --orphan, so the agent opens at the project root: "
                                           + "'--orphan' is not a valid base ref", created: false))
         XCTAssertEqual(runner.calls, [])
         XCTAssertFalse(FileManager.default.fileExists(atPath: path.path), "nothing is made for a ref it refuses")
+    }
+
+    func testAnAgentsFailedAddSaysTheAgentOpensAtTheProjectRoot() async throws {
+        let failing = try planned()
+        let runner = FakeRunner([addKey(failing.path, "gh-7-demo"): .failed(128, stderr: "fatal: invalid reference: gh-7-demo\n")])
+        let resolver = resolver(runner, location: failing.location.url.path)
+        let agents = await resolver.materialise(.create(path: failing.path, branch: "gh-7-demo"), for: .agent)
+        XCTAssertEqual(agents, TaskFolder(url: Self.root, note: "Couldn't create a worktree for gh-7-demo, so the agent opens at the project root: "
+                                          + "fatal: invalid reference: gh-7-demo", created: false))
+        let shells = await resolver.materialise(.create(path: failing.path, branch: "gh-7-demo"))
+        XCTAssertEqual(shells, TaskFolder(url: Self.root, note: rootNote("fatal: invalid reference: gh-7-demo"), created: false), "a shell's wording is unchanged")
     }
 
     func testARealRepositoryGetsAWorktreeThenReusesIt() async throws {

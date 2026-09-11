@@ -305,7 +305,7 @@ final class BoardBuilderTests: XCTestCase {
     func testNoTaskShowsAgentRowsButEveryTaskGetsTheLiveDock() {
         for task in BoardBuilder.build(fixture) {
             XCTAssertEqual(task.agents, [], task.id)
-            XCTAssertEqual(task.agentsNote, "No managed sessions. Dev Desk doesn't start agents yet.", task.id)
+            XCTAssertEqual(task.agentsNote, "Start this task's agent from the Agents tab in the dock.", task.id)
             XCTAssertEqual(task.dock, Self.liveDock, task.id)
         }
     }

@@ -227,7 +227,8 @@ final class ShellSessionsTests: XCTestCase {
         await local.shellSessions.refreshPlan(taskID: "14", branch: nil, taskNumber: nil, worktreeLocation: "~/.devdesk/wt")
         XCTAssertEqual(local.shellSessions.state(for: "14"), unbranched)
         await local.agentSessions.refreshPlan(taskID: "14", branch: nil, taskNumber: nil, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
-        XCTAssertEqual(local.agentSessions.state(for: "14"), unbranched, "the agents' sessions plan in the same project")
+        XCTAssertEqual(local.agentSessions.state(for: "14"), .idle(.root(Self.root, note: "No branch for this task yet. The agent opens at the project root.")),
+                       "the agents' sessions plan in the same project, and their notes speak of the agent")
         XCTAssertEqual(local.shellSessions.purpose, .shell)
         XCTAssertEqual(local.agentSessions.purpose, .agent)
         XCTAssertFalse(local.shellSessions === local.agentSessions)
@@ -255,8 +256,7 @@ final class ShellSessionsTests: XCTestCase {
                                                           + "running /dev #7 there cuts gh-7-… at its first write.")),
                        "a shell never makes a detached worktree")
         await agents.refreshPlan(taskID: "8", branch: nil, taskNumber: 8, worktreeLocation: location.url.path)
-        XCTAssertEqual(agents.state(for: "8"), .idle(.root(Self.root, note: "No base branch is known, so the agent would open at the project root; "
-                                                          + "start it by hand if you want it there.")))
+        XCTAssertEqual(agents.state(for: "8"), .idle(.root(Self.root, note: "No base branch is known, so the agent opens at the project root.")))
     }
 
     func testStartingAnAgentCreatesItsDetachedWorktreeAndAnotherStartReusesIt() async throws {
@@ -288,5 +288,73 @@ final class ShellSessionsTests: XCTestCase {
         XCTAssertEqual(agents.state(for: "42"), .failed(Self.noFolderForAgent))
         XCTAssertEqual(agents.runningTaskIDs, [])
         XCTAssertEqual(runner.calls, [])
+    }
+
+    // MARK: - Auto: a start that refuses the project root, and the slots starts hold
+
+    private static let noBase = "No base branch is known, so the agent opens at the project root."
+
+    func testAStartThatRefusesTheRootFailsWithThePlansNoteAndLaunchesNothing() async throws {
+        let location = try TempGitRepo()
+        let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly)])
+        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, refusingRoot: true)
+        XCTAssertEqual(agents.state(for: "7"), .failed(Self.noBase))
+        XCTAssertEqual(agents.generation(for: "7"), 0, "nothing moved to running, so there is no process to launch")
+        XCTAssertEqual(agents.runningTaskIDs, [])
+        XCTAssertEqual(agents.activeTaskIDs, [])
+        XCTAssertEqual(runner.keys, [Self.listKey], "and no worktree add")
+
+        // Started by hand, without the refusal, the same task opens at the project root as before.
+        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path)
+        XCTAssertEqual(agents.state(for: "7"), .running(TaskFolder(url: Self.root, note: Self.noBase, created: false)))
+    }
+
+    func testAStartThatRefusesTheRootFailsWhenGitRefusesTheWorktree() async throws {
+        let location = try TempGitRepo()
+        let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
+        let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .failed(128, stderr: "fatal: invalid reference: \(Self.base)\n")])
+        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base, refusingRoot: true)
+        XCTAssertEqual(agents.state(for: "7"), .failed("Couldn't create a worktree for \(Self.base), so the agent opens at the project root: "
+                                                      + "fatal: invalid reference: \(Self.base)"))
+        XCTAssertEqual(agents.generation(for: "7"), 0)
+        XCTAssertEqual(agents.activeTaskIDs, [])
+        XCTAssertEqual(runner.keys, [Self.listKey, detachKey(path)])
+        XCTAssertFalse(FileManager.default.fileExists(atPath: path.path), "the folder it claimed is given back")
+    }
+
+    func testAStartThatRefusesTheRootStillRunsInTheTasksOwnWorktree() async throws {
+        let location = try TempGitRepo()
+        let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
+        let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .ok()])
+        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base, refusingRoot: true)
+        XCTAssertEqual(agents.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: true)))
+        XCTAssertEqual(agents.generation(for: "7"), 1)
+    }
+
+    func testActiveTaskIDsHoldAStartStillPreparingWhereRunningTaskIDsDoNot() async throws {
+        let location = try TempGitRepo()
+        let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
+        let fake = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .ok()])
+        let runner = HeldRunner(fake)
+        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        XCTAssertEqual(agents.activeTaskIDs, [])
+
+        let start = Task { await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base) }
+        await waitUntil { runner.isHolding }
+        XCTAssertEqual(agents.state(for: "7"), .preparing)
+        XCTAssertEqual(agents.activeTaskIDs, ["7"], "a start waiting on git already holds its slot")
+        XCTAssertEqual(agents.runningTaskIDs, [])
+
+        runner.release()
+        await start.value
+        XCTAssertEqual(agents.activeTaskIDs, ["7"])
+        XCTAssertEqual(agents.runningTaskIDs, ["7"])
+
+        agents.markEnded(taskID: "7", status: 0, generation: agents.generation(for: "7"))
+        XCTAssertEqual(agents.activeTaskIDs, [])
+        XCTAssertEqual(agents.runningTaskIDs, [])
     }
 }

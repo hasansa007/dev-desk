@@ -11,7 +11,7 @@ struct BoardInput {
 
 /// Pure: git and GitHub facts in, tasks out. Columns mirror scripts/dev.py (`classify`, `build_board`, `order_next`).
 enum BoardBuilder {
-    static let agentsNote = "No managed sessions. Dev Desk doesn't start agents yet."
+    static let agentsNote = "Start this task's agent from the Agents tab in the dock."
     static let checksLimitation = "CI results reported by GitHub for this pull request. Dev Desk has not verified behaviour in a running app."
     static let unlinkedRequirements = "No linked issue. Name the branch gh-<number>-… to link one."
     static let checksNotRead = "Checks are read for the \(GitHubReader.checkedPullRequests) newest open pull requests; this one was not read."
