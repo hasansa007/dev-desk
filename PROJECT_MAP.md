@@ -91,6 +91,13 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
 - **No `roadmap-declined` label**, so the declined-theme round trip is untested.
 - **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
 - **0 open issues, 0 milestones** — every board render so far has been of an empty tracker.
+- **`dev board` and `dev ui board` never reach the `pr_created`/`human_review` columns.**
+  `cmd_board` (`scripts/dev.py:346-358`) and `collect_board` (`:565-576`) build each issue's `facts`
+  dict with only `unmerged` and `phase_group` — neither ever sets `facts["pr"]`, so `classify`'s PR
+  branch (`facts.get("pr")`) is always empty and those two columns are dead code from both callers.
+  Dev Desk's board (ADR 0013) does receive PR data and reaches Review correctly, so for an issue
+  with an open PR the app says Review while `dev board` says In progress or Backlog. A `dev.py` fix;
+  out of this branch's scope.
 
 **Dev Desk (`apps/desk/`), not built yet:**
 
@@ -124,3 +131,11 @@ actually read, with the reason next to anything it can't yet (see ORPHANS).
 - **Antigravity CLI is not installed**, though `install.sh` links skills into its directory. The
   binary on `PATH` is a shim that reports the real CLI missing, so `dev run --agent antigravity` is
   refused rather than guessed. Gemini has no confirmed non-interactive invocation either.
+- **Two of the three evidenced diagrams have an orphaned pin.** `docs/arch/dev-family.architecture.json`
+  (pinned `90bcc4fa…`) and `docs/arch/dev-journey.architecture.json` (pinned `f1bc5fcb…`) each cite
+  a commit that is not an ancestor of `main` or this branch — an earlier squash merge likely dropped
+  it from history while the commit object itself is still present locally (`git cat-file -t`
+  succeeds), which is why `archify validate` still reads `ok` today. Neither pin resolves for a
+  fresh clone, or after this machine's next `git gc`. Not caused by this branch: none of the 115
+  files this branch changed intersect either diagram's cited paths. Needs a re-pin at a reachable
+  commit; `docs/arch/` is out of this task's touch-list.

@@ -26,11 +26,10 @@ target.
 ## Rejected
 
 **A separate `dev-desk` repo** — §5's recommendation. Its install-cost argument doesn't survive
-measurement: `du -sh -I .build apps/desk` is 716K at commit `a231561` (`.build/` and
-`DevDesk.xcodeproj/` are gitignored, so a clone never carries either; the screen tasks still in
-progress will add a little more). `install.sh` only symlinks the clone — it triggers no Swift or
-Xcode build — so the disk this adds to every install is a few hundred KB, not the standing Xcode
-toolchain tax §5 was pricing.
+measurement: a clean archive of the tracked tree — `git archive HEAD apps/desk | tar -x -C
+/tmp/desk-du && du -sh /tmp/desk-du/apps/desk` — is 680K at commit `bb77c77`. `install.sh` only
+symlinks the clone — it triggers no Swift or Xcode build — so the disk this adds to every install
+is a few hundred KB, not the standing Xcode toolchain tax §5 was pricing.
 
 It lost for a second reason that matters more than the arithmetic: the contract it would need to
 agree across two repos — `dev snapshot --json` (container spec §3.1) — is unbuilt, so there is
@@ -57,8 +56,16 @@ once that stops being true.
 
 ## Evidence
 
-`du -sh -I .build apps/desk` → `716K`, measured at commit `a231561`. `git ls-files apps/desk | xargs
-du -ch | tail -1` → `632K` tracked. `apps/desk/.gitignore` excludes `DevDesk.xcodeproj/`, `.build/`
-and `DerivedData/`; `find apps/desk -iname DerivedData` found none. `install.sh` contains no Swift
-or `xcodebuild` invocation — it only creates symlinks — so this cost is disk, never install-time
-CPU.
+```
+rm -rf /tmp/desk-du && mkdir /tmp/desk-du && git archive HEAD apps/desk | tar -x -C /tmp/desk-du
+du -sh /tmp/desk-du/apps/desk
+→ 680K
+```
+
+Measured at commit `bb77c77` (this task's own commit). Archiving reads only what git tracks, so it
+cannot be inflated by whatever is untracked in the working tree — `du -sh -I .build apps/desk` run
+directly against a working copy that happened to have a locally-generated `DevDesk.xcodeproj/`
+present returned `716K` for this same tree, which is not tracked-tree size. `apps/desk/.gitignore`
+excludes `DevDesk.xcodeproj/`, `.build/` and `DerivedData/`, so a fresh clone carries none of them.
+`install.sh` contains no Swift or `xcodebuild` invocation — it only creates symlinks — so this cost
+is disk, never install-time CPU.

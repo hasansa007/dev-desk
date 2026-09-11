@@ -152,7 +152,9 @@ cancel with no reason.
 **Platform accepted; implementation proposed:** a native macOS app, using SwiftUI with AppKit
 where needed. The maintainer chose the Mac app after comparing it with a cross-platform desktop
 shell, with Swift and Xcode already identified as the maintainer's tools. macOS 14+ remains a
-proposed minimum pending terminal and dependency validation.
+proposed minimum pending terminal and dependency validation. The first build already ships macOS
+14 as its floor (`apps/desk/DeskCore/Package.swift`, `apps/desk/project.yml`); that can still move
+if terminal or dependency validation forces it.
 
 The design includes task-oriented terminal views, notifications, and a menubar badge. Terminal
 rendering and session transport require separate validation; no terminal library is selected yet.
