@@ -207,6 +207,8 @@ public struct LocalGitDataSource: ProjectDataSource {
                 findings.append(contentsOf: SurveyReportParser.parse(text, runID: stem))
             case .tooLarge:
                 runs.append(SurveyRun(id: stem, label: "\(stem) · Report too large to read (over 1 MB)", revision: nil))
+            case .hardLink:
+                runs.append(SurveyRun(id: stem, label: "\(stem) · Report not read (it is a hard link)", revision: nil))
             case .skipped:
                 continue
             }

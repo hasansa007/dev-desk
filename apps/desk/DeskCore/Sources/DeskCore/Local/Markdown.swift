@@ -1,11 +1,22 @@
 /// Escaping for repo-derived text that lands in a field the app renders as inline markdown.
-enum Markdown {
-    /// Backslash-escapes the characters inline markdown would otherwise treat as syntax, so attacker text renders literally.
-    static func escape(_ text: String) -> String {
+public enum Markdown {
+    /// Backslash-escapes the characters inline markdown would otherwise treat as syntax, and breaks the autolinks bare URLs, `www.` hosts and emails would get, so attacker text renders literally and never as a link.
+    public static func escape(_ text: String) -> String {
+        let characters = Array(text)
         var escaped = ""
-        for character in text {
-            if "\\`*_[]<>~&".contains(character) { escaped.append("\\") }
-            escaped.append(character)
+        for (index, character) in characters.enumerated() {
+            switch character {
+            case "@":
+                // Email autolinking runs after escapes resolve, so the "@" gets a span of its own: an empty attribute span adds nothing, and unlike an empty link it leaves an enclosing link intact.
+                escaped.append("^[@]()")
+            case ":" where characters[(index + 1)...].starts(with: "//"):
+                escaped.append("\\:")
+            case "." where index >= 3 && String(characters[(index - 3)..<index]).lowercased() == "www":
+                escaped.append("\\.")
+            default:
+                if "\\`*_[]<>~&".contains(character) { escaped.append("\\") }
+                escaped.append(character)
+            }
         }
         return escaped
     }

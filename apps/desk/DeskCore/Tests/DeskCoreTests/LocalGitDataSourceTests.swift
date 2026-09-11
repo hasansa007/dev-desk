@@ -310,6 +310,19 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(report?.findings.map(\.runID), ["2026-09-10"], "no findings are parsed from the oversized report")
     }
 
+    func testAHardLinkedReportIsRefusedButLabelled() async throws {
+        let folder = try TempGitRepo()
+        try folder.write("docs/survey/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
+        let outside = FileManager.default.temporaryDirectory.appendingPathComponent("secret-\(UUID().uuidString).md")
+        try "## CONFIRMED (1)\n- Leaked secret · /etc/passwd:1\n".write(to: outside, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: outside) }
+        try FileManager.default.linkItem(at: outside, to: folder.url.appendingPathComponent("docs/survey/2026-09-20.md"))
+
+        let report = try await LocalGitDataSource(root: folder.url, runner: githubReadyRunner(root: folder.url)).load().findings.value
+        XCTAssertEqual(report?.runs.map(\.label), ["2026-09-20 · Report not read (it is a hard link)", "2026-09-10"])
+        XCTAssertFalse(report?.findings.contains { $0.title == "Leaked secret" } ?? true, "a hard-linked report must not be read")
+    }
+
     func testAHostileTextconvDriverDoesNotRunOnOpen() async throws {
         let repo = try TempGitRepo()
         try repo.git("init", "-q", "-b", "main")
@@ -541,7 +554,7 @@ final class LocalGitDataSourceTests: XCTestCase {
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         let reason = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:spike" }?.activity.unavailableReason)
-        XCTAssertEqual(reason, "git log failed: fatal: \\[pwn\\](file:///Applications/Calculator.app)")
+        XCTAssertEqual(reason, "git log failed: fatal: \\[pwn\\](file\\:///Applications/Calculator.app)")
         XCTAssertFalse(reason.contains("[pwn]("), "the link must be escaped")
     }
 
@@ -711,7 +724,7 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     func testMaliciousGitStderrInAToplevelReasonIsEscapedForMarkdown() async throws {
         let reason = try await boardReason(toplevel: .failed(128, stderr: "fatal: bad config value for 'diff.renameLimit': [x](file:///y)\n"))
-        XCTAssertEqual(reason, "git could not read this folder: fatal: bad config value for 'diff.renameLimit': \\[x\\](file:///y)")
+        XCTAssertEqual(reason, "git could not read this folder: fatal: bad config value for 'diff.renameLimit': \\[x\\](file\\:///y)")
         XCTAssertFalse(reason!.contains("[x]("), "the link must be escaped")
     }
 }

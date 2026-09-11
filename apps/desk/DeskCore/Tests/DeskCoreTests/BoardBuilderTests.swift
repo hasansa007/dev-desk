@@ -270,7 +270,7 @@ final class BoardBuilderTests: XCTestCase {
                                              branches: [BranchFacts(name: "spike", unmerged: 1, worktree: nil)]),
                                github: nil, activeMilestone: nil, now: date("2026-09-11T12:00:00Z"), timeZone: TimeZone(identifier: "UTC")!)
         let note = try XCTUnwrap(tasks(input)["branch:spike"]?.changes.value?.baseNote)
-        XCTAssertEqual(note, "Diff is against wip/\\`\\[x\\](file:///Applications/Calculator.app) at `abc1234`.")
+        XCTAssertEqual(note, "Diff is against wip/\\`\\[x\\](file\\:///Applications/Calculator.app) at `abc1234`.")
         XCTAssertFalse(note.contains("[x]("), "a raw link would render as a one-click launch")
         XCTAssertFalse(note.hasPrefix("Diff is against `"), "the base name must not open a code span")
     }

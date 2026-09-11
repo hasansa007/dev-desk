@@ -128,9 +128,10 @@ private struct FindingsSplitView: View {
         }
     }
 
+    /// The label carries a report's file name, so it is escaped before it meets markdown.
     private func runMarkdownText(_ run: SurveyRun) -> String {
-        guard let revision = run.revision else { return "Run · \(run.label)" }
-        return "Run · \(run.label) · rev `\(revision)`"
+        guard let revision = run.revision else { return "Run · \(Markdown.escape(run.label))" }
+        return "Run · \(Markdown.escape(run.label)) · rev `\(revision)`"
     }
 
     private func runPlainText(_ run: SurveyRun) -> String {

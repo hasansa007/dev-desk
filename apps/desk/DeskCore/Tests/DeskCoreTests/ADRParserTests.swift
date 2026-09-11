@@ -74,7 +74,7 @@ final class ADRParserTests: XCTestCase {
     func testAttackerMarkdownInTheDecisionAndFileNameComesOutLiteral() {
         let adr = "# 0009 — Evil\n\nStatus: Proposed\nDate: 2026-09-01\n\n## Decision\n\nClick [here](file:///Applications/Calculator.app) and `run me`.\n"
         let decision = ADRParser.parse(adr, fileName: "0009-[a](b).md")
-        XCTAssertEqual(decision.answer?.rationale, "Click \\[here\\](file:///Applications/Calculator.app) and \\`run me\\`.")
+        XCTAssertEqual(decision.answer?.rationale, "Click \\[here\\](file\\:///Applications/Calculator.app) and \\`run me\\`.")
         XCTAssertFalse(decision.answer!.rationale.contains("[here]("), "a raw link would render as a one-click launch")
         XCTAssertFalse(decision.context.contains("[a](b)"), "an attacker file name must not stay a live link")
         XCTAssertFalse(decision.context.contains("`"), "backticks are dropped so an attacker file name can't open a code span")
