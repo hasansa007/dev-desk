@@ -10,12 +10,7 @@
 # outputStyle, which is a local editor preference and differs per clone.
 .claude/settings.local.json
 
-# Per-branch pipeline state — machine-local; git is authoritative for anything that matters.
+# Everything the dev CLI generates: per-branch pipeline state and the .dev/ui/ pages.
+# Machine-local; git is authoritative. The CLI also writes .dev/.gitignore, so repos without
+# this line stay clean too.
 .dev/
-
-# Generated status snapshots — `dev ui` rebuilds them from git and gh in one command.
-# Tracking them would put a churning file in every diff and invite someone to trust a
-# committed copy over the live query.
-# ANCHORED on purpose: an unanchored `ui/` also matches skills/ui/ — which silently kept the
-# /dev:ui door itself out of git.
-/ui/

@@ -77,6 +77,17 @@ def state_path(root: str, branch: str) -> str:
     return os.path.join(root, STATE_DIR, slugify(branch) + ".json")
 
 
+def ensure_dev_dir(root: str) -> str:
+    """Create .dev/ with its own `*` ignore — inside our folder, so the repo's .gitignore is never touched."""
+    d = os.path.join(root, STATE_DIR)
+    os.makedirs(d, exist_ok=True)
+    ignore = os.path.join(d, ".gitignore")
+    if not os.path.exists(ignore):
+        with open(ignore, "w", encoding="utf-8") as fh:
+            fh.write("# written by dev — everything here is generated or machine-local\n*\n")
+    return d
+
+
 def load_state(root: str, branch: str) -> Optional[Dict]:
     path = state_path(root, branch)
     if not os.path.isfile(path):
@@ -90,7 +101,7 @@ def load_state(root: str, branch: str) -> Optional[Dict]:
 
 def save_state(root: str, branch: str, data: Dict) -> str:
     path = state_path(root, branch)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    ensure_dev_dir(root)
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(data, fh, indent=2, sort_keys=True)
         fh.write("\n")
@@ -517,10 +528,10 @@ def cmd_project(args) -> int:
 
 # ------------------------------------------------------------------------ ui
 
-# ui/ is GENERATED OUTPUT, never an input. Nothing in this family reads it back — it is a snapshot
+# .dev/ui/ is GENERATED OUTPUT, never an input. Nothing in this family reads it back — it is a snapshot
 # of what the doors computed, the same relationship docs/arch/*.html has to its IR. Every file
 # carries the commit it was built from, so a stale one is visible rather than assumed fresh.
-UI_DIR = "ui"
+UI_DIR = os.path.join(STATE_DIR, "ui")
 UI_SURFACES = ("board", "roadmap", "ideation", "insights")
 
 
@@ -646,11 +657,51 @@ def render_ui_html(surface: str, data: Dict, meta: Dict) -> str:
 
     return UI_TEMPLATE % {
         "surface": _esc(surface),
+        "nav": _ui_nav(surface),
         "repo": _esc(meta.get("repo") or ""),
         "commit": _esc((meta.get("commit") or "")[:8]),
         "at": _esc(meta.get("generated_at") or ""),
         "body": "".join(body),
     }
+
+
+def _ui_nav(current: str) -> str:
+    return "<nav>%s</nav>" % " ".join(
+        '<a href="%s.html"%s>%s</a>' % (s, ' class="on"' if s == current else "", s)
+        for s in ("index",) + UI_SURFACES)
+
+
+def ui_summary(surface: str, data: Dict) -> str:
+    """One line for the index card — counts only, read from the snapshot already on disk."""
+    if data.get("unavailable"):
+        return data["unavailable"]
+    if surface == "board":
+        cols = data.get("columns", {})
+        return "%d open · %d columns" % (sum(len(r) for r in cols.values()), len(cols))
+    if surface == "roadmap":
+        return "%d milestones · %d epics" % (len(data.get("milestones", [])), len(data.get("epics", [])))
+    if surface == "ideation":
+        return data.get("note") or "%d reports" % len(data.get("reports", []))
+    return "%d sections" % len(data.get("sections", []))
+
+
+def render_ui_index(root: str, meta: Dict) -> str:
+    cards = []
+    for s in UI_SURFACES:
+        try:
+            with open(os.path.join(root, UI_DIR, s + ".json"), encoding="utf-8") as fh:
+                snap = json.load(fh)
+            line = "%s<em>built from %s · %s</em>" % (
+                _esc(ui_summary(s, snap.get("data", {}))),
+                _esc(str(snap.get("commit") or "")[:8]), _esc(snap.get("generated_at") or ""))
+        except (OSError, ValueError):
+            line = "not built yet<em>run <code>dev ui %s</code></em>" % s
+        cards.append('<a class="card" href="%s.html"><section><h2>%s</h2><article>%s</article>'
+                     "</section></a>" % (s, s.upper(), line))
+    return UI_TEMPLATE % {"surface": "index", "nav": _ui_nav("index"),
+                          "repo": _esc(meta.get("repo") or ""),
+                          "commit": _esc((meta.get("commit") or "")[:8]),
+                          "at": _esc(meta.get("generated_at") or ""), "body": "".join(cards)}
 
 
 def _esc(s) -> str:
@@ -679,7 +730,13 @@ article em{display:block;color:#6b7280;font-style:normal;font-size:.75rem;margin
 .empty{color:#4b5563;font-size:.8rem;margin:.2rem 0}
 pre{white-space:pre-wrap;color:#9aa3af;font-size:.78rem;margin:0}
 footer{margin-top:2rem;color:#4b5563;font-size:.75rem}
+nav{margin-bottom:1.25rem;display:flex;gap:.4rem}
+nav a{color:#9aa3af;text-decoration:none;padding:.2rem .6rem;border:1px solid #232830;border-radius:6px}
+nav a.on,nav a:hover{color:#0d0f12;background:#e9f07a;border-color:#e9f07a}
+a.card{flex:1 1 260px;color:inherit;text-decoration:none;display:flex}
+a.card:hover section{border-color:#e9f07a}
 </style>
+%(nav)s
 <header><h1>dev · %(surface)s</h1>
 <span class="meta">%(repo)s · built from %(commit)s · %(at)s</span></header>
 <div class="wrap">%(body)s</div>
@@ -749,6 +806,7 @@ def cmd_ui(args) -> int:
         return 1 if stale else 0
 
     meta = {"repo": remote_slug(), "commit": head, "generated_at": now()}
+    ensure_dev_dir(root)
     os.makedirs(out_dir, exist_ok=True)
     for s in surfaces:
         # a surface named explicitly is rebuilt; `dev ui` alone rebuilds only what is stale
@@ -775,13 +833,21 @@ def cmd_ui(args) -> int:
         note = data.get("unavailable") or data.get("note") or "rebuilt — %s" % why
         print("  %-9s %s/%s.html  %s" % (s, UI_DIR, s, note))
 
-    # snapshots belong out of commits; say so, but never edit someone else's .gitignore
-    if run(["git", "check-ignore", "-q", os.path.join(UI_DIR, "board.html")], root)[0] != 0:
-        # ANCHORED: a bare `ui/` also ignores any source directory named ui — src/ui/, skills/ui/
-        print("\nnote: ui/ is not git-ignored here — add '/ui/' (with the leading slash) to .gitignore;"
-              "\n      a bare 'ui/' would also hide any source folder named ui. Nothing edits it for you.")
+    # the index reads every snapshot on disk, so it is rebuilt whenever any page is
+    with open(os.path.join(out_dir, "index.html"), "w", encoding="utf-8") as fh:
+        fh.write(render_ui_index(root, meta))
 
-    first = os.path.join(out_dir, (surfaces[0] if args.surface else "board") + ".html")
+    # pages used to live in <root>/ui/; only a folder holding OUR snapshot counts — src/ui/ is someone's code
+    try:
+        with open(os.path.join(root, "ui", "board.json"), encoding="utf-8") as fh:
+            leftover = "surface" in json.load(fh)
+    except (OSError, ValueError, TypeError):
+        leftover = False
+    if leftover:
+        print("\nnote: ui/ at the repo root is a leftover from an older `dev ui` — the pages now live"
+              "\n      in %s/. Nothing deletes it for you; remove ui/ when you like." % UI_DIR)
+
+    first = os.path.join(out_dir, (surfaces[0] if args.surface else "index") + ".html")
     if args.open:
         # stdlib, so it works on macOS, Linux and Windows without a platform switch
         import webbrowser

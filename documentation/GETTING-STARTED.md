@@ -187,8 +187,10 @@ checkpointed its phase into `.dev/`, the card also shows `planning` / `coding` /
 python3 ~/.claude/skills/dev/scripts/dev.py ui --open
 ```
 
-That regenerates four local pages — `ui/board.html`, `ui/roadmap.html`, `ui/ideation.html`,
-`ui/insights.html` — and opens the board. Self-contained files: no server, no network, no account.
+That regenerates four local pages in `.dev/ui/` — board, roadmap, ideation, insights — plus an
+`index.html` that links them, and opens the index. Every page has a nav bar to the others.
+Self-contained files: no server, no network, no account. `.dev/` holds everything the CLI generates
+and ignores itself, so nothing needs adding to your `.gitignore`.
 After `install.sh` it is just `dev ui --open` — the installer links `dev` into `~/.local/bin` when
 that is on your `PATH`, and prints the alias to use if it can't.
 

@@ -190,7 +190,7 @@ Write it so it can be: observable, epic-level, true only when every child is clo
 create it; `dev:kanban` 4.1 keys on it, and without it an epic parent will be offered as startable
 work. Same for `roadmap-declined`.
 
-**After writing, offer `dev ui roadmap`** — it regenerates `ui/roadmap.html` from the milestones
+**After writing, offer `dev ui roadmap`** — it regenerates `.dev/ui/roadmap.html` from the milestones
 and epics that now exist. Generated output; regenerate rather than trust.
 
 ## Phase 7 — Render, then hand off

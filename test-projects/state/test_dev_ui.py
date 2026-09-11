@@ -124,7 +124,20 @@ class OpenFlag(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(len(seen), 1)
         self.assertTrue(seen[0].startswith("file://"))
-        self.assertTrue(seen[0].endswith("ui/board.html"))
+        self.assertTrue(seen[0].endswith(".dev/ui/board.html"))
+
+    def test_open_with_no_surface_lands_on_the_index(self):
+        import argparse, webbrowser
+        from scripts import dev as _dev
+        seen = []
+        real_open = webbrowser.open
+        webbrowser.open = lambda url: seen.append(url) or True
+        try:
+            with StubbedRepo() as d:
+                _dev.cmd_ui(argparse.Namespace(surface=None, milestone=None, open=True))
+        finally:
+            webbrowser.open = real_open
+        self.assertTrue(seen[0].endswith(".dev/ui/index.html"))
 
     def test_without_open_nothing_is_launched(self):
         import argparse, tempfile, subprocess, webbrowser
@@ -143,6 +156,124 @@ class OpenFlag(unittest.TestCase):
             os.chdir(cwd)
             webbrowser.open, _dev.collect_board = real_open, real_collect
         self.assertEqual(seen, [])
+
+
+class StubbedRepo:
+    """A fresh git repo as cwd, with the GitHub-backed collectors stubbed so nothing hits the network."""
+
+    def __enter__(self):
+        import subprocess, tempfile
+        from scripts import dev as _dev
+        self.dev, self.cwd = _dev, os.getcwd()
+        self.dir = tempfile.mkdtemp()
+        subprocess.run(["git", "init", "-q", self.dir], check=True)
+        self.real = (_dev.collect_board, _dev.collect_roadmap)
+        _dev.collect_board = lambda root, milestone=None: {"columns": {"backlog": [
+            {"number": 1, "title": "a"}, {"number": 2, "title": "b"}]}}
+        _dev.collect_roadmap = lambda: {"milestones": [], "epics": []}
+        os.chdir(self.dir)
+        return self.dir
+
+    def __exit__(self, *exc):
+        import shutil
+        os.chdir(self.cwd)
+        self.dev.collect_board, self.dev.collect_roadmap = self.real
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+
+def _ui(**kw):
+    import argparse
+    from scripts import dev as _dev
+    base = dict(surface=None, milestone=None, open=False, check=False, force=False)
+    base.update(kw)
+    return _dev.cmd_ui(argparse.Namespace(**base))
+
+
+class OneFolder(unittest.TestCase):
+    """Everything the CLI generates lives under .dev/, and .dev/ keeps itself out of git."""
+
+    def test_pages_are_written_under_dot_dev(self):
+        with StubbedRepo() as d:
+            _ui()
+            self.assertTrue(os.path.isfile(os.path.join(d, ".dev", "ui", "board.html")))
+            self.assertFalse(os.path.exists(os.path.join(d, "ui")))
+
+    def test_dot_dev_ignores_itself_without_touching_the_repo_gitignore(self):
+        import subprocess
+        with StubbedRepo() as d:
+            _ui()
+            ignored = subprocess.run(["git", "check-ignore", "-q", ".dev/ui/board.html"], cwd=d)
+            self.assertEqual(ignored.returncode, 0)
+            self.assertFalse(os.path.exists(os.path.join(d, ".gitignore")))
+
+    def test_an_existing_dot_dev_gitignore_is_left_alone(self):
+        with StubbedRepo() as d:
+            os.makedirs(os.path.join(d, ".dev"))
+            with open(os.path.join(d, ".dev", ".gitignore"), "w") as fh:
+                fh.write("mine\n")
+            _ui()
+            with open(os.path.join(d, ".dev", ".gitignore")) as fh:
+                self.assertEqual(fh.read(), "mine\n")
+
+    def test_state_checkpoints_get_the_same_self_ignore(self):
+        from scripts.dev import save_state
+        with StubbedRepo() as d:
+            save_state(d, "feature/x", {"phase": 1})
+            self.assertTrue(os.path.isfile(os.path.join(d, ".dev", ".gitignore")))
+
+    def test_a_leftover_root_ui_folder_is_reported_never_deleted(self):
+        import io, json
+        from contextlib import redirect_stdout
+        with StubbedRepo() as d:
+            os.makedirs(os.path.join(d, "ui"))
+            with open(os.path.join(d, "ui", "board.json"), "w") as fh:
+                json.dump({"surface": "board"}, fh)
+            out = io.StringIO()
+            with redirect_stdout(out):
+                _ui()
+            self.assertIn("leftover", out.getvalue())
+            self.assertTrue(os.path.isfile(os.path.join(d, "ui", "board.json")))
+
+    def test_a_source_folder_named_ui_is_not_mistaken_for_leftovers(self):
+        import io
+        from contextlib import redirect_stdout
+        with StubbedRepo() as d:
+            os.makedirs(os.path.join(d, "ui"))
+            open(os.path.join(d, "ui", "Button.tsx"), "w").close()
+            out = io.StringIO()
+            with redirect_stdout(out):
+                _ui()
+            self.assertNotIn("leftover", out.getvalue())
+
+
+class Index(unittest.TestCase):
+    def _index(self, d):
+        with open(os.path.join(d, ".dev", "ui", "index.html"), encoding="utf-8") as fh:
+            return fh.read()
+
+    def test_index_links_every_surface(self):
+        with StubbedRepo() as d:
+            _ui()
+            html = self._index(d)
+            for s in UI_SURFACES:
+                self.assertIn('href="%s.html"' % s, html)
+
+    def test_index_summarises_what_each_page_holds(self):
+        with StubbedRepo() as d:
+            _ui()
+            self.assertIn("2 open", self._index(d))
+
+    def test_a_surface_never_built_says_so_on_the_index(self):
+        with StubbedRepo() as d:
+            _ui(surface="board")
+            self.assertIn("not built yet", self._index(d))
+
+    def test_every_page_links_back_to_the_index_and_its_siblings(self):
+        for s in UI_SURFACES:
+            html = render_ui_html(s, {}, META)
+            self.assertIn('href="index.html"', html, "%s has no way home" % s)
+            for other in UI_SURFACES:
+                self.assertIn('href="%s.html"' % other, html)
 
 
 if __name__ == "__main__":

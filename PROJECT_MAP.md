@@ -90,9 +90,10 @@ its decision. Skills still probe `git check-ignore -q docs/` per repo, because t
 
 - **`LICENSE` and publishing** — repo is `PRIVATE` with `licenseInfo: null`. Public distribution
   needs both; without a licence nobody may use it even once public.
-- **Whether the CLI may append `.dev/` to a *target* repo's `.gitignore`.** Currently it will not —
-  `dev doctor` reports and prints the line to add. Writing into a repo the family does not own needs
-  an explicit yes naming that repo.
+- **The CLI never edits a *target* repo's `.gitignore`.** It does not need to: the first write into
+  `.dev/` also writes `.dev/.gitignore` (`*`), inside the family's own folder, so `.dev/` — phase
+  state and the `.dev/ui/` pages — ignores itself. State written by hand, without the CLI, lacks
+  it; `dev doctor` still reports that case.
 - **Changelog generation** — deferred, not rejected.
 
 **Known environment gaps:**

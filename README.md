@@ -72,7 +72,7 @@ A full `/dev` run includes these stages. You can also invoke them independently 
 | `/dev:shots` | Capture screens from the running app. |
 | `/dev:comment-budget` | Report comments and docstrings that exceed the documentation budget. Add `--apply` to make changes. |
 | `/dev:arch` | Generate a diagram tied to verified source locations. Requires Archify. |
-| `/dev:ui` | Rebuild the stale `ui/` pages — board, roadmap, ideation, insights — and open them in a browser. |
+| `/dev:ui` | Rebuild the stale `.dev/ui/` pages — board, roadmap, ideation, insights — and open their index in a browser. |
 
 See [command examples](documentation/COMMANDS.md) for practical usage and handoffs.
 
@@ -87,7 +87,7 @@ above works without it; when present, the doors use it instead of doing the same
 | `dev board [--json]` | Classify open issues into columns from git and `gh`. |
 | `dev state checkpoint\|read\|verify` | Record which pipeline phase a branch reached; `verify` fails when the record disagrees with git. |
 | `dev project [--number N] [--apply]` | Mirror the computed board into a GitHub Project v2 board. Dry run unless `--apply`. |
-| `dev ui [surface]` | Regenerate `ui/{board,roadmap,ideation,insights}.json` + `.html` — a local, offline snapshot. |
+| `dev ui [surface]` | Regenerate `.dev/ui/{board,roadmap,ideation,insights}.json` + `.html` and an `index.html` linking them — a local, offline snapshot. |
 | `dev run <door> [args]` | Dispatch a door to an agent CLI for headless or CI use. Prints the command unless given `--execute`. |
 
 ```bash

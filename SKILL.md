@@ -204,7 +204,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:ideation` | — | an existing app | "what could we improve" — perf/security/quality opportunities, files the confirmed |
 | `dev:roadmap` | — | the repo's own evidence | "what should we build next" — themes → milestones + epic parents; **makes the QUEUE exist** |
 | `dev:insights` | — | a question | "how does this work?" — cited answer, routes to the owning door, folds durable findings into `PROJECT_MAP.md` |
-| `dev:ui` | — | a repo | "open the ui" — rebuilds only the stale `ui/` pages, says why, opens the board |
+| `dev:ui` | — | a repo | "open the ui" — rebuilds only the stale `.dev/ui/` pages, says why, opens their index |
 | `dev:kanban` | — | the repo's tracker | "what should I work on?" — the board, plus bounded card writes; bare `/dev` offers it when the tracker has work |
 
 They all read the same `shared/pipeline.md`; none of them copies it. **Phases 1–8 have no sibling on
