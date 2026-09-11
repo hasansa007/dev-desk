@@ -110,7 +110,9 @@ an unchanged repeated observation creates no additional work or repeated decisio
 
 - Product emphasis: decision/evidence views were recommended as the differentiator; this
   is not a claim that competing tools lack verification or human review.
-- Observer of external agent sessions versus primary place to launch and continue them.
+- Entry-path scope is now resolved: support both managed starts and connecting external work.
+  [App and CLI task continuity](2026-09-11-app-cli-task-continuity-design.md) records the decision;
+  provider-specific session capabilities and ownership remain to be designed.
 - Job outcome protocol: current checkpoint writes mark the phase completed, so the original
   draft's incomplete-gate predicate cannot be produced by that command. Turns also stop
   outside numbered gates; exit zero without a checkpoint is not proof of task completion.

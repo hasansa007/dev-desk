@@ -7,6 +7,10 @@ shell consumes, the first shell (a native Mac app), and where it lives.
 records the accepted reconciliation direction and the remaining design questions. The job-state
 protocol and repository recommendation below remain draft proposals; see the follow-up before implementation.
 
+**Accepted entry paths:** [App and CLI task continuity](2026-09-11-app-cli-task-continuity-design.md)
+records support for both managed starts and connecting external work, with capability-specific
+session continuation and a proposed model for isolated parallel tasks.
+
 ## 1. Why
 
 The family has an engine (22 doors, 17 phases, 4 gates), a truth (git + GitHub), a memory
