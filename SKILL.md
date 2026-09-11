@@ -194,6 +194,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:review` | 15 ↺ | a PR number | "changes requested" — loops back to 14 |
 | `dev:prod` | 16 | pre-prod + prod branches | "promote to production" |
 | `dev:rollback` | 16 ↺ | a broken commit or release | "rollback production" — classifies change, proposes recovery, pauses for approval |
+| `dev:audit` | — | a branch or PR | "did we actually run all phases?" — checks the PR's `## PIPELINE` claims against real evidence, appends `## COMPLIANCE` |
 | `dev:launch` | — | a project to launch | "run the app" — a TOOL, not a phase |
 | `dev:launch-kill` | — | a project to stop | "kill the dev server", "free the port" — `launch` inverted |
 | `dev:shots` | — | a running app | "screenshot the app", "app store screenshots" — capture, iOS/Android/web |
