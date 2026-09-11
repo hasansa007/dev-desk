@@ -273,7 +273,7 @@ struct ExecutionPane: View {
                 }
             }
             .padding(.top, 16)
-            Text("Used when Dev Desk starts managed tasks. It doesn't start any yet.")
+            Text("Task worktrees are created here when you start a shell for a branch that isn't checked out.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)

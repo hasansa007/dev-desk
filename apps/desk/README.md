@@ -9,4 +9,6 @@ swift test --package-path apps/desk/DeskCore
 cd apps/desk && xcodegen generate && xcodebuild -project DevDesk.xcodeproj -scheme DevDesk -destination 'platform=macOS' -derivedDataPath /tmp/devdesk-dd build
 ```
 
+The first app build resolves SwiftTerm from GitHub, so it needs network access.
+
 Open a sample project from the picker, or any local folder.

@@ -2,3 +2,4 @@ DevDesk.xcodeproj/
 .build/
 DerivedData/
 *.xcuserstate
+.swiftpm/

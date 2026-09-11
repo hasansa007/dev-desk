@@ -138,6 +138,11 @@ final class SnapshotMode {
         Capture(name: "04-roadmap") { $0.go(.roadmap) },
         Capture(name: "05-decisions") { $0.go(.decisions) },
         Capture(name: "06-settings-connections") { $0.go(.settings); $0.settingsSection = .accountsAndConnections },
+        // Idle, so the capture shows the trust note and the planned folder; nothing is started.
+        Capture(name: "07-first-task-shell") { model in
+            if let id = firstTaskID(model) { model.openTask(id) }
+            model.dockTabID = model.selectedTask?.dock?.tabs.first { $0.kind == .liveShell }?.id
+        },
     ]
 
     /// The first in-progress card, so the Changes capture shows a real diff when one exists; else the first card on the board.
