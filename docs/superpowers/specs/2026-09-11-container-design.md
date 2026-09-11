@@ -5,7 +5,8 @@ shell consumes, the first shell (a native Mac app), and where it lives.
 
 **Discussion follow-up:** [Findings and existing issues](2026-09-11-findings-and-existing-issues-design.md)
 records the accepted reconciliation direction and the remaining design questions. The job-state
-protocol and repository recommendation below remain draft proposals; see the follow-up before implementation.
+protocol below remains a draft proposal; see the follow-up before implementation. §5's repository
+recommendation is no longer open — see "Deliverables A and C landed together," below.
 
 **Accepted entry paths:** [App and CLI task continuity](2026-09-11-app-cli-task-continuity-design.md)
 records support for both managed starts and connecting external work, with capability-specific
@@ -17,7 +18,13 @@ options, settings, naming, and remaining blockers. Dev Desk is a working name, n
 
 **Accepted platform (2026-09-11):** the maintainer chose a native Mac desktop app after comparing
 it with a cross-platform desktop app. This settles the first shell's platform; the runtime contract,
-terminal integration, minimum OS version, and repository layout remain design details to resolve.
+terminal integration, and minimum OS version remain design details to resolve.
+
+**Deliverables A and C landed together (2026-09-11):** §7 planned deliverable A
+(`documentation/SYSTEM-MODEL.md` and `docs/arch/dev-system.*`) and deliverable C (the Mac shell)
+as separate PRs. Both ship in this one PR at the developer's request — see §7. The repository
+layout question below is settled too: one repo, `apps/desk/` (ADR 0012), with the app's first real
+reads specified by ADR 0013.
 
 ## 1. Why
 
@@ -175,6 +182,10 @@ shows the `install.sh` line.
 
 ## 5. One repo or two
 
+**Decided 2026-09-11: one repo — ADR 0012.** The recommendation below was two repos; the developer
+chose the opposite. The table and its reasoning stay as the record of the rejected option — see the
+ADR for why it lost, measured rather than assumed.
+
 The app is a client of the contract. The question is whether it lives beside the contract.
 
 | | **Two repos** — `dev-skill` + `dev-desk` | **One repo** — `apps/desk/` in `dev-skill` |
@@ -208,9 +219,13 @@ CLI on most PRs.
 |---|---|---|
 | A | `documentation/SYSTEM-MODEL.md` (section 2 as a page) + `docs/arch/dev-system.*` rendered with `dev:arch` | dev-skill |
 | B | `snapshot`, `jobs`, `events`, `board move`, `"contract": 1`, tests; the `/dev:ui` and `dev:kanban` doors learn the verbs | dev-skill |
-| C | Mac shell: project windows, Board, task details, agent outputs, Decisions, then remaining views from the latest UI note | app location undecided |
+| C | Mac shell: project windows, Board, task details, agent outputs, Decisions, then remaining views from the latest UI note | `dev-skill` (`apps/desk/`, decided — ADR 0012) |
 
-Each is its own PR. A and B do not depend on the repo decision; C does.
+Each was planned as its own PR. **A and C shipped together in one PR, at the developer's
+request** — this branch carries the system-model page and diagram (A) alongside the first Mac
+shell build (C), reading sample data plus real git/GitHub for opened folders (ADR 0013) rather than
+waiting on B. B — `snapshot`, `jobs`, `events`, `board move` — remains unbuilt and its own PR,
+whenever it lands.
 
 ## 8. Non-goals
 

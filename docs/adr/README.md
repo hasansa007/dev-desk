@@ -20,3 +20,5 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0009](0009-track-docs-so-an-adr-can-be-part-of-its-own-diff.md) | Track `docs/` so an ADR can be part of the diff that introduces it | Accepted |
 | [0010](0010-paths-point-at-the-install-root.md) | Paths point at the install root, not the clone | Accepted |
 | [0011](0011-the-project-board-mirrors-it-never-decides.md) | The Project board mirrors; it never decides | Accepted |
+| [0012](0012-the-mac-app-lives-in-apps-desk.md) | The Mac app lives in `apps/desk/`, in this repo | Accepted |
+| [0013](0013-the-app-reads-git-and-github-directly.md) | The app reads git and GitHub directly, until `dev snapshot` exists | Accepted |

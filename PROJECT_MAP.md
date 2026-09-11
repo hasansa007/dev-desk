@@ -21,7 +21,8 @@ small deterministic helper.
 | Compliance | `scripts/compliance_auditor.py` — stdlib only |
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
 | Tests | stdlib `unittest`, one file per script under `test-projects/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
-| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`. Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
+| Mac app | `apps/desk/` — Dev Desk, a native macOS app: SwiftUI with AppKit where needed, macOS 14+, Swift 5 mode. `project.yml` generates the Xcode project with xcodegen (gitignored, not committed); `DeskCore` is the local Swift package — models, sample data, the git/GitHub reader — tested with `swift test --package-path apps/desk/DeskCore` (see [ADR 0012](docs/adr/0012-the-mac-app-lives-in-apps-desk.md)) |
+| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`, added by the integration task after this one — see ORPHANS). Each installed **on its own**; `ci/pr-gates.yml` is a template for *other* repos and is deliberately never installed here |
 | Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev`, and links `scripts/dev.py` as the `dev` command into `~/.local/bin` (or `~/bin`) when one is already on `PATH` |
 
 **Paths inside the family are the INSTALL path** (`~/.claude/skills/dev/…`), never the clone path.
@@ -66,6 +67,11 @@ pre-flight moves up into Phase 14.
 **`docs/` is tracked here** (changed 2026-09-10) so an ADR can be part of the diff that introduces
 its decision. Skills still probe `git check-ignore -q docs/` per repo, because the answer differs.
 
+**The container.** Dev Desk (`apps/desk/`) reads what the doors and `dev` already wrote — git,
+GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and starts no agents itself. Its two sample
+projects demo the whole design on labelled sample data; a real opened folder shows only what it can
+actually read, with the reason next to anything it can't yet (see ORPHANS).
+
 ## ORPHANS & PENDING
 
 **Doors that exist but have never been exercised.** Each says so in its own `## Scar tissue`:
@@ -85,6 +91,23 @@ its decision. Skills still probe `git check-ignore -q docs/` per repo, because t
 - **No `roadmap-declined` label**, so the declined-theme round trip is untested.
 - **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
 - **0 open issues, 0 milestones** — every board render so far has been of an empty tracker.
+
+**Dev Desk (`apps/desk/`), not built yet:**
+
+- **Runner-dependent surfaces work only in the sample projects** — the agents list, the terminal
+  dock, decisions waiting on an answer, Insights' answers, and tracker updates from the app. A real
+  opened project shows each as unavailable, with the reason (ADR 0013).
+- **`dev snapshot`, `dev jobs` and `dev events`** (container spec §3) are not built — the app cannot
+  start, stop or answer a door yet.
+- **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
+  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both.
+- **`docs/arch/dev-system.html`'s Container node cites the design brief**, not `apps/desk/` — it
+  needs a re-pin once this branch merges.
+- **`desk.yml`**, the path-filtered Xcode CI job, is unproven until its first real run — it lands
+  with the integration task after this one.
+- **The Notifications and Execution settings panes store values**
+  (`desk.notifyDecisions`/`notifyCompletion`/`notifyFailures`, `desk.worktreeLocation`) that nothing
+  reads yet — no notification is posted, no worktree is created at the configured path.
 
 **Deferred deliberately:**
 

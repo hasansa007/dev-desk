@@ -93,6 +93,7 @@ skip a judgment — building, architecture, merging, promoting.
 | A new standalone member | `skills/<name>/SKILL.md` + a row in both family tables. **Only worth it for Phase 0 or a phase ≥ 11** — the rest pass reasoning, which cannot be handed over |
 | A new **tool** (no phase) | Same, but it points at another tool rather than at `pipeline.md` — `launch-kill` reads `launch`'s Phase 2 for discovery. The no-copy rule is the same rule |
 | A per-type issue template | the `dev:create-*` member itself — templates are the only thing those three doors hold |
+| Dev Desk, the Mac app | `apps/desk/` — board rules mirror `scripts/dev.py` (ADR 0013) — change both |
 | Entry routing | `SKILL.md` |
 
 Members are ~60-line doors into the pipeline. **A member that copies pipeline content is a bug** —
