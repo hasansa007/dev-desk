@@ -1,3 +1,4 @@
+import AppKit
 import DeskCore
 import SwiftUI
 
@@ -6,6 +7,8 @@ struct AgentsDock: View {
     let task: DeskTask
     let dock: DockContent
     let placement: DockPlacement
+    /// A sample's transcript tabs the user has clicked, or clicked into; each then says it is a recording.
+    @State private var recordingNoticeTabIDs: Set<String> = []
 
     var body: some View {
         let edge = placement == .bottom ? AnyLayout(VStackLayout(spacing: 0)) : AnyLayout(HStackLayout(spacing: 0))
@@ -82,7 +85,10 @@ struct AgentsDock: View {
     private var tabStrip: some View {
         HStack(spacing: 4) {
             ForEach(dock.tabs) { tab in
-                TaskDockTabButton(title: tab.title, isSelected: tab.id == selectedTab?.id) { model.dockTabID = tab.id }
+                TaskDockTabButton(title: tab.title, isSelected: tab.id == selectedTab?.id) {
+                    model.dockTabID = tab.id
+                    noteRecording(tab)
+                }
             }
         }
         .fixedSize()
@@ -134,11 +140,77 @@ struct AgentsDock: View {
     @ViewBuilder private func paneContent(_ tab: DockTab) -> some View {
         switch tab.kind {
         case .transcript(let transcript):
-            TerminalTranscriptView(transcript: transcript)
+            if model.ref.isSample {
+                SampleRecordingPane(transcript: transcript, showsNotice: recordingNoticeTabIDs.contains(tab.id)) { noteRecording(tab) }
+            } else {
+                TerminalTranscriptView(transcript: transcript)
+            }
         case .liveShell:
             ShellPane(sessions: model.shellSessions, task: task)
+        case .liveAgent:
+            AgentPane(model: model, task: task)
         case .unavailable(let reason):
             DockMessage(text: reason)
+        }
+    }
+
+    private func noteRecording(_ tab: DockTab) {
+        guard model.ref.isSample, tab.transcript != nil else { return }
+        recordingNoticeTabIDs.insert(tab.id)
+    }
+}
+
+/// A sample's transcript looks like a live terminal, cursor and all, but takes no input; a click on it, or on its tab, says so.
+private struct SampleRecordingPane: View {
+    static let note = "This terminal is a recording in the sample project. Open a real folder with ⌘O to get a live shell here."
+
+    let transcript: TerminalTranscript
+    let showsNotice: Bool
+    let onClick: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if showsNotice {
+                Text(verbatim: Self.note)
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.terminalDim2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 7)
+                    .background(DeskColor.terminalBar)
+                Rectangle()
+                    .fill(DeskColor.terminalPaneBorder)
+                    .frame(height: 1)
+            }
+            TerminalTranscriptView(transcript: transcript, help: Self.note)
+                .background { ClickSensor(onClick: onClick) }
+        }
+        .help(Self.note)
+    }
+}
+
+/// Runs `onClick` for a click anywhere over it without taking the click, so the recording keeps its own text selection and scrolling.
+/// A local monitor sees the app's events before any view does.
+private struct ClickSensor: NSViewRepresentable {
+    let onClick: () -> Void
+
+    func makeNSView(context: Context) -> ClickSensorView { ClickSensorView() }
+    func updateNSView(_ view: ClickSensorView, context: Context) { view.onClick = onClick }
+}
+
+private final class ClickSensorView: NSView {
+    var onClick: (() -> Void)?
+    private var monitor: Any?
+
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        monitor = window == nil ? nil : NSEvent.addLocalMonitorForEvents(matching: .leftMouseDown) { [weak self] event in
+            if let self, event.window === window, bounds.contains(convert(event.locationInWindow, from: nil)) { onClick?() }
+            return event
         }
     }
 }
@@ -162,7 +234,7 @@ private struct ShellPane: View {
     @ViewBuilder private var content: some View {
         switch sessions.state(for: task.id) {
         case .idle(let plan):
-            DockMessage(text: Self.trustNote, detail: plan.map(Self.planLine)) {
+            DockMessage(text: Self.trustNote, detail: plan.map(TaskFolderText.planLine)) {
                 Button("Start shell") { start() }
                     .disabled(terminals == nil)
             }
@@ -170,7 +242,7 @@ private struct ShellPane: View {
             DockMessage(text: "Preparing the task's folder…")
         case .running(let folder):
             VStack(spacing: 0) {
-                runningBar(note: folder.note)
+                DockRunningBar(note: folder.note, stopTitle: "End shell") { terminals?.end(taskID: task.id) }
                 if let terminals {
                     ShellTerminalView(terminals: terminals, taskID: task.id)
                 }
@@ -182,31 +254,6 @@ private struct ShellPane: View {
             }
         case .failed(let message):
             DockMessage(text: message)
-        }
-    }
-
-    private func runningBar(note: String?) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                if let note {
-                    Text(verbatim: note)
-                        .font(.system(size: 11))
-                        .foregroundStyle(DeskColor.terminalDim2)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .help(note)
-                }
-                Spacer(minLength: 0)
-                Button("End shell") { terminals?.end(taskID: task.id) }
-                    .buttonStyle(TaskDockControlStyle())
-                    .fixedSize()
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(DeskColor.terminalBar)
-            Rectangle()
-                .fill(DeskColor.terminalPaneBorder)
-                .frame(height: 1)
         }
     }
 
@@ -231,13 +278,113 @@ private struct ShellPane: View {
         await sessions.refreshPlan(taskID: task.id, branch: task.branch, taskNumber: task.taskNumber,
                                    noBranchNote: task.noBranchNote, worktreeLocation: worktreeLocation)
     }
+}
 
-    private static func planLine(_ plan: TaskFolderPlan) -> String {
+/// The Agents tab: Claude Code or Codex in the task's folder. Nothing runs until Start agent is clicked or Auto starts it,
+/// and the agent belongs to the window's agent registry, so it outlives this pane.
+private struct AgentPane: View {
+    let model: ProjectWindowModel
+    let task: DeskTask
+    @Environment(\.agentTerminals) private var agents
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage private var connectionOverride: String
+
+    init(model: ProjectWindowModel, task: DeskTask) {
+        self.model = model
+        self.task = task
+        _connectionOverride = AppStorage(wrappedValue: "", PreferenceKey.connectionOverride(model.ref))
+    }
+
+    private var sessions: ShellSessions { model.agentSessions }
+
+    private var choice: AgentChoice {
+        AgentChoice.resolve(override: connectionOverride, defaultConnection: defaultConnection, connections: model.snapshot?.connections ?? [])
+    }
+
+    var body: some View {
+        content
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(DeskColor.terminalGround)
+            .task(id: task.id) { await refreshPlan() }
+    }
+
+    @ViewBuilder private var content: some View {
+        switch sessions.state(for: task.id) {
+        case .idle(let plan):
+            switch choice {
+            case .ready(let agent):
+                DockMessage(text: Self.startNote(agent), detail: plan.map(TaskFolderText.planLine)) {
+                    Button("Start agent") { start(agent) }
+                        .disabled(agents == nil)
+                }
+            case .unavailable(let reason):
+                DockMessage(text: reason)
+            }
+        case .preparing:
+            DockMessage(text: "Preparing the task's folder…")
+        case .running(let folder):
+            VStack(spacing: 0) {
+                DockRunningBar(note: folder.note, stopTitle: "Stop agent") { agents?.end(taskID: task.id) }
+                if let agents {
+                    ShellTerminalView(terminals: agents, taskID: task.id)
+                }
+            }
+        case .ended(let folder, let status):
+            startable(status.map { "Agent ended (status \($0))." } ?? "Agent ended.", detail: folder.note, button: "Start again")
+        case .failed(let message):
+            // Auto won't run an agent at the project root, so its start fails here with the folder's note; starting by hand may run it there.
+            if model.ref.isSample {
+                DockMessage(text: message)
+            } else {
+                startable(message, detail: nil, button: "Start agent")
+            }
+        }
+    }
+
+    /// The message with the start button, or with the reason the agent can't start.
+    @ViewBuilder private func startable(_ text: String, detail: String?, button: String) -> some View {
+        switch choice {
+        case .ready(let agent):
+            DockMessage(text: text, detail: detail) {
+                Button(button) { start(agent) }
+                    .disabled(agents == nil)
+            }
+        case .unavailable(let reason):
+            DockMessage(text: text, detail: reason)
+        }
+    }
+
+    /// The agent starts once the folder is ready, even if the user has moved to another task by then.
+    private func start(_ agent: AgentKind) {
+        agents?.startAgent(for: task, agent: agent, worktreeLocation: worktreeLocation)
+    }
+
+    /// Read-only, as the Shell tab's; a tab past idle keeps the folder it already has.
+    private func refreshPlan() async {
+        guard case .idle = sessions.state(for: task.id) else { return }
+        await sessions.refreshPlan(taskID: task.id, branch: task.branch, taskNumber: task.taskNumber, noBranchNote: task.noBranchNote,
+                                   worktreeLocation: worktreeLocation, baseRef: task.baseRef)
+    }
+
+    private static func startNote(_ agent: AgentKind) -> String {
+        "Starting an agent runs \(AgentLaunch.displayName(agent)) in this task's folder under your account. It uses tokens and can change files; "
+            + "it stops at the pipeline's approval gates and asks you here."
+    }
+}
+
+/// The line under a tab's note naming the folder a start would use.
+private enum TaskFolderText {
+    static func planLine(_ plan: TaskFolderPlan) -> String {
         switch plan {
         case .existing(let folder, let branch):
             return "Opens in \(display(folder)), where \(branch) is checked out."
+        case .existingOwn(let folder):
+            return "Opens in \(display(folder)), the task's own worktree."
         case .create(let path, let branch):
             return "Creates a worktree for \(branch) at \(display(path))."
+        case .createDetached(let path, let baseRef):
+            return "Creates a detached worktree at \(display(path)) from \(shortRef(baseRef)). \(TaskFolderResolver.detachedNote)"
         case .root(_, let note):
             // The task-folder notes already end in a full stop.
             return "Opens at the project root: \(note.hasSuffix(".") ? String(note.dropLast()) : note)."
@@ -246,6 +393,44 @@ private struct ShellPane: View {
 
     private static func display(_ url: URL) -> String {
         (url.path as NSString).abbreviatingWithTildeInPath
+    }
+
+    /// "refs/remotes/origin/main" reads as "origin/main".
+    private static func shortRef(_ ref: String) -> String {
+        for prefix in ["refs/remotes/", "refs/heads/"] where ref.hasPrefix(prefix) { return String(ref.dropFirst(prefix.count)) }
+        return ref
+    }
+}
+
+/// Above a running terminal: the folder's note, when it has one, and the button that ends the process.
+private struct DockRunningBar: View {
+    let note: String?
+    let stopTitle: String
+    let stop: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                if let note {
+                    Text(verbatim: note)
+                        .font(.system(size: 11))
+                        .foregroundStyle(DeskColor.terminalDim2)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(note)
+                }
+                Spacer(minLength: 0)
+                Button(stopTitle, action: stop)
+                    .buttonStyle(TaskDockControlStyle())
+                    .fixedSize()
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(DeskColor.terminalBar)
+            Rectangle()
+                .fill(DeskColor.terminalPaneBorder)
+                .frame(height: 1)
+        }
     }
 }
 

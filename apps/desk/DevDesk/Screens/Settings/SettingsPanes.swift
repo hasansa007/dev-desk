@@ -256,6 +256,7 @@ struct NotificationsPane: View {
 
 struct ExecutionPane: View {
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.agentLimit) private var agentLimit = AgentLimit.defaultValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -278,6 +279,11 @@ struct ExecutionPane: View {
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)
                 .padding(.top, 12)
+            Stepper(value: $agentLimit, in: AgentLimit.range) {
+                Text(agentLimit == 1 ? "Run at most 1 agent at once" : "Run at most \(agentLimit) agents at once")
+            }
+            .fixedSize()
+            .padding(.top, 16)
         }
     }
 
@@ -305,6 +311,41 @@ struct ProjectOverridesPane: View {
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)
                 .padding(.top, 12)
+            // Auto applies to local projects only.
+            if !model.ref.isSample {
+                AutoModeSetting(ref: model.ref)
+                    .padding(.top, 18)
+            }
+        }
+    }
+}
+
+/// This project's Auto. Turning it on asks first, since it spends tokens unattended; Cancel leaves it off.
+private struct AutoModeSetting: View {
+    @AppStorage private var autoMode: Bool
+    @AppStorage(PreferenceKey.agentLimit) private var agentLimit = AgentLimit.defaultValue
+    @State private var confirming = false
+
+    init(ref: ProjectRef) {
+        _autoMode = AppStorage(wrappedValue: false, PreferenceKey.autoMode(ref))
+    }
+
+    var body: some View {
+        let notice = AutoAgents.notice(limit: min(max(agentLimit, AgentLimit.range.lowerBound), AgentLimit.range.upperBound))
+        VStack(alignment: .leading, spacing: 0) {
+            Toggle("Auto", isOn: Binding(get: { autoMode }, set: { isOn in
+                if isOn { confirming = true } else { autoMode = false }
+            }))
+            Text(verbatim: notice)
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(4)
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(.top, 8)
+        }
+        .alert(Text(verbatim: notice), isPresented: $confirming) {
+            Button("Turn on Auto") { autoMode = true }
+            Button("Cancel", role: .cancel) {}
         }
     }
 }

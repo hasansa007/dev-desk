@@ -143,6 +143,11 @@ final class SnapshotMode {
             if let id = firstTaskID(model) { model.openTask(id) }
             model.dockTabID = model.selectedTask?.dock?.tabs.first { $0.kind == .liveShell }?.id
         },
+        // Idle too: the agent note and the planned folder. Auto never runs in snapshot mode.
+        Capture(name: "08-first-task-agents") { model in
+            if let id = firstTaskID(model) { model.openTask(id) }
+            model.dockTabID = model.selectedTask?.dock?.tabs.first { $0.kind == .liveAgent }?.id
+        },
     ]
 
     /// The first in-progress card, so the Changes capture shows a real diff when one exists; else the first card on the board.
@@ -151,6 +156,21 @@ final class SnapshotMode {
         let visible = order.flatMap { column in model.tasks.filter { $0.column == column } }
         return (visible.first { $0.column == .inProgress } ?? visible.first)?.id
     }
+}
+
+/// `-DevDeskAgentExecutable <absolute path>`, honoured by Debug builds only: agents run that program in place of claude or codex,
+/// so a manual run never spends tokens. Only the launch argument counts, never a saved default.
+enum DebugLaunch {
+    static let agentExecutable: String? = {
+        #if DEBUG
+        guard let value = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["DevDeskAgentExecutable"] as? String
+        else { return nil }
+        let path = (value as NSString).expandingTildeInPath
+        return path.hasPrefix("/") ? path : nil
+        #else
+        return nil
+        #endif
+    }()
 }
 
 /// Attached to the snapshot target's window; does nothing outside snapshot mode.
