@@ -41,6 +41,8 @@ final class ShellTerminalHost: NSView {
 final class ShellTerminalRegistry {
     private let sessions: ShellSessions
     private var terminals: [String: ShellTerminal] = [:]
+    /// Set when the window closes, so a start still preparing its folder then launches nothing.
+    private var isClosed = false
 
     init(sessions: ShellSessions) {
         self.sessions = sessions
@@ -53,6 +55,7 @@ final class ShellTerminalRegistry {
 
     /// Called once the session is running, so the generation read here is the one this process belongs to.
     func start(taskID: String, folder: URL) {
+        guard !isClosed else { return }
         terminal(for: taskID).start(in: folder, generation: sessions.generation(for: taskID))
     }
 
@@ -60,21 +63,10 @@ final class ShellTerminalRegistry {
         terminals[taskID]?.end()
     }
 
+    /// The window is closing: ends every shell, and refuses the starts that are still preparing their folder.
     func endAll() {
+        isClosed = true
         terminals.values.forEach { $0.end() }
-    }
-
-    /// Quit leaves no time for a timer, and holds the main queue, so no exit monitor fires: SIGHUP every shell,
-    /// reap them here for up to 2 s, then SIGKILL whichever remain.
-    func endAllBeforeQuit() {
-        var waiting = terminals.values.filter(\.isRunning)
-        waiting.forEach { $0.send(SIGHUP) }
-        let deadline = Date().addingTimeInterval(2)
-        while !waiting.isEmpty, Date() < deadline {
-            waiting.removeAll { $0.reap() }
-            if !waiting.isEmpty { usleep(20_000) }
-        }
-        waiting.forEach { $0.send(SIGKILL) }
     }
 
     private func terminal(for taskID: String) -> ShellTerminal {
@@ -90,6 +82,39 @@ final class ShellTerminalRegistry {
     }
 }
 
+/// Every live shell in the app, across windows. Holding them here keeps a shell that is being ended alive until it is gone,
+/// and lets quit end them all with one wait of at most 2 s rather than one per window.
+@MainActor
+final class LiveShells {
+    static let shared = LiveShells()
+    private var shells: [ObjectIdentifier: ShellTerminal] = [:]
+    private var terminateObserver: NSObjectProtocol?
+
+    private init() {
+        terminateObserver = NotificationCenter.default.addObserver(forName: NSApplication.willTerminateNotification,
+                                                                   object: nil, queue: .main) { _ in
+            MainActor.assumeIsolated { LiveShells.shared.endAllBeforeQuit() }
+        }
+    }
+
+    func insert(_ shell: ShellTerminal) { shells[ObjectIdentifier(shell)] = shell }
+    func remove(_ shell: ShellTerminal) { shells[ObjectIdentifier(shell)] = nil }
+
+    /// Quit leaves no time for a timer and holds the main queue, so no exit monitor fires: SIGHUP every shell and its job,
+    /// reap for at most 2 s in all, then SIGKILL whatever is left.
+    func endAllBeforeQuit() {
+        let all = Array(shells.values)
+        all.forEach { $0.send(SIGHUP) }
+        var waiting = all
+        let deadline = Date().addingTimeInterval(2)
+        while !waiting.isEmpty, Date() < deadline {
+            waiting.removeAll { $0.reap() && !$0.hasLiveJobs }
+            if !waiting.isEmpty { usleep(20_000) }
+        }
+        all.forEach { $0.send(SIGKILL) }
+    }
+}
+
 /// One task's terminal and the login shell inside it. It is also the process delegate, which SwiftTerm holds only weakly.
 @MainActor
 final class ShellTerminal: LocalProcessTerminalViewDelegate {
@@ -98,9 +123,9 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
     /// The session's generation when this process started.
     private(set) var generation = 0
     private let onExit: @MainActor (ShellTerminal, Int32?) -> Void
-    /// Set while ending, so the exit is still reaped and reported after the window has let go of the registry.
-    private var keepAlive: ShellTerminal?
     private var exitMonitor: DispatchSourceProcess?
+    /// Foreground job groups seen while signalling; an interactive shell runs each job in a group of its own.
+    private var jobGroups: Set<pid_t> = []
 
     init(onExit: @escaping @MainActor (ShellTerminal, Int32?) -> Void) {
         self.onExit = onExit
@@ -115,6 +140,12 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
 
     var isRunning: Bool { view.process.shellPid != 0 && !hasExited }
 
+    /// True while a job group signalled earlier still has its leader in the shell's session.
+    var hasLiveJobs: Bool {
+        let pid = view.process.shellPid
+        return pid > 0 && jobGroups.contains { getsid($0) == pid }
+    }
+
     /// Runs `$SHELL -l` in `folder` with the user's environment and TERM=xterm-256color. SwiftTerm ignores a failed chdir and execs anyway,
     /// so `/bin/sh` changes directory first: a folder that has gone missing ends the shell instead of opening it wherever the app was launched.
     func start(in folder: URL, generation: Int) {
@@ -123,34 +154,45 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
         var environment = ProcessInfo.processInfo.environment
         let shell = environment["SHELL"].flatMap { $0.isEmpty ? nil : $0 } ?? "/bin/zsh"
         environment["TERM"] = "xterm-256color"
+        // An app opened from Finder gets no locale; a locale that is set is never replaced.
+        if ["LANG", "LC_ALL", "LC_CTYPE"].allSatisfy({ (environment[$0] ?? "").isEmpty }) {
+            environment["LANG"] = Self.utf8Locale()
+        }
         view.startProcess(executable: "/bin/sh",
                           args: ["-c", #"cd -- "$1" && exec "$2" -l"#, "sh", folder.path, shell],
                           environment: environment.map { "\($0.key)=\($0.value)" },
                           currentDirectory: folder.path)
         let pid = view.process.shellPid
         guard pid != 0 else { return exited(rawStatus: nil) }
+        LiveShells.shared.insert(self)
         watchExit(of: pid)
         view.focusOnAttach = true
         view.takeFocusIfAsked()
     }
 
-    /// SIGHUP now, then SIGKILL if the shell is still there 2 s later.
+    /// SIGHUP now, then SIGKILL 2 s later to whatever of the shell and its foreground job is still there.
     func end() {
         guard isRunning else { return }
-        keepAlive = self
         send(SIGHUP)
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             send(SIGKILL)
+            LiveShells.shared.remove(self)
         }
     }
 
-    /// Nothing is sent once the exit has been reaped, because the pid may belong to another process by then.
+    /// Signals the shell's own group and the terminal's foreground job group, as closing a Terminal window does.
+    /// The shell is never signalled once its exit has been reaped, and a job group only while its leader is still in the shell's session,
+    /// which keeps the shell's pid from being reused, so neither can reach another process.
     fileprivate func send(_ signal: Int32) {
         let pid = view.process.shellPid
-        guard pid > 0, !hasExited else { return }
-        // forkpty makes the shell a session and process-group leader, so the group signal reaches whatever runs in that group too.
-        if kill(-pid, signal) != 0 { kill(pid, signal) }
+        guard pid > 0 else { return }
+        if !hasExited {
+            let foreground = tcgetpgrp(view.process.childfd)
+            if foreground > 0, foreground != pid { jobGroups.insert(foreground) }
+        }
+        for group in jobGroups where getsid(group) == pid { kill(-group, signal) }
+        if !hasExited, kill(-pid, signal) != 0 { kill(pid, signal) }
     }
 
     /// SwiftTerm 1.11.2 cancels its own exit monitor when the terminal reads end of file, which usually comes first,
@@ -179,9 +221,10 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
     private func exited(rawStatus: Int32?) {
         guard !hasExited else { return }
         hasExited = true
-        keepAlive = nil
         exitMonitor?.cancel()
         exitMonitor = nil
+        // A job that outlived its shell stays listed until end()'s SIGKILL, so quit can still reach it.
+        if !hasLiveJobs { LiveShells.shared.remove(self) }
         onExit(self, Self.exitStatus(rawStatus))
     }
 
@@ -190,6 +233,12 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
         guard let raw else { return nil }
         let signal = raw & 0x7f
         return signal == 0 ? (raw >> 8) & 0xff : 128 + signal
+    }
+
+    /// What Terminal sets for an app opened from Finder: the user's own locale when the system has it, else en_US.
+    private static func utf8Locale() -> String {
+        let name = Locale.current.identifier + ".UTF-8"
+        return FileManager.default.fileExists(atPath: "/usr/share/locale/" + name) ? name : "en_US.UTF-8"
     }
 
     nonisolated func sizeChanged(source: LocalProcessTerminalView, newCols: Int, newRows: Int) {}
@@ -218,7 +267,7 @@ final class FocusingTerminalView: LocalProcessTerminalView {
     }
 }
 
-/// Ends the window's shells when it closes (⌘W or the close button) and when the app quits, which closes no windows.
+/// Ends the window's shells when it closes (⌘W or the close button). Quit is handled once for every window by `LiveShells`.
 struct ShellLifetimeHook: NSViewRepresentable {
     let terminals: ShellTerminalRegistry
 
@@ -232,8 +281,6 @@ final class ShellLifetimeView: NSView {
     init(terminals: ShellTerminalRegistry) {
         self.terminals = terminals
         super.init(frame: .zero)
-        NotificationCenter.default.addObserver(self, selector: #selector(appWillTerminate),
-                                               name: NSApplication.willTerminateNotification, object: nil)
     }
 
     required init?(coder: NSCoder) { return nil }
@@ -248,7 +295,6 @@ final class ShellLifetimeView: NSView {
     }
 
     @objc private func windowWillClose(_ notification: Notification) { terminals.endAll() }
-    @objc private func appWillTerminate(_ notification: Notification) { terminals.endAllBeforeQuit() }
 }
 
 private struct ShellTerminalsKey: EnvironmentKey {
