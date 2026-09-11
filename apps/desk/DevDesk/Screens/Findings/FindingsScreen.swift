@@ -29,8 +29,9 @@ private struct FindingsSplitView: View {
             .filter { model.findingFilter == nil || $0.categories.contains(model.findingFilter!) }
     }
 
+    /// Falls back to the first visible finding when the stored selection is filtered out; never writes back.
     private var selectedFinding: Finding? {
-        report.findings.first { $0.id == model.selectedFindingID } ?? report.findings.first
+        visibleFindings.first { $0.id == model.selectedFindingID } ?? visibleFindings.first
     }
 
     var body: some View {
@@ -44,10 +45,13 @@ private struct FindingsSplitView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
-                    Color.clear
+                    Text("No findings match this filter.")
+                        .font(DeskFont.body)
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .padding(18)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 
@@ -118,6 +122,7 @@ private struct FindingsSplitView: View {
             .labelsHidden()
             .pickerStyle(.menu)
             .fixedSize()
+            .accessibilityLabel("Survey run")
         } else if let run = report.runs.first {
             MarkdownText(runMarkdownText(run), font: DeskFont.secondary, color: DeskColor.mutedInk)
         }
