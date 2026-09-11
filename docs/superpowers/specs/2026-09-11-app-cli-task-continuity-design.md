@@ -2,10 +2,11 @@
 
 **Date:** 2026-09-11
 
-**Status:** both entry paths accepted; implementation details remain proposed
+**Status:** both entry paths and separate project windows accepted; implementation details remain proposed
 
 **Related:** [container draft](2026-09-11-container-design.md) ·
-[findings and existing issues](2026-09-11-findings-and-existing-issues-design.md)
+[findings and existing issues](2026-09-11-findings-and-existing-issues-design.md) ·
+[navigation and Insights](2026-09-11-mac-app-navigation-and-insights-design.md)
 
 ## Accepted product direction
 
@@ -17,6 +18,14 @@ The app may display several task terminals together. Parallel work is organized 
 individual tasks with their own requirements and working environments, not anonymous terminals.
 This records the product direction; it does not claim that external session attachment is
 implemented or universally supported by agent CLIs.
+
+## Accepted project window direction
+
+The maintainer chose opening projects in separate Mac windows. Keep each project's tasks,
+findings, decisions, and terminal panes scoped to its window. Parallel task/session views belong
+inside that project window. Closing a project window must not implicitly stop managed agents;
+reopening reconnects to available execution records rather than automatically launching copies.
+The project picker/opening flow and detailed window restoration behavior remain proposed UI work.
 
 ## Proposed responsibility model
 
@@ -86,6 +95,27 @@ is unavailable, serialize conflicting work instead of running writers together s
 Within a task, show requirements, branch, changes, evidence, and sessions. Allow task terminals
 side by side. Supporting reviewers and verification agents belong under the task, with their
 logs available on demand; a separate permanent terminal for every helper is unnecessary.
+
+### Proposed agent interaction surface
+
+Show agents under their task with role, assignment, execution state, workspace, and connection
+capabilities. Selecting an agent opens the output that is actually available: an interactive
+terminal, structured activity, or a completed result. Do not label structured logs as an
+interactive terminal or promise visibility into unavailable provider-internal execution.
+
+- An independent managed agent session can expose terminal attachment and session continuation
+  when its adapter supports them. Opening its view must not start a duplicate execution.
+- A delegated helper may expose only progress and a result, with no independent terminal or
+  resumable session. Expose direct interaction only when the provider supports it; otherwise
+  route follow-up work through the task's coordinating agent or an explicit new assignment.
+- A running session offers View, plus supported input or interruption controls. An ended turn
+  offers Continue when resumable. A completed helper offers its result and a follow-up request.
+- A new session created from artifacts is an explicit handoff, never described as restoration
+  of the original agent conversation. Multiple code writers still need workspace ownership.
+
+Suggested controls are Open terminal, View activity, Continue, and Request follow-up, shown by
+capability and state. The agent list should support opening two available outputs side by side.
+Exact terminal transport, provider support, and coordinator routing remain unverified design work.
 
 Multiple coding agents within one task need additional file ownership or checkout isolation
 and an integration owner. A task branch alone does not prevent concurrent working-tree edits.

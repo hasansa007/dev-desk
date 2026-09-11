@@ -4,7 +4,12 @@
 
 **Status:** direction accepted in discussion; implementation contract still proposed
 
-**Related:** [container draft](2026-09-11-container-design.md)
+**Related:** [container draft](2026-09-11-container-design.md) ·
+[navigation and Insights](2026-09-11-mac-app-navigation-and-insights-design.md)
+
+**Later UI clarification:** the app's Findings destination is the Survey surface. The broader
+multi-source evidence model below applies to issue relationships; it does not turn that
+destination into a combined Survey/Ideation/Insights inbox.
 
 ## Context and acceptance boundary
 

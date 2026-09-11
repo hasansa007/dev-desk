@@ -11,6 +11,14 @@ protocol and repository recommendation below remain draft proposals; see the fol
 records support for both managed starts and connecting external work, with capability-specific
 session continuation and a proposed model for isolated parallel tasks.
 
+**Latest UI discussion:** [Mac app navigation and Insights](2026-09-11-mac-app-navigation-and-insights-design.md)
+records the Findings/Survey clarification, proposed navigation and floating chat, provider
+options, settings, naming, and remaining blockers. Dev Desk is a working name, not a final choice.
+
+**Accepted platform (2026-09-11):** the maintainer chose a native Mac desktop app after comparing
+it with a cross-platform desktop app. This settles the first shell's platform; the runtime contract,
+terminal integration, minimum OS version, and repository layout remain design details to resolve.
+
 ## 1. Why
 
 The family has an engine (22 doors, 17 phases, 4 gates), a truth (git + GitHub), a memory
@@ -30,13 +38,16 @@ Five layers. Each lower layer is authoritative over the one above it.
 | **Memory** | `PROJECT_MAP.md`, `docs/adr/`, `docs/{survey,ideation}/<date>.md`, `.dev/<branch>.json` | Phase 10/12, `dev:insights`, `dev state checkpoint` |
 | **Engine** | the 22 doors, `shared/pipeline.md` (17 phases), 4 human gates: 5 discuss · 6 architecture · 14 merge · 16 prod | prose, executed by `claude` / `codex` |
 | **Helpers** | `dev` CLI: `board · state · ui · run · project · doctor` · hooks: branch-guard, pr-gates, teardown, context-load | `scripts/dev.py`, `hooks/` |
-| **Container** | Home · Map · Tracker · Launcher · Inbox | **new** |
+| **Container** | project windows, work views, decisions, chat, and agent outputs | **new** |
 
-**The container owns no state.** It reads through the CLI, acts through the CLI (which runs a door,
-or performs one of the two bounded board writes), and never reads its own screens back. That is the
-same rule `.dev/ui/` and the Projects v2 mirror already obey (ADR 0011), applied to the shell.
+**The container does not own repository or tracker truth.** It reads through the shared contract
+and acts through the skill/runner or bounded board operations, never by reading its screens back.
+The app may own preferences and view state; the shared runner must own execution/session state.
+Their persistence contract remains open. This refines the original "owns no state" wording.
 
 ### The five jobs of the container
+
+These are original capability groupings, not the latest sidebar labels.
 
 | Job | Answers | Reads | Acts through |
 |---|---|---|---|
@@ -76,6 +87,10 @@ mark the board uses.
 
 ### 3.2 `dev jobs`
 
+**Draft command shapes, not a validated protocol.** The original checkpoint-derived outcome
+rules were rejected in review. Explicit task outcomes and identified questions must replace
+them before these commands are implemented; see the continuity and reconciliation notes.
+
 | Verb | Does |
 |---|---|
 | `start <door> [args…] [--agent claude\|codex]` | spawns the door detached: `claude -p --output-format stream-json --verbose "<prompt>"` or `codex exec --json "<prompt>"`, the same prompt `dev run` builds today. Writes `.dev/jobs/<id>.json` and streams stdout to `.dev/jobs/<id>.log`. Returns the job. |
@@ -83,20 +98,13 @@ mark the board uses.
 | `stop <id>` | SIGTERM the process group; status `stopped`; log kept |
 | `answer <id> "<text>"` | `claude -p --resume <session> "<text>"` / `codex exec resume <session> "<text>"`, appending to the same log; status back to `running` |
 
-**Job states**
-
-```
-running ──exit 0, run is at a gate──▶ waiting ──answer──▶ running
-running ──exit 0, phase 14/16 completed──▶ done
-running ──exit ≠ 0 / process gone──▶ failed
-running ──stop──▶ stopped
-```
-
-*At a gate* means: the process ended its turn (that is what `-p` does when the run asks and stops —
-`shared/entry.md` already forbids ending silently) **and** the run's `.dev/<branch>.json` has
-`phase` ∈ {5, 6, 14, 16} not yet in `phases_completed`. The question is the run's last assistant
-message, read from the stream-json log. Session ids come from the same stream. A job with no state
-file at all (a door that never checkpoints, e.g. `create-issue`) is `done` on exit 0.
+**Outcome requirements:** distinguish process exit, end of turn, waiting for input, blocked
+work, completed work, failure, and explicit stop. Exit zero does not establish completion,
+including for doors without checkpoints. Current checkpoint writes include the phase in
+`phases_completed`, so the originally proposed incomplete-gate test cannot identify waiting.
+Questions also occur outside the four gates. Identify each question and its validity context;
+reject duplicate resumes and stale answers. Provider session IDs and resumability must be
+verified independently of branch state. The exact event/state schema remains open.
 
 "Convert this ideation finding into a task" is `dev jobs start create-issue "<finding text>"`: the
 judgment stays in the door, the shell only starts it.
@@ -127,15 +135,28 @@ cancel with no reason.
 
 - No `delete` — 7.2's hard gate needs a conversation, and `dev:kanban` has it.
 - No "run through the gates" flag. The four gates are why the pipeline is trusted.
-- No write to any file the family does not own; `.dev/` is the only place it writes.
-- No agent that lacks a verified headless invocation (Antigravity, Gemini stay refused).
+- Runner metadata must have a defined owner and location. Skill-authorized project edits and
+  GitHub writes retain their existing scope; `.dev/` is not the only output of a skill run.
+- No unsupported agent capability exposed as working. Gemini's official headless interface
+  is now documented in the latest discussion; no Gemini adapter is implemented or validated.
 
 ## 4. The first shell: dev-desk, a native Mac app
 
-SwiftUI, macOS 14+. Chosen over Tauri and a browser-only container because the maintainer's
-language and toolchain are Swift and Xcode, and because a gate that waits on a human needs a
-notification and a menubar badge, which a browser tab cannot give when it is not open. The browser
-view (`dev ui --serve`) stays as the fallback for Linux and for Codex/Antigravity users.
+**Platform accepted; implementation proposed:** a native macOS app, using SwiftUI with AppKit
+where needed. The maintainer chose the Mac app after comparing it with a cross-platform desktop
+shell, with Swift and Xcode already identified as the maintainer's tools. macOS 14+ remains a
+proposed minimum pending terminal and dependency validation.
+
+The design includes task-oriented terminal views, notifications, and a menubar badge. Terminal
+rendering and session transport require separate validation; no terminal library is selected yet.
+The app and CLI should use a shared runner independent of the app window lifecycle, as proposed
+in the task-continuity note. Existing CLI/browser surfaces remain available where supported;
+agent choice does not determine whether the Mac app can be used.
+
+The table below is historical, not the current navigation specification. The latest UI note
+proposes Board, Roadmap, Findings, Decisions, and Settings with project chat and an agent dock.
+Separate project windows supersede the repo sidebar below; process management must follow the
+shared runner contract rather than the lifecycle of an individual window.
 
 | Part | Behaviour |
 |---|---|
@@ -187,14 +208,14 @@ CLI on most PRs.
 |---|---|---|
 | A | `documentation/SYSTEM-MODEL.md` (section 2 as a page) + `docs/arch/dev-system.*` rendered with `dev:arch` | dev-skill |
 | B | `snapshot`, `jobs`, `events`, `board move`, `"contract": 1`, tests; the `/dev:ui` and `dev:kanban` doors learn the verbs | dev-skill |
-| C | dev-desk: Home · Tracker · Jobs · Inbox, menubar, notifications; Map last | dev-desk |
+| C | Mac shell: project windows, Board, task details, agent outputs, Decisions, then remaining views from the latest UI note | app location undecided |
 
 Each is its own PR. A and B do not depend on the repo decision; C does.
 
 ## 8. Non-goals
 
-No store of its own in the app. No delete. No unattended run through the gates. No cross-repo
-views. No Antigravity/Gemini until a headless invocation is verified. No Rust: it was considered
+No competing repository/tracker truth in the app. No delete. No unattended run through the gates.
+No cross-repo views in the first shell. No unverified provider capabilities. No Rust: it was considered
 for the shell (Tauri) and declined for now because it adds a toolchain the maintainer does not have,
 for a portability the first user does not need; the contract is shell-agnostic, so a Tauri shell can
 be added later without touching this repo.
