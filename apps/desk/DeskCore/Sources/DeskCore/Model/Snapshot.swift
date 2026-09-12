@@ -17,11 +17,9 @@ public struct ProjectInfo: Hashable {
 /// What a freshly opened window selects before any restored layout is applied.
 public struct LaunchState: Hashable {
     public var selectedTaskID: String?
-    public var insightsOpen: Bool
 
-    public init(selectedTaskID: String? = nil, insightsOpen: Bool = false) {
+    public init(selectedTaskID: String? = nil) {
         self.selectedTaskID = selectedTaskID
-        self.insightsOpen = insightsOpen
     }
 }
 

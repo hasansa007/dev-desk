@@ -4,7 +4,7 @@ extension SampleData {
             project: ProjectInfo(name: "StudyHub", displayPath: "~/code/studyhub", branch: "main",
                                   remote: "github.com/acme/studyhub", headRevision: "9c2e410"),
             isDemo: true,
-            launch: LaunchState(selectedTaskID: "42", insightsOpen: true),
+            launch: LaunchState(selectedTaskID: "42"),
             activitySummary: StatusBadge(.running, "2 running · 1 waiting", pulses: true),
             board: .available(studyHubTasks()),
             boardNote: "Columns map to prototype labels, not the repository's status field yet.",

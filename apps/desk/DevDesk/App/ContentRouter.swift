@@ -17,50 +17,26 @@ struct ContentRouter: View {
                 }
                 .padding([.horizontal, .top], 12)
             }
+            // Two window edges, the way Xcode arranges the same two things: output along the bottom of the
+            // work it came from, the file tree down the right of everything.
             HStack(spacing: 0) {
-                content
-                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                if model.insightsOpen && model.insightsDocked {
-                    InsightsPanel(model: model, placement: .docked)
-                        .frame(width: DeskMetric.insightsDockedWidth)
+                VStack(spacing: 0) {
+                    content
+                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                    if model.runsOpen {
+                        RunsPanel(model: model)
+                            .frame(height: DeskMetric.runsPanelHeight)
+                    }
                 }
-                if model.runsOpen && model.runsDocked {
-                    RunsPanel(model: model, placement: .docked)
-                        .frame(width: DeskMetric.runsDockedWidth)
-                }
-                if model.filesOpen && model.filesDocked {
-                    FilesPanel(model: model, placement: .docked)
-                        .frame(width: DeskMetric.filesDockedWidth)
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                if model.filesOpen {
+                    FilesPanel(model: model)
+                        .frame(width: DeskMetric.filesPanelWidth)
                 }
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         .background(DeskColor.canvas)
-        .overlay(alignment: .bottomTrailing) {
-            if model.insightsOpen && !model.insightsDocked {
-                InsightsPanel(model: model, placement: .floating)
-                    .frame(width: DeskMetric.insightsFloatingSize.width, height: DeskMetric.insightsFloatingSize.height)
-                    .padding(.trailing, 36)
-                    .padding(.bottom, 34)
-            }
-        }
-        // Trailing centre: a floating Files panel clears the two that sit in the bottom corners.
-        .overlay(alignment: .trailing) {
-            if model.filesOpen && !model.filesDocked {
-                FilesPanel(model: model, placement: .floating)
-                    .frame(width: DeskMetric.filesFloatingSize.width, height: DeskMetric.filesFloatingSize.height)
-                    .padding(.trailing, 28)
-            }
-        }
-        // Bottom leading, so a floating Runs panel and a floating Insights panel never cover each other.
-        .overlay(alignment: .bottomLeading) {
-            if model.runsOpen && !model.runsDocked {
-                RunsPanel(model: model, placement: .floating)
-                    .frame(width: DeskMetric.runsFloatingSize.width, height: DeskMetric.runsFloatingSize.height)
-                    .padding(.leading, 24)
-                    .padding(.bottom, 34)
-            }
-        }
     }
 
     @ViewBuilder private var content: some View {
@@ -91,8 +67,8 @@ struct ContentRouter: View {
             FindingsScreen(model: model)
         case .ideation:
             IdeationScreen(model: model)
-        case .decisions:
-            DecisionsScreen(model: model)
+        case .insights:
+            InsightsScreen(model: model)
         }
     }
 }

@@ -2,13 +2,10 @@ import AppKit
 import DeskCore
 import SwiftUI
 
-enum FilesPlacement { case floating, docked }
-
-/// The project's own files, on the right of whatever you are looking at. Listed one directory at a time,
+/// The project's own files, down the right of whatever you are looking at. Listed one directory at a time,
 /// so a repository carrying node_modules opens as fast as an empty one.
 struct FilesPanel: View {
     @Bindable var model: ProjectWindowModel
-    let placement: FilesPlacement
     @State private var expanded: Set<String> = []
     @State private var children: [String: [FileEntry]] = [:]
 
@@ -18,7 +15,7 @@ struct FilesPanel: View {
     }
 
     var body: some View {
-        let core = VStack(spacing: 0) {
+        VStack(spacing: 0) {
             header
             if let root {
                 tree(root)
@@ -32,19 +29,8 @@ struct FilesPanel: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DeskColor.surface)
+        .overlay(alignment: .leading) { Rectangle().fill(DeskColor.border).frame(width: 1) }
         .task(id: model.ref.id) { if let root { loadRoot(root) } }
-
-        switch placement {
-        case .floating:
-            core
-                .clipShape(RoundedRectangle(cornerRadius: 11))
-                .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(DeskColor.controlBorder))
-                .shadow(color: .black.opacity(0.28), radius: 60, x: 0, y: 24)
-        case .docked:
-            core
-                .overlay(alignment: .leading) { Rectangle().fill(DeskColor.border).frame(width: 1) }
-                .shadow(color: .black.opacity(0.06), radius: 24, x: -8, y: 0)
-        }
     }
 
     private var header: some View {
@@ -56,19 +42,13 @@ struct FilesPanel: View {
                 .lineLimit(1)
                 .truncationMode(.head)
             Spacer(minLength: 8)
-            Button(placement == .floating ? "Dock" : "Float") {
-                placement == .floating ? model.dockFiles() : model.floatFiles()
-            }
-            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             Button("Close") { model.toggleFiles() }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .background(placement == .floating ? DeskColor.titlebarFill : DeskColor.surface)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(placement == .floating ? DeskColor.titlebarBorder : DeskColor.divider).frame(height: 1)
-        }
+        .background(DeskColor.surface)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
     private func tree(_ root: URL) -> some View {

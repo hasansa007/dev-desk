@@ -1,19 +1,17 @@
 import DeskCore
 import SwiftUI
 
-enum RunsPlacement { case floating, docked }
-
-/// Every door this window has started, with the selected one's terminal. It floats or docks, like Insights.
+/// Every door this window has started, with the selected one's terminal. It is the window's bottom edge —
+/// where a Mac app keeps its output — and never a window floating over the work.
 struct RunsPanel: View {
     @Bindable var model: ProjectWindowModel
-    let placement: RunsPlacement
 
     private var selected: DoorRun? {
         model.runs.selectedID.flatMap { model.runs.run($0) } ?? model.runs.runs.first
     }
 
     var body: some View {
-        let core = VStack(spacing: 0) {
+        VStack(spacing: 0) {
             header
             if model.runs.runs.isEmpty {
                 EmptyStateView(title: "Nothing running",
@@ -29,19 +27,8 @@ struct RunsPanel: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DeskColor.surface)
+        .overlay(alignment: .top) { Rectangle().fill(DeskColor.border).frame(height: 1) }
         .onChange(of: endedRuns) { _, _ in Task { await model.load() } }
-
-        switch placement {
-        case .floating:
-            core
-                .clipShape(RoundedRectangle(cornerRadius: 11))
-                .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(DeskColor.controlBorder))
-                .shadow(color: .black.opacity(0.28), radius: 60, x: 0, y: 24)
-        case .docked:
-            core
-                .overlay(alignment: .leading) { Rectangle().fill(DeskColor.border).frame(width: 1) }
-                .shadow(color: .black.opacity(0.06), radius: 24, x: -8, y: 0)
-        }
     }
 
     /// A finished run has written whatever it was going to write, so the project is read again.
@@ -55,23 +42,14 @@ struct RunsPanel: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text("Runs").font(.system(size: 13, weight: .semibold)).foregroundStyle(DeskColor.ink)
-            Text(placement == .floating ? "Floating over the workspace" : "Nonmodal · docked")
-                .font(.system(size: 11))
-                .foregroundStyle(DeskColor.mutedInk)
             Spacer(minLength: 8)
-            Button(placement == .floating ? "Dock" : "Float") {
-                placement == .floating ? model.dockRuns() : model.floatRuns()
-            }
-            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             Button("Close") { model.toggleRuns() }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
         }
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
-        .background(placement == .floating ? DeskColor.titlebarFill : DeskColor.surface)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(placement == .floating ? DeskColor.titlebarBorder : DeskColor.divider).frame(height: 1)
-        }
+        .background(DeskColor.surface)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
     private var runList: some View {

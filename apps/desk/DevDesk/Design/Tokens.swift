@@ -104,16 +104,10 @@ enum DeskFont {
 enum DeskMetric {
     static let sidebarWidth: CGFloat = 236
     static let inspectorWidth: CGFloat = 262
-    static let dockHeight: CGFloat = 272
-    static let dockSideWidth: CGFloat = 460
-    static let insightsFloatingSize = CGSize(width: 404, height: 520)
-    static let insightsDockedWidth: CGFloat = 392
-    /// Wider than Insights: a terminal needs the columns.
-    static let runsFloatingSize = CGSize(width: 560, height: 460)
-    static let runsDockedWidth: CGFloat = 460
-    /// The files panel stacks a tree over a viewer, so it is taller than it is wide.
-    static let filesFloatingSize = CGSize(width: 520, height: 640)
-    static let filesDockedWidth: CGFloat = 420
+    /// Runs is the bottom edge of the window: deep enough for a terminal, shallow enough to leave the work visible.
+    static let runsPanelHeight: CGFloat = 300
+    /// Files is the right edge: a tree over a viewer, so it is narrow.
+    static let filesPanelWidth: CGFloat = 420
     static let boardColumnWidth: CGFloat = 246
     /// Every small control shares these: search fields, toggles and the toolbar's pill. Buttons carry their own table in `DeskButtonStyle.Size`.
     static let controlHeight: CGFloat = 26

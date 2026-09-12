@@ -17,17 +17,8 @@ struct DeskCommands: Commands {
                         .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 }
                 Divider()
-                Button("Focus") { model?.setMode(.focus) }
-                    .keyboardShortcut("1", modifiers: [.control, .command])
-                Button("Parallel") { model?.setMode(.parallel) }
-                    .keyboardShortcut("2", modifiers: [.control, .command])
-                Divider()
                 Button("Reload") { reload() }
                     .keyboardShortcut("r")
-                Button("Ask About This Project") { model?.toggleInsights() }
-                    .keyboardShortcut("i", modifiers: [.shift, .command])
-                Button("Show Agents Dock") { model?.toggleDock() }
-                    .keyboardShortcut("j", modifiers: [.option, .command])
             }
             .disabled(model == nil)
         }

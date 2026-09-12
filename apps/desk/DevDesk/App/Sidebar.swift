@@ -112,9 +112,7 @@ struct Sidebar: View {
         case .ideation:
             guard let count = model.ideationCount, count > 0 else { return nil }
             return (count, false)
-        case .decisions:
-            return model.pendingDecisionCount > 0 ? (model.pendingDecisionCount, true) : nil
-        case .roadmap:
+        case .roadmap, .insights:
             return nil
         }
     }
@@ -130,7 +128,7 @@ struct Sidebar: View {
         case .roadmap: return "map"
         case .survey: return "scope"
         case .ideation: return "lightbulb"
-        case .decisions: return "questionmark.diamond"
+        case .insights: return "sparkles"
         }
     }
 

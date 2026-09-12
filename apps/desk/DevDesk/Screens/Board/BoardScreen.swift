@@ -25,6 +25,7 @@ struct BoardScreen: View {
                 rulesButton(note)
             }
             Spacer(minLength: 0)
+            sideBySideButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -32,6 +33,21 @@ struct BoardScreen: View {
         .overlay(alignment: .bottom) {
             Rectangle().fill(DeskColor.divider).frame(height: 1)
         }
+    }
+
+    /// The toolbar's old Focus/Parallel pair named two modes without naming what changed, and pressing either
+    /// one usually changed nothing. This names the change, sits on the screen it changes, and says why it is
+    /// unavailable instead of going quiet.
+    @ViewBuilder private var sideBySideButton: some View {
+        let running = model.parallelTasks
+        Button(running.count > 1 ? "Side by side (\(running.count))" : "Side by side") {
+            model.setMode(.parallel)
+        }
+        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+        .disabled(running.count < 2)
+        .help(running.count < 2
+              ? "Side by side needs two tasks in progress, each in its own checkout"
+              : "Watch these \(running.count) tasks run next to each other")
     }
 
     private var searchField: some View {

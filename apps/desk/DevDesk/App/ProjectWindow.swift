@@ -7,13 +7,12 @@ struct ProjectWindow: View {
     /// This window's shells; closing the window or quitting ends them.
     @State private var terminals: ShellTerminalRegistry
     @State private var layoutRestored = false
+    @State private var columns: NavigationSplitViewVisibility = .all
     @Environment(OpenProjectRegistry.self) private var registry
     @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
     @SceneStorage("desk.destination") private var storedDestination: Destination?
     @SceneStorage("desk.taskID") private var storedTaskID: String?
     @SceneStorage("desk.tab") private var storedTab: TaskTab?
-    @SceneStorage("desk.dockPlacement") private var storedDockPlacement: DockPlacement?
-    @SceneStorage("desk.dockOpen") private var storedDockOpen: Bool?
 
     init(ref: ProjectRef) {
         self.ref = ref
@@ -23,13 +22,13 @@ struct ProjectWindow: View {
     }
 
     var body: some View {
-        NavigationSplitView {
+        NavigationSplitView(columnVisibility: $columns) {
             Sidebar(model: model)
                 .navigationSplitViewColumnWidth(DeskMetric.sidebarWidth)
         } detail: {
             ContentRouter(model: model)
         }
-        .toolbar { ProjectToolbar(model: model) }
+        .toolbar { ProjectToolbar(model: model, columns: $columns) }
         .navigationTitle(model.snapshot?.project.name ?? ref.displayName)
         .navigationSubtitle(subtitle)
         .sheet(item: $model.sheet) { kind in
@@ -51,8 +50,6 @@ struct ProjectWindow: View {
         .onChange(of: model.destination) { _, value in if layoutRestored { storedDestination = value } }
         .onChange(of: model.selectedTaskID) { _, value in if layoutRestored { storedTaskID = value ?? "" } }
         .onChange(of: model.tab) { _, value in if layoutRestored { storedTab = value } }
-        .onChange(of: model.dockPlacement) { _, value in if layoutRestored { storedDockPlacement = value } }
-        .onChange(of: model.dockOpen) { _, value in if layoutRestored { storedDockOpen = value } }
     }
 
     private var subtitle: String {
@@ -80,8 +77,6 @@ struct ProjectWindow: View {
         }
         if let storedDestination { model.destination = storedDestination }
         if let storedTab { model.tab = storedTab }
-        if let storedDockPlacement { model.dockPlacement = storedDockPlacement }
-        if let storedDockOpen { model.dockOpen = storedDockOpen }
     }
 
     private func recordRecent() {
