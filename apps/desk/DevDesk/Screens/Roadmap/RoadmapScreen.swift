@@ -6,7 +6,9 @@ struct RoadmapScreen: View {
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var isRoadmapRunning: Bool {
-        model.isDoorRunning("roadmap") || (jobs?.hasLiveJob(door: "roadmap") ?? false)
+        if model.isDoorRunning("roadmap") { return true }
+        guard case .local(let path) = model.ref else { return false }
+        return jobs?.hasLiveJob(door: "roadmap", in: path) ?? false
     }
 
     var body: some View {

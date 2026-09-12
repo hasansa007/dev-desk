@@ -9,9 +9,6 @@ struct CardMoves {
     let queue: () -> Void
     let backlog: () -> Void
     let cancel: () -> Void
-    /// Closing as completed, and why it is unavailable when it is: the Done column is git's, so this follows git.
-    let complete: () -> Void
-    let completeBlockedReason: String?
 }
 
 /// What a branch card can do. A card with no issue behind it had no menu at all, so nineteen of them could be
@@ -98,12 +95,6 @@ struct TaskCard: View {
                 Button("Return to backlog") { moves.backlog() }
                     .disabled(!moves.isQueued)
                 Button("Cancel…") { moves.cancel() }
-                // Closing as completed follows git rather than asserting over it: offered only where the work
-                // is already in the base, and otherwise disabled saying so (ADR 0011).
-                Button(moves.completeBlockedReason.map { "Mark as completed — \($0)" } ?? "Mark as completed") {
-                    moves.complete()
-                }
-                .disabled(moves.completeBlockedReason != nil)
                 Divider()
                 Section("Git decides these") {
                     Button("In progress — cut a branch") {}.disabled(true)

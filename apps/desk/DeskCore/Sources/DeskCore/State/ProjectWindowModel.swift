@@ -62,6 +62,9 @@ public enum SheetKind: Hashable, Identifiable {
     case task(String)
     case cancelTask(String)
     case runFocus(String)
+    /// A run's own terminal, at dialog size. The panel is a strip along the bottom edge; a run that stops to
+    /// ask "1. Accept · 5. Chat about this" needs somewhere you can actually answer it.
+    case run(String)
     case deleteBranch(String)
     case settings
 
@@ -77,6 +80,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .task(let taskID): return "task:\(taskID)"
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
         case .runFocus(let door): return "runFocus:\(door)"
+        case .run(let id): return "run:\(id)"
         case .deleteBranch(let branch): return "deleteBranch:\(branch)"
         case .settings: return "settings"
         }
@@ -113,6 +117,11 @@ public final class ProjectWindowModel {
     public var mode: ViewMode = .focus
     public var showBacklog = false
     public var searchText = ""
+    /// How deep the Runs edge is and how wide the Files edge is. An edge you cannot resize is a decision made
+    /// once for every project and every screen size.
+    public var runsHeight: Double = 300
+    public var filesWidth: Double = 420
+
     /// Both panels are edges of the window, never floating windows over it: Runs along the bottom, Files down
     /// the right. Open is all there is to say about one.
     public var runsOpen = false

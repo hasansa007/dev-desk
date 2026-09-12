@@ -1,6 +1,16 @@
 import Foundation
 import Observation
 
+extension ShellSessionState {
+    /// Preparing counts: a start still waiting on git is a session you can stop, and one nothing should replace.
+    public var isLive: Bool {
+        switch self {
+        case .preparing, .running: return true
+        default: return false
+        }
+    }
+}
+
 public enum ShellSessionState: Equatable {
     /// The plan shown under the trust note; nil until one is read.
     case idle(TaskFolderPlan?)

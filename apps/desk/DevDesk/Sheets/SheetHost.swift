@@ -13,6 +13,8 @@ struct SheetHost: View {
         switch kind {
         case .openProject:
             LauncherView(context: .sheet, onDismiss: model.dismissSheet)
+        case .run(let id):
+            RunDialog(model: model, id: id)
         case .compareOutputs:
             if let comparison = currentTask?.comparison {
                 CompareOutputsSheet(title: taskTitled("Compare agent outputs"), comparison: comparison,

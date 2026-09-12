@@ -34,6 +34,30 @@ fi
 LOG=$(mktemp -t dev-desk-install)
 # Deliberately NOT removed on failure: two messages below tell the reader to open it.
 
+if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
+    # Every descendant, not two levels: a run whose agent sits under a wrapper or a re-exec was invisible to
+    # a fixed-depth scan, and the guard would pass and then kill it.
+    LIVE=$(ps -axo pid=,ppid=,comm= | awk -v roots="$(pgrep -x 'Dev Desk' | tr '\n' ' ')" '
+        BEGIN { split(roots, r, " "); for (i in r) if (r[i] != "") seen[r[i]] = 1 }
+        { pid[NR] = $1; par[NR] = $2; cmd[NR] = $3; n = NR }
+        END {
+            changed = 1
+            while (changed) {
+                changed = 0
+                for (i = 1; i <= n; i++) if (!(pid[i] in seen) && (par[i] in seen)) { seen[pid[i]] = 1; changed = 1 }
+            }
+            for (i = 1; i <= n; i++) if (pid[i] in seen) {
+                name = cmd[i]; sub(/.*\//, "", name)
+                if (name == "claude" || name == "codex") print name
+            }
+        }' | sort -u | tr '\n' ' ')
+    if [ -n "$LIVE" ]; then
+        echo "Dev Desk is running something: $LIVE" >&2
+        echo "Installing quits the app, which would end it. Stop it in the Runs panel, or re-run with --force." >&2
+        exit 1
+    fi
+fi
+
 echo "==> Generating the Xcode project from project.yml"
 xcodegen generate --spec project.yml >/dev/null
 
@@ -70,26 +94,6 @@ wait_for_exit() {
 # live door run with it, both times because a human eye judged "probably finished". The check is cheap and
 # the loss is not, so it is the script's job, and --force is the way to say you meant it.
 # Refusal observed working 2026-09-12, against a real live run.
-if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
-    LIVE=""
-    for pid in $(pgrep -x "Dev Desk"); do
-        # Any agent or CLI running underneath the app, at any depth — a run's claude sits under its login shell.
-        kids=$(pgrep -P "$pid" 2>/dev/null || true)
-        for kid in $kids; do
-            deep=$(pgrep -P "$kid" 2>/dev/null || true)
-            for one in $kid $deep; do
-                name=$(ps -p "$one" -o comm= 2>/dev/null | xargs basename 2>/dev/null || true)
-                case "$name" in claude|codex|node|python3) LIVE="$LIVE $name" ;; esac
-            done
-        done
-    done
-    if [ -n "$LIVE" ]; then
-        echo "Dev Desk is running something:$LIVE" >&2
-        echo "Installing quits the app, which would end it. Stop it in the Runs panel, or re-run with --force." >&2
-        exit 1
-    fi
-fi
-
 if pgrep -x "Dev Desk" >/dev/null 2>&1; then
     echo "==> Quitting the running Dev Desk"
     osascript -e 'tell application "Dev Desk" to quit' >/dev/null 2>&1 || true

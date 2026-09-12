@@ -40,16 +40,16 @@ final class BoardBuilderTests: XCTestCase {
 
     private var fixture: BoardInput {
         let git = GitFacts(base: "main", baseRef: "main", baseShort: "abc1234", branches: [
-            BranchFacts(name: "gh-12-x", unmerged: 2, worktree: "/tmp/wt/app-12",
+            BranchFacts(name: "gh-12-x", unmerged: 2, counted: true, worktree: "/tmp/wt/app-12",
                         commits: [GitCommit(sha: "c0ffee1", author: "Ada", date: "2026-09-11T09:30:00Z", subject: "Guard *nil* [config]"),
                                   GitCommit(sha: "beef002", author: "Bob", date: "2026-09-03T18:00:00Z", subject: "Add test")],
                         files: [NumstatEntry(path: "Sources/App/Launch/Boot.swift", additions: 10, deletions: 2),
                                 NumstatEntry(path: "Assets/icon.png", additions: nil, deletions: nil)],
                         diffs: ["Sources/App/Launch/Boot.swift": Self.bootDiff]),
-            BranchFacts(name: "gh-13-y", unmerged: 1, worktree: nil,
+            BranchFacts(name: "gh-13-y", unmerged: 1, counted: true, worktree: nil,
                         commits: [GitCommit(sha: "d00d003", author: "Cy", date: "2026-09-10T10:00:00Z", subject: "Batch sync")]),
-            BranchFacts(name: "old/stale", unmerged: 0, worktree: nil),
-            BranchFacts(name: "spike/z", unmerged: 1, worktree: nil,
+            BranchFacts(name: "old/stale", unmerged: 0, counted: true, worktree: nil),
+            BranchFacts(name: "spike/z", unmerged: 1, counted: true, worktree: nil,
                         commits: [GitCommit(sha: "e1e1e14", author: "Di", date: "2026-09-11T08:00:00Z", subject: "Try it")]),
         ])
         let github = GitHubData(
@@ -291,7 +291,7 @@ final class BoardBuilderTests: XCTestCase {
     func testBaseBranchNameIsEscapedNotPlacedInACodeSpan() throws {
         let base = "wip/`[x](file:///Applications/Calculator.app)"
         let input = BoardInput(git: GitFacts(base: base, baseRef: "refs/heads/\(base)", baseShort: "abc1234",
-                                             branches: [BranchFacts(name: "spike", unmerged: 1, worktree: nil)]),
+                                             branches: [BranchFacts(name: "spike", unmerged: 1, counted: true, worktree: nil)]),
                                github: nil, activeMilestone: nil, now: date("2026-09-11T12:00:00Z"), timeZone: TimeZone(identifier: "UTC")!)
         let note = try XCTUnwrap(tasks(input)["branch:spike"]?.changes.value?.baseNote)
         XCTAssertEqual(note, "Diff is against wip/\\`\\[x\\](file\\:///Applications/Calculator.app) at `abc1234`.")
@@ -323,7 +323,7 @@ final class BoardBuilderTests: XCTestCase {
 
     func testABranchStillAtItsMergedPullRequestsHeadIsOnlyDone() {
         var input = fixture
-        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, worktree: nil, head: Self.mergedHead))
+        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, counted: true, worktree: nil, head: Self.mergedHead))
         input.github?.mergedPullRequests[0].headRefOid = Self.mergedHead
         let built = tasks(input)
         XCTAssertNil(built["branch:feat/onboarding"], "a squash merge leaves the branch's own commits outside the base")
@@ -332,7 +332,7 @@ final class BoardBuilderTests: XCTestCase {
 
     func testABranchWithCommitsAfterItsMergeStaysInProgress() {
         var input = fixture
-        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, worktree: nil,
+        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, counted: true, worktree: nil,
                                                head: "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"))
         input.github?.mergedPullRequests[0].headRefOid = Self.mergedHead
         XCTAssertEqual(tasks(input)["branch:feat/onboarding"]?.column, .inProgress)
@@ -380,7 +380,7 @@ final class BoardBuilderTests: XCTestCase {
     func testAForkHeadIsNeverTakenForABranchHere() throws {
         let fork = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
         let git = GitFacts(base: "main", baseRef: "refs/heads/main", baseShort: "abc1234",
-                           branches: [BranchFacts(name: "gh-50-mine", unmerged: 1, worktree: nil)])
+                           branches: [BranchFacts(name: "gh-50-mine", unmerged: 1, counted: true, worktree: nil)])
         let github = GitHubData(slug: "acme/app", issues: [issue(51, "Linked to a fork")], openPullRequests: [
             pr(60, "From someone's main", head: "main", fork: true),
             // Its head has the name of a local branch of ours, which is not the fork's branch.

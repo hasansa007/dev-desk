@@ -36,7 +36,9 @@ struct ProjectToolbar: ToolbarContent {
         // Xcode 16.4 (macOS 15 SDK), where it does not exist to be referenced. Swift 6.2 ships with that SDK.
         #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
-            ToolbarSpacer(.fixed, placement: .primaryAction)
+            // Flexible, not fixed: the countdown times the project and the three glyphs open panels. Adjacent,
+            // they read as one set of four controls however they are separated, so they are pushed apart.
+            ToolbarSpacer(.flexible, placement: .primaryAction)
         } else {
             ToolbarItem(placement: .primaryAction) {
                 Divider().frame(height: 16)

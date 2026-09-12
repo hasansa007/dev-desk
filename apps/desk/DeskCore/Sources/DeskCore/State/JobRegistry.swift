@@ -75,10 +75,12 @@ public final class JobRegistry {
 
     public var liveCount: Int { jobs.filter { $0.state.isLive }.count }
 
-    /// One background run per door: two concurrent surveys in one repo write the same report file over
-    /// each other. The terminal path already refuses a second live run of a door.
-    public func hasLiveJob(door: String) -> Bool {
-        jobs.contains { $0.door == door && $0.state.isLive }
+    /// One background run per door **per project**. The registry is the app's, so asking by door alone let a
+    /// run in one project claim the button in every other window — and tell that window its own gaps were
+    /// being read. Two surveys in one repo would write the same report over each other; two in different
+    /// repos are two runs.
+    public func hasLiveJob(door: String, in directory: String) -> Bool {
+        jobs.contains { $0.door == door && $0.directory == directory && $0.state.isLive }
     }
 
     /// Returns nil when the family has no verified invocation for that agent, rather than guessing one.

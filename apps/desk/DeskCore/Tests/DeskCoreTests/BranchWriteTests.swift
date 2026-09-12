@@ -145,3 +145,14 @@ final class BoardOrderTests: XCTestCase {
         XCTAssertEqual(ordered.map(\.id), ["first", "second"])
     }
 }
+
+final class CountedUnmergedTests: XCTestCase {
+    /// Zero meant three things: merged, nothing committed yet, and "rev-list never answered". Anything reading
+    /// it as "already merged" was reading a failure as a fact — and one such reader could close an issue.
+    func testAnUnreadableCountIsNotZero() {
+        var facts = BranchFacts(name: "feat/x", unmerged: 0, worktree: nil)
+        XCTAssertNil(facts.countedUnmerged, "git never answered, so there is no count")
+        facts.counted = true
+        XCTAssertEqual(facts.countedUnmerged, 0, "git answered zero, which is a fact")
+    }
+}

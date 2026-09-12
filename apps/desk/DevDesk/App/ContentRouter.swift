@@ -2,7 +2,7 @@ import DeskCore
 import SwiftUI
 
 struct ContentRouter: View {
-    let model: ProjectWindowModel
+    @Bindable var model: ProjectWindowModel
 
     var body: some View {
         VStack(spacing: 0) {
@@ -24,14 +24,16 @@ struct ContentRouter: View {
                     content
                         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                     if model.runsOpen {
+                        EdgeResizer(edge: .bottom, size: $model.runsHeight, range: DeskMetric.runsHeightRange)
                         RunsPanel(model: model)
-                            .frame(height: DeskMetric.runsPanelHeight)
+                            .frame(height: model.runsHeight)
                     }
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 if model.filesOpen {
+                    EdgeResizer(edge: .trailing, size: $model.filesWidth, range: DeskMetric.filesWidthRange)
                     FilesPanel(model: model)
-                        .frame(width: DeskMetric.filesPanelWidth)
+                        .frame(width: model.filesWidth)
                 }
             }
         }

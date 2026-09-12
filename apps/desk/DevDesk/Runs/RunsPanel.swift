@@ -49,7 +49,9 @@ struct RunsPanel: View {
                                message: "Run survey in Findings, or Start task on a card, and it appears here.")
             } else {
                 runList
-                if let selected {
+                // The inline terminal is gone: three rows plus a pane in a 300 pt strip left the pane unusable,
+                // and a run that stops to ask cannot be answered in forty points. Open takes it to a dialog.
+                if let selected, model.sheet == nil {
                     Rectangle().fill(DeskColor.divider).frame(height: 1)
                     ShellPane(sessions: model.shellSessions, id: selected.id, folderNote: selected.folderNote,
                               command: selected.command, startTitle: "Start run")
@@ -101,7 +103,6 @@ struct RunsPanel: View {
             }
             }
         }
-        .frame(maxHeight: 260)
     }
 
     /// A background run has no terminal, so the row is where it lives: its log, its Stop, and — when it stopped
@@ -192,10 +193,7 @@ struct RunsPanel: View {
                     .foregroundStyle(DeskColor.mutedInk)
             }
             Spacer(minLength: 4)
-            Button("Open") {
-                model.openTask(row.taskID)
-                model.tab = row.kind == .agent ? .agent : .shell
-            }
+            Button("Open") { model.present(.run(row.taskID)) }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             Button("Stop") { stop(row) }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
@@ -231,6 +229,8 @@ struct RunsPanel: View {
                         .foregroundStyle(DeskColor.mutedInk)
                 }
                 Spacer(minLength: 4)
+                Button("Open") { model.present(.run(run.id)) }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
                 if state.isLive {
                     Button("Stop") { terminals?.end(taskID: run.id) }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
