@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, roadmap, findings, ideation, files, decisions, settings
+    case board, roadmap, findings, ideation, decisions, settings
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
 
@@ -83,6 +83,8 @@ public final class ProjectWindowModel {
     public var insightsDocked = false
     public var runsOpen = false
     public var runsDocked = false
+    public var filesOpen = false
+    public var filesDocked = true
     public var sheet: SheetKind?
     public var decisionsTab: DecisionsTab = .needsAttention
     public var selectedDecisionID: String?
@@ -305,6 +307,18 @@ public final class ProjectWindowModel {
     public func dismissTrackerError() { trackerError = nil }
 
     public func toggleRuns() { runsOpen.toggle() }
+
+    public func toggleFiles() { filesOpen.toggle() }
+
+    public func dockFiles() {
+        filesDocked = true
+        filesOpen = true
+    }
+
+    public func floatFiles() {
+        filesDocked = false
+        filesOpen = true
+    }
 
     public func dockRuns() {
         runsDocked = true

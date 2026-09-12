@@ -111,6 +111,9 @@ enum DeskMetric {
     /// Wider than Insights: a terminal needs the columns.
     static let runsFloatingSize = CGSize(width: 560, height: 460)
     static let runsDockedWidth: CGFloat = 460
+    /// The files panel stacks a tree over a viewer, so it is taller than it is wide.
+    static let filesFloatingSize = CGSize(width: 520, height: 640)
+    static let filesDockedWidth: CGFloat = 420
     static let boardColumnWidth: CGFloat = 246
     /// Every small control shares these: search fields, toggles and the toolbar's pill. Buttons carry their own table in `DeskButtonStyle.Size`.
     static let controlHeight: CGFloat = 26

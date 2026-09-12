@@ -2,10 +2,13 @@ import AppKit
 import DeskCore
 import SwiftUI
 
-/// The project's own folder, listed one directory at a time. Nothing is walked up front, so a repository
-/// carrying node_modules opens as fast as an empty one.
-struct FilesScreen: View {
+enum FilesPlacement { case floating, docked }
+
+/// The project's own files, on the right of whatever you are looking at. Listed one directory at a time,
+/// so a repository carrying node_modules opens as fast as an empty one.
+struct FilesPanel: View {
     @Bindable var model: ProjectWindowModel
+    let placement: FilesPlacement
     @State private var expanded: Set<String> = []
     @State private var children: [String: [FileEntry]] = [:]
 
@@ -15,60 +18,88 @@ struct FilesScreen: View {
     }
 
     var body: some View {
-        if let root {
-            HStack(spacing: 0) {
-                treePane(root)
-                viewerPane(root)
+        let core = VStack(spacing: 0) {
+            header
+            if let root {
+                tree(root)
+                Rectangle().fill(DeskColor.divider).frame(height: 1)
+                viewer(root)
+            } else {
+                UnavailableView(reason: "Sample projects have no folder on disk, so there is nothing to browse.")
+                    .padding(12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             }
-            .task(id: model.ref.id) { loadRoot(root) }
-        } else {
-            UnavailableView(reason: "Sample projects have no folder on disk, so there is nothing to browse.")
-                .padding(16)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(DeskColor.surface)
+        .task(id: model.ref.id) { if let root { loadRoot(root) } }
+
+        switch placement {
+        case .floating:
+            core
+                .clipShape(RoundedRectangle(cornerRadius: 11))
+                .overlay(RoundedRectangle(cornerRadius: 11).strokeBorder(DeskColor.controlBorder))
+                .shadow(color: .black.opacity(0.28), radius: 60, x: 0, y: 24)
+        case .docked:
+            core
+                .overlay(alignment: .leading) { Rectangle().fill(DeskColor.border).frame(width: 1) }
+                .shadow(color: .black.opacity(0.06), radius: 24, x: -8, y: 0)
         }
     }
 
-    private func treePane(_ root: URL) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Text("Files").font(DeskFont.section)
-                Spacer(minLength: 0)
-                Text(root.lastPathComponent)
-                    .font(DeskFont.mono(11))
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineLimit(1)
-                    .truncationMode(.head)
+    private var header: some View {
+        HStack(spacing: 8) {
+            Text("Files").font(.system(size: 13, weight: .semibold)).foregroundStyle(DeskColor.ink)
+            Text(model.snapshot?.project.name ?? "")
+                .font(DeskFont.mono(11))
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineLimit(1)
+                .truncationMode(.head)
+            Spacer(minLength: 8)
+            Button(placement == .floating ? "Dock" : "Float") {
+                placement == .floating ? model.dockFiles() : model.floatFiles()
             }
-            .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
-            .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(rows(root), id: \.entry.id) { row in
-                        FileRow(entry: row.entry, depth: row.depth,
-                                isExpanded: expanded.contains(row.entry.id),
-                                isSelected: row.entry.id == model.selectedFilePath) {
-                            select(row.entry, root: root)
-                        }
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+            Button("Close") { model.toggleFiles() }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .background(placement == .floating ? DeskColor.titlebarFill : DeskColor.surface)
+        .overlay(alignment: .bottom) {
+            Rectangle().fill(placement == .floating ? DeskColor.titlebarBorder : DeskColor.divider).frame(height: 1)
+        }
+    }
+
+    private func tree(_ root: URL) -> some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 0) {
+                ForEach(rows(), id: \.entry.id) { row in
+                    FileRow(entry: row.entry, depth: row.depth,
+                            isExpanded: expanded.contains(row.entry.id),
+                            isSelected: row.entry.id == model.selectedFilePath) {
+                        select(row.entry, root: root)
                     }
                 }
             }
         }
-        .frame(width: 320, alignment: .leading)
-        .background(DeskColor.surface)
-        .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    @ViewBuilder private func viewerPane(_ root: URL) -> some View {
+    @ViewBuilder private func viewer(_ root: URL) -> some View {
         if let path = model.selectedFilePath {
             FileViewer(url: root.appendingPathComponent(path), path: path, root: root)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         } else {
-            EmptyStateView(title: "No file selected", message: "Pick a file on the left to read it here.")
+            Text("Pick a file to read it here.")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
     /// The visible rows: the root's entries, with an expanded directory's children spliced in beneath it.
-    private func rows(_ root: URL) -> [(entry: FileEntry, depth: Int)] {
+    private func rows() -> [(entry: FileEntry, depth: Int)] {
         var result: [(FileEntry, Int)] = []
         func append(_ entries: [FileEntry], depth: Int) {
             for entry in entries {
@@ -169,15 +200,15 @@ private struct FileViewer: View {
                 if case .text(let contents) = preview {
                     ScrollView([.horizontal, .vertical]) {
                         Text(contents.isEmpty ? "This file is empty." : contents)
-                            .font(DeskFont.mono(12))
+                            .font(DeskFont.mono(11.5))
                             .foregroundStyle(contents.isEmpty ? DeskColor.mutedInk : DeskColor.ink)
                             .textSelection(.enabled)
-                            .padding(16)
+                            .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
                     UnavailableView(reason: preview.message ?? "")
-                        .padding(16)
+                        .padding(12)
                         .frame(maxWidth: .infinity, alignment: .top)
                 }
             }
@@ -186,21 +217,24 @@ private struct FileViewer: View {
     }
 
     private var header: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             Text(path)
-                .font(DeskFont.mono(12))
+                .font(DeskFont.mono(11))
                 .foregroundStyle(DeskColor.ink)
                 .lineLimit(1)
                 .truncationMode(.head)
                 .textSelection(.enabled)
-            Spacer(minLength: 8)
-            Button("Reveal in Finder") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-            Button("Open in editor") { NSWorkspace.shared.open(url) }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+            Spacer(minLength: 6)
+            Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                .help("Reveal in Finder")
+            Button("Open") { NSWorkspace.shared.open(url) }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                .help("Open in the default editor")
         }
-        .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-        .background(DeskColor.surface)
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .background(DeskColor.headerFill)
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 }

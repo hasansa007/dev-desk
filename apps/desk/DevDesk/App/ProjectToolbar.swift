@@ -36,6 +36,10 @@ struct ProjectToolbar: ToolbarContent {
             .labelsHidden()
         }
         ToolbarItem(placement: .primaryAction) {
+            Button("Files") { model.toggleFiles() }
+                .help("Browse this project's own files beside whatever you are looking at")
+        }
+        ToolbarItem(placement: .primaryAction) {
             Button(runsTitle) { model.toggleRuns() }
                 .help("Show the doors this project has running")
         }

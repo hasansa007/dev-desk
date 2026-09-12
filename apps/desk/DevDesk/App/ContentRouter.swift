@@ -28,6 +28,10 @@ struct ContentRouter: View {
                     RunsPanel(model: model, placement: .docked)
                         .frame(width: DeskMetric.runsDockedWidth)
                 }
+                if model.filesOpen && model.filesDocked {
+                    FilesPanel(model: model, placement: .docked)
+                        .frame(width: DeskMetric.filesDockedWidth)
+                }
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
@@ -38,6 +42,14 @@ struct ContentRouter: View {
                     .frame(width: DeskMetric.insightsFloatingSize.width, height: DeskMetric.insightsFloatingSize.height)
                     .padding(.trailing, 36)
                     .padding(.bottom, 34)
+            }
+        }
+        // Trailing centre: a floating Files panel clears the two that sit in the bottom corners.
+        .overlay(alignment: .trailing) {
+            if model.filesOpen && !model.filesDocked {
+                FilesPanel(model: model, placement: .floating)
+                    .frame(width: DeskMetric.filesFloatingSize.width, height: DeskMetric.filesFloatingSize.height)
+                    .padding(.trailing, 28)
             }
         }
         // Bottom leading, so a floating Runs panel and a floating Insights panel never cover each other.
@@ -81,8 +93,6 @@ struct ContentRouter: View {
             FindingsScreen(model: model)
         case .ideation:
             IdeationScreen(model: model)
-        case .files:
-            FilesScreen(model: model)
         case .decisions:
             DecisionsScreen(model: model)
         case .settings:
