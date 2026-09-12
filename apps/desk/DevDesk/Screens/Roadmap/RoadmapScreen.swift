@@ -9,7 +9,10 @@ struct RoadmapScreen: View {
             SurfaceView(snapshot.roadmap, fillsScreen: true) { roadmap in
                 if roadmap.themes.isEmpty && roadmap.milestones.isEmpty {
                     EmptyStateView(title: "No roadmap yet",
-                                   message: "Run `/dev:roadmap` to turn recorded gaps into milestones and epics.")
+                                   message: "The roadmap door reads what this repository already records about its own gaps and proposes milestones with epic parents underneath. Nothing here is invented, and it asks before it files.") {
+                        Button("Run roadmap") { model.present(.runFocus("roadmap")) }
+                            .buttonStyle(DeskButtonStyle(kind: .primary))
+                    }
                 } else {
                     RoadmapContent(roadmap: roadmap, model: model)
                 }
@@ -53,6 +56,9 @@ private struct RoadmapContent: View {
                 .foregroundStyle(DeskColor.mutedInk)
             noteButton
             Spacer(minLength: 0)
+            Button("Run roadmap") { model.present(.runFocus("roadmap")) }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                .help("Propose milestones and epic parents from what this repository records")
         }
         .screenHeaderBar()
     }
@@ -111,18 +117,24 @@ private struct ThemeColumn: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Icon, title, count — the shape a board column's header already has.
+            // Icon, title, count — the shape a board column's header already has. One line at one height: a
+            // theme whose title wrapped made its own column start a row lower than the two beside it.
             HStack(spacing: 6) {
                 Image(systemName: theme.icon)
                     .imageScale(.small)
                     .foregroundStyle(theme.isCritical ? DeskColor.tone(.failed).foreground : DeskColor.mutedInk)
                 SectionLabel(theme.title)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text("\(theme.items.count)")
                     .font(DeskFont.label)
                     .tracking(0.66)
                     .foregroundStyle(DeskColor.disabledDot)
+                    .layoutPriority(1)
                 Spacer(minLength: 0)
             }
+            .frame(height: DeskMetric.columnHeaderHeight)
+            .help(theme.title)
             VStack(alignment: .leading, spacing: 9) {
                 ForEach(theme.items) { item in
                     RoadmapItemCard(item: item, model: model)

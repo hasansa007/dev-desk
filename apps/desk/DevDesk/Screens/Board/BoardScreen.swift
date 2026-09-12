@@ -221,6 +221,7 @@ private struct BoardColumnView: View {
                     .accessibilityLabel("\(counts.live) running in \(column.title)")
                 }
             }
+            .frame(height: DeskMetric.columnHeaderHeight)
             ForEach(tasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
