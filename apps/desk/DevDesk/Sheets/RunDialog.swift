@@ -22,14 +22,12 @@ struct RunDialog: View {
         SheetChrome(title: title, confirmTitle: "Stop", confirmDisabled: !isLive,
                     cancelTitle: "Close",
                     onCancel: model.dismissSheet, onConfirm: stop) {
-            VStack(alignment: .leading, spacing: 8) {
-                Text(caption)
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .fixedSize(horizontal: false, vertical: true)
-                pane
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            // An explicit height, not `maxHeight: .infinity`: SheetChrome's body scrolls (ADR 0021), and inside a
+            // ScrollView an NSViewRepresentable asked to fill gets its ideal height, which for a terminal is
+            // zero. The pane rendered, the terminal was simply 0 pt tall.
+            pane
+                .frame(maxWidth: .infinity, minHeight: DeskMetric.runDialogTerminalHeight,
+                       maxHeight: DeskMetric.runDialogTerminalHeight)
         }
     }
 
@@ -56,12 +54,6 @@ struct RunDialog: View {
     }
 
     private var title: String { run?.title ?? task?.title ?? "Run" }
-
-    private var caption: String {
-        if run != nil { return "A door reads the whole project, not one task's branch." }
-        return isAgent ? "The agent types. It stops at each gate and asks you here."
-                       : "You type the commands, in this task's folder."
-    }
 
     private func stop() {
         model.dismissSheet()

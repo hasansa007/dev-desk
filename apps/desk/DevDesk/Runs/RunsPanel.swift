@@ -49,13 +49,9 @@ struct RunsPanel: View {
                                message: "Run survey in Findings, or Start task on a card, and it appears here.")
             } else {
                 runList
-                // The inline terminal is gone: three rows plus a pane in a 300 pt strip left the pane unusable,
-                // and a run that stops to ask cannot be answered in forty points. Open takes it to a dialog.
-                if let selected, model.sheet == nil {
-                    Rectangle().fill(DeskColor.divider).frame(height: 1)
-                    ShellPane(sessions: model.shellSessions, id: selected.id, folderNote: selected.folderNote,
-                              command: selected.command, startTitle: "Start run")
-                }
+                // No inline terminal at all. Three rows plus a pane in a 300 pt strip left the pane unusable, and
+                // hosting it here as well as in the dialog meant two owners for one NSView — the dialog would
+                // show an empty frame while the panel kept the terminal. Open is the one way in.
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

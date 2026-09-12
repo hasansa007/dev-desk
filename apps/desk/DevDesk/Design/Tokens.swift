@@ -128,4 +128,7 @@ enum DeskMetric {
     /// choose its own: `SheetChrome` takes neither a width nor a height, and its body scrolls instead.
     static let dialogWidth: CGFloat = 900
     static let dialogHeight: CGFloat = 660
+    /// A run's terminal inside that dialog. Explicit, because the dialog's body scrolls and a representable
+    /// asked to fill a ScrollView collapses to nothing.
+    static let runDialogTerminalHeight: CGFloat = 470
 }
