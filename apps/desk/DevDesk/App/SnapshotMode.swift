@@ -90,6 +90,7 @@ final class SnapshotMode {
         model.dockPlacement = .bottom
         model.dockSplit = false
         model.decisionsTab = .needsAttention
+        model.reportSource = .survey
     }
 
     private func write(_ view: NSView?, to url: URL) {
@@ -116,8 +117,8 @@ final class SnapshotMode {
         Capture(name: "08-task57-activity") { $0.openTask("57") },
         Capture(name: "09-task63-activity") { $0.openTask("63") },
         Capture(name: "10-parallel") { $0.setMode(.parallel) },
-        Capture(name: "11-findings") { $0.go(.findings) },
-        Capture(name: "12-reconcile-sheet", isSheet: true) { $0.go(.findings); $0.present(.reconcileFinding("F-108")) },
+        Capture(name: "11-reports-survey") { $0.go(.reports) },
+        Capture(name: "12-reconcile-sheet", isSheet: true) { $0.go(.reports); $0.present(.reconcileFinding("F-108")) },
         Capture(name: "13-roadmap") { $0.go(.roadmap) },
         Capture(name: "14-decisions") { $0.go(.decisions) },
         Capture(name: "15-decisions-history") { $0.go(.decisions); $0.decisionsTab = .history },
@@ -140,7 +141,7 @@ final class SnapshotMode {
             if let id = firstTaskID(model) { model.openTask(id) }
             model.tab = .changes
         },
-        Capture(name: "03-findings") { $0.go(.findings) },
+        Capture(name: "03-reports-survey") { $0.go(.reports) },
         Capture(name: "04-roadmap") { $0.go(.roadmap) },
         Capture(name: "05-decisions") { $0.go(.decisions) },
         Capture(name: "06-settings-connections") { $0.go(.settings); $0.settingsSection = .accountsAndConnections },
@@ -151,14 +152,14 @@ final class SnapshotMode {
         },
         // Idle, so the capture shows the run with the command it would type; nothing is started.
         Capture(name: "08-runs-panel") { model in
-            model.go(.findings)
+            model.go(.reports)
             model.prepareRun(door: "survey", title: "Survey", agent: "Claude")
             model.floatRuns()
         },
         Capture(name: "09-unstarted-task-sheet", isSheet: true) { model in
             if let id = firstUnstartedTaskID(model) { model.openTask(id) }
         },
-        Capture(name: "10-ideation") { $0.go(.ideation) },
+        Capture(name: "10-reports-ideation") { model in model.go(.reports); model.reportSource = .ideation },
         // Rated cards sit in Backlog, which the board hides until asked.
         Capture(name: "11-board-backlog") { $0.go(.board); $0.showBacklog = true },
         Capture(name: "12-files") { $0.go(.board); $0.selectedFilePath = "README.md"; $0.dockFiles() },

@@ -85,7 +85,7 @@ struct BoardScreen: View {
     private func boardContent(_ tasks: [DeskTask]) -> some View {
         if tasks.isEmpty {
             EmptyStateView(title: "No tasks yet", message: "Describe the first piece of work, or run a survey to learn the codebase.") {
-                Button("Open Findings") { model.go(.findings) }
+                Button("Open Reports") { model.go(.reports) }
                     .buttonStyle(DeskButtonStyle(kind: .secondary))
             }
         } else {

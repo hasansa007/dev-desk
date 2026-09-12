@@ -2,8 +2,15 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, roadmap, findings, ideation, decisions, settings
+    case board, roadmap, reports, decisions, settings
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
+}
+
+/// Which door's reports the Reports surface is showing. Survey finds defects, ideation finds opportunities;
+/// the screens are the same shape, so they are one destination with a switch rather than two.
+public enum ReportSource: String, CaseIterable, Codable, Hashable {
+    case survey, ideation
+    public var title: String { self == .survey ? "Survey" : "Ideation" }
 }
 
 public enum TaskTab: String, CaseIterable, Codable, Hashable {
@@ -91,6 +98,7 @@ public final class ProjectWindowModel {
     public var selectedFindingID: String?
     public var selectedRunID: String?
     public var findingFilter: FindingCategory?
+    public var reportSource: ReportSource = .survey
     public var selectedOpportunityID: String?
     public var selectedIdeationRunID: String?
     public var ideationFilter: OpportunityVerdict?
@@ -206,8 +214,10 @@ public final class ProjectWindowModel {
         if let id { selectedDecisionID = id }
     }
 
+    /// A finding link always lands on the survey side of Reports, whichever source was showing.
     public func openFinding(_ id: String) {
-        destination = .findings
+        destination = .reports
+        reportSource = .survey
         findingFilter = nil
         selectedFindingID = id
     }

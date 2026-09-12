@@ -55,7 +55,7 @@ final class ProjectWindowModelTests: XCTestCase {
 
     func testParallelModeReturnsToBoard() async {
         let model = await makeStudyHubModel()
-        model.go(.findings)
+        model.go(.reports)
         model.setMode(.parallel)
         XCTAssertEqual(model.destination, .board)
         XCTAssertEqual(model.parallelTasks.map(\.id), ["42", "57"])
@@ -241,8 +241,10 @@ final class ProjectWindowModelTests: XCTestCase {
 
     func testLinkRoutesToFinding() async {
         let model = await makeStudyHubModel()
+        model.reportSource = .ideation
         model.handle(.finding("F-093"))
-        XCTAssertEqual(model.destination, .findings)
+        XCTAssertEqual(model.destination, .reports)
+        XCTAssertEqual(model.reportSource, .survey, "a finding link lands on the survey side")
         XCTAssertEqual(model.selectedFindingID, "F-093")
     }
 

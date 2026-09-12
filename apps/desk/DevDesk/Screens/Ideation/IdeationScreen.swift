@@ -10,7 +10,10 @@ struct IdeationScreen: View {
                 if report.runs.isEmpty {
                     EmptyStateView(title: "No ideation runs yet",
                                    message: "An ideation run writes its report to `docs/ideation/`, and it appears here.") {
-                        GenerateIdeasButton(model: model)
+                        HStack(spacing: 10) {
+                            ReportSourcePicker(model: model)
+                            GenerateIdeasButton(model: model)
+                        }
                     }
                 } else {
                     IdeationSplitView(model: model, report: report)
@@ -111,7 +114,7 @@ private struct IdeationSplitView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text("Ideation").font(DeskFont.section)
+                ReportSourcePicker(model: model)
                 Spacer()
                 GenerateIdeasButton(model: model, kinds: kinds)
             }
@@ -314,7 +317,8 @@ struct IdeationScreen_Previews: PreviewProvider {
             IdeationScreen(model: model)
                 .task {
                     await model.load()
-                    model.go(.ideation)
+                    model.go(.reports)
+                    model.reportSource = .ideation
                 }
         }
     }

@@ -10,7 +10,10 @@ struct FindingsScreen: View {
                 if report.runs.isEmpty {
                     EmptyStateView(title: "No survey runs yet",
                                    message: "A survey writes its report to `docs/survey/`, and it appears here.") {
-                        RunSurveyButton(model: model)
+                        HStack(spacing: 10) {
+                            ReportSourcePicker(model: model)
+                            RunSurveyButton(model: model)
+                        }
                     }
                 } else {
                     FindingsSplitView(model: model, report: report)
@@ -101,7 +104,7 @@ private struct FindingsSplitView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text("Findings").font(DeskFont.section)
+                ReportSourcePicker(model: model)
                 Spacer()
                 RunSurveyButton(model: model)
             }
