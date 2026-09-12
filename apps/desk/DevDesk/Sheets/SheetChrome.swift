@@ -5,17 +5,23 @@ import SwiftUI
 struct SheetChrome<Content: View>: View {
     let title: String
     let confirmTitle: String
+    let cancelTitle: String
     let confirmDisabled: Bool
     let cancelHelp: String?
     let onCancel: () -> Void
     let onConfirm: () -> Void
     let content: Content
 
-    init(title: String, confirmTitle: String, confirmDisabled: Bool = false, cancelHelp: String? = nil,
+    /// "Cancel" abandons a pending action. A sheet that is a place rather than an action — the task dialog,
+    /// Settings — is left, not cancelled, and says "Close": beside a Stop agent button, "Cancel" reads as if it
+    /// would stop the work.
+    init(title: String, confirmTitle: String, confirmDisabled: Bool = false, cancelTitle: String = "Cancel",
+         cancelHelp: String? = nil,
          onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void, @ViewBuilder content: () -> Content) {
         self.title = title
         self.confirmTitle = confirmTitle
         self.confirmDisabled = confirmDisabled
+        self.cancelTitle = cancelTitle
         self.cancelHelp = cancelHelp
         self.onCancel = onCancel
         self.onConfirm = onConfirm
@@ -42,7 +48,7 @@ struct SheetChrome<Content: View>: View {
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(DeskColor.ink)
             Spacer(minLength: 8)
-            Button("Cancel", action: onCancel)
+            Button(cancelTitle, action: onCancel)
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .sheetHeader))
                 .keyboardShortcut(.cancelAction)
                 .help(cancelHelp ?? "")
