@@ -7,7 +7,7 @@ struct ContentRouter: View {
     var body: some View {
         VStack(spacing: 0) {
             if let reloadError = model.reloadError {
-                NoticeBanner(tone: .failed, title: "Reload failed", message: reloadError)
+                NoticeBanner(tone: .failed, title: "Reload failed", message: Markdown.escape(reloadError))
                     .padding([.horizontal, .top], 12)
             }
             if let trackerError = model.trackerError {
@@ -44,7 +44,8 @@ struct ContentRouter: View {
         case .loading:
             ProgressView()
         case .failed(let message):
-            EmptyStateView(title: "This project could not be opened", message: message) {
+            // A load error can quote the project's folder path, which is often the repository's own name.
+            EmptyStateView(title: "This project could not be opened", message: Markdown.escape(message)) {
                 Button("Retry") { Task { await model.load() } }
                     .buttonStyle(DeskButtonStyle(kind: .primary))
             }
