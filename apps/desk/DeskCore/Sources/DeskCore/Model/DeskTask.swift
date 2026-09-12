@@ -12,6 +12,17 @@ public enum BoardColumn: String, CaseIterable, Codable, Hashable {
         case .done: return "Done"
         }
     }
+
+    /// The column's own glyph, so a header is recognisable before it is read.
+    public var icon: String {
+        switch self {
+        case .backlog: return "tray"
+        case .queued: return "calendar"
+        case .inProgress: return "play.circle"
+        case .review: return "eye"
+        case .done: return "checkmark.circle"
+        }
+    }
 }
 
 public enum NextAction: Hashable {
@@ -363,6 +374,9 @@ public struct DeskTask: Identifiable, Hashable {
     public var lastCommit: Date?
     /// Commits this branch holds that the base does not, so a delete can say what would be lost.
     public var unmergedCount: Int?
+
+    /// A local branch with no issue and no pull request behind it — the only card whose branch this app may delete.
+    public var isBranchCard: Bool { id.hasPrefix("branch:") }
 
     /// The value of a `kind:value` label, capitalised: `impact:high` becomes "High".
     public static func rating(_ kind: String, in labels: [String]) -> String? {

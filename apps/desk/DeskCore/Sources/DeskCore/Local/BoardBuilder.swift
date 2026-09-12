@@ -227,18 +227,22 @@ private struct BoardContext {
         let fromFork = branch == nil && pullRequest?.isCrossRepository == true
         let state = head.flatMap { input.pipeline[$0] }
         let badge: StatusBadge?
+        // The ahead count is a field on every card now, so the pill that repeated it stays out of the card and
+        // keeps only the dialog's header, where nothing else says how far ahead the branch is.
+        var saysAheadOnly = false
         if isDeferred {
             badge = StatusBadge(.neutral, "Deferred")
         } else if let pullRequest {
             badge = BoardBuilder.reviewBadge(pullRequest)
         } else if column == .inProgress, let local {
             badge = BoardBuilder.aheadBadge(local.unmerged)
+            saysAheadOnly = true
         } else {
             badge = nil
         }
         return DeskTask(
             id: String(issue.number), issueNumber: issue.number, title: issue.title, column: column,
-            cardBadge: badge, cardNote: state?.cardNote,
+            cardBadge: saysAheadOnly ? nil : badge, cardNote: state?.cardNote,
             headerBadge: badge ?? StatusBadge(.neutral, column == .queued ? "Queued" : "Backlog"),
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
             branch: fromFork ? nil : head, noBranchNote: fromFork ? BoardBuilder.forkNote : nil,
@@ -251,7 +255,8 @@ private struct BoardContext {
             dependencies: BoardBuilder.dependencies(issue.body),
             parallel: parallel(head, local: local),
             impact: DeskTask.rating("impact", in: issue.labelNames),
-            complexity: DeskTask.rating("complexity", in: issue.labelNames))
+            complexity: DeskTask.rating("complexity", in: issue.labelNames),
+            lastCommit: fromFork ? nil : local?.lastCommit, unmergedCount: fromFork ? nil : local?.unmerged)
     }
 
     private func pullRequestTask(_ pullRequest: GitHubPullRequest) -> DeskTask {
@@ -272,7 +277,9 @@ private struct BoardContext {
             changes: changes(head, local: local),
             evidence: evidence(pullRequest: pullRequest.number, state: state),
             dependencies: BoardBuilder.dependencies(pullRequest.body),
-            parallel: parallel(head, local: local))
+            parallel: parallel(head, local: local),
+            lastCommit: pullRequest.isCrossRepository ? nil : local?.lastCommit,
+            unmergedCount: pullRequest.isCrossRepository ? nil : local?.unmerged)
     }
 
     private func branchTask(_ branch: BranchFacts) -> DeskTask {
@@ -280,7 +287,7 @@ private struct BoardContext {
         let badge = BoardBuilder.aheadBadge(branch.unmerged)
         return DeskTask(
             id: "branch:\(branch.name)", title: branch.name, column: .inProgress,
-            cardBadge: badge, cardNote: state?.cardNote, headerBadge: badge,
+            cardBadge: nil, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(branch.name, local: branch), parallelLine: parallelLine(branch.name, local: branch),
             branch: branch.name,
             nextAction: .reviewChanges,

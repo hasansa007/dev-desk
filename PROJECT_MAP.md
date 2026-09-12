@@ -82,11 +82,11 @@ ORPHANS).
 
 | | |
 |---|---|
-| `dev:kanban` Phase 7 | no write has been made through it — move, cancel and delete are unproven, as is the QUEUE column |
+| `dev:kanban` Phase 7 | **first writes 2026-09-12**: six children of #59 closed as completed with per-criterion evidence, two held open with the gap named, the epic commented at 6/8. Move, cancel and delete are still unproven, as is the QUEUE column (this repo has no milestone) |
 | `dev:ideation` | never run |
 | `dev:roadmap` | never written a milestone |
 | `dev:insights` | never run; this file is the first thing its Phase 5 would maintain |
-| `dev:code-review` | never run — the `--quick` path, the spec-compliance table and the re-verification trigger are designed, not observed |
+| `dev:code-review` | **run twice 2026-09-12**: over #69 after the fact (15 findings, 1 narrowed, 1 sub-point refuted) and over the branch that fixed them. The `--quick` path is still designed, not observed; the security pass ran **by hand** both times, because `security-review` reads pending changes and the first diff was already merged |
 
 **Repo state that blocks parts of the design:**
 
@@ -129,8 +129,10 @@ ORPHANS).
   `notifyFailures`) that nothing reads yet — no notification is posted. Execution's
   `desk.worktreeLocation` is live: task worktrees are created there (ADR 0017).
 - **Dev Desk never removes a worktree it created.** They stay under the worktree location until
-  `git worktree remove <path>` (ADR 0017). It does now delete a local **branch** from its card (ADR 0022);
-  the worktree such a branch was checked out in is a separate thing, and git refuses the delete while one holds it.
+  `git worktree remove <path>` (ADR 0017). It does now delete a local **branch** from its card (ADRs 0022,
+  0023): `-d` always runs first, `-D` only after git itself has refused, and only a plain branch card offers it —
+  a pull request's head is not abandoned. The worktree such a branch sits in is a separate thing, and git
+  refuses the delete while one holds it.
 - **An epic with sub-issues is not recognised as decomposed.** `BoardBuilder.isDecomposedEpic` and
   `scripts/dev.py`'s `is_startable` both look for `- [ ] #N` checklist lines in the parent's body,
   while `shared/pipeline.md` Phase 5 forbids checkbox slices and requires the `sub_issues` API. So a

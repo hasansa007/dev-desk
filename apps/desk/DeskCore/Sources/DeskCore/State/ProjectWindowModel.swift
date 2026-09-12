@@ -13,6 +13,16 @@ public enum TaskTab: String, CaseIterable, Codable, Hashable {
 
 public enum ViewMode: String, Codable, Hashable { case focus, parallel }
 
+/// A failed write, carrying the title of what it failed to change: deleting a branch never touches the tracker,
+/// so a banner that says "The tracker was not changed" about it is a false statement, not a reassurance.
+public struct WriteFailure: Equatable {
+    public let title: String
+    public let message: String
+
+    static func tracker(_ message: String) -> WriteFailure { WriteFailure(title: "The tracker was not changed", message: message) }
+    static func branch(_ message: String) -> WriteFailure { WriteFailure(title: "The branch was not deleted", message: message) }
+}
+
 /// The kinds of live work a card can carry. They are the app's own process state, never a claim about git's columns.
 public enum TaskActivity: String, Hashable {
     /// A door this window started for the task — `/dev #N` and its kin.
@@ -102,9 +112,6 @@ public final class ProjectWindowModel {
     public var tab: TaskTab = .activity
     public var mode: ViewMode = .focus
     public var showBacklog = false
-    /// Whether branches nobody has touched in two weeks are shown beside live work. They satisfy git's
-    /// In Progress rule and say nothing about whether anyone is working, so the board folds them by default.
-    public var showStale = false
     public var searchText = ""
     /// Both panels are edges of the window, never floating windows over it: Runs along the bottom, Files down
     /// the right. Open is all there is to say about one.
@@ -121,7 +128,7 @@ public final class ProjectWindowModel {
     public var selectedFilePath: String?
     public var settingsSection: SettingsSection = .agentsAndDefaults
     /// Why the last tracker write failed, already escaped: it is rendered as markdown in a banner.
-    public private(set) var trackerError: String?
+    public private(set) var writeFailure: WriteFailure?
     public private(set) var isWritingTracker = false
 
     @ObservationIgnored private let source: ProjectDataSource
@@ -183,11 +190,10 @@ public final class ProjectWindowModel {
         }
     }
 
-    /// Reloads a local project every `interval` until the calling task is cancelled; a sample has nothing new to read.
-    /// The gap between automatic reloads, shared by the window that schedules them and the toolbar that counts
-    /// down to the next one, so the ring can never drain at a different rate than the thing it is timing.
+    /// The gap between automatic reloads, shared by the window that schedules them and the ring that counts down.
     public static let refreshSeconds: Double = 120
 
+    /// Reloads a local project every `interval` until the calling task is cancelled; a sample has nothing new to read.
     public func refresh(every interval: Duration) async {
         guard case .local = ref else { return }
         while !Task.isCancelled {
@@ -293,7 +299,6 @@ public final class ProjectWindowModel {
     }
 
     /// What this task has live right now, whichever screen started it — a door run, its own shell, or its agent.
-    /// Asking only about the door run is what left a started shell and a started agent invisible on the board.
     public func activity(of task: DeskTask) -> TaskActivity? {
         Self.activity(doorRun: task.taskNumber.map { isRunLive(DoorRuns.id(task: $0)) } ?? false,
                       agent: agentSessions.state(for: task.id),
@@ -311,9 +316,10 @@ public final class ProjectWindowModel {
 
     public func isTaskRunning(_ task: DeskTask) -> Bool { activity(of: task) != nil }
 
-    /// How many of a column's cards are live, for the column's own header.
-    public func liveCount(in column: BoardColumn) -> Int {
-        tasks.filter { $0.column == column && isTaskRunning($0) }.count
+    /// A header describes its column, not the search box, so both numbers count every card in it.
+    public func counts(in column: BoardColumn) -> (total: Int, live: Int) {
+        let cards = tasks.filter { $0.column == column }
+        return (cards.count, cards.filter { isTaskRunning($0) }.count)
     }
 
     private static func isLive(_ state: ShellSessionState) -> Bool {
@@ -328,7 +334,7 @@ public final class ProjectWindowModel {
     public func performTrackerWrite(issue: Int, action: TrackerAction) async {
         guard !isWritingTracker else { return }
         guard let slug = snapshot?.slug, case .local(let path) = ref else {
-            trackerError = TrackerWriteError.noRepository.localizedDescription
+            writeFailure = .tracker(TrackerWriteError.noRepository.localizedDescription)
             return
         }
         isWritingTracker = true
@@ -336,20 +342,18 @@ public final class ProjectWindowModel {
         do {
             let write = TrackerWrite(slug: slug, directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner)
             try await write.perform(issue: issue, action: action)
-            trackerError = nil
+            writeFailure = nil
             await load()
         } catch {
-            trackerError = Markdown.escape(error.localizedDescription)
+            writeFailure = .tracker(Markdown.escape(error.localizedDescription))
         }
     }
 
-    /// Deletes a local branch. The first thing the app destroys rather than moves, so it reuses the tracker
-    /// write's shape: one bounded command, the error kept for a banner, and a reload so the board stops
-    /// showing what is gone. Its `force` is only ever true once the developer has typed the branch's name.
+    /// Deletes a local branch: one bounded command, and `force` only ever true once its name has been typed.
     public func deleteBranch(_ name: String, force: Bool) async {
         guard !isWritingTracker else { return }
         guard case .local(let path) = ref else {
-            trackerError = BranchWriteError.notThisRepository.localizedDescription
+            writeFailure = .branch(BranchWriteError.notThisRepository.localizedDescription)
             return
         }
         isWritingTracker = true
@@ -357,14 +361,14 @@ public final class ProjectWindowModel {
         do {
             let write = BranchWrite(directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner)
             try await write.delete(branch: name, force: force)
-            trackerError = nil
+            writeFailure = nil
             await load()
         } catch {
-            trackerError = Markdown.escape(error.localizedDescription)
+            writeFailure = .branch(Markdown.escape(error.localizedDescription))
         }
     }
 
-    public func dismissTrackerError() { trackerError = nil }
+    public func dismissWriteFailure() { writeFailure = nil }
 
     public func toggleRuns() { runsOpen.toggle() }
 

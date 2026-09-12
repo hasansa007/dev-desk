@@ -27,13 +27,26 @@ struct ProjectToolbar: ToolbarContent {
                 ActivitySummary(badge: summary)
             }
         }
+        // The countdown times the project; the three glyphs open panels. Two groups, never one strip: on macOS 26
+        // adjacent toolbar items share one background, which is what made the ring look like part of the panels.
         ToolbarItem(placement: .primaryAction) {
             RefreshStatus(model: model)
         }
-        // The countdown times the project; the three glyphs open panels. A rule keeps them from reading as one set.
+        // `#available` cannot rescue a symbol the SDK lacks: ToolbarSpacer is macOS 26 API and CI builds on
+        // Xcode 16.4 (macOS 15 SDK), where it does not exist to be referenced. Swift 6.2 ships with that SDK.
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+        } else {
+            ToolbarItem(placement: .primaryAction) {
+                Divider().frame(height: 16)
+            }
+        }
+        #else
         ToolbarItem(placement: .primaryAction) {
             Divider().frame(height: 16)
         }
+        #endif
         // The panel cluster, top right, one glyph per edge — where Xcode and every other Mac app keeps it.
         ToolbarItemGroup(placement: .primaryAction) {
             PanelToggle(symbol: "sidebar.leading", isOn: columns != .detailOnly,

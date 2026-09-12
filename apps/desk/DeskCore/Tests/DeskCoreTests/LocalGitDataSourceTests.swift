@@ -122,7 +122,8 @@ final class LocalGitDataSourceTests: XCTestCase {
         let snapshot = try await LocalGitDataSource(root: repo.url).load()
         let task = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:feature/x" })
         XCTAssertEqual(task.column, .inProgress)
-        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "1 commit ahead"))
+        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "1 commit ahead"))
+        XCTAssertEqual(task.unmergedCount, 1)
         XCTAssertEqual(task.activity.value?.count, 1)
         XCTAssertEqual(task.changes.value?.files.map(\.id), ["Sources/Feature.swift"])
         XCTAssertEqual(task.changes.value?.diffs["Sources/Feature.swift"]?.hunks.first?.lines, [DiffLine(.addition, "let x = 1")])
@@ -641,7 +642,8 @@ final class LocalGitDataSourceTests: XCTestCase {
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         let task = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:spike" })
-        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "3 commits ahead"))
+        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "3 commits ahead"))
+        XCTAssertEqual(task.unmergedCount, 3)
         XCTAssertEqual(task.activity, .unavailable("git log failed: fatal: bad object refs/heads/spike"))
         XCTAssertEqual(task.changes, .unavailable("git diff failed: fatal: unable to read tree 1234567"))
     }
@@ -678,7 +680,8 @@ final class LocalGitDataSourceTests: XCTestCase {
 
         let snapshot = try await LocalGitDataSource(root: repo.url).load()
         let task = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:-x" })
-        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "1 commit ahead"))
+        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "1 commit ahead"))
+        XCTAssertEqual(task.unmergedCount, 1)
         XCTAssertEqual(task.changes.value?.files.map(\.id), ["Dash.swift"])
     }
 

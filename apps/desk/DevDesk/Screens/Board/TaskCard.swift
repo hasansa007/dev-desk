@@ -17,7 +17,8 @@ struct BranchActions {
     let openTerminal: () -> Void
     let compare: () -> Void
     let copyName: () -> Void
-    let delete: () -> Void
+    /// nil when this card's branch is not this app's to delete — a pull request's head is not an abandoned branch.
+    let delete: (() -> Void)?
 }
 
 /// One board card; reused wherever a task list needs the same summary (D:162–232).
@@ -41,8 +42,9 @@ struct TaskCard: View {
         .buttonStyle(.plain)
         .opacity(task.isDimmed ? 0.72 : 1)
         .accessibilityLabel(accessibilityLabel)
-        // A sibling overlay, not a child of the card's button, so opening the menu never also opens the task.
+        // Siblings, not children of the card's button, so pressing one never also opens the task.
         .overlay(alignment: .topTrailing) { movesMenu.padding(7) }
+        .overlay(alignment: .bottomTrailing) { startButton.padding(11) }
     }
 
     @ViewBuilder private var movesMenu: some View {
@@ -51,8 +53,10 @@ struct TaskCard: View {
                 Button("Open a terminal here") { branchActions.openTerminal() }
                 Button("Compare with the base") { branchActions.compare() }
                 Button("Copy branch name") { branchActions.copyName() }
-                Divider()
-                Button("Delete branch…", role: .destructive) { branchActions.delete() }
+                if let delete = branchActions.delete {
+                    Divider()
+                    Button("Delete branch…", role: .destructive) { delete() }
+                }
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .imageScale(.medium)
@@ -105,17 +109,12 @@ struct TaskCard: View {
                     .padding(.top, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            // The action the card is for, on the card. Reading a task should not be the price of starting one.
-            if let start, activity == nil {
-                HStack(spacing: 0) {
-                    Spacer(minLength: 0)
-                    Button { start() } label: {
-                        Label("Start", systemImage: "play.fill")
-                    }
-                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                    .accessibilityLabel("Start \(task.issueLabel.isEmpty ? task.title : task.issueLabel)")
-                }
-                .padding(.top, 9)
+            // The row the Start control occupies. The control itself is a sibling overlay, so the card keeps
+            // its height without nesting a button inside a button.
+            if offersStart {
+                Color.clear
+                    .frame(height: DeskButtonStyle.Size.mini.height)
+                    .padding(.top, 9)
             }
         }
         .padding(11)
@@ -130,6 +129,19 @@ struct TaskCard: View {
         .contentShape(RoundedRectangle(cornerRadius: 9))
     }
 
+    /// Offered only when there is something to start and nothing already running for this task.
+    private var offersStart: Bool { start != nil && activity == nil }
+
+    @ViewBuilder private var startButton: some View {
+        if let start, activity == nil {
+            Button { start() } label: {
+                Label("Start", systemImage: "play.fill")
+            }
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+            .accessibilityLabel("Start \(task.issueLabel.isEmpty ? task.title : task.issueLabel)")
+        }
+    }
+
     private var metaRow: some View {
         HStack(spacing: 8) {
             if let activity {
@@ -140,11 +152,9 @@ struct TaskCard: View {
                     .font(DeskFont.mono(11))
                     .foregroundStyle(DeskColor.mutedInk)
             }
-            if let committed = task.lastCommit {
-                Text(BranchAge.label(committed))
-                    .font(.system(size: 11))
-                    .foregroundStyle(BranchAge.isStale(committed) ? DeskColor.tone(.waiting).foreground : DeskColor.faintInk)
-            }
+            Text(branchFacts)
+                .font(.system(size: 11))
+                .foregroundStyle(DeskColor.faintInk)
             if let badge = task.cardBadge {
                 StatusPill(badge: badge)
             } else if let inline = task.cardInlineText {
@@ -155,14 +165,19 @@ struct TaskCard: View {
         }
     }
 
-    /// Shown for anything still open with an issue behind it: a dash where the tracker has no rating, never a guess (ADR 0020).
-    @ViewBuilder private var ratingRow: some View {
-        if task.issueNumber != nil, task.column != .done {
-            HStack(spacing: 6) {
-                PropertyChip("impact \(task.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
-                PropertyChip("complexity \(task.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
-            }
+    /// On every card, so one card is not a different shape from the next: a dash where nothing rated it (ADR 0020).
+    private var ratingRow: some View {
+        HStack(spacing: 6) {
+            PropertyChip("impact \(task.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+            PropertyChip("complexity \(task.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
         }
+    }
+
+    /// The branch's two facts on every card, dashed when this card has no branch — the same row either way.
+    private var branchFacts: String {
+        let age = task.lastCommit.map { BranchAge.label($0) } ?? "—"
+        let ahead = task.unmergedCount.map { "\($0) ahead" } ?? "—"
+        return "\(age) · \(ahead)"
     }
 
     private var metaText: String {
@@ -171,7 +186,8 @@ struct TaskCard: View {
     }
 
     private var accessibilityLabel: String {
-        [task.title, task.issueLabel, task.cardBadge?.label]
+        // branchFacts is inside the button's label, which is a leaf to VoiceOver, so it is spoken only from here.
+        [task.title, task.issueLabel, branchFacts, task.cardBadge?.label]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: ", ")

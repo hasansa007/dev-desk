@@ -22,23 +22,72 @@ private struct RoadmapContent: View {
     let roadmap: Roadmap
     let model: ProjectWindowModel
 
+    @State private var showsNote = false
+
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: 3)
 
+    private var itemCount: Int { roadmap.themes.reduce(0) { $0 + $1.items.count } }
+
+    private var summary: String {
+        let themes = roadmap.themes.count
+        return "\(itemCount) item\(itemCount == 1 ? "" : "s") across \(themes) theme\(themes == 1 ? "" : "s")"
+    }
+
     var body: some View {
+        VStack(spacing: 0) {
+            header
+            content
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .background(DeskColor.canvas)
+    }
+
+    /// The same bar the board carries, in the same place, with the paragraph behind the same info button.
+    private var header: some View {
+        HStack(spacing: 10) {
+            Text("Roadmap")
+                .font(DeskFont.section)
+                .foregroundStyle(DeskColor.ink)
+            Text(summary)
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+            noteButton
+            Spacer(minLength: 0)
+        }
+        .screenHeaderBar()
+    }
+
+    private var noteButton: some View {
+        Button { showsNote = true } label: {
+            Image(systemName: "info.circle")
+                .imageScale(.medium)
+                .foregroundStyle(DeskColor.mutedInk)
+                .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("Where these themes come from")
+        .accessibilityLabel("Where these themes come from")
+        .popover(isPresented: $showsNote) {
+            Text(roadmap.note)
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.secondaryInk)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 320)
+                .padding(14)
+        }
+    }
+
+    private var content: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                HStack(alignment: .firstTextBaseline, spacing: 10) {
-                    Text("Roadmap").font(DeskFont.section)
-                    Text(roadmap.note).font(DeskFont.secondary).foregroundStyle(DeskColor.mutedInk)
-                }
-
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
                     ForEach(roadmap.themes) { theme in
                         ThemeColumn(theme: theme, model: model)
                             .frame(maxHeight: .infinity, alignment: .top)
                     }
                 }
-                .padding(.top, 16)
 
                 if !roadmap.milestones.isEmpty {
                     SectionLabel("Milestones").padding(.top, 20)
@@ -51,7 +100,7 @@ private struct RoadmapContent: View {
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(EdgeInsets(top: 18, leading: 20, bottom: 18, trailing: 20))
+            .padding(EdgeInsets(top: 16, leading: 16, bottom: 18, trailing: 16))
         }
     }
 }
@@ -62,7 +111,18 @@ private struct ThemeColumn: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            SectionLabel(theme.title)
+            // Icon, title, count — the shape a board column's header already has.
+            HStack(spacing: 6) {
+                Image(systemName: theme.icon)
+                    .imageScale(.small)
+                    .foregroundStyle(theme.isCritical ? DeskColor.tone(.failed).foreground : DeskColor.mutedInk)
+                SectionLabel(theme.title)
+                Text("\(theme.items.count)")
+                    .font(DeskFont.label)
+                    .tracking(0.66)
+                    .foregroundStyle(DeskColor.disabledDot)
+                Spacer(minLength: 0)
+            }
             VStack(alignment: .leading, spacing: 9) {
                 ForEach(theme.items) { item in
                     RoadmapItemCard(item: item, model: model)

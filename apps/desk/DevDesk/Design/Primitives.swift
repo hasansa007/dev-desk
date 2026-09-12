@@ -87,6 +87,16 @@ struct PropertyChip: View {
     }
 }
 
+extension View {
+    /// The bar a screen's title sits in: one surface, one rule under it, and it never scrolls away with the work.
+    func screenHeaderBar() -> some View {
+        padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .background(DeskColor.surface)
+            .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+    }
+}
+
 struct SectionLabel: View {
     let text: String
 

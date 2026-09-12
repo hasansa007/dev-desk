@@ -2,18 +2,12 @@ import Foundation
 
 public enum BranchWriteError: Error, Equatable, LocalizedError {
     case notThisRepository
-    case checkedOut(String)
-    case unmergedNeedsConfirmation(String)
     case failed(String)
 
     public var errorDescription: String? {
         switch self {
         case .notThisRepository:
             return "This project has no folder on disk, so there is no branch to delete."
-        case .checkedOut(let where_):
-            return "That branch is checked out in \(where_). Close or switch that checkout first."
-        case .unmergedNeedsConfirmation(let branch):
-            return "\(branch) holds commits the base branch does not. Type its name to delete it anyway."
         case .failed(let detail):
             return "git could not delete the branch: \(detail)"
         }
@@ -39,26 +33,43 @@ public struct BranchWrite {
         return ["branch", force ? "-D" : "-d", "--", name]
     }
 
-    public static func confirmation(branch: String, unmerged: Int) -> String {
-        unmerged > 0
+    /// An uncounted branch is not a branch counted at zero, so nil asks for the name (ADR 0022).
+    public static func requiresTypedName(unmerged: Int?) -> Bool { unmerged.map { $0 > 0 } ?? true }
+
+    public static func confirmation(branch: String, unmerged: Int?) -> String {
+        guard let unmerged else {
+            return "Delete the branch \(branch)? Dev Desk has not counted what it holds that the base branch does not."
+        }
+        return unmerged > 0
             ? "Delete the branch \(branch) and the \(unmerged) commit\(unmerged == 1 ? "" : "s") it holds that the base branch does not?"
             : "Delete the branch \(branch)? Its commits are already in the base branch."
     }
 
+    /// Always tries `-d` first, even when the name has been typed: git's own refusal is the layer, and a count
+    /// read up to two minutes ago is not a reason to force what git would have allowed safely.
     public func delete(branch: String, force: Bool) async throws {
+        let safe = try await run(branch: branch, force: false)
+        if safe.succeeded { return }
+        guard force else { throw BranchWriteError.failed(Self.reason(safe)) }
+        let forced = try await run(branch: branch, force: true)
+        guard forced.succeeded else { throw BranchWriteError.failed(Self.reason(forced)) }
+    }
+
+    private func run(branch: String, force: Bool) async throws -> CommandResult {
         guard let arguments = Self.arguments(branch: branch, force: force) else {
             throw BranchWriteError.failed("\(branch) is not a name git branch would accept")
         }
-        let result: CommandResult
         do {
-            result = try await runner.run("git", arguments, in: directory, timeout: CommandTimeout.gh)
+            // `branch -D` fires reference-transaction hooks, so the delete is hardened like every other git call.
+            return try await runner.run("git", GitCommand.read(arguments), in: directory, timeout: CommandTimeout.git)
         } catch let cancellation as CancellationError {
             throw cancellation
         } catch {
             throw BranchWriteError.failed(error.localizedDescription)
         }
-        guard result.succeeded else {
-            throw BranchWriteError.failed(GitOutput.lastNonEmptyLine(result.stderr) ?? "git exited with status \(result.status)")
-        }
+    }
+
+    private static func reason(_ result: CommandResult) -> String {
+        GitOutput.lastNonEmptyLine(result.stderr) ?? "git exited with status \(result.status)"
     }
 }

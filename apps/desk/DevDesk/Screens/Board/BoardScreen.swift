@@ -22,19 +22,13 @@ struct BoardScreen: View {
                 .foregroundStyle(DeskColor.ink)
             searchField
             BacklogToggle(isOn: $model.showBacklog)
-            staleToggle
             if let note = model.snapshot?.boardNote, !note.isEmpty {
                 rulesButton(note)
             }
             Spacer(minLength: 0)
             sideBySideButton
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 12)
-        .background(DeskColor.surface)
-        .overlay(alignment: .bottom) {
-            Rectangle().fill(DeskColor.divider).frame(height: 1)
-        }
+        .screenHeaderBar()
     }
 
     /// The toolbar's old Focus/Parallel pair named two modes without naming what changed, and pressing either
@@ -107,11 +101,9 @@ struct BoardScreen: View {
                     .buttonStyle(DeskButtonStyle(kind: .secondary))
             }
         } else {
-            let now = Date()
             let columns = visibleColumns.map { column in
                 ColumnEntry(column: column,
-                            tasks: tasks.filter { $0.column == column && matches($0) && shows($0, now: now) }
-                                .sorted { ($0.lastCommit ?? .distantFuture) > ($1.lastCommit ?? .distantFuture) })
+                            tasks: BoardOrder.inColumn(column, tasks.filter { $0.column == column && matches($0) }))
             }
             if !model.searchText.isEmpty && columns.allSatisfy({ $0.tasks.isEmpty }) {
                 Text("No tasks match “\(model.searchText)”.")
@@ -137,34 +129,6 @@ struct BoardScreen: View {
 
     private var visibleColumns: [BoardColumn] {
         BoardColumn.allCases.filter { $0 != .backlog || model.showBacklog }
-    }
-
-    /// A stale branch is still In Progress to git; it is folded here, never re-columned, so ADR 0011 holds.
-    private func shows(_ task: DeskTask, now: Date) -> Bool {
-        model.showStale || !BranchAge.isStale(task.lastCommit, now: now)
-    }
-
-    /// Appears only when there is something to unfold, so a healthy board carries no extra control.
-    @ViewBuilder private var staleToggle: some View {
-        let count = staleCount
-        if count > 0 {
-            Button { model.showStale.toggle() } label: {
-                Text(model.showStale ? "Hide stale (\(count))" : "Show stale (\(count))")
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(model.showStale ? Color.white : DeskColor.ink)
-                    .padding(.horizontal, 10)
-                    .controlChrome(fill: model.showStale ? DeskColor.accent : DeskColor.surface)
-            }
-            .buttonStyle(.plain)
-            .help("Branches nobody has committed to in \(Int(BranchAge.staleAfter / 86_400)) days. They still satisfy git's In Progress rule.")
-            .accessibilityLabel("Show stale branches")
-            .accessibilityValue(model.showStale ? "On" : "Off")
-        }
-    }
-
-    private var staleCount: Int {
-        let now = Date()
-        return (model.snapshot?.board.value ?? []).filter { BranchAge.isStale($0.lastCommit, now: now) }.count
     }
 
     private func matches(_ task: DeskTask) -> Bool {
@@ -210,10 +174,10 @@ private struct BoardColumnView: View {
     @State private var pending: PendingMove?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
-    private var live: Int { tasks.filter { model.isTaskRunning($0) }.count }
+    /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
+    private var counts: (total: Int, live: Int) { model.counts(in: column) }
 
-    /// A branch card's own menu. A card with an issue keeps the tracker moves instead, so neither card
-    /// carries two menus, and only a real local branch can be deleted.
+    /// A branch card's own menu. A card with an issue keeps the tracker moves instead, so neither card carries two.
     private func branchActions(for task: DeskTask) -> BranchActions? {
         guard task.issueNumber == nil, let branch = task.branch else { return nil }
         return BranchActions(
@@ -223,7 +187,8 @@ private struct BoardColumnView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(branch, forType: .string)
             },
-            delete: { model.present(.deleteBranch(branch)) })
+            // Only a plain local branch. An open pull request points at its head, so that branch is not abandoned.
+            delete: task.isBranchCard ? { model.present(.deleteBranch(branch)) } : nil)
     }
 
     /// A card offers Start only when pressing it would actually run something; the dialog still explains why not.
@@ -235,22 +200,25 @@ private struct BoardColumnView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
+                Image(systemName: column.icon)
+                    .imageScale(.small)
+                    .foregroundStyle(DeskColor.mutedInk)
                 SectionLabel(column.title)
-                Text("\(tasks.count)")
+                Text("\(counts.total)")
                     .font(DeskFont.label)
                     .tracking(0.66)
                     .foregroundStyle(DeskColor.disabledDot)
                 // The count of what is actually running here, so a column never looks idle while it works.
-                if live > 0 {
+                if counts.live > 0 {
                     HStack(spacing: 4) {
                         StatusDot(tone: .running, pulses: true, size: 6)
-                        Text("\(live) live")
+                        Text("\(counts.live) live")
                             .font(DeskFont.label)
                             .tracking(0.66)
                             .foregroundStyle(DeskColor.tone(.running).foreground)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(live) running in \(column.title)")
+                    .accessibilityLabel("\(counts.live) running in \(column.title)")
                 }
             }
             ForEach(tasks) { task in
