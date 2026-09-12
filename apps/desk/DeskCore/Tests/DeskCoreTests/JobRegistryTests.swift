@@ -166,8 +166,10 @@ final class JobRegistryTests: XCTestCase {
         let (jobs, _) = registry()
         _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
                                      permission: .readOnly, directory: "/repo"))
-        XCTAssertTrue(jobs.hasLiveJob(door: "survey"))
-        XCTAssertFalse(jobs.hasLiveJob(door: "ideation"))
+        XCTAssertTrue(jobs.hasLiveJob(door: "survey", in: "/repo"))
+        XCTAssertFalse(jobs.hasLiveJob(door: "ideation", in: "/repo"))
+        XCTAssertFalse(jobs.hasLiveJob(door: "survey", in: "/other"),
+                       "one run per door is per project — another repo's window is not running this")
     }
 
     func testAnsweringAJobThatIsNotAskingDoesNothing() throws {
