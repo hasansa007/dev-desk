@@ -9,7 +9,9 @@ struct FindingsScreen: View {
             SurfaceView(snapshot.findings, fillsScreen: true) { report in
                 if report.runs.isEmpty {
                     EmptyStateView(title: "No survey runs yet",
-                                   message: "Run `/dev:survey` to write a report to `docs/survey/`; it appears here.")
+                                   message: "A survey writes its report to `docs/survey/`, and it appears here.") {
+                        RunSurveyButton(model: model)
+                    }
                 } else {
                     FindingsSplitView(model: model, report: report)
                 }
@@ -18,10 +20,23 @@ struct FindingsScreen: View {
     }
 }
 
+/// Starts `dev:survey` as a run; the run's own pane asks for consent before anything executes.
+private struct RunSurveyButton: View {
+    let model: ProjectWindowModel
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+
+    var body: some View {
+        let blocked = model.runBlockedReason(agent: defaultConnection)
+        Button("Run survey") { model.present(.runFocus("survey")) }
+        .buttonStyle(DeskButtonStyle(kind: .primary, size: .smallWide))
+        .disabled(blocked != nil)
+        .help(blocked ?? "Start dev:survey in \(defaultConnection), in this project's folder")
+    }
+}
+
 private struct FindingsSplitView: View {
     @Bindable var model: ProjectWindowModel
     let report: FindingsReport
-    @State private var showSurveyPopover = false
 
     private var visibleFindings: [Finding] {
         report.findings
@@ -84,16 +99,9 @@ private struct FindingsSplitView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text("Findings").font(DeskFont.section)
+                Text("Survey").font(DeskFont.section)
                 Spacer()
-                Button("Run survey") { showSurveyPopover = true }
-                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .smallWide))
-                    .popover(isPresented: $showSurveyPopover) {
-                        MarkdownText("Run `/dev:survey` in your coding agent. Its report lands in `docs/survey/`, and Dev Desk reads it from there.",
-                                     font: DeskFont.secondary, color: DeskColor.secondaryInk)
-                            .frame(width: 280)
-                            .padding(12)
-                    }
+                RunSurveyButton(model: model)
             }
             runLine
                 .padding(.top, 8)

@@ -41,14 +41,14 @@ open "/tmp/devdesk-dd/Build/Products/Debug/Dev Desk.app"
 ## Using it
 
 - **Open a project** with **Open Project…** (⌘O). You can open a sample (StudyHub or dev-skill, with labelled demo data), a local folder, a clone, or a new project.
-  - For a real folder, Dev Desk reads git and GitHub directly ([ADR 0013](../../docs/adr/0013-the-app-reads-git-and-github-directly.md)): the board, branches, diffs, PR checks, `.dev/` state, `docs/survey/` and `docs/adr/`.
-- **The Shell tab.** Open a task, then click **Start shell** in the dock. The shell opens in the task's own folder ([ADR 0017](../../docs/adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)). That folder is one of three:
+  - For a real folder, Dev Desk reads git and GitHub directly ([ADR 0013](../../docs/adr/0013-the-app-reads-git-and-github-directly.md)): the board, branches, diffs, PR checks, `.dev/` state, `docs/survey/` and `docs/ideation/`.
+- **The Shell tab.** Open a card — every card opens the same dialog ([ADR 0021](../../docs/adr/0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md)) — then click **Start shell**. The shell opens in the task's own folder ([ADR 0017](../../docs/adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)). That folder is one of three:
   - the worktree where the task's branch is already checked out;
   - a new worktree under `~/.devdesk/wt` (the location is set in Settings → Execution);
   - the project root, when the task has no branch yet.
 
   Nothing runs until you click.
-- **The Agents tab.** **Start agent** runs Claude Code or Codex interactively in the task's folder, with the same prompt `dev run` uses ([ADR 0018](../../docs/adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).
+- **The Agent tab.** **Start agent** runs Claude Code or Codex interactively in the task's folder, with the same prompt `dev run` uses ([ADR 0018](../../docs/adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).
   - The agent comes from Settings → Agents and defaults, or from a project's override.
   - It stops at the pipeline's approval gates and asks you in its terminal.
   - A task with no branch yet gets its own detached worktree, and the pipeline creates the branch there.

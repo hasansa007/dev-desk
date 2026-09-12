@@ -206,6 +206,10 @@ Ask before filing anything. Then, for the confirmed set:
 - **Set a priority label from the Phase 6 ranking.** `dev:kanban` Phase 5 orders the backlog by
   `P1 → P2 → P3` then slice then oldest; ten issues filed the same minute share a timestamp, so
   without labels the ranking dies in the report.
+- **Carry Phase 6's two numbers into labels:** the gain becomes `impact:`, the cost becomes
+  `complexity:`. This door is the one that already computed them, so filing without them throws away
+  the arithmetic that produced the ranking. Both stay proposals the developer corrects
+  (`docs/guide/WORKFLOW.md` → *Rating an issue*); a missing label is offered, never created silently.
 - **File at most 10 per run, and name what was held.**
 - **An opportunity never outranks an open defect.** If `dev:survey` has confirmed bugs waiting, say
   so when handing off: a tracker that fills with improvements while defects wait is one nobody

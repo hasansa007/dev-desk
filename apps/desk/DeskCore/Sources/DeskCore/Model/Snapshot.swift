@@ -17,11 +17,9 @@ public struct ProjectInfo: Hashable {
 /// What a freshly opened window selects before any restored layout is applied.
 public struct LaunchState: Hashable {
     public var selectedTaskID: String?
-    public var insightsOpen: Bool
 
-    public init(selectedTaskID: String? = nil, insightsOpen: Bool = false) {
+    public init(selectedTaskID: String? = nil) {
         self.selectedTaskID = selectedTaskID
-        self.insightsOpen = insightsOpen
     }
 }
 
@@ -33,20 +31,28 @@ public struct ProjectSnapshot: Hashable {
     public var board: Surface<[DeskTask]>
     public var boardNote: String
     public var findings: Surface<FindingsReport>
+    /// `docs/ideation/` reports; an empty one reads as "no runs yet", which is not the same as unavailable.
+    public var ideation: Surface<IdeationReport>
     public var roadmap: Surface<Roadmap>
-    public var decisions: Surface<[Decision]>
     public var connections: [Connection]
     public var connectionsNote: String
     public var capabilities: CapabilityMatrix
     public var insights: InsightsAvailability
     /// Settings › Project overrides: base branch, remote and similar read-only facts.
     public var projectFacts: [KeyValue]
+    /// `owner/repo`, for writes that must name the repository; nil when there is no GitHub remote to write to.
+    public var slug: String?
+    /// The milestone that decides the Queued column, so a card can be moved into or out of it.
+    public var activeMilestone: String?
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,
-                findings: Surface<FindingsReport>, roadmap: Surface<Roadmap>, decisions: Surface<[Decision]>,
+                findings: Surface<FindingsReport>, ideation: Surface<IdeationReport> = .available(IdeationReport()),
+                roadmap: Surface<Roadmap>,
                 connections: [Connection], connectionsNote: String, capabilities: CapabilityMatrix,
-                insights: InsightsAvailability, projectFacts: [KeyValue] = []) {
+                insights: InsightsAvailability, projectFacts: [KeyValue] = [],
+                slug: String? = nil, activeMilestone: String? = nil) {
+        self.ideation = ideation
         self.project = project
         self.isDemo = isDemo
         self.launch = launch
@@ -55,11 +61,12 @@ public struct ProjectSnapshot: Hashable {
         self.boardNote = boardNote
         self.findings = findings
         self.roadmap = roadmap
-        self.decisions = decisions
         self.connections = connections
         self.connectionsNote = connectionsNote
         self.capabilities = capabilities
         self.insights = insights
         self.projectFacts = projectFacts
+        self.slug = slug
+        self.activeMilestone = activeMilestone
     }
 }

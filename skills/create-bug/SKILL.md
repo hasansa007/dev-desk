@@ -22,6 +22,10 @@ A rough description of what is broken. One sentence is enough — drafting it is
 1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
 2. Read `~/.claude/skills/dev/shared/pipeline.md` → execute **Phase 0 — Filing** in full.
 3. Fill the template below. Default type label: `bug`, if `gh label list` shows it exists.
+4. **Propose `impact:` and `complexity:`** — for a defect, impact is what it costs while it is
+   broken, complexity the cost of fixing it. Both are assumptions for the developer to correct
+   (`docs/guide/WORKFLOW.md` → *Rating an issue*), and a label the repo lacks is offered, never
+   created silently.
 
 ## Template
 

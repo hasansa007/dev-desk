@@ -69,9 +69,9 @@ pre-flight moves up into Phase 14.
 its decision. Skills still probe `git check-ignore -q docs/` per repo, because the answer differs.
 
 **The container.** Dev Desk (`apps/desk/`) reads what the doors and `dev` already wrote — git,
-GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and runs two
-things inside a repository, each in the task's own worktree: a shell you start from the task's dock,
-and the task's agent, started by you or by Auto in a project where you turned it on (ADRs 0017,
+GitHub, `docs/survey/`, `docs/ideation/`, `.dev/` state — and runs three things inside a repository: a
+door, from Survey or Ideation, and — each in the task's own worktree — a task's shell and its agent,
+started by you from the task's dialog or by Auto in a project where you turned it on (ADRs 0017,
 0018). Its two sample projects demo the whole design on labelled sample data; a real opened
 folder shows only what it can actually read, with the reason next to anything it can't yet (see
 ORPHANS).
@@ -90,11 +90,12 @@ ORPHANS).
 
 **Repo state that blocks parts of the design:**
 
-- **No `epic` label** in this tracker, so `dev:kanban` 4.1's epic-progress logic cannot fire.
-  `dev:roadmap` Phase 6 offers to create it; nothing creates it silently.
-- **No `roadmap-declined` label**, so the declined-theme round trip is untested.
+- **No `roadmap-declined` label**, so the declined-theme round trip is untested. `epic`,
+  `impact:high|medium|low`, `complexity:high|medium|low` and `plan-not-final` exist since
+  2026-09-12, created for epic #59 (ADR 0020).
 - **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
-- **0 open issues, 0 milestones** — every board render so far has been of an empty tracker.
+- **0 milestones** — `dev:kanban`'s QUEUE column is decided by the active milestone, and none
+  exists, so every board render so far has put its 9 open issues in Backlog or later.
 - **`dev board` never reaches the `pr_created`/`human_review` columns.** `cmd_board`
   (`scripts/dev.py:371-383`) builds each issue's `facts` dict with only `unmerged` and
   `phase_group` — it never sets `facts["pr"]`, so `classify`'s PR branch (`facts.get("pr")`) is
@@ -104,10 +105,10 @@ ORPHANS).
 
 **Dev Desk (`apps/desk/`), not built yet:**
 
-- **Runner-dependent surfaces work only in the sample projects** — the agents list, decisions
-  waiting on an answer, Insights' answers, and tracker updates from the app. A real opened project
-  shows each as unavailable, with the reason (ADR 0013). Its dock has a real shell per task, which
-  you start (ADR 0017). Its Agents tab runs Claude Code or Codex in the task's folder, started by you or, in a project with Auto on, by Dev Desk (ADR 0018).
+- **Runner-dependent surfaces work only in the sample projects** — Insights' answers, and a task's
+  agent list in a project whose agents are not installed. A real opened project shows each as
+  unavailable, with the reason (ADR 0013). Real shells and real agents are live: the task's dialog
+  starts either, in that task's own worktree (ADRs 0017, 0018).
 - **`dev snapshot`, `dev jobs` and `dev events`** (container spec §3) are not built. The app starts
   and stops agents as terminal processes (ADR 0018), but it can't tell a working agent from a
   waiting one, resume an ended session, or answer a door from its own UI.
@@ -129,6 +130,12 @@ ORPHANS).
   `desk.worktreeLocation` is live: task worktrees are created there (ADR 0017).
 - **Dev Desk never removes a worktree it created.** They stay under the worktree location until
   `git worktree remove <path>` (ADR 0017).
+- **An epic with sub-issues is not recognised as decomposed.** `BoardBuilder.isDecomposedEpic` and
+  `scripts/dev.py`'s `is_startable` both look for `- [ ] #N` checklist lines in the parent's body,
+  while `shared/pipeline.md` Phase 5 forbids checkbox slices and requires the `sub_issues` API. So a
+  parent filed the way the pipeline demands — #59 is the first — is offered as startable on the
+  board and in `dev board`. Both readers need the sub-issue list; a two-reader fix, as ADR 0013
+  predicted for every board rule.
 - **A fork PR's head is still matched by name for what the board shows.** Its branch line, its
   Activity and Changes, the pipeline-state lookup and the rule that hides a same-named local branch
   all use `headRefName`. So a fork PR from `someone:main` shows the local `main`'s commits. Its shell

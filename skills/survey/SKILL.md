@@ -328,6 +328,10 @@ Ask before filing anything. Then, for the confirmed set:
   NEXT by `P1 → P2 → P3`, then slice, then oldest `updatedAt` — ten issues filed the same minute
   share a timestamp, so without labels the order it shows is arbitrary and this phase's ranking dies
   in the report. If the repo has no priority labels, say so: the ranking then lives only here.
+- **Set `impact:` and `complexity:` from the same ranking**: impact is what the defect costs while
+  it stands, complexity the cost of fixing it. Both are proposals the developer corrects
+  (`docs/guide/WORKFLOW.md` → *Rating an issue*), and a label the repo lacks is offered, never
+  created silently.
 - **File at most 10 per run, and name what was held.** `dev:kanban` shows the top 2–3 of BACKLOG, so
   ten is already more board than anyone reads at once; thirty is a backlog that gets skipped
   wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim

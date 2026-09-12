@@ -22,7 +22,8 @@ enum SafeFile {
         return .text(String(decoding: data, as: UTF8.self))
     }
 
-    private static func isInside(_ url: URL, _ root: URL) -> Bool {
+    /// Shared with the file browser, so one rule decides what counts as inside the repository.
+    static func isInside(_ url: URL, _ root: URL) -> Bool {
         let resolved = url.resolvingSymlinksInPath().standardizedFileURL.path
         let base = root.resolvingSymlinksInPath().standardizedFileURL.path
         return resolved == base || resolved.hasPrefix(base + "/")

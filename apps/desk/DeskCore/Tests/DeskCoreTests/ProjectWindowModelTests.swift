@@ -13,9 +13,7 @@ final class ProjectWindowModelTests: XCTestCase {
         let model = await makeStudyHubModel()
         XCTAssertEqual(model.selectedTaskID, "42")
         XCTAssertEqual(model.tab, .activity)
-        XCTAssertTrue(model.insightsOpen)
         XCTAssertEqual(model.destination, .board)
-        XCTAssertEqual(model.selectedDecisionID, "d-57")
         XCTAssertEqual(model.selectedFindingID, "F-108")
         XCTAssertEqual(model.selectedRunID, "run-0940")
     }
@@ -29,14 +27,12 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertEqual(model.mode, .focus)
     }
 
-    func testNextActionOf57OpensItsDecision() async {
+    func testAWaitingDecisionOpensTheTaskItBelongsTo() async {
         let model = await makeStudyHubModel()
         model.openTask("57")
         let url = model.performNextAction()
         XCTAssertNil(url)
-        XCTAssertEqual(model.destination, .decisions)
-        XCTAssertEqual(model.decisionsTab, .needsAttention)
-        XCTAssertEqual(model.selectedDecisionID, "d-57")
+        XCTAssertEqual(model.sheet, .task("57"), "the question lives on the task, not in a destination")
     }
 
     func testNextActionOf63OpensHandoff() async {
@@ -55,40 +51,10 @@ final class ProjectWindowModelTests: XCTestCase {
 
     func testParallelModeReturnsToBoard() async {
         let model = await makeStudyHubModel()
-        model.go(.findings)
+        model.go(.survey)
         model.setMode(.parallel)
         XCTAssertEqual(model.destination, .board)
         XCTAssertEqual(model.parallelTasks.map(\.id), ["42", "57"])
-    }
-
-    func testSideDockPlacementOpensDock() async {
-        let model = await makeStudyHubModel()
-        model.dockOpen = false
-        model.setDockPlacement(.side)
-        XCTAssertEqual(model.dockPlacement, .side)
-        XCTAssertTrue(model.dockOpen)
-    }
-
-    func testViewActivityOpensSplitDock() async {
-        let model = await makeStudyHubModel()
-        model.openTask("42")
-        model.dockOpen = false
-        model.dockSplit = false
-        model.perform(.viewActivity, agentID: "reviewer")
-        XCTAssertTrue(model.dockOpen)
-        XCTAssertTrue(model.dockSplit)
-    }
-
-    func testRecordAnswerResumesTask57() async {
-        let model = await makeStudyHubModel()
-        model.recordAnswer(decisionID: "d-57", optionID: "checkpoint", rationale: "Balanced")
-        XCTAssertEqual(model.pendingDecisionCount, 0)
-        let task57 = try? XCTUnwrap(model.task("57"))
-        XCTAssertEqual(task57?.headerBadge.tone, .running)
-        XCTAssertNil(task57?.nextAction)
-        let decision = model.snapshot?.decisions.value?.first { $0.id == "d-57" }
-        XCTAssertEqual(decision?.answer?.optionTitle, "Checkpoint every N answers and on blur")
-        XCTAssertEqual(model.answeredDecisionID, "d-57")
     }
 
     func testConfirmHandoffRecordsDemoEvent() async {
@@ -110,19 +76,18 @@ final class ProjectWindowModelTests: XCTestCase {
     }
 
     func testDemoMutationsIgnoredForRealSnapshots() async {
-        let decision = Decision(id: "d-1", listTitle: "x", listMeta: "y", state: .needsAttention, question: "q", context: "c")
         let snapshot = ProjectSnapshot(
             project: ProjectInfo(name: "Real", displayPath: "~/real", branch: "main"),
             isDemo: false, board: .available([]), boardNote: "",
-            findings: .unavailable("n/a"), roadmap: .unavailable("n/a"), decisions: .available([decision]),
-            connections: [], connectionsNote: "", capabilities: CapabilityMatrix(providers: [], rows: [], note: ""),
-            insights: .unavailable("n/a")
-        )
+            findings: .available(FindingsReport(runs: [], findings: [])), roadmap: .unavailable("n/a"),
+            connections: [], connectionsNote: "",
+            capabilities: CapabilityMatrix(providers: [], rows: [], note: ""), insights: .unavailable("n/a"))
         let model = ProjectWindowModel(ref: .local(path: "/tmp/real-project"), source: FixedSource(snapshot: snapshot), insightsDelay: .zero)
         await model.load()
-        model.recordAnswer(decisionID: "d-1", optionID: nil, rationale: "test")
-        XCTAssertEqual(model.snapshot?.decisions.value?.first?.state, .needsAttention)
-        XCTAssertNil(model.answeredDecisionID)
+        model.present(.reconcileFinding("F-1"))
+        model.confirmSheet()
+        XCTAssertNil(model.sheet)
+        XCTAssertEqual(model.snapshot?.findings.value?.findings.isEmpty, true, "a real snapshot is never mutated by a demo action")
     }
 
     func testConcurrentLoadsReadTheSourceOnce() async {
@@ -161,10 +126,83 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertEqual(loads, 2)
     }
 
+    private func trackerSnapshot() -> ProjectSnapshot {
+        ProjectSnapshot(
+            project: ProjectInfo(name: "Real", displayPath: "~/real", branch: "main"),
+            isDemo: false, board: .available([]), boardNote: "",
+            findings: .unavailable("n/a"), roadmap: .unavailable("n/a"),
+            connections: [], connectionsNote: "", capabilities: CapabilityMatrix(providers: [], rows: [], note: ""),
+            insights: .unavailable("n/a"), slug: "owner/repo", activeMilestone: "1.4")
+    }
+
+    func testQueueingACardWritesToTheTrackerAndReloads() async {
+        let runner = FakeRunner(["gh issue edit 7 --repo owner/repo --milestone 1.4": .ok()])
+        let model = ProjectWindowModel(ref: .local(path: "/tmp/real"), source: FixedSource(snapshot: trackerSnapshot()),
+                                       insightsDelay: .zero, runner: runner)
+        await model.load()
+        await model.performTrackerWrite(issue: 7, action: .queue(milestone: "1.4"))
+        XCTAssertEqual(runner.keys, ["gh issue edit 7 --repo owner/repo --milestone 1.4"])
+        XCTAssertNil(model.trackerError)
+        XCTAssertEqual(model.activeMilestone, "1.4")
+    }
+
+    func testAFailedTrackerWriteIsReported() async {
+        let runner = FakeRunner(["gh issue edit 7 --repo owner/repo --remove-milestone": .failed(1, stderr: "HTTP 403\n")])
+        let model = ProjectWindowModel(ref: .local(path: "/tmp/real"), source: FixedSource(snapshot: trackerSnapshot()),
+                                       insightsDelay: .zero, runner: runner)
+        await model.load()
+        await model.performTrackerWrite(issue: 7, action: .backlog)
+        XCTAssertEqual(model.trackerError?.contains("HTTP 403"), true)
+        model.dismissTrackerError()
+        XCTAssertNil(model.trackerError)
+    }
+
+    func testASampleProjectWritesNothingToTheTracker() async {
+        let runner = FakeRunner()
+        let model = ProjectWindowModel(ref: .sample(.studyHub), source: SampleDataSource(project: .studyHub),
+                                       insightsDelay: .zero, runner: runner)
+        await model.load()
+        await model.performTrackerWrite(issue: 42, action: .backlog)
+        XCTAssertTrue(runner.calls.isEmpty)
+        XCTAssertNotNil(model.trackerError)
+    }
+
+    func testEveryCardOpensTheSameDialog() async {
+        let model = await makeStudyHubModel()
+        model.openTask("65")
+        XCTAssertEqual(model.sheet, .task("65"))
+        XCTAssertEqual(model.tab, .requirements, "an unstarted task opens on its description")
+        model.openTask("57")
+        XCTAssertEqual(model.sheet, .task("57"))
+        XCTAssertEqual(model.tab, .activity, "work already under way opens on what happened")
+        XCTAssertEqual(model.destination, .board, "selecting a card never navigates away from the board")
+    }
+
+    func testShowingRunsOpensThePanel() async {
+        let model = await makeStudyHubModel()
+        model.showRuns()
+        XCTAssertTrue(model.runsOpen)
+        model.showRuns()
+        XCTAssertTrue(model.runsOpen, "asking for the panel twice never closes it")
+        model.toggleRuns()
+        XCTAssertFalse(model.runsOpen)
+    }
+
+    func testRunsAndFilesOpenIndependently() async {
+        let model = await makeStudyHubModel()
+        model.showRuns()
+        model.showFiles()
+        XCTAssertTrue(model.runsOpen)
+        XCTAssertTrue(model.filesOpen)
+        model.toggleRuns()
+        XCTAssertFalse(model.runsOpen)
+        XCTAssertTrue(model.filesOpen, "closing one panel never closes the other")
+    }
+
     func testLinkRoutesToFinding() async {
         let model = await makeStudyHubModel()
         model.handle(.finding("F-093"))
-        XCTAssertEqual(model.destination, .findings)
+        XCTAssertEqual(model.destination, .survey)
         XCTAssertEqual(model.selectedFindingID, "F-093")
     }
 

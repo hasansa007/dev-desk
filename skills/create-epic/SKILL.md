@@ -24,6 +24,9 @@ A rough description of work spanning several tasks.
 2. Read `~/.claude/skills/dev/shared/pipeline.md` → execute **Phase 0 — Filing** in full.
 3. Fill the template below. Default type label: whatever this repo uses for epics — read
    `gh label list`, do not assume one exists.
+4. **Propose `impact:` and `complexity:` at epic level** — what the whole outcome is worth, and how
+   big the whole thing is, not one slice's. Assumptions for the developer to correct
+   (`docs/guide/WORKFLOW.md` → *Rating an issue*); a missing label is offered, never created silently.
 
 ## This files the PARENT ONLY — that is the point
 

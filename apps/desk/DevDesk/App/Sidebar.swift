@@ -10,6 +10,7 @@ struct Sidebar: View {
             if let snapshot = model.snapshot {
                 destinations
                 Spacer(minLength: 12)
+                settingsRow
                 connections(snapshot)
             } else {
                 Spacer(minLength: 0)
@@ -53,6 +54,25 @@ struct Sidebar: View {
         .padding(.horizontal, 8)
     }
 
+    /// Settings is a dialog, not a place: it sits at the bottom and opens over whatever you were looking at.
+    private var settingsRow: some View {
+        Button { model.present(.settings) } label: {
+            HStack(spacing: 9) {
+                Image(systemName: "gearshape").frame(width: 16)
+                Text("Settings")
+                Spacer(minLength: 4)
+            }
+            .font(DeskFont.body)
+            .foregroundStyle(DeskColor.navInk)
+            .padding(.vertical, 7)
+            .padding(.horizontal, 10)
+            .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
+    }
+
     private func destinationButton(_ destination: Destination) -> some View {
         let isSelected = model.destination == destination
         let badge = badge(for: destination)
@@ -86,12 +106,13 @@ struct Sidebar: View {
         switch destination {
         case .board:
             return model.snapshot?.board.value == nil ? nil : (model.openTaskCount, false)
-        case .findings:
+        case .survey:
             guard let count = model.findingsCount, count > 0 else { return nil }
             return (count, false)
-        case .decisions:
-            return model.pendingDecisionCount > 0 ? (model.pendingDecisionCount, true) : nil
-        case .roadmap, .settings:
+        case .ideation:
+            guard let count = model.ideationCount, count > 0 else { return nil }
+            return (count, false)
+        case .roadmap, .insights:
             return nil
         }
     }
@@ -105,9 +126,9 @@ struct Sidebar: View {
         switch destination {
         case .board: return "square.grid.3x2"
         case .roadmap: return "map"
-        case .findings: return "scope"
-        case .decisions: return "questionmark.diamond"
-        case .settings: return "gearshape"
+        case .survey: return "scope"
+        case .ideation: return "lightbulb"
+        case .insights: return "sparkles"
         }
     }
 

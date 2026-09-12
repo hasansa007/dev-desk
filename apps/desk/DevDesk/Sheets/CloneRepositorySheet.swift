@@ -13,8 +13,7 @@ struct CloneRepositorySheet: View {
     @State private var cloneTask: Task<Void, Never>?
 
     var body: some View {
-        SheetChrome(title: "Clone repository", confirmTitle: "Clone", width: 720,
-                    confirmDisabled: urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCloning,
+        SheetChrome(title: "Clone repository", confirmTitle: "Clone",                     confirmDisabled: urlText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCloning,
                     cancelHelp: isCloning ? "Stops waiting; a clone already under way may still finish in the chosen folder." : nil,
                     onCancel: cancel, onConfirm: { cloneTask = Task { await clone() } }) {
             VStack(alignment: .leading, spacing: 14) {

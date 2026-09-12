@@ -18,8 +18,7 @@ struct HandoffSheet: View {
     }
 
     var body: some View {
-        SheetChrome(title: title, confirmTitle: "Create new session", width: 720,
-                    onCancel: onCancel, onConfirm: { onConfirm(selectedProvider) }) {
+        SheetChrome(title: title, confirmTitle: "Create new session",                     onCancel: onCancel, onConfirm: { onConfirm(selectedProvider) }) {
             VStack(alignment: .leading, spacing: 14) {
                 MarkdownText(plan.warning, color: DeskColor.tone(.waiting).body)
                     .lineSpacing(4)
@@ -86,6 +85,6 @@ struct HandoffSheet_Previews: PreviewProvider {
     static var previews: some View {
         let task = SampleData.studyHub().board.value!.first { $0.id == "63" }!
         HandoffSheet(title: "Start with handoff · #63", plan: task.handoff!, onCancel: {}, onConfirm: { _ in })
-            .frame(width: 720)
+            .frame(width: DeskMetric.dialogWidth)
     }
 }

@@ -13,8 +13,7 @@ struct CreateProjectSheet: View {
     @State private var createTask: Task<Void, Never>?
 
     var body: some View {
-        SheetChrome(title: "Create new project", confirmTitle: "Create", width: 720,
-                    confirmDisabled: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating,
+        SheetChrome(title: "Create new project", confirmTitle: "Create",                     confirmDisabled: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isCreating,
                     onCancel: cancel, onConfirm: { createTask = Task { await create() } }) {
             VStack(alignment: .leading, spacing: 14) {
                 row("Project name") {

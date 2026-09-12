@@ -8,8 +8,7 @@ struct FollowUpSheet: View {
     let onConfirm: () -> Void
 
     var body: some View {
-        SheetChrome(title: "Request follow-up from the reviewer", confirmTitle: "Send request", width: 720,
-                    onCancel: onCancel, onConfirm: onConfirm) {
+        SheetChrome(title: "Request follow-up from the reviewer", confirmTitle: "Send request",                     onCancel: onCancel, onConfirm: onConfirm) {
             VStack(alignment: .leading, spacing: 0) {
                 Text(draft.explanation)
                     .foregroundStyle(DeskColor.secondaryInk)

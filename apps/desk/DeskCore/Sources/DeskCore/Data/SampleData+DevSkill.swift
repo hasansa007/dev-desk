@@ -10,7 +10,6 @@ extension SampleData {
                 note: "Work type, priority, and commitment are separate properties. Committed items link to Board tasks instead of duplicating them.",
                 themes: [], milestones: []
             )),
-            decisions: .available([]),
             connections: studyHubConnections(),
             connectionsNote: "Illustrative prototype states. No tools are installed or called.",
             capabilities: studyHubCapabilities(),
@@ -28,8 +27,7 @@ extension SampleData {
                 requirements: .available(Requirements(goal: "Survey run summaries", sources: "Issue #12")),
                 changes: .available(ChangeSet(files: [], baseNote: "No diff is included for this task in the demo.")),
                 evidence: .available(Evidence(isDemo: true)),
-                agentsNote: "No agent assigned",
-                parallel: .none("No agent assigned")
+parallel: .none("No agent assigned")
             ),
             DeskTask(
                 id: "9", issueNumber: 9, title: "Decision gate copy pass", column: .review,
@@ -38,8 +36,7 @@ extension SampleData {
                 requirements: .available(Requirements(goal: "Decision gate copy pass", sources: "Issue #9")),
                 changes: .available(ChangeSet(files: [], baseNote: "No diff is included for this task in the demo.")),
                 evidence: .available(Evidence(isDemo: true)),
-                agentsNote: "No agent assigned",
-                parallel: .none("No agent assigned")
+parallel: .none("No agent assigned")
             ),
             DeskTask(
                 id: "4", issueNumber: 4, title: "CLI discovery handshake", column: .done,
@@ -48,8 +45,7 @@ extension SampleData {
                 requirements: .available(Requirements(goal: "CLI discovery handshake", sources: "Issue #4")),
                 changes: .available(ChangeSet(files: [], baseNote: "No diff is included for this task in the demo.")),
                 evidence: .available(Evidence(isDemo: true)),
-                agentsNote: "No agent assigned",
-                parallel: .none("No agent assigned")
+parallel: .none("No agent assigned")
             ),
         ]
     }

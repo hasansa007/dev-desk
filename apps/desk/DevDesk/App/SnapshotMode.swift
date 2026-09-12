@@ -78,15 +78,11 @@ final class SnapshotMode {
 
     private func reset(_ model: ProjectWindowModel) {
         model.sheet = nil
-        model.insightsOpen = false
-        model.insightsDocked = false
+        model.runsOpen = false
+        model.filesOpen = false
         model.mode = .focus
         model.showBacklog = false
         model.searchText = ""
-        model.dockOpen = true
-        model.dockPlacement = .bottom
-        model.dockSplit = false
-        model.decisionsTab = .needsAttention
     }
 
     private func write(_ view: NSView?, to url: URL) {
@@ -103,29 +99,28 @@ final class SnapshotMode {
     }
 
     private static let sampleStates: [Capture] = [
-        Capture(name: "01-task42-activity") { $0.openTask("42"); $0.insightsOpen = true },
+        Capture(name: "01-task42-dialog", isSheet: true) { $0.openTask("42") },
+        Capture(name: "17-insights") { $0.go(.insights) },
         Capture(name: "02-board") { $0.go(.board) },
         Capture(name: "03-board-backlog") { $0.go(.board); $0.showBacklog = true },
-        Capture(name: "04-task42-requirements") { $0.openTask("42"); $0.tab = .requirements },
-        Capture(name: "05-task42-changes") { $0.openTask("42"); $0.tab = .changes },
-        Capture(name: "06-task42-evidence") { $0.openTask("42"); $0.tab = .evidence },
-        Capture(name: "07-task42-dock-side-split") { $0.openTask("42"); $0.setDockPlacement(.side); $0.dockSplit = true },
+        Capture(name: "04-task42-overview", isSheet: true) { $0.openTask("42"); $0.tab = .requirements },
+        Capture(name: "05-task42-changes", isSheet: true) { $0.openTask("42"); $0.tab = .changes },
+        Capture(name: "06-task42-evidence", isSheet: true) { $0.openTask("42"); $0.tab = .evidence },
         Capture(name: "08-task57-activity") { $0.openTask("57") },
         Capture(name: "09-task63-activity") { $0.openTask("63") },
         Capture(name: "10-parallel") { $0.setMode(.parallel) },
-        Capture(name: "11-findings") { $0.go(.findings) },
-        Capture(name: "12-reconcile-sheet", isSheet: true) { $0.go(.findings); $0.present(.reconcileFinding("F-108")) },
+        Capture(name: "11-survey") { $0.go(.survey) },
+        Capture(name: "12-reconcile-sheet", isSheet: true) { $0.go(.survey); $0.present(.reconcileFinding("F-108")) },
         Capture(name: "13-roadmap") { $0.go(.roadmap) },
-        Capture(name: "14-decisions") { $0.go(.decisions) },
-        Capture(name: "15-decisions-history") { $0.go(.decisions); $0.decisionsTab = .history },
-        Capture(name: "16-settings-agents") { $0.go(.settings); $0.settingsSection = .agentsAndDefaults },
-        Capture(name: "17-insights-docked") { $0.openTask("42"); $0.dockInsights() },
-        Capture(name: "18-insights-floating") { $0.openTask("42"); $0.floatInsights() },
+        Capture(name: "16-settings-agents", isSheet: true) { $0.settingsSection = .agentsAndDefaults; $0.present(.settings) },
         Capture(name: "19-open-project-sheet", isSheet: true) { $0.go(.board); $0.present(.openProject) },
         Capture(name: "20-compare-sheet", isSheet: true) { $0.openTask("42"); $0.present(.compareOutputs) },
         Capture(name: "21-followup-sheet", isSheet: true) { $0.openTask("42"); $0.present(.followUp) },
         Capture(name: "22-handoff-sheet", isSheet: true) { $0.openTask("63"); $0.present(.handoff) },
-        Capture(name: "23-dark-task42", isDark: true) { $0.openTask("42"); $0.insightsOpen = true },
+        Capture(name: "23-dark-insights", isDark: true) { $0.go(.insights) },
+        // #65 is queued with no branch, so opening it presents the sheet rather than a workspace.
+        Capture(name: "24-unstarted-task-sheet", isSheet: true) { $0.go(.board); $0.openTask("65") },
+        Capture(name: "25-cancel-task-sheet", isSheet: true) { $0.go(.board); $0.present(.cancelTask("65")) },
     ]
 
     private static let localStates: [Capture] = [
@@ -134,21 +129,41 @@ final class SnapshotMode {
             if let id = firstTaskID(model) { model.openTask(id) }
             model.tab = .changes
         },
-        Capture(name: "03-findings") { $0.go(.findings) },
+        Capture(name: "03-survey") { $0.go(.survey) },
         Capture(name: "04-roadmap") { $0.go(.roadmap) },
-        Capture(name: "05-decisions") { $0.go(.decisions) },
-        Capture(name: "06-settings-connections") { $0.go(.settings); $0.settingsSection = .accountsAndConnections },
-        // Idle, so the capture shows the trust note and the planned folder; nothing is started.
-        Capture(name: "07-first-task-shell") { model in
-            if let id = firstTaskID(model) { model.openTask(id) }
-            model.dockTabID = model.selectedTask?.dock?.tabs.first { $0.kind == .liveShell }?.id
+        Capture(name: "06-settings-connections", isSheet: true) { $0.settingsSection = .accountsAndConnections; $0.present(.settings) },
+        // Idle, so the capture shows the run with the command it would type; nothing is started.
+        Capture(name: "08-runs-panel") { model in
+            model.go(.survey)
+            model.prepareRun(door: "survey", title: "Survey", agent: "Claude")
+            model.showRuns()
+        },
+        Capture(name: "09-unstarted-task-sheet", isSheet: true) { model in
+            if let id = firstUnstartedTaskID(model) { model.openTask(id) }
+        },
+        Capture(name: "10-ideation") { $0.go(.ideation) },
+        // Rated cards sit in Backlog, which the board hides until asked.
+        Capture(name: "11-board-backlog") { $0.go(.board); $0.showBacklog = true },
+        Capture(name: "12-files") { $0.go(.board); $0.selectedFilePath = "README.md"; $0.showFiles() },
+        Capture(name: "13-run-focus", isSheet: true) { $0.go(.ideation); $0.present(.runFocus("ideation")) },
+        Capture(name: "14-task-dialog", isSheet: true) { model in
+            if let id = firstUnstartedTaskID(model) { model.openTask(id) }
         },
         // Idle too: the agent note and the planned folder. Auto never runs in snapshot mode.
-        Capture(name: "08-first-task-agents") { model in
+        Capture(name: "15-first-task-agent", isSheet: true) { model in
             if let id = firstTaskID(model) { model.openTask(id) }
-            model.dockTabID = model.selectedTask?.dock?.tabs.first { $0.kind == .liveAgent }?.id
+            model.tab = .agent
+        },
+        Capture(name: "16-first-task-shell", isSheet: true) { model in
+            if let id = firstTaskID(model) { model.openTask(id) }
+            model.tab = .shell
         },
     ]
+
+    /// The first card nobody has started, so the sheet capture shows Start task against a real folder.
+    private static func firstUnstartedTaskID(_ model: ProjectWindowModel) -> String? {
+        model.tasks.first { $0.isUnstarted }?.id
+    }
 
     /// The first in-progress card, so the Changes capture shows a real diff when one exists; else the first card on the board.
     private static func firstTaskID(_ model: ProjectWindowModel) -> String? {
