@@ -65,6 +65,8 @@ struct SheetHost: View {
             }
         case .runFocus(let door):
             RunFocusSheet(model: model, door: door)
+        case .deleteBranch(let branch):
+            DeleteBranchSheet(model: model, branch: branch)
         case .settings:
             SettingsSheet(model: model)
         case .cloneRepository:

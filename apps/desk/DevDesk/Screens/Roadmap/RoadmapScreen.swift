@@ -11,7 +11,7 @@ struct RoadmapScreen: View {
                     EmptyStateView(title: "No roadmap yet",
                                    message: "Run `/dev:roadmap` to turn recorded gaps into milestones and epics.")
                 } else {
-                    RoadmapContent(roadmap: roadmap)
+                    RoadmapContent(roadmap: roadmap, model: model)
                 }
             }
         }
@@ -20,6 +20,7 @@ struct RoadmapScreen: View {
 
 private struct RoadmapContent: View {
     let roadmap: Roadmap
+    let model: ProjectWindowModel
 
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 14, alignment: .top), count: 3)
 
@@ -33,7 +34,7 @@ private struct RoadmapContent: View {
 
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 14) {
                     ForEach(roadmap.themes) { theme in
-                        ThemeColumn(theme: theme)
+                        ThemeColumn(theme: theme, model: model)
                             .frame(maxHeight: .infinity, alignment: .top)
                     }
                 }
@@ -57,13 +58,14 @@ private struct RoadmapContent: View {
 
 private struct ThemeColumn: View {
     let theme: RoadmapTheme
+    let model: ProjectWindowModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             SectionLabel(theme.title)
             VStack(alignment: .leading, spacing: 9) {
                 ForEach(theme.items) { item in
-                    RoadmapItemCard(item: item)
+                    RoadmapItemCard(item: item, model: model)
                 }
             }
             .padding(.top, 8)
@@ -74,16 +76,33 @@ private struct ThemeColumn: View {
 
 private struct RoadmapItemCard: View {
     let item: RoadmapItem
+    let model: ProjectWindowModel
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+
+    /// The same issue, as the board sees it. A roadmap row is the upcoming end of the board, so it shows what
+    /// the card shows and offers what the card offers, rather than being a report you read and leave.
+    private var task: DeskTask? {
+        guard let number = Int(item.id) else { return nil }
+        return model.tasks.first { $0.issueNumber == number }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(item.title)
-                .font(DeskFont.body.weight(.semibold))
-                .foregroundStyle(item.isCritical ? DeskColor.tone(.failed).foreground : DeskColor.ink)
+            HStack(alignment: .top, spacing: 10) {
+                Text(item.title)
+                    .font(DeskFont.body.weight(.semibold))
+                    .foregroundStyle(item.isCritical ? DeskColor.tone(.failed).foreground : DeskColor.ink)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                action
+            }
             FlowLayout(spacing: 6) {
                 PropertyChip(item.workType, tone: workTypeTone, fill: chipFill(for: workTypeTone))
                 PropertyChip(item.priority, fill: DeskColor.neutralChipFill2)
                 PropertyChip(item.commitment.rawValue, tone: item.commitment == .committed ? .running : .waiting)
+                if let task, task.issueNumber != nil {
+                    PropertyChip("impact \(task.impact ?? "—")", fill: DeskColor.neutralChipFill2)
+                    PropertyChip("complexity \(task.complexity ?? "—")", fill: DeskColor.neutralChipFill2)
+                }
             }
             .padding(.top, 8)
             if let linkText = item.linkText {
@@ -95,6 +114,24 @@ private struct RoadmapItemCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 9))
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(item.isCritical ? DeskColor.tone(.failed).border : DeskColor.border))
+    }
+
+    /// Build, in the roadmap's own terms: start the work if it can start, else open the card it belongs to.
+    @ViewBuilder private var action: some View {
+        if let task {
+            if let activity = model.activity(of: task) {
+                StatusPill(badge: StatusBadge(.running, activity.label, pulses: true))
+            } else if model.startBlockedReason(for: task, agent: defaultConnection) == nil {
+                Button { model.startTask(task, agent: defaultConnection) } label: {
+                    Label("Build", systemImage: "play.fill")
+                }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                .help("Run /dev #\(task.issueNumber.map(String.init) ?? "") for this, in the Runs panel")
+            } else {
+                Button("Open card") { model.openTask(task.id) }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+            }
+        }
     }
 
     /// D:605–629: neutral chips use the lighter fill, and the Defect chip the stronger red fill.

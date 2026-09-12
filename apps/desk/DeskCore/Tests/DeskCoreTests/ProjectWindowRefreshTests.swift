@@ -70,3 +70,45 @@ final class ProjectWindowRefreshTests: XCTestCase {
         XCTAssertEqual(ProjectWindowModel.updatedLabel(since: now.addingTimeInterval(5), now: now), "Updated just now", "a clock step backwards")
     }
 }
+
+/// The board's own liveness, which asked only about door runs until a started shell and a started agent
+/// both proved invisible on it.
+@MainActor
+final class TaskActivityTests: XCTestCase {
+    private let folder = TaskFolder(url: URL(fileURLWithPath: "/tmp/x"), note: nil, created: false)
+
+    func testNothingLiveIsNoActivity() {
+        XCTAssertNil(ProjectWindowModel.activity(doorRun: false, agent: .idle(nil), shell: .idle(nil)))
+    }
+
+    func testAStartedShellIsActivity() {
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .idle(nil), shell: .running(folder)), .shell)
+    }
+
+    func testAStartedAgentIsActivity() {
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .running(folder), shell: .idle(nil)), .agent)
+    }
+
+    func testPreparingCountsBeforeAnythingRuns() {
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .preparing, shell: .idle(nil)), .agent)
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .idle(nil), shell: .preparing), .shell)
+    }
+
+    func testADoorRunSpeaksForTheWholeTask() {
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: true, agent: .running(folder), shell: .running(folder)), .run)
+    }
+
+    func testTheAgentOutranksAShellLeftOpenBesideIt() {
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .running(folder), shell: .running(folder)), .agent)
+    }
+
+    func testAFinishedSessionIsNotLive() {
+        XCTAssertNil(ProjectWindowModel.activity(doorRun: false, agent: .ended(folder, status: 0), shell: .failed("no")))
+    }
+
+    func testEachKindNamesItselfOnTheCard() {
+        XCTAssertEqual(TaskActivity.run.label, "Running")
+        XCTAssertEqual(TaskActivity.shell.label, "Shell")
+        XCTAssertEqual(TaskActivity.agent.label, "Agent")
+    }
+}

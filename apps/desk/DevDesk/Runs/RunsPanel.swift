@@ -135,6 +135,21 @@ extension ProjectWindowModel {
                    folderNote: "filing reads the tracker, so it runs at the project root.")
     }
 
+    /// Starts `/dev #N` for a task. The card and the dialog both call this, so they cannot disagree about
+    /// what starting means, and the one-run-per-task rule in `prepareRun` still holds across both.
+    func startTask(_ task: DeskTask, agent: String) {
+        guard let number = task.taskNumber else { return }
+        prepareRun(door: "dev", title: "Task #\(number)", agent: agent,
+                   arguments: ["#\(number)"], id: DoorRuns.id(task: number),
+                   folderNote: "#\(number) has no branch yet; /dev cuts one at its first write.")
+    }
+
+    /// Why this task cannot be started, or nil when it can.
+    func startBlockedReason(for task: DeskTask, agent: String) -> String? {
+        guard task.taskNumber != nil else { return "This card has no issue number, so `/dev` has nothing to open." }
+        return runBlockedReason(agent: agent)
+    }
+
     /// Why the button that would start `agent` is disabled, or nil when it can run.
     func runBlockedReason(agent: String) -> String? {
         if !canRunDoors { return "Sample projects have no folder, so there is nothing to run in." }

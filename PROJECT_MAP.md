@@ -129,7 +129,8 @@ ORPHANS).
   `notifyFailures`) that nothing reads yet — no notification is posted. Execution's
   `desk.worktreeLocation` is live: task worktrees are created there (ADR 0017).
 - **Dev Desk never removes a worktree it created.** They stay under the worktree location until
-  `git worktree remove <path>` (ADR 0017).
+  `git worktree remove <path>` (ADR 0017). It does now delete a local **branch** from its card (ADR 0022);
+  the worktree such a branch was checked out in is a separate thing, and git refuses the delete while one holds it.
 - **An epic with sub-issues is not recognised as decomposed.** `BoardBuilder.isDecomposedEpic` and
   `scripts/dev.py`'s `is_startable` both look for `- [ ] #N` checklist lines in the parent's body,
   while `shared/pipeline.md` Phase 5 forbids checkbox slices and requires the `sub_issues` API. So a

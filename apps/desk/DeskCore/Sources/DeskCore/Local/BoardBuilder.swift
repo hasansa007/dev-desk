@@ -289,7 +289,8 @@ private struct BoardContext {
             requirements: .unavailable(BoardBuilder.unlinkedRequirements),
             changes: changes(branch.name, local: branch),
             evidence: evidence(pullRequest: nil, state: state),
-            parallel: parallel(branch.name, local: branch))
+            parallel: parallel(branch.name, local: branch),
+            lastCommit: branch.lastCommit, unmergedCount: branch.unmerged)
     }
 
     private func mergedTask(_ pullRequest: GitHubMergedPullRequest) -> DeskTask {
