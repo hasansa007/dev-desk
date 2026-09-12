@@ -27,3 +27,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0016](0016-dev-desk-embeds-a-terminal-with-swiftterm.md) | Dev Desk embeds a terminal with SwiftTerm, its first dependency; DeskCore stays dependency-free | Accepted |
 | [0017](0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md) | A task's shell opens in that task's own worktree, and only when asked | Accepted |
 | [0018](0018-impact-and-complexity-are-labels-the-doors-propose.md) | Impact and complexity are labels the doors propose and the developer corrects | Accepted |
+| [0019](0019-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md) | A card opens one dialog, and the panels are the window's edges | Accepted |

@@ -24,11 +24,15 @@ Dev Desk is a native Mac app in `apps/desk/`. It lives in this repository ([ADR 
 
 It opens two sample projects, StudyHub and dev-skill, which show the whole design with labelled sample data. It also opens real folders. For a real folder it reads git and GitHub directly, through `git` and `gh` ([ADR 0013](../adr/0013-the-app-reads-git-and-github-directly.md)): the board, diffs, commit activity, PR checks, `.dev/` state, and GitHub milestones as Roadmap.
 
-- **Findings** reads `docs/survey/` reports.
-- **Decisions** shows `docs/adr/` as history.
-- **Insights** is unavailable for real projects.
-- It does not start agents.
-- It never writes to a repository or tracker. Clone and Create project are the only actions that write, and each writes a new folder.
+Five destinations, and two panels on the window's edges ([ADR 0019](../adr/0019-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md)):
+
+- **Board** — every card opens the same dialog over the board, started or not.
+- **Roadmap** — GitHub milestones.
+- **Survey** reads `docs/survey/` reports; **Ideation** reads `docs/ideation/`. Each asks what a run should focus on, runs the door, and files what you approve through `dev:create-issue`.
+- **Insights** is a destination, and unavailable for real projects.
+- **Files** down the right edge browses the project's own folder; **Runs** along the bottom lists every door this window started.
+- It starts a door, or a task's shell, only when you press the button ([ADR 0017](../adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)). It starts no agent on its own.
+- The only tracker writes are a card's bounded Move and Cancel ([ADR 0014](../adr/0014-dev-desk-replaces-dev-ui.md)). Clone and Create project each write a new folder.
 
 ## Not built yet
 

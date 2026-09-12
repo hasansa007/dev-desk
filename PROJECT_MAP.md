@@ -70,7 +70,7 @@ its decision. Skills still probe `git check-ignore -q docs/` per repo, because t
 
 **The container.** Dev Desk (`apps/desk/`) reads what the doors and `dev` already wrote — git,
 GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and starts no agents itself. The one thing it
-runs inside a repository is a shell you start from a task's dock, in that task's own worktree
+runs inside a repository is a shell you start from a card or a door, in that task's own worktree
 (ADR 0017). Its two sample projects demo the whole design on labelled sample data; a real opened
 folder shows only what it can actually read, with the reason next to anything it can't yet (see
 ORPHANS).
@@ -89,11 +89,12 @@ ORPHANS).
 
 **Repo state that blocks parts of the design:**
 
-- **No `epic` label** in this tracker, so `dev:kanban` 4.1's epic-progress logic cannot fire.
-  `dev:roadmap` Phase 6 offers to create it; nothing creates it silently.
-- **No `roadmap-declined` label**, so the declined-theme round trip is untested.
+- **No `roadmap-declined` label**, so the declined-theme round trip is untested. `epic`,
+  `impact:high|medium|low`, `complexity:high|medium|low` and `plan-not-final` exist since
+  2026-09-12, created for epic #59 (ADR 0018).
 - **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
-- **0 open issues, 0 milestones** — every board render so far has been of an empty tracker.
+- **0 milestones** — `dev:kanban`'s QUEUE column is decided by the active milestone, and none
+  exists, so every board render so far has put its 9 open issues in Backlog or later.
 - **`dev board` never reaches the `pr_created`/`human_review` columns.** `cmd_board`
   (`scripts/dev.py:371-383`) builds each issue's `facts` dict with only `unmerged` and
   `phase_group` — it never sets `facts["pr"]`, so `classify`'s PR branch (`facts.get("pr")`) is
@@ -103,10 +104,15 @@ ORPHANS).
 
 **Dev Desk (`apps/desk/`), not built yet:**
 
-- **Runner-dependent surfaces work only in the sample projects** — the agents list, decisions
-  waiting on an answer, Insights' answers, and tracker updates from the app. A real opened project
-  shows each as unavailable, with the reason (ADR 0013). Its dock has a real shell per task, which
-  you start (ADR 0017). Starting agents from the app, by hand or in an Auto mode, is step 2.
+- **Runner-dependent surfaces work only in the sample projects** — Insights' answers and a task's
+  agent list. A real opened project shows each as unavailable, with the reason (ADR 0013). Real
+  shells are live: a card or a door starts one, in that task's own worktree (ADR 0017). Starting
+  agents from the app, by hand or in an Auto mode, is step 2.
+- **The task workspace's data model outlived the workspace.** `DeskTask.dock`, `DockContent`,
+  `DockTab`, `Agent` and `AgentAction` are still built by `BoardBuilder.dock(taskNumber:)` and by
+  the sample data, and asserted by tests, but no view has rendered them since the workspace,
+  `AgentsInspector` and `AgentsDock` were deleted for the dialog (ADR 0019). Delete with the slice
+  that gives agent rows a home, or on its own.
 - **`dev snapshot`, `dev jobs` and `dev events`** (container spec §3) are not built — the app cannot
   start, stop or answer a door yet.
 - **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
