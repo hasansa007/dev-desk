@@ -55,7 +55,7 @@ final class ProjectWindowModelTests: XCTestCase {
 
     func testParallelModeReturnsToBoard() async {
         let model = await makeStudyHubModel()
-        model.go(.reports)
+        model.go(.survey)
         model.setMode(.parallel)
         XCTAssertEqual(model.destination, .board)
         XCTAssertEqual(model.parallelTasks.map(\.id), ["42", "57"])
@@ -202,20 +202,15 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertNotNil(model.trackerError)
     }
 
-    func testOpeningAnUnstartedCardShowsItsSheet() async {
+    func testEveryCardOpensTheSameDialog() async {
         let model = await makeStudyHubModel()
         model.openTask("65")
-        XCTAssertEqual(model.sheet, .unstartedTask("65"))
-        XCTAssertEqual(model.lastOpenedTaskID, "65")
-        XCTAssertEqual(model.selectedTaskID, "42", "the workspace behind the sheet is left as it was")
-    }
-
-    func testOpeningWorkThatHasStartedOpensTheWorkspace() async {
-        let model = await makeStudyHubModel()
+        XCTAssertEqual(model.sheet, .task("65"))
+        XCTAssertEqual(model.tab, .requirements, "an unstarted task opens on its description")
         model.openTask("57")
-        XCTAssertNil(model.sheet)
-        XCTAssertEqual(model.selectedTaskID, "57")
-        XCTAssertEqual(model.tab, .activity)
+        XCTAssertEqual(model.sheet, .task("57"))
+        XCTAssertEqual(model.tab, .activity, "work already under way opens on what happened")
+        XCTAssertEqual(model.destination, .board, "selecting a card never navigates away from the board")
     }
 
     func testDockingRunsOpensThePanel() async {
@@ -241,10 +236,8 @@ final class ProjectWindowModelTests: XCTestCase {
 
     func testLinkRoutesToFinding() async {
         let model = await makeStudyHubModel()
-        model.reportSource = .ideation
         model.handle(.finding("F-093"))
-        XCTAssertEqual(model.destination, .reports)
-        XCTAssertEqual(model.reportSource, .survey, "a finding link lands on the survey side")
+        XCTAssertEqual(model.destination, .survey)
         XCTAssertEqual(model.selectedFindingID, "F-093")
     }
 

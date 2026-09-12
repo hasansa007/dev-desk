@@ -45,9 +45,9 @@ struct SheetHost: View {
         case .reconcileFinding(let findingID):
             ReconcileFindingSheet(title: reconcileTitle(findingID), reconcile: findFinding(findingID)?.reconcile,
                                   onCancel: model.dismissSheet, onConfirm: { model.confirmSheet() })
-        case .unstartedTask(let taskID):
+        case .task(let taskID):
             if let task = model.task(taskID) {
-                UnstartedTaskSheet(model: model, task: task)
+                TaskDialog(model: model, task: task)
             } else {
                 SheetChrome(title: "Task", confirmTitle: "Start task", width: 720, confirmDisabled: true,
                             onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
@@ -63,6 +63,8 @@ struct SheetHost: View {
                     UnavailableView(reason: "This task is no longer on the board.")
                 }
             }
+        case .runFocus(let door):
+            RunFocusSheet(model: model, door: door)
         case .cloneRepository:
             CloneRepositorySheet(onDismiss: model.dismissSheet)
         case .createProject:

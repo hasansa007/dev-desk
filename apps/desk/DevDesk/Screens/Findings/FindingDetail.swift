@@ -4,6 +4,7 @@ import SwiftUI
 struct FindingDetail: View {
     let finding: Finding
     let model: ProjectWindowModel
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -39,8 +40,24 @@ struct FindingDetail: View {
                     .frame(maxWidth: 720, alignment: .leading)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            PropertyChip(finding.verificationLabel, verticalPadding: 2, horizontalPadding: 9)
+            VStack(alignment: .trailing, spacing: 8) {
+                PropertyChip(finding.verificationLabel, verticalPadding: 2, horizontalPadding: 9)
+                Button("Add to backlog…") { file() }
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                    .disabled(model.runBlockedReason(agent: defaultConnection) != nil)
+                    .help(model.runBlockedReason(agent: defaultConnection)
+                          ?? "Queues dev:create-issue for this finding; it drafts and files with this repository's labels")
+            }
         }
+    }
+
+    /// The door drafts the issue; this hands it the finding, its evidence and where it came from.
+    private func file() {
+        let sources = finding.locations.isEmpty ? "" : " Sources: \(finding.locations.joined(separator: ", "))."
+        model.fileFromReport(itemID: finding.id,
+                             description: "\(finding.title). \(finding.summary)\(sources) "
+                                 + "Found by dev:survey, run \(finding.runID); \(finding.verificationLabel). \(finding.limits)",
+                             agent: defaultConnection)
     }
 
     private var sourceLocationsCard: some View {

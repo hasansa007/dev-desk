@@ -41,6 +41,10 @@ public final class DoorRuns {
     }
 
     public func run(_ id: String) -> DoorRun? { runs.first { $0.id == id } }
+
+    /// One id shape the whole app agrees on, so a card, a run row and a shell all mean the same session.
+    public static func id(door: String) -> String { "door:\(door)" }
+    public static func id(task number: Int) -> String { "task:\(number)" }
 }
 
 /// Builds what a door is started with: the prompt form `scripts/dev.py` builds, so one string works in either CLI.

@@ -85,7 +85,7 @@ struct BoardScreen: View {
     private func boardContent(_ tasks: [DeskTask]) -> some View {
         if tasks.isEmpty {
             EmptyStateView(title: "No tasks yet", message: "Describe the first piece of work, or run a survey to learn the codebase.") {
-                Button("Open Reports") { model.go(.reports) }
+                Button("Open Survey") { model.go(.survey) }
                     .buttonStyle(DeskButtonStyle(kind: .secondary))
             }
         } else {
@@ -171,7 +171,8 @@ private struct BoardColumnView: View {
             }
             ForEach(tasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
-                         action: { model.openTask(task.id) }, moves: moves(for: task))
+                         action: { model.openTask(task.id) }, moves: moves(for: task),
+                         isRunning: model.isTaskRunning(task))
             }
         }
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)

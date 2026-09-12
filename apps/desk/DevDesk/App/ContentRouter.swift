@@ -82,15 +82,15 @@ struct ContentRouter: View {
         case .board:
             if model.mode == .parallel {
                 ParallelScreen(model: model)
-            } else if let task = model.selectedTask {
-                TaskWorkspaceScreen(model: model, task: task)
             } else {
                 BoardScreen(model: model)
             }
         case .roadmap:
             RoadmapScreen(model: model)
-        case .reports:
-            ReportsScreen(model: model)
+        case .survey:
+            FindingsScreen(model: model)
+        case .ideation:
+            IdeationScreen(model: model)
         case .decisions:
             DecisionsScreen(model: model)
         case .settings:

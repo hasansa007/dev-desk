@@ -135,12 +135,26 @@ extension ProjectWindowModel {
     /// `id` separates runs of the same door for different tasks; the folder rule prefixes `folderNote` with where it opens.
     func prepareRun(door: String, title: String, agent: String, arguments: [String] = [],
                     id: String? = nil, folderNote: String? = nil) {
-        guard canRunDoors,
+        let runID = id ?? DoorRuns.id(door: door)
+        // One run per door, and per task: a second start would give the same id two shells and the panel one row.
+        guard canRunDoors, !isRunLive(runID),
               let command = DoorCommand.build(door: door, agent: agent, arguments: arguments, home: NSHomeDirectory())
-        else { return }
-        runs.add(DoorRun(id: id ?? "door:\(door)", title: title, agent: agent, command: command,
+        else {
+            runsOpen = isRunLive(runID) ? true : runsOpen
+            runs.selectedID = isRunLive(runID) ? runID : runs.selectedID
+            return
+        }
+        runs.add(DoorRun(id: runID, title: title, agent: agent, command: command,
                          folderNote: folderNote ?? "a door reads the whole project, not one task's branch."))
         runsOpen = true
+    }
+
+    /// Approving an item files it through `dev:create-issue` rather than writing the issue here, so the door's
+    /// checks and this repository's labels still apply to anything that reaches the backlog.
+    func fileFromReport(itemID: String, description: String, agent: String) {
+        prepareRun(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
+                   id: DoorRuns.id(door: "create-issue:\(itemID)"),
+                   folderNote: "filing reads the tracker, so it runs at the project root.")
     }
 
     /// Why the button that would start `agent` is disabled, or nil when it can run.

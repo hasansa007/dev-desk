@@ -94,9 +94,12 @@ struct Sidebar: View {
         switch destination {
         case .board:
             return model.snapshot?.board.value == nil ? nil : (model.openTaskCount, false)
-        case .reports:
-            let count = (model.findingsCount ?? 0) + (model.ideationCount ?? 0)
-            return count > 0 ? (count, false) : nil
+        case .survey:
+            guard let count = model.findingsCount, count > 0 else { return nil }
+            return (count, false)
+        case .ideation:
+            guard let count = model.ideationCount, count > 0 else { return nil }
+            return (count, false)
         case .decisions:
             return model.pendingDecisionCount > 0 ? (model.pendingDecisionCount, true) : nil
         case .roadmap, .settings:
@@ -113,7 +116,8 @@ struct Sidebar: View {
         switch destination {
         case .board: return "square.grid.3x2"
         case .roadmap: return "map"
-        case .reports: return "scope"
+        case .survey: return "scope"
+        case .ideation: return "lightbulb"
         case .decisions: return "questionmark.diamond"
         case .settings: return "gearshape"
         }

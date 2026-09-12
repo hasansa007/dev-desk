@@ -10,10 +10,7 @@ struct FindingsScreen: View {
                 if report.runs.isEmpty {
                     EmptyStateView(title: "No survey runs yet",
                                    message: "A survey writes its report to `docs/survey/`, and it appears here.") {
-                        HStack(spacing: 10) {
-                            ReportSourcePicker(model: model)
-                            RunSurveyButton(model: model)
-                        }
+                        RunSurveyButton(model: model)
                     }
                 } else {
                     FindingsSplitView(model: model, report: report)
@@ -30,9 +27,7 @@ private struct RunSurveyButton: View {
 
     var body: some View {
         let blocked = model.runBlockedReason(agent: defaultConnection)
-        Button("Run survey") {
-            model.prepareRun(door: "survey", title: "Survey", agent: defaultConnection)
-        }
+        Button("Run survey") { model.present(.runFocus("survey")) }
         .buttonStyle(DeskButtonStyle(kind: .primary, size: .smallWide))
         .disabled(blocked != nil)
         .help(blocked ?? "Start dev:survey in \(defaultConnection), in this project's folder")
@@ -104,7 +99,7 @@ private struct FindingsSplitView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                ReportSourcePicker(model: model)
+                Text("Survey").font(DeskFont.section)
                 Spacer()
                 RunSurveyButton(model: model)
             }

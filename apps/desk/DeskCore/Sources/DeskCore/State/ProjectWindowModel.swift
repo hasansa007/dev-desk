@@ -2,15 +2,8 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, roadmap, reports, decisions, settings
+    case board, roadmap, survey, ideation, decisions, settings
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
-}
-
-/// Which door's reports the Reports surface is showing. Survey finds defects, ideation finds opportunities;
-/// the screens are the same shape, so they are one destination with a switch rather than two.
-public enum ReportSource: String, CaseIterable, Codable, Hashable {
-    case survey, ideation
-    public var title: String { self == .survey ? "Survey" : "Ideation" }
 }
 
 public enum TaskTab: String, CaseIterable, Codable, Hashable {
@@ -40,8 +33,9 @@ public enum SettingsSection: String, CaseIterable, Codable, Hashable {
 
 public enum SheetKind: Hashable, Identifiable {
     case openProject, compareOutputs, followUp, handoff, reconcileFinding(String), cloneRepository, createProject
-    case unstartedTask(String)
+    case task(String)
     case cancelTask(String)
+    case runFocus(String)
 
     public var id: String {
         switch self {
@@ -52,8 +46,9 @@ public enum SheetKind: Hashable, Identifiable {
         case .reconcileFinding(let findingID): return "reconcileFinding:\(findingID)"
         case .cloneRepository: return "cloneRepository"
         case .createProject: return "createProject"
-        case .unstartedTask(let taskID): return "unstartedTask:\(taskID)"
+        case .task(let taskID): return "task:\(taskID)"
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
+        case .runFocus(let door): return "runFocus:\(door)"
         }
     }
 }
@@ -98,7 +93,6 @@ public final class ProjectWindowModel {
     public var selectedFindingID: String?
     public var selectedRunID: String?
     public var findingFilter: FindingCategory?
-    public var reportSource: ReportSource = .survey
     public var selectedOpportunityID: String?
     public var selectedIdeationRunID: String?
     public var ideationFilter: OpportunityVerdict?
@@ -124,6 +118,10 @@ public final class ProjectWindowModel {
             shellSessions = ShellSessions(projectRoot: URL(fileURLWithPath: path, isDirectory: true))
         } else {
             shellSessions = ShellSessions(projectRoot: nil)
+        }
+        // A finished run has written whatever it was going to write: read the project again rather than wait to be asked.
+        shellSessions.onSessionEnded = { [weak self] _ in
+            Task { await self?.load() }
         }
     }
 
@@ -176,18 +174,14 @@ public final class ProjectWindowModel {
         }
     }
 
-    /// An unstarted card opens as a sheet over the board; anything with work behind it opens its workspace.
+    /// Every card opens the same dialog over the board. Selecting a card never navigates away from it,
+    /// so the board stays where it was and the dialog carries the whole task.
     public func openTask(_ id: String) {
         destination = .board
         lastOpenedTaskID = id
-        guard task(id)?.isUnstarted != true else {
-            sheet = .unstartedTask(id)
-            return
-        }
-        mode = .focus
         selectedTaskID = id
-        tab = .activity
-        dockTabID = nil
+        tab = task(id)?.isUnstarted == true ? .requirements : .activity
+        sheet = .task(id)
     }
 
     public func setMode(_ mode: ViewMode) {
@@ -214,10 +208,8 @@ public final class ProjectWindowModel {
         if let id { selectedDecisionID = id }
     }
 
-    /// A finding link always lands on the survey side of Reports, whichever source was showing.
     public func openFinding(_ id: String) {
-        destination = .reports
-        reportSource = .survey
+        destination = .survey
         findingFilter = nil
         selectedFindingID = id
     }
@@ -293,6 +285,21 @@ public final class ProjectWindowModel {
 
     /// The milestone a card would be queued into; nil when the board could not read one.
     public var activeMilestone: String? { snapshot?.activeMilestone }
+
+    /// A session for `id` is preparing or running. A card says so from this, never by moving column: the
+    /// columns are git's (ADR 0011), and a run that has written nothing yet has not changed them.
+    public func isRunLive(_ id: String) -> Bool {
+        switch shellSessions.state(for: id) {
+        case .preparing, .running: return true
+        default: return false
+        }
+    }
+
+    /// True while this task's own run is live, whichever screen started it.
+    public func isTaskRunning(_ task: DeskTask) -> Bool {
+        guard let number = task.taskNumber else { return false }
+        return isRunLive(DoorRuns.id(task: number))
+    }
 
     /// Runs one bounded write from `dev:kanban` Phase 7, then reloads so the board shows what GitHub now says.
     /// A sample project, or a repository with no GitHub remote, is refused rather than half-written.

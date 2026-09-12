@@ -17,6 +17,8 @@ struct TaskCard: View {
     let isLastOpened: Bool
     let action: () -> Void
     var moves: CardMoves?
+    /// This task has a live run in this window. It is the app's own process state, never a claim about git's columns.
+    var isRunning = false
 
     var body: some View {
         Button(action: action) {
@@ -88,6 +90,9 @@ struct TaskCard: View {
 
     private var metaRow: some View {
         HStack(spacing: 8) {
+            if isRunning {
+                StatusPill(badge: StatusBadge(.running, "Running", pulses: true))
+            }
             if !metaText.isEmpty {
                 Text(metaText)
                     .font(DeskFont.mono(11))

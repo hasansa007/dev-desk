@@ -10,10 +10,7 @@ struct IdeationScreen: View {
                 if report.runs.isEmpty {
                     EmptyStateView(title: "No ideation runs yet",
                                    message: "An ideation run writes its report to `docs/ideation/`, and it appears here.") {
-                        HStack(spacing: 10) {
-                            ReportSourcePicker(model: model)
-                            GenerateIdeasButton(model: model)
-                        }
+                        GenerateIdeasButton(model: model)
                     }
                 } else {
                     IdeationSplitView(model: model, report: report)
@@ -26,15 +23,11 @@ struct IdeationScreen: View {
 /// Starts `dev:ideation` as a run, with the kinds the developer left on; none selected means the door's own default, all three.
 private struct GenerateIdeasButton: View {
     let model: ProjectWindowModel
-    var kinds: Set<IdeationKind> = []
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
     var body: some View {
         let blocked = model.runBlockedReason(agent: defaultConnection)
-        Button("Generate ideas") {
-            model.prepareRun(door: "ideation", title: "Ideation", agent: defaultConnection,
-                             arguments: IdeationKind.allCases.filter(kinds.contains).map(\.argument))
-        }
+        Button("Generate ideas") { model.present(.runFocus("ideation")) }
         .buttonStyle(DeskButtonStyle(kind: .primary, size: .smallWide))
         .disabled(blocked != nil)
         .help(blocked ?? "Start dev:ideation in \(defaultConnection), in this project's folder")
@@ -59,7 +52,6 @@ enum IdeationKind: String, CaseIterable, Hashable {
 private struct IdeationSplitView: View {
     @Bindable var model: ProjectWindowModel
     let report: IdeationReport
-    @State private var kinds: Set<IdeationKind> = []
 
     private var visible: [Opportunity] {
         report.opportunities
@@ -78,7 +70,7 @@ private struct IdeationSplitView: View {
             Group {
                 if let selected {
                     ScrollView {
-                        OpportunityDetail(opportunity: selected)
+                        OpportunityDetail(opportunity: selected, model: model)
                             .padding(18)
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
@@ -114,19 +106,11 @@ private struct IdeationSplitView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                ReportSourcePicker(model: model)
+                Text("Ideation").font(DeskFont.section)
                 Spacer()
-                GenerateIdeasButton(model: model, kinds: kinds)
+                GenerateIdeasButton(model: model)
             }
             runLine.padding(.top, 8)
-            FlowLayout(spacing: 5) {
-                ForEach(IdeationKind.allCases, id: \.self) { kind in
-                    ChipToggle(title: kind.title, isOn: kinds.contains(kind), tone: .info) {
-                        if kinds.contains(kind) { kinds.remove(kind) } else { kinds.insert(kind) }
-                    }
-                }
-            }
-            .padding(.top, 9)
             FlowLayout(spacing: 5) {
                 ForEach(OpportunityVerdict.allCases, id: \.self) { verdict in
                     let count = report.count(of: verdict, run: model.selectedIdeationRunID)
@@ -229,6 +213,8 @@ private struct OpportunityRow: View {
 
 private struct OpportunityDetail: View {
     let opportunity: Opportunity
+    let model: ProjectWindowModel
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -248,7 +234,16 @@ private struct OpportunityDetail: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                PropertyChip(opportunity.verdict.rawValue, verticalPadding: 2, horizontalPadding: 9)
+                VStack(alignment: .trailing, spacing: 8) {
+                    PropertyChip(opportunity.verdict.rawValue, verticalPadding: 2, horizontalPadding: 9)
+                    if opportunity.verdict == .confirmed {
+                        Button("Add to backlog…") { file() }
+                            .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                            .disabled(model.runBlockedReason(agent: defaultConnection) != nil)
+                            .help(model.runBlockedReason(agent: defaultConnection)
+                                  ?? "Queues dev:create-issue for this opportunity, labelled as an enhancement")
+                    }
+                }
             }
             HStack(alignment: .top, spacing: 14) {
                 valueCard("Gain", opportunity.gain ?? "not stated")
@@ -262,6 +257,18 @@ private struct OpportunityDetail: View {
             }
             .padding(.top, 14)
         }
+    }
+
+    /// Only a confirmed opportunity can be filed: a plausible one is held in the report with its reason, by design.
+    private func file() {
+        let sources = opportunity.locations.isEmpty ? "" : " Sources: \(opportunity.locations.joined(separator: ", "))."
+        let proposal = opportunity.proposed.map { " Proposed: \($0)." } ?? ""
+        model.fileFromReport(itemID: opportunity.id,
+                             description: "\(opportunity.title).\(proposal)\(sources) "
+                                 + "Gain: \(opportunity.gain ?? "not stated"). Cost: \(opportunity.cost ?? "not stated"). "
+                                 + "Doing nothing: \(opportunity.doingNothing ?? "not stated"). "
+                                 + "Found by dev:ideation, run \(opportunity.runID). \(opportunity.limits)",
+                             agent: defaultConnection)
     }
 
     private func valueCard(_ title: String, _ value: String) -> some View {
@@ -317,8 +324,7 @@ struct IdeationScreen_Previews: PreviewProvider {
             IdeationScreen(model: model)
                 .task {
                     await model.load()
-                    model.go(.reports)
-                    model.reportSource = .ideation
+                    model.go(.ideation)
                 }
         }
     }
