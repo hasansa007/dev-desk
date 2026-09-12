@@ -1,6 +1,6 @@
 # 0023 — The gate ran late, and took the fold with it
 
-Status:  Accepted
+Status:  Accepted — decision 6 amended by [0024](0024-a-board-card-is-one-block-and-its-chrome-is-one-modifier.md)
 Date:    2026-09-12
 Commit:  (this branch)  ·  `fix/desk-delete-hardening-and-one-card-shape`
 Amends:  0022 (decisions 1 and 4), 0021 (card anatomy)

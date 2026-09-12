@@ -1,19 +1,50 @@
 import DeskCore
 import SwiftUI
 
-/// Every door this window has started, with the selected one's terminal. It is the window's bottom edge —
-/// where a Mac app keeps its output — and never a window floating over the work.
+/// Everything this window has live — the doors it started, and every task's terminal and agent. It is the
+/// window's bottom edge, where a Mac app keeps its output, and never a window floating over the work.
+///
+/// It listed door runs only, so a panel titled Runs said "Nothing running" while an agent worked and the
+/// board's own header counted it. A run you cannot see is a run you cannot stop.
 struct RunsPanel: View {
     @Bindable var model: ProjectWindowModel
+    @Environment(\.shellTerminals) private var terminals
+    @Environment(\.agentTerminals) private var agents
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
+    @State private var answers: [String: String] = [:]
 
     private var selected: DoorRun? {
         model.runs.selectedID.flatMap { model.runs.run($0) } ?? model.runs.runs.first
     }
 
+    /// A task's own terminal or agent, which lives in that task's dialog. The panel lists it and can stop it;
+    /// it does not re-host the terminal, because one NSView cannot be in two view hierarchies at once.
+    private struct SessionRow: Identifiable {
+        let id: String
+        let taskID: String
+        let title: String
+        let kind: TaskActivity
+        let state: ShellSessionState
+    }
+
+    private var sessionRows: [SessionRow] {
+        let doorIDs = Set(model.runs.runs.map(\.id))
+        func rows(_ sessions: ShellSessions, kind: TaskActivity) -> [SessionRow] {
+            sessions.activeTaskIDs.filter { !doorIDs.contains($0) }.map { taskID in
+                SessionRow(id: "\(kind.rawValue):\(taskID)", taskID: taskID,
+                           title: model.task(taskID)?.title ?? taskID,
+                           kind: kind, state: sessions.state(for: taskID))
+            }
+        }
+        return rows(model.agentSessions, kind: .agent) + rows(model.shellSessions, kind: .shell)
+    }
+
+    private var isEmpty: Bool { model.runs.runs.isEmpty && sessionRows.isEmpty && (jobs?.jobs.isEmpty ?? true) }
+
     var body: some View {
         VStack(spacing: 0) {
             header
-            if model.runs.runs.isEmpty {
+            if isEmpty {
                 EmptyStateView(title: "Nothing running",
                                message: "Run survey in Findings, or Start task on a card, and it appears here.")
             } else {
@@ -52,11 +83,136 @@ struct RunsPanel: View {
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
+    /// Scrolls: a job row carries a log box and, when it is asking, a banner and a field. Three of them used to
+    /// push Stop and Answer past the panel's edge with no way to reach them.
     private var runList: some View {
-        VStack(spacing: 0) {
+        ScrollView {
+            VStack(spacing: 0) {
             ForEach(model.runs.runs) { run in
                 runRow(run)
             }
+            ForEach(sessionRows) { row in
+                sessionRow(row)
+            }
+            if let jobs {
+                ForEach(jobs.jobs) { job in
+                    jobRow(job, registry: jobs)
+                }
+            }
+            }
+        }
+        .frame(maxHeight: 260)
+    }
+
+    /// A background run has no terminal, so the row is where it lives: its log, its Stop, and — when it stopped
+    /// needing an answer — the box that answers it and resumes the same session (ADR 0025).
+    @ViewBuilder private func jobRow(_ job: BackgroundJob, registry: JobRegistry) -> some View {
+        let tone: StatusTone = {
+            switch job.state {
+            case .starting: return .info
+            case .running: return .running
+            case .asking: return .waiting
+            case .ended(_, let failed): return failed ? .failed : .ended
+            }
+        }()
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                StatusDot(tone: tone, pulses: job.state.isLive)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(job.title)
+                        .font(DeskFont.body.weight(.semibold))
+                        .foregroundStyle(DeskColor.ink)
+                        .lineLimit(1)
+                    Text("\(job.agent) · in the background · \(job.state.label)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DeskColor.mutedInk)
+                }
+                Spacer(minLength: 4)
+                if job.state.isLive {
+                    Button("Stop") { registry.stop(job.id) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help("End this background run")
+                } else {
+                    Button("Remove") { registry.remove(job.id) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                }
+            }
+            if !job.log.isEmpty {
+                ScrollView {
+                    Text(job.log.joined(separator: "\n"))
+                        .font(DeskFont.mono(11))
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 120)
+                .padding(8)
+                .background(DeskColor.canvas, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+            }
+            if case .asking(let question) = job.state {
+                NoticeBanner(tone: .waiting, title: "This run needs an answer", message: question, style: .compact)
+                HStack(spacing: 8) {
+                    TextField("Your answer", text: Binding(get: { answers[job.id] ?? "" },
+                                                           set: { answers[job.id] = $0 }))
+                        .textFieldStyle(.plain)
+                        .font(DeskFont.body)
+                        .padding(8)
+                        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
+                    Button("Answer and continue") {
+                        let text = (answers[job.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !text.isEmpty else { return }
+                        answers[job.id] = ""
+                        registry.answer(text, to: job.id)
+                    }
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                    .disabled((answers[job.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
+    }
+
+    /// A terminal or an agent someone started from a task's dialog. Open goes to it; Stop ends it here, which is
+    /// what the list was missing — Remove only ever dropped a row and left the process running.
+    private func sessionRow(_ row: SessionRow) -> some View {
+        let state = Self.label(for: row.state)
+        return HStack(spacing: 8) {
+            StatusDot(tone: state.tone, pulses: state.pulses)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.title)
+                    .font(DeskFont.body.weight(.semibold))
+                    .foregroundStyle(DeskColor.ink)
+                    .lineLimit(1)
+                Text("\(row.kind.label) · \(state.label)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.mutedInk)
+            }
+            Spacer(minLength: 4)
+            Button("Open") {
+                model.openTask(row.taskID)
+                model.tab = row.kind == .agent ? .agent : .shell
+            }
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+            Button("Stop") { stop(row) }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                .disabled(!state.isLive)
+                .help(state.isLive ? "End this session and its process" : "This session has already ended")
+        }
+        .padding(.vertical, 8)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
+    }
+
+    /// SIGHUP then SIGKILL, through the registry that owns the session — the same path the pane's own Stop takes.
+    private func stop(_ row: SessionRow) {
+        switch row.kind {
+        case .agent: agents?.end(taskID: row.taskID)
+        case .shell, .run: terminals?.end(taskID: row.taskID)
         }
     }
 
@@ -75,10 +231,15 @@ struct RunsPanel: View {
                         .foregroundStyle(DeskColor.mutedInk)
                 }
                 Spacer(minLength: 4)
-                Button("Remove") { model.runs.remove(run.id) }
-                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                    .disabled(state.isLive)
-                    .help(state.isLive ? "End the run in its terminal first" : "Remove this run from the list")
+                if state.isLive {
+                    Button("Stop") { terminals?.end(taskID: run.id) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help("End this run and its shell")
+                } else {
+                    Button("Remove") { model.runs.remove(run.id) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help("Remove this run from the list")
+                }
             }
             .padding(.vertical, 8)
             .padding(.horizontal, 12)

@@ -14,6 +14,7 @@ struct TaskDialog: View {
     var body: some View {
         SheetChrome(title: title, confirmTitle: confirmTitle,
                     confirmDisabled: !isRunning && blockedReason != nil,
+                    cancelTitle: "Close",
                     onCancel: model.dismissSheet, onConfirm: confirm) {
             VStack(alignment: .leading, spacing: 12) {
                 facts

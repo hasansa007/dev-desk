@@ -7,7 +7,8 @@ struct SettingsSheet: View {
     @Bindable var model: ProjectWindowModel
 
     var body: some View {
-        SheetChrome(title: "Settings", confirmTitle: "Done",                     onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
+        SheetChrome(title: "Settings", confirmTitle: "Done", cancelTitle: "Close",
+                    onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
             SettingsScreen(model: model)
                 .frame(height: 560)
                 .background(DeskColor.canvas)

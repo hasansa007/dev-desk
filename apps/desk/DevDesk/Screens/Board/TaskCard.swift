@@ -21,6 +21,13 @@ struct BranchActions {
     let delete: (() -> Void)?
 }
 
+/// The Start control is an overlay, so the note sharing its band has to be told how much room it takes.
+/// A constant would drift the moment the button's size token or its label changed, with nothing to catch it.
+private struct StartWidthKey: SwiftUI.PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 /// One board card; reused wherever a task list needs the same summary (D:162–232).
 struct TaskCard: View {
     let task: DeskTask
@@ -34,6 +41,7 @@ struct TaskCard: View {
     var start: (() -> Void)?
     /// What a card with a branch but no issue can do; `moves` covers the ones with an issue.
     var branchActions: BranchActions?
+    @State private var startWidth: CGFloat = 0
 
     var body: some View {
         Button(action: action) {
@@ -45,6 +53,7 @@ struct TaskCard: View {
         // Siblings, not children of the card's button, so pressing one never also opens the task.
         .overlay(alignment: .topTrailing) { movesMenu.padding(7) }
         .overlay(alignment: .bottomTrailing) { startButton.padding(11) }
+        .onPreferenceChange(StartWidthKey.self) { startWidth = $0 }
     }
 
     @ViewBuilder private var movesMenu: some View {
@@ -93,40 +102,39 @@ struct TaskCard: View {
 
     private var content: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Two lines whatever the title is. A three-line title made one card half again as tall as its
+            // neighbour, which is what made a column read as a ragged list rather than a column.
             Text(task.title)
                 .font(.system(size: 13, weight: .semibold))
                 .foregroundStyle(DeskColor.ink)
                 .lineSpacing(2)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .lineLimit(2)
+                .frame(maxWidth: .infinity, minHeight: DeskMetric.cardTitleHeight,
+                       maxHeight: DeskMetric.cardTitleHeight, alignment: .topLeading)
             metaRow
                 .padding(.top, 9)
             ratingRow
                 .padding(.top, 7)
-            if let note = task.cardNote {
-                Text(note)
-                    .font(.system(size: 11))
-                    .foregroundStyle(task.cardNoteIsWarning ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
-                    .padding(.top, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            // The row the Start control occupies. The control itself is a sibling overlay, so the card keeps
-            // its height without nesting a button inside a button.
-            if offersStart {
-                Color.clear
-                    .frame(height: DeskButtonStyle.Size.mini.height)
-                    .padding(.top, 9)
-            }
+            // One band at the bottom, reserved on every card: the note reads along it, and the Start control
+            // sits at its right as a sibling overlay — never a button inside a button. Two separate reserved
+            // rows left every card without an action half-empty.
+            bottomBand
+                .padding(.top, 9)
         }
-        .padding(11)
-        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 9))
-        .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(isLastOpened ? DeskColor.accent : DeskColor.border))
-        .overlay {
-            if isLastOpened {
-                RoundedRectangle(cornerRadius: 9).inset(by: -1.5)
-                    .stroke(DeskColor.accent.opacity(0.14), lineWidth: 3)
-            }
-        }
-        .contentShape(RoundedRectangle(cornerRadius: 9))
+        .frame(height: DeskMetric.cardContentHeight, alignment: .topLeading)
+        .deskCard(isSelected: isLastOpened)
+    }
+
+    /// Always present, so a card with something to say is not a different size from one without. The trailing
+    /// inset keeps the note clear of the Start control sharing this band.
+    private var bottomBand: some View {
+        Text(task.cardNote ?? " ")
+            .font(.system(size: 11))
+            .foregroundStyle(task.cardNoteIsWarning ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
+            .lineLimit(1)
+            .padding(.trailing, offersStart ? startWidth + 8 : 0)
+            .frame(maxWidth: .infinity, minHeight: DeskButtonStyle.Size.mini.height,
+                   maxHeight: DeskButtonStyle.Size.mini.height, alignment: .leading)
     }
 
     /// Offered only when there is something to start and nothing already running for this task.
@@ -139,6 +147,9 @@ struct TaskCard: View {
             }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             .accessibilityLabel("Start \(task.issueLabel.isEmpty ? task.title : task.issueLabel)")
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: StartWidthKey.self, value: proxy.size.width)
+            })
         }
     }
 
@@ -151,10 +162,12 @@ struct TaskCard: View {
                 Text(metaText)
                     .font(DeskFont.mono(11))
                     .foregroundStyle(DeskColor.mutedInk)
+                    .lineLimit(1)
             }
             Text(branchFacts)
                 .font(.system(size: 11))
                 .foregroundStyle(DeskColor.faintInk)
+                .lineLimit(1)
             if let badge = task.cardBadge {
                 StatusPill(badge: badge)
             } else if let inline = task.cardInlineText {

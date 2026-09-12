@@ -1,0 +1,220 @@
+import Foundation
+import XCTest
+@testable import DeskCore
+
+final class JobStreamTests: XCTestCase {
+    func testTheSessionIdIsReadFromTheInitLine() {
+        // Codex reports its own id; claude is told one. Either way `--resume` needs it back.
+        let event = JobStream.event(from: #"{"type":"system","subtype":"init","session_id":"abc-123"}"#)
+        XCTAssertEqual(event, .session("abc-123"))
+    }
+
+    func testAssistantTextBecomesALine() {
+        let event = JobStream.event(from: #"{"type":"assistant","message":{"content":[{"type":"text","text":"Reading the door"}]}}"#)
+        XCTAssertEqual(event, .line("Reading the door"))
+    }
+
+    func testAToolUseIsNamedRatherThanDumped() {
+        let event = JobStream.event(from: #"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"ls"}}]}}"#)
+        XCTAssertEqual(event, .line("· Bash"))
+    }
+
+    func testASuccessfulResultEndsWithoutAQuestion() {
+        let event = JobStream.event(from: #"{"type":"result","subtype":"success","is_error":false,"result":"Survey written"}"#)
+        XCTAssertEqual(event, .ended(text: "Survey written", question: nil))
+    }
+
+    /// A headless run has no terminal to prompt in, so needing an answer shows up as its ending.
+    func testAnErrorResultEndsWithAQuestionToAnswer() {
+        let event = JobStream.event(from: #"{"type":"result","subtype":"error_max_turns","is_error":true,"result":"Needs permission to push"}"#)
+        XCTAssertEqual(event, .ended(text: "Needs permission to push", question: "Needs permission to push"))
+    }
+
+    /// Only a stop-to-ask is a question. Anything else that failed simply failed.
+    func testAFailureIsNotAQuestion() {
+        let event = JobStream.event(from: #"{"type":"result","subtype":"error_during_execution","is_error":true,"result":"Credit balance too low"}"#)
+        XCTAssertEqual(event, .ended(text: "Credit balance too low", question: nil))
+    }
+
+    /// Agents print plain notices between JSON lines; dropping them hides why a run stalled.
+    func testANonJsonNoticeIsKeptAsALine() {
+        XCTAssertEqual(JobStream.event(from: "warning: transcript saving is off"), .line("warning: transcript saving is off"))
+    }
+
+    func testBlankAndUnknownLinesAreIgnored() {
+        XCTAssertNil(JobStream.event(from: "   "))
+        XCTAssertNil(JobStream.event(from: #"{"type":"stream_event","delta":{}}"#))
+    }
+}
+
+@MainActor
+final class JobRegistryTests: XCTestCase {
+    private final class FakeSpawner: JobSpawner {
+        var launched: [(id: String, launch: JobLaunch)] = []
+        var stopped: [String] = []
+        private var lines: [String: @MainActor (String) -> Void] = [:]
+        private var exits: [String: @MainActor (Int32) -> Void] = [:]
+
+        func spawn(id: String, launch: JobLaunch, directory: String,
+                   onLine: @escaping @MainActor (String) -> Void, onExit: @escaping @MainActor (Int32) -> Void) {
+            launched.append((id, launch))
+            lines[id] = onLine
+            exits[id] = onExit
+        }
+
+        func stop(id: String) { stopped.append(id) }
+        @MainActor func emit(_ line: String, to id: String) { lines[id]?(line) }
+        @MainActor func exit(_ status: Int32, of id: String) { exits[id]?(status) }
+    }
+
+    private func registry() -> (JobRegistry, FakeSpawner) {
+        let spawner = FakeSpawner()
+        return (JobRegistry(spawner: spawner, home: "/Users/test"), spawner)
+    }
+
+    func testStartingAJobSpawnsTheHeadlessArgv() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        XCTAssertEqual(spawner.launched.count, 1)
+        XCTAssertEqual(spawner.launched[0].launch.executable, "claude")
+        XCTAssertTrue(spawner.launched[0].launch.arguments.contains("--output-format"))
+        XCTAssertEqual(jobs.job(id)?.state, .starting)
+        XCTAssertEqual(jobs.liveCount, 1)
+    }
+
+    func testAnAgentWithNoVerifiedInvocationStartsNothing() {
+        let (jobs, spawner) = registry()
+        XCTAssertNil(jobs.start(door: "survey", title: "Survey", agent: "Gemini", permission: .readOnly, directory: "/repo"))
+        XCTAssertTrue(spawner.launched.isEmpty, "a guessed invocation is worse than none")
+        XCTAssertTrue(jobs.jobs.isEmpty)
+    }
+
+    func testTheLogStreamsAndTheSessionIdIsLearned() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Codex",
+                                          permission: .readOnly, directory: "/repo"))
+        spawner.emit(#"{"type":"system","subtype":"init","session_id":"sess-9"}"#, to: id)
+        spawner.emit(#"{"type":"assistant","message":{"content":[{"type":"text","text":"Reading"}]}}"#, to: id)
+        XCTAssertEqual(jobs.job(id)?.sessionID, "sess-9")
+        XCTAssertEqual(jobs.job(id)?.state, .running)
+        XCTAssertEqual(jobs.job(id)?.log, ["Reading"])
+    }
+
+    func testARunThatEndsOnAQuestionWaitsRatherThanFinishing() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        spawner.emit(#"{"type":"result","subtype":"error_max_turns","is_error":true,"result":"Push?"}"#, to: id)
+        XCTAssertEqual(jobs.job(id)?.state, .asking("Push?"))
+        // The process exits right after; that exit must not overwrite the question with "finished".
+        spawner.exit(0, of: id)
+        XCTAssertEqual(jobs.job(id)?.state, .asking("Push?"))
+    }
+
+    func testAnsweringResumesTheSameSession() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        let sessionID = jobs.job(id)?.sessionID
+        XCTAssertNotNil(sessionID)
+        spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
+        jobs.answer("yes, push", to: id)
+        XCTAssertEqual(spawner.launched.count, 2)
+        let resumed = try XCTUnwrap(spawner.launched.last).launch.arguments
+        XCTAssertTrue(resumed.contains("--resume"))
+        XCTAssertTrue(resumed.contains(sessionID ?? "—"))
+        XCTAssertTrue(resumed.contains("yes, push"))
+        XCTAssertEqual(jobs.job(id)?.state, .starting)
+    }
+
+    /// An exhausted balance or a bad key is a failure, not a question. Presenting it as one leaves the row
+    /// waiting forever: an asking job ignores its own exit, and answering resumes a session that fails the same.
+    func testARealFailureEndsRatherThanAsking() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        spawner.emit(#"{"type":"result","subtype":"error_during_execution","is_error":true,"result":"Credit balance too low"}"#, to: id)
+        XCTAssertEqual(jobs.job(id)?.state, .ended(text: "Credit balance too low", failed: false))
+        XCTAssertFalse(jobs.job(id)?.state.isLive ?? true)
+    }
+
+    /// Resuming without the grant drops a headless run back to prompting, and a run with no terminal to prompt
+    /// in stalls on its first tool call and asks again — a loop the developer cannot break.
+    func testAnsweringCarriesTheGrantTheRunStartedWith() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .everything, directory: "/repo"))
+        spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
+        jobs.answer("go", to: id)
+        let resumed = try XCTUnwrap(spawner.launched.last).launch.arguments
+        XCTAssertTrue(resumed.contains("--dangerously-skip-permissions"), "the grant must survive the answer")
+    }
+
+    /// Re-spawning under the same id without stopping the old process lets its termination handler fire against
+    /// the new one — marking a live run finished, and leaving it unstoppable.
+    func testAnsweringStopsThePreviousProcessFirst() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
+        jobs.answer("go", to: id)
+        XCTAssertEqual(spawner.stopped, [id])
+    }
+
+    func testOneBackgroundRunPerDoor() throws {
+        let (jobs, _) = registry()
+        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                     permission: .readOnly, directory: "/repo"))
+        XCTAssertTrue(jobs.hasLiveJob(door: "survey"))
+        XCTAssertFalse(jobs.hasLiveJob(door: "ideation"))
+    }
+
+    func testAnsweringAJobThatIsNotAskingDoesNothing() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        jobs.answer("hello", to: id)
+        XCTAssertEqual(spawner.launched.count, 1, "a running job is not waiting on anything")
+    }
+
+    func testStopEndsItAndTheRowStaysUntilRemoved() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        jobs.stop(id)
+        XCTAssertEqual(spawner.stopped, [id])
+        XCTAssertEqual(jobs.job(id)?.state, .ended(text: "Stopped", failed: false))
+        XCTAssertEqual(jobs.liveCount, 0)
+        jobs.remove(id)
+        XCTAssertTrue(jobs.jobs.isEmpty)
+    }
+
+    func testALiveJobCannotBeRemovedFromTheList() throws {
+        let (jobs, _) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        jobs.remove(id)
+        XCTAssertEqual(jobs.jobs.count, 1, "removing a row must never orphan its process")
+    }
+
+    /// A crash writes no result line. Without this the row pulses forever and the count never comes down.
+    func testACrashWithNoResultStillEnds() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        spawner.exit(9, of: id)
+        XCTAssertEqual(jobs.job(id)?.state, .ended(text: "Exited with status 9", failed: true))
+    }
+
+    func testTheLogIsCappedSoARunThatTalksForeverIsStillARow() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        for i in 1...(BackgroundJob.logLimit + 40) {
+            spawner.emit("{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"line \(i)\"}]}}", to: id)
+        }
+        XCTAssertEqual(jobs.job(id)?.log.count, BackgroundJob.logLimit)
+        XCTAssertEqual(jobs.job(id)?.log.last, "line \(BackgroundJob.logLimit + 40)")
+    }
+}

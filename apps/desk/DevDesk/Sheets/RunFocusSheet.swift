@@ -10,6 +10,9 @@ struct RunFocusSheet: View {
     @State private var kinds: Set<IdeationKind> = []
     @State private var scope: SurveyScope = .both
     @State private var flow = ""
+    @State private var inBackground = false
+    @State private var permission: RunPermission = .writeInRepo
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var isIdeation: Bool { door == "ideation" }
 
@@ -23,6 +26,7 @@ struct RunFocusSheet: View {
                     NoticeBanner(tone: .neutral, title: "Nothing to run here", message: blocked, style: .compact)
                 }
                 if isIdeation { kindPicker } else { scopePicker }
+                backgroundPicker
                 Text(footnote)
                     .font(.system(size: 11))
                     .foregroundStyle(DeskColor.faintInk)
@@ -62,6 +66,37 @@ struct RunFocusSheet: View {
         }
     }
 
+    /// A run that needs nobody while it works does not need a terminal either. It cannot prompt once it is
+    /// headless, so what it may do without asking is chosen here, before it starts (ADR 0025).
+    @ViewBuilder private var backgroundPicker: some View {
+        if jobs != nil {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel("Where it runs").padding(.top, 6)
+                FlowLayout(spacing: 6) {
+                    FocusChip(title: "In a terminal", isOn: !inBackground) { inBackground = false }
+                    FocusChip(title: "In the background", isOn: inBackground) { inBackground = true }
+                }
+                if inBackground, jobs?.hasLiveJob(door: door) == true {
+                    NoticeBanner(tone: .neutral, title: "One at a time",
+                                 message: "A background \(door) run is already going. Two would write the same report over each other.",
+                                 style: .compact)
+                }
+                if inBackground {
+                    SectionLabel("What it may do without asking").padding(.top, 6)
+                    FlowLayout(spacing: 6) {
+                        ForEach(RunPermission.allCases, id: \.self) { option in
+                            FocusChip(title: option.title, isOn: permission == option) { permission = option }
+                        }
+                    }
+                    Text(permission.detail)
+                        .font(.system(size: 11))
+                        .foregroundStyle(DeskColor.faintInk)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
     private var footnote: String {
         isIdeation
             ? "Nothing selected means all three kinds, which is the door's own default. The run still asks before it files anything."
@@ -77,8 +112,14 @@ struct RunFocusSheet: View {
             let name = flow.trimmingCharacters(in: .whitespacesAndNewlines)
             if !name.isEmpty { arguments.append(name) }
         }
-        model.prepareRun(door: door, title: isIdeation ? "Ideation" : "Survey",
-                         agent: defaultConnection, arguments: arguments)
+        let title = isIdeation ? "Ideation" : "Survey"
+        if inBackground, let jobs, !jobs.hasLiveJob(door: door), case .local(let path) = model.ref {
+            jobs.start(door: door, title: title, agent: defaultConnection, arguments: arguments,
+                       permission: permission, directory: path)
+            model.showRuns()
+        } else {
+            model.prepareRun(door: door, title: title, agent: defaultConnection, arguments: arguments)
+        }
         model.dismissSheet()
     }
 }

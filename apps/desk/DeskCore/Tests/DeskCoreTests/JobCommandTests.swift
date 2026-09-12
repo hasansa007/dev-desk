@@ -39,18 +39,19 @@ final class JobCommandTests: XCTestCase {
                                        directory: directory, home: home))
     }
 
-    func testResumingClaudeContinuesTheSameSession() throws {
-        let job = try XCTUnwrap(JobCommand.resume(agent: "Claude", sessionID: "fixed-id", answer: "go"))
-        XCTAssertEqual(job.arguments, ["-p", "--output-format", "stream-json", "--verbose", "--resume", "fixed-id", "go"])
+    func testResumingClaudeContinuesTheSameSessionUnderTheSameGrant() throws {
+        let job = try XCTUnwrap(JobCommand.resume(agent: "Claude", sessionID: "fixed-id", answer: "go", permission: .writeInRepo))
+        XCTAssertEqual(job.arguments, ["-p", "--output-format", "stream-json", "--verbose", "--resume", "fixed-id",
+                                       "--permission-mode", "acceptEdits", "go"])
     }
 
     func testResumingClaudeWithNoSessionIsRefusedRatherThanStartingANewOne() {
-        XCTAssertNil(JobCommand.resume(agent: "Claude", sessionID: nil, answer: "go"))
+        XCTAssertNil(JobCommand.resume(agent: "Claude", sessionID: nil, answer: "go", permission: .readOnly))
     }
 
     func testResumingCodexFallsBackToItsMostRecentSession() throws {
-        let job = try XCTUnwrap(JobCommand.resume(agent: "Codex", sessionID: nil, answer: "go"))
-        XCTAssertEqual(job.arguments, ["exec", "resume", "--last", "--json", "go"])
+        let job = try XCTUnwrap(JobCommand.resume(agent: "Codex", sessionID: nil, answer: "go", permission: .readOnly))
+        XCTAssertEqual(job.arguments, ["exec", "resume", "--last", "--json", "--sandbox", "read-only", "go"])
     }
 
     /// The shape of a real run: one `result` event closes the stream, and its `result` is the last message.
