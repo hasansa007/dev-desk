@@ -30,6 +30,10 @@ struct ProjectToolbar: ToolbarContent {
         ToolbarItem(placement: .primaryAction) {
             RefreshStatus(model: model)
         }
+        // The countdown times the project; the three glyphs open panels. A rule keeps them from reading as one set.
+        ToolbarItem(placement: .primaryAction) {
+            Divider().frame(height: 16)
+        }
         // The panel cluster, top right, one glyph per edge — where Xcode and every other Mac app keeps it.
         ToolbarItemGroup(placement: .primaryAction) {
             PanelToggle(symbol: "sidebar.leading", isOn: columns != .detailOnly,

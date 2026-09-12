@@ -17,8 +17,11 @@ struct TaskCard: View {
     let isLastOpened: Bool
     let action: () -> Void
     var moves: CardMoves?
-    /// This task has a live run in this window. It is the app's own process state, never a claim about git's columns.
-    var isRunning = false
+    /// What this task has live in this window — a door run, its shell, or its agent. The app's own process
+    /// state, never a claim about git's columns.
+    var activity: TaskActivity?
+    /// Starts the task from the card itself; nil when this card has nothing to start.
+    var start: (() -> Void)?
 
     var body: some View {
         Button(action: action) {
@@ -75,6 +78,18 @@ struct TaskCard: View {
                     .padding(.top, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+            // The action the card is for, on the card. Reading a task should not be the price of starting one.
+            if let start, activity == nil {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 0)
+                    Button { start() } label: {
+                        Label("Start", systemImage: "play.fill")
+                    }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    .accessibilityLabel("Start \(task.issueLabel.isEmpty ? task.title : task.issueLabel)")
+                }
+                .padding(.top, 9)
+            }
         }
         .padding(11)
         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 9))
@@ -90,8 +105,8 @@ struct TaskCard: View {
 
     private var metaRow: some View {
         HStack(spacing: 8) {
-            if isRunning {
-                StatusPill(badge: StatusBadge(.running, "Running", pulses: true))
+            if let activity {
+                StatusPill(badge: StatusBadge(.running, activity.label, pulses: true))
             }
             if !metaText.isEmpty {
                 Text(metaText)

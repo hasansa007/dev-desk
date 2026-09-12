@@ -1,25 +1,26 @@
 import DeskCore
 import SwiftUI
 
-/// Every card opens this. Selecting a card never leaves the board: the task's issue, its activity, its diff and
-/// its evidence all live here, and its terminal lives in the Runs panel rather than behind a second screen.
+/// Every card opens this. Selecting a card never leaves the board: the task's issue, its activity, its diff,
+/// its evidence, its terminal and its agent all live here.
 struct TaskDialog: View {
     @Bindable var model: ProjectWindowModel
     let task: DeskTask
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
-    private var isRunning: Bool { model.isTaskRunning(task) }
+    private var activity: TaskActivity? { model.activity(of: task) }
+    private var isRunning: Bool { activity != nil }
 
     var body: some View {
-        SheetChrome(title: title, confirmTitle: isRunning ? "View run" : "Start task",
+        SheetChrome(title: title, confirmTitle: confirmTitle,
                     confirmDisabled: !isRunning && blockedReason != nil,
                     onCancel: model.dismissSheet, onConfirm: confirm) {
             VStack(alignment: .leading, spacing: 12) {
                 facts
-                if isRunning {
-                    NoticeBanner(tone: .running, title: "This task is running",
-                                 message: "Its terminal is in the Runs panel. Ending it there stops the run.", style: .compact) {
-                        Button("Open the Runs panel") { model.runsOpen = true }
+                if let activity {
+                    NoticeBanner(tone: .running, title: runningTitle(activity),
+                                 message: runningMessage(activity), style: .compact) {
+                        Button(confirmTitle) { confirm() }
                             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
                     }
                 } else if let blockedReason {
@@ -59,7 +60,7 @@ struct TaskDialog: View {
                     model.tab = tab
                 } label: {
                     VStack(spacing: 0) {
-                        Text(tab == .requirements ? "Overview" : tab.title)
+                        Text(Self.tabTitle(tab))
                             .font(DeskFont.body)
                             .foregroundStyle(model.tab == tab ? DeskColor.ink : DeskColor.mutedInk)
                             .padding(.vertical, 6)
@@ -79,6 +80,15 @@ struct TaskDialog: View {
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
+    static func tabTitle(_ tab: TaskTab) -> String {
+        switch tab {
+        case .requirements: return "Overview"
+        // "Shell" and "Agent" are two words for one terminal; only the driver differs, so name the driver.
+        case .shell: return "Terminal"
+        default: return tab.title
+        }
+    }
+
     @ViewBuilder private var content: some View {
         switch model.tab {
         case .activity: ActivityTab(model: model, task: task)
@@ -87,36 +97,71 @@ struct TaskDialog: View {
         case .evidence: EvidenceTab(model: model, evidence: task.evidence)
         // The dock these two lived in is gone; they keep their own worktree and their own trust note (ADRs 0017, 0018).
         case .shell:
-            ShellPane(sessions: model.shellSessions, id: task.id, branch: task.branch,
-                      taskNumber: task.taskNumber, folderNote: task.noBranchNote)
-                .frame(minHeight: 360)
-                .clipShape(RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
+            pane(caption: "You type the commands. A login shell in this task's folder, as Terminal would open it.") {
+                ShellPane(sessions: model.shellSessions, id: task.id, branch: task.branch,
+                          taskNumber: task.taskNumber, folderNote: task.noBranchNote)
+            }
         case .agent:
-            AgentPane(model: model, task: task)
-                .frame(minHeight: 360)
+            pane(caption: "\(defaultConnection) types them. The same folder, driven by the pipeline's prompt; it stops at each gate and asks you here.") {
+                AgentPane(model: model, task: task)
+            }
+        }
+    }
+
+    /// The two terminal tabs differ only in who is typing, so each says so above its own pane.
+    private func pane<Content: View>(caption: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(caption)
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .fixedSize(horizontal: false, vertical: true)
+            content()
+                .frame(minHeight: 330)
                 .clipShape(RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
         }
     }
 
-    /// Why Start task is disabled, or nil when it can run.
-    private var blockedReason: String? {
-        guard task.taskNumber != nil else { return "This card has no issue number, so `/dev` has nothing to open." }
-        return model.runBlockedReason(agent: defaultConnection)
+    private var confirmTitle: String {
+        switch activity {
+        case .none: return "Start task"
+        case .run: return "View run"
+        case .shell: return "Open the terminal"
+        case .agent: return "Open the agent"
+        }
     }
 
-    /// Running: show the run. Not running: start `/dev #N` for it, which opens at the project root because
-    /// the branch does not exist yet — `/dev` cuts it at its first write.
+    private func runningTitle(_ activity: TaskActivity) -> String {
+        switch activity {
+        case .run: return "A door is running for this task"
+        case .shell: return "This task has a terminal open"
+        case .agent: return "An agent is working on this task"
+        }
+    }
+
+    private func runningMessage(_ activity: TaskActivity) -> String {
+        switch activity {
+        case .run: return "Its output is in the Runs panel. Ending it there stops the run."
+        case .shell: return "It is in this dialog's Terminal tab, in the task's own folder."
+        case .agent: return "It is in this dialog's Agent tab. Stopping it there ends the session."
+        }
+    }
+
+    private var blockedReason: String? { model.startBlockedReason(for: task, agent: defaultConnection) }
+
+    /// Live: go to whichever surface is carrying the work. Idle: start `/dev #N`, which opens at the project
+    /// root because the branch does not exist yet — `/dev` cuts it at its first write.
     private func confirm() {
-        guard let number = task.taskNumber else { return }
-        guard !isRunning else {
-            model.runs.selectedID = DoorRuns.id(task: number)
+        switch activity {
+        case .shell: model.tab = .shell; return
+        case .agent: model.tab = .agent; return
+        case .run:
+            if let number = task.taskNumber { model.runs.selectedID = DoorRuns.id(task: number) }
             model.runsOpen = true
             model.dismissSheet()
             return
+        case .none: break
         }
-        model.prepareRun(door: "dev", title: "Task #\(number)", agent: defaultConnection,
-                         arguments: ["#\(number)"], id: DoorRuns.id(task: number),
-                         folderNote: "#\(number) has no branch yet; /dev cuts one at its first write.")
+        model.startTask(task, agent: defaultConnection)
         model.dismissSheet()
     }
 }

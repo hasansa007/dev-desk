@@ -175,6 +175,15 @@ private struct BoardColumnView: View {
     let tasks: [DeskTask]
     let model: ProjectWindowModel
     @State private var pending: PendingMove?
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+
+    private var live: Int { tasks.filter { model.isTaskRunning($0) }.count }
+
+    /// A card offers Start only when pressing it would actually run something; the dialog still explains why not.
+    private func start(for task: DeskTask) -> (() -> Void)? {
+        guard column != .done, model.startBlockedReason(for: task, agent: defaultConnection) == nil else { return nil }
+        return { model.startTask(task, agent: defaultConnection) }
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -184,11 +193,23 @@ private struct BoardColumnView: View {
                     .font(DeskFont.label)
                     .tracking(0.66)
                     .foregroundStyle(DeskColor.disabledDot)
+                // The count of what is actually running here, so a column never looks idle while it works.
+                if live > 0 {
+                    HStack(spacing: 4) {
+                        StatusDot(tone: .running, pulses: true, size: 6)
+                        Text("\(live) live")
+                            .font(DeskFont.label)
+                            .tracking(0.66)
+                            .foregroundStyle(DeskColor.tone(.running).foreground)
+                    }
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("\(live) running in \(column.title)")
+                }
             }
             ForEach(tasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
-                         isRunning: model.isTaskRunning(task))
+                         activity: model.activity(of: task), start: start(for: task))
             }
         }
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)

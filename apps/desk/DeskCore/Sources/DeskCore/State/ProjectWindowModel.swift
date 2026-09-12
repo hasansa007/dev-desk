@@ -13,6 +13,24 @@ public enum TaskTab: String, CaseIterable, Codable, Hashable {
 
 public enum ViewMode: String, Codable, Hashable { case focus, parallel }
 
+/// The kinds of live work a card can carry. They are the app's own process state, never a claim about git's columns.
+public enum TaskActivity: String, Hashable {
+    /// A door this window started for the task — `/dev #N` and its kin.
+    case run
+    /// The task's own login shell, started from its dialog.
+    case shell
+    /// Claude Code or Codex, started by you or by Auto.
+    case agent
+
+    public var label: String {
+        switch self {
+        case .run: return "Running"
+        case .shell: return "Shell"
+        case .agent: return "Agent"
+        }
+    }
+}
+
 public enum SettingsSection: String, CaseIterable, Codable, Hashable {
     case general, appearance, agentsAndDefaults, accountsAndConnections, notifications, execution, projectOverrides
 
@@ -161,6 +179,10 @@ public final class ProjectWindowModel {
     }
 
     /// Reloads a local project every `interval` until the calling task is cancelled; a sample has nothing new to read.
+    /// The gap between automatic reloads, shared by the window that schedules them and the toolbar that counts
+    /// down to the next one, so the ring can never drain at a different rate than the thing it is timing.
+    public static let refreshSeconds: Double = 120
+
     public func refresh(every interval: Duration) async {
         guard case .local = ref else { return }
         while !Task.isCancelled {
@@ -265,10 +287,35 @@ public final class ProjectWindowModel {
         }
     }
 
-    /// True while this task's own run is live, whichever screen started it.
-    public func isTaskRunning(_ task: DeskTask) -> Bool {
-        guard let number = task.taskNumber else { return false }
-        return isRunLive(DoorRuns.id(task: number))
+    /// What this task has live right now, whichever screen started it — a door run, its own shell, or its agent.
+    /// Asking only about the door run is what left a started shell and a started agent invisible on the board.
+    public func activity(of task: DeskTask) -> TaskActivity? {
+        Self.activity(doorRun: task.taskNumber.map { isRunLive(DoorRuns.id(task: $0)) } ?? false,
+                      agent: agentSessions.state(for: task.id),
+                      shell: shellSessions.state(for: task.id))
+    }
+
+    /// The precedence, apart from the sessions that hold it: a door run speaks for the whole task, an agent for
+    /// the work, a shell only for a window someone opened. The first that is live is what the card says.
+    static func activity(doorRun: Bool, agent: ShellSessionState, shell: ShellSessionState) -> TaskActivity? {
+        if doorRun { return .run }
+        if isLive(agent) { return .agent }
+        if isLive(shell) { return .shell }
+        return nil
+    }
+
+    public func isTaskRunning(_ task: DeskTask) -> Bool { activity(of: task) != nil }
+
+    /// How many of a column's cards are live, for the column's own header.
+    public func liveCount(in column: BoardColumn) -> Int {
+        tasks.filter { $0.column == column && isTaskRunning($0) }.count
+    }
+
+    private static func isLive(_ state: ShellSessionState) -> Bool {
+        switch state {
+        case .preparing, .running: return true
+        default: return false
+        }
     }
 
     /// Runs one bounded write from `dev:kanban` Phase 7, then reloads so the board shows what GitHub now says.
