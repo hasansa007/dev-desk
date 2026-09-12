@@ -69,6 +69,7 @@ wait_for_exit() {
 # Installing quits the app, and quitting ends every run it is hosting. Twice on 2026-09-12 that took a
 # live door run with it, both times because a human eye judged "probably finished". The check is cheap and
 # the loss is not, so it is the script's job, and --force is the way to say you meant it.
+# Refusal observed working 2026-09-12, against a real live run.
 if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
     LIVE=""
     for pid in $(pgrep -x "Dev Desk"); do
