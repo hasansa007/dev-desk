@@ -11,6 +11,15 @@ struct CardMoves {
     let cancel: () -> Void
 }
 
+/// What a branch card can do. A card with no issue behind it had no menu at all, so nineteen of them could be
+/// read and nothing else.
+struct BranchActions {
+    let openTerminal: () -> Void
+    let compare: () -> Void
+    let copyName: () -> Void
+    let delete: () -> Void
+}
+
 /// One board card; reused wherever a task list needs the same summary (D:162–232).
 struct TaskCard: View {
     let task: DeskTask
@@ -22,6 +31,8 @@ struct TaskCard: View {
     var activity: TaskActivity?
     /// Starts the task from the card itself; nil when this card has nothing to start.
     var start: (() -> Void)?
+    /// What a card with a branch but no issue can do; `moves` covers the ones with an issue.
+    var branchActions: BranchActions?
 
     var body: some View {
         Button(action: action) {
@@ -35,7 +46,23 @@ struct TaskCard: View {
     }
 
     @ViewBuilder private var movesMenu: some View {
-        if let moves {
+        if let branchActions {
+            Menu {
+                Button("Open a terminal here") { branchActions.openTerminal() }
+                Button("Compare with the base") { branchActions.compare() }
+                Button("Copy branch name") { branchActions.copyName() }
+                Divider()
+                Button("Delete branch…", role: .destructive) { branchActions.delete() }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .imageScale(.medium)
+                    .foregroundStyle(DeskColor.mutedInk)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel("Actions for \(task.title)")
+        } else if let moves {
             Menu {
                 Button(moves.milestone.map { "Queue into \($0)" } ?? "Queue") { moves.queue() }
                     .disabled(moves.milestone == nil || moves.isQueued)
@@ -112,6 +139,11 @@ struct TaskCard: View {
                 Text(metaText)
                     .font(DeskFont.mono(11))
                     .foregroundStyle(DeskColor.mutedInk)
+            }
+            if let committed = task.lastCommit {
+                Text(BranchAge.label(committed))
+                    .font(.system(size: 11))
+                    .foregroundStyle(BranchAge.isStale(committed) ? DeskColor.tone(.waiting).foreground : DeskColor.faintInk)
             }
             if let badge = task.cardBadge {
                 StatusPill(badge: badge)

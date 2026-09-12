@@ -358,6 +358,11 @@ public struct DeskTask: Identifiable, Hashable {
     /// "High", "Medium" or "Low" from the issue's `impact:` label; nil when nobody has rated it (ADR 0020).
     public var impact: String?
     public var complexity: String?
+    /// When this task's branch was last committed to; nil for a card with no branch. What tells a finished
+    /// branch from live work, since git's In Progress rule cannot.
+    public var lastCommit: Date?
+    /// Commits this branch holds that the base does not, so a delete can say what would be lost.
+    public var unmergedCount: Int?
 
     /// The value of a `kind:value` label, capitalised: `impact:high` becomes "High".
     public static func rating(_ kind: String, in labels: [String]) -> String? {
@@ -394,8 +399,10 @@ public struct DeskTask: Identifiable, Hashable {
                 dependencies: [Dependency] = [],
                 parallel: ParallelPreview, comparison: OutputComparison? = nil,
                 followUp: FollowUpDraft? = nil, handoff: HandoffPlan? = nil,
-                impact: String? = nil, complexity: String? = nil) {
+                impact: String? = nil, complexity: String? = nil, lastCommit: Date? = nil, unmergedCount: Int? = nil) {
         self.impact = impact
+        self.lastCommit = lastCommit
+        self.unmergedCount = unmergedCount
         self.complexity = complexity
         self.id = id
         self.issueNumber = issueNumber

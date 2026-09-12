@@ -16,6 +16,9 @@ struct NumstatEntry: Equatable {
 struct BranchFacts: Equatable {
     var name: String
     var unmerged: Int
+    /// When the branch's tip was committed, from the same `for-each-ref` that already sorts by it. A branch
+    /// with unmerged commits is In Progress by git's rule; without this, a dead branch and live work look alike.
+    var lastCommit: Date?
     /// Set only when the branch is checked out in a worktree other than the opened one.
     var worktree: String?
     var commits: [GitCommit] = []
@@ -281,11 +284,12 @@ struct GitReader {
 
     func read(toplevel: String, currentBranch: String) async -> GitFacts {
         async let remote = output(["branch", "-r", "--format=%(refname:short)"])
-        async let local = output(["for-each-ref", "--format=%(refname) %(objectname)", "--sort=-committerdate", "refs/heads"])
+        async let local = output(["for-each-ref", "--format=%(refname) %(objectname) %(committerdate:unix)", "--sort=-committerdate", "refs/heads"])
         async let porcelain = output(["worktree", "list", "--porcelain"])
         let refs = GitOutput.lines(await local ?? "").compactMap(Self.refAndHead)
         let localNames = refs.map(\.name)
         let heads = Dictionary(refs.compactMap { ref in ref.head.map { (ref.name, $0) } }, uniquingKeysWith: { first, _ in first })
+        let committed = Dictionary(refs.compactMap { ref in ref.committed.map { (ref.name, $0) } }, uniquingKeysWith: { first, _ in first })
         let (base, baseRef) = await resolveBase(remote: await remote ?? "", local: localNames, current: currentBranch)
         var baseShort: String?
         if let baseRef { baseShort = trimmed(await output(["rev-parse", "--short", baseRef])) }
@@ -298,17 +302,22 @@ struct GitReader {
             let elsewhere = worktrees[name].flatMap { Self.canonical($0) == here ? nil : $0 }
             var facts = await branchFacts(name, baseRef: baseRef, worktree: elsewhere)
             facts.head = heads[name]
+            facts.lastCommit = committed[name]
             return facts
         }
         return GitFacts(base: base, baseRef: baseRef, baseShort: baseShort, branches: branches,
                         truncatedBranchCount: candidates.count > GitOutput.maxBranches ? candidates.count : nil)
     }
 
-    /// A `for-each-ref --format=%(refname) %(objectname)` line; ref names can't hold spaces, and a line with no commit keeps a nil head.
-    private static func refAndHead(_ line: String) -> (name: String, head: String?)? {
-        let parts = line.split(separator: " ", maxSplits: 1).map(String.init)
+    /// A `for-each-ref --format=%(refname) %(objectname) %(committerdate:unix)` line; ref names can't hold spaces,
+    /// and a line missing either trailing field keeps that one nil rather than dropping the branch.
+    private static func refAndHead(_ line: String) -> (name: String, head: String?, committed: Date?)? {
+        let parts = line.split(separator: " ", maxSplits: 2).map(String.init)
         guard let ref = parts.first, ref.hasPrefix("refs/heads/") else { return nil }
-        return (String(ref.dropFirst("refs/heads/".count)), parts.count > 1 ? parts[1] : nil)
+        let seconds = parts.count > 2 ? TimeInterval(parts[2]) : nil
+        return (String(ref.dropFirst("refs/heads/".count)),
+                parts.count > 1 ? parts[1] : nil,
+                seconds.map(Date.init(timeIntervalSince1970:)))
     }
 
     /// dev.py's resolve_base plus a local candidate before the current branch; refs are fully qualified so no name can read as an option.

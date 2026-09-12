@@ -52,6 +52,7 @@ public enum SheetKind: Hashable, Identifiable {
     case task(String)
     case cancelTask(String)
     case runFocus(String)
+    case deleteBranch(String)
     case settings
 
     public var id: String {
@@ -66,6 +67,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .task(let taskID): return "task:\(taskID)"
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
         case .runFocus(let door): return "runFocus:\(door)"
+        case .deleteBranch(let branch): return "deleteBranch:\(branch)"
         case .settings: return "settings"
         }
     }
@@ -100,6 +102,9 @@ public final class ProjectWindowModel {
     public var tab: TaskTab = .activity
     public var mode: ViewMode = .focus
     public var showBacklog = false
+    /// Whether branches nobody has touched in two weeks are shown beside live work. They satisfy git's
+    /// In Progress rule and say nothing about whether anyone is working, so the board folds them by default.
+    public var showStale = false
     public var searchText = ""
     /// Both panels are edges of the window, never floating windows over it: Runs along the bottom, Files down
     /// the right. Open is all there is to say about one.
@@ -331,6 +336,27 @@ public final class ProjectWindowModel {
         do {
             let write = TrackerWrite(slug: slug, directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner)
             try await write.perform(issue: issue, action: action)
+            trackerError = nil
+            await load()
+        } catch {
+            trackerError = Markdown.escape(error.localizedDescription)
+        }
+    }
+
+    /// Deletes a local branch. The first thing the app destroys rather than moves, so it reuses the tracker
+    /// write's shape: one bounded command, the error kept for a banner, and a reload so the board stops
+    /// showing what is gone. Its `force` is only ever true once the developer has typed the branch's name.
+    public func deleteBranch(_ name: String, force: Bool) async {
+        guard !isWritingTracker else { return }
+        guard case .local(let path) = ref else {
+            trackerError = BranchWriteError.notThisRepository.localizedDescription
+            return
+        }
+        isWritingTracker = true
+        defer { isWritingTracker = false }
+        do {
+            let write = BranchWrite(directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner)
+            try await write.delete(branch: name, force: force)
             trackerError = nil
             await load()
         } catch {

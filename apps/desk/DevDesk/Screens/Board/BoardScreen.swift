@@ -1,3 +1,4 @@
+import AppKit
 import DeskCore
 import SwiftUI
 
@@ -21,6 +22,7 @@ struct BoardScreen: View {
                 .foregroundStyle(DeskColor.ink)
             searchField
             BacklogToggle(isOn: $model.showBacklog)
+            staleToggle
             if let note = model.snapshot?.boardNote, !note.isEmpty {
                 rulesButton(note)
             }
@@ -105,8 +107,11 @@ struct BoardScreen: View {
                     .buttonStyle(DeskButtonStyle(kind: .secondary))
             }
         } else {
+            let now = Date()
             let columns = visibleColumns.map { column in
-                ColumnEntry(column: column, tasks: tasks.filter { $0.column == column && matches($0) })
+                ColumnEntry(column: column,
+                            tasks: tasks.filter { $0.column == column && matches($0) && shows($0, now: now) }
+                                .sorted { ($0.lastCommit ?? .distantFuture) > ($1.lastCommit ?? .distantFuture) })
             }
             if !model.searchText.isEmpty && columns.allSatisfy({ $0.tasks.isEmpty }) {
                 Text("No tasks match “\(model.searchText)”.")
@@ -132,6 +137,34 @@ struct BoardScreen: View {
 
     private var visibleColumns: [BoardColumn] {
         BoardColumn.allCases.filter { $0 != .backlog || model.showBacklog }
+    }
+
+    /// A stale branch is still In Progress to git; it is folded here, never re-columned, so ADR 0011 holds.
+    private func shows(_ task: DeskTask, now: Date) -> Bool {
+        model.showStale || !BranchAge.isStale(task.lastCommit, now: now)
+    }
+
+    /// Appears only when there is something to unfold, so a healthy board carries no extra control.
+    @ViewBuilder private var staleToggle: some View {
+        let count = staleCount
+        if count > 0 {
+            Button { model.showStale.toggle() } label: {
+                Text(model.showStale ? "Hide stale (\(count))" : "Show stale (\(count))")
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(model.showStale ? Color.white : DeskColor.ink)
+                    .padding(.horizontal, 10)
+                    .controlChrome(fill: model.showStale ? DeskColor.accent : DeskColor.surface)
+            }
+            .buttonStyle(.plain)
+            .help("Branches nobody has committed to in \(Int(BranchAge.staleAfter / 86_400)) days. They still satisfy git's In Progress rule.")
+            .accessibilityLabel("Show stale branches")
+            .accessibilityValue(model.showStale ? "On" : "Off")
+        }
+    }
+
+    private var staleCount: Int {
+        let now = Date()
+        return (model.snapshot?.board.value ?? []).filter { BranchAge.isStale($0.lastCommit, now: now) }.count
     }
 
     private func matches(_ task: DeskTask) -> Bool {
@@ -179,6 +212,20 @@ private struct BoardColumnView: View {
 
     private var live: Int { tasks.filter { model.isTaskRunning($0) }.count }
 
+    /// A branch card's own menu. A card with an issue keeps the tracker moves instead, so neither card
+    /// carries two menus, and only a real local branch can be deleted.
+    private func branchActions(for task: DeskTask) -> BranchActions? {
+        guard task.issueNumber == nil, let branch = task.branch else { return nil }
+        return BranchActions(
+            openTerminal: { model.openTask(task.id); model.tab = .shell },
+            compare: { model.openTask(task.id); model.tab = .changes },
+            copyName: {
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.setString(branch, forType: .string)
+            },
+            delete: { model.present(.deleteBranch(branch)) })
+    }
+
     /// A card offers Start only when pressing it would actually run something; the dialog still explains why not.
     private func start(for task: DeskTask) -> (() -> Void)? {
         guard column != .done, model.startBlockedReason(for: task, agent: defaultConnection) == nil else { return nil }
@@ -209,7 +256,8 @@ private struct BoardColumnView: View {
             ForEach(tasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
-                         activity: model.activity(of: task), start: start(for: task))
+                         activity: model.activity(of: task), start: start(for: task),
+                         branchActions: branchActions(for: task))
             }
         }
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
