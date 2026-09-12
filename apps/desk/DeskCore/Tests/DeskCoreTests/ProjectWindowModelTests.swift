@@ -80,7 +80,7 @@ final class ProjectWindowModelTests: XCTestCase {
             project: ProjectInfo(name: "Real", displayPath: "~/real", branch: "main"),
             isDemo: false, board: .available([]), boardNote: "",
             findings: .available(FindingsReport(runs: [], findings: [])), roadmap: .unavailable("n/a"),
-            decisions: .available([]), connections: [], connectionsNote: "",
+            connections: [], connectionsNote: "",
             capabilities: CapabilityMatrix(providers: [], rows: [], note: ""), insights: .unavailable("n/a"))
         let model = ProjectWindowModel(ref: .local(path: "/tmp/real-project"), source: FixedSource(snapshot: snapshot), insightsDelay: .zero)
         await model.load()
@@ -130,7 +130,7 @@ final class ProjectWindowModelTests: XCTestCase {
         ProjectSnapshot(
             project: ProjectInfo(name: "Real", displayPath: "~/real", branch: "main"),
             isDemo: false, board: .available([]), boardNote: "",
-            findings: .unavailable("n/a"), roadmap: .unavailable("n/a"), decisions: .available([]),
+            findings: .unavailable("n/a"), roadmap: .unavailable("n/a"),
             connections: [], connectionsNote: "", capabilities: CapabilityMatrix(providers: [], rows: [], note: ""),
             insights: .unavailable("n/a"), slug: "owner/repo", activeMilestone: "1.4")
     }

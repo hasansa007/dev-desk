@@ -69,7 +69,7 @@ pre-flight moves up into Phase 14.
 its decision. Skills still probe `git check-ignore -q docs/` per repo, because the answer differs.
 
 **The container.** Dev Desk (`apps/desk/`) reads what the doors and `dev` already wrote — git,
-GitHub, `docs/survey/`, `docs/adr/`, `.dev/` state — and runs three things inside a repository: a
+GitHub, `docs/survey/`, `docs/ideation/`, `.dev/` state — and runs three things inside a repository: a
 door, from Survey or Ideation, and — each in the task's own worktree — a task's shell and its agent,
 started by you from the task's dialog or by Auto in a project where you turned it on (ADRs 0017,
 0018). Its two sample projects demo the whole design on labelled sample data; a real opened

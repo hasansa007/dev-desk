@@ -21,8 +21,7 @@ extension SampleData {
                 requirements: emptyRequirements(goal: "Offline lesson cache", sources: "Issue #71 · roadmap item “Offline lesson cache” (considered)"),
                 changes: emptyChanges(note: "No branch yet."),
                 evidence: emptyEvidence(),
-                agentsNote: "No agent assigned",
-                parallel: .none("No agent assigned")
+parallel: .none("No agent assigned")
             ),
             DeskTask(
                 id: "68", issueNumber: 68, title: "Flashcard deck import", column: .backlog,
@@ -30,8 +29,7 @@ extension SampleData {
                 requirements: emptyRequirements(goal: "Flashcard deck import", sources: "Issue #68"),
                 changes: emptyChanges(note: "No branch yet."),
                 evidence: emptyEvidence(),
-                agentsNote: "No agent assigned",
-                parallel: .none("No agent assigned")
+parallel: .none("No agent assigned")
             ),
             DeskTask(
                 id: "65", issueNumber: 65, title: "Reduce initial bundle size", column: .queued,
@@ -40,8 +38,7 @@ extension SampleData {
                 requirements: emptyRequirements(goal: "Reduce initial bundle size", sources: "Issue #65"),
                 changes: emptyChanges(note: "No branch yet."),
                 evidence: emptyEvidence(),
-                agentsNote: "No agent assigned",
-                parallel: .none("No agent assigned")
+parallel: .none("No agent assigned")
             ),
             DeskTask(
                 id: "42", issueNumber: 42, title: "Preserve course-list position", column: .inProgress,
@@ -116,44 +113,8 @@ extension SampleData {
                     limitations: "Behaviour was inspected in code and covered by unit tests. The reported symptom has not been reproduced in a running app, so this task is not verified end to end.",
                     linked: [LinkedEvidence(title: "Survey finding F-108 · Navigation resets list state on unmount", badge: "Code-inspected", findingID: "F-108")]
                 )),
-                agents: [
-                    AgentSession(id: "codex", name: "Codex", role: "Primary", capability: .interactive, stateLabel: "Interactive session · running", tone: .running, pulses: true, actions: [.openTerminal, .stop]),
-                    AgentSession(id: "reviewer", name: "Reviewer", role: "Helper", capability: .activityOnly, stateLabel: "Activity only · no terminal", tone: .info, actions: [.viewActivity, .requestFollowUp]),
-                    AgentSession(id: "verifier", name: "Verifier", role: "Ended", capability: .completedResult, stateLabel: "Completed helper result", tone: .ended, actions: [.readResult]),
-                ],
-                dependencies: [Dependency(text: "Blocked by [#59](desk://task/59) — shared date helpers are being rewritten in review.", taskID: "59")],
-                dock: DockContent(
-                    tabs: [
-                        DockTab(id: "codex", title: "Codex · #42", transcript: TerminalTranscript(
-                            header: "codex session 3f9a · attached · demo output",
-                            lines: [
-                                TerminalLine(.plain, "› patch src/features/courses/useScrollRestore.ts"),
-                                TerminalLine(.success, "✓ applied 24 additions, 6 deletions"),
-                                TerminalLine(.plain, "› npm test -- courses"),
-                                TerminalLine(.success, "✓ 18 passed"),
-                                TerminalLine(.plain, "› npm run e2e -- navigation"),
-                                TerminalLine(.failure, "✗ runner unavailable in this environment"),
-                            ],
-                            showsPrompt: true
-                        )),
-                        DockTab(id: "shell", title: "Shell · studyhub-42", transcript: TerminalTranscript(
-                            header: "zsh · ~/.devdesk/wt/studyhub-42 · demo output",
-                            lines: [TerminalLine(.dim, "fix/42-course-scroll · 3 files changed")]
-                        )),
-                        DockTab(id: "reviewer", title: "Reviewer · activity", transcript: TerminalTranscript(
-                            header: "reviewer · activity only · read-only",
-                            lines: [
-                                TerminalLine(.plain, "· inspected CourseList.tsx (lines 40–96)"),
-                                TerminalLine(.plain, "· note: cleanup missing on unmount when filter changes"),
-                                TerminalLine(.plain, "· no input accepted — ask the coordinating agent for follow-up"),
-                            ],
-                            showsPrompt: false, isReadOnly: true
-                        )),
-                    ],
-                    caption: "Agents & Terminals · views of one session, not new agents",
-                    splitTabID: "reviewer"
-                ),
-                parallel: .transcript(TerminalTranscript(
+dependencies: [Dependency(text: "Blocked by [#59](desk://task/59) — shared date helpers are being rewritten in review.", taskID: "59")],
+parallel: .transcript(TerminalTranscript(
                     header: "codex · session 3f9a · running",
                     lines: [
                         TerminalLine(.plain, "› read src/features/courses/CourseList.tsx"),
@@ -187,7 +148,7 @@ extension SampleData {
                 headerBadge: StatusBadge(.waiting, "Waiting for input"),
                 branchLine: "feat/57-exam-recovery · worktree ~/.devdesk/wt/studyhub-57 · base main@9c2e410",
                 parallelLine: "feat/57-exam-recovery · ~/.devdesk/wt/studyhub-57",
-                nextAction: .answerDecision(decisionID: "d-57"),
+                nextAction: .answerDecision,
                 notice: .waitingForDecision(
                     title: "Waiting for a decision before implementation continues",
                     message: "The Claude session paused and asked where partial exam state should be persisted. This question arose during implementation, outside a formal pipeline gate.",
@@ -201,26 +162,8 @@ extension SampleData {
                 requirements: emptyRequirements(goal: "Exam progress is not lost when an attempt is interrupted.", sources: "Issue #57 · roadmap concern “Exam progress can be lost”"),
                 changes: emptyChanges(note: "No changes yet. No code has been written against any option."),
                 evidence: emptyEvidence(limitations: "No checks have run for this task."),
-                agents: [
-                    AgentSession(id: "claude", name: "Claude", role: "Primary", capability: .interactive, stateLabel: "Interactive session · waiting for input", tone: .waiting, actions: [.openTerminal, .stop]),
-                ],
-                dependencies: [Dependency(text: "Touches the same storage layer as [#59](desk://task/59).", taskID: "59")],
-                dock: DockContent(
-                    tabs: [
-                        DockTab(id: "claude", title: "Claude · #57", transcript: TerminalTranscript(
-                            header: "claude session 8c21 · waiting for input · demo output",
-                            lines: [
-                                TerminalLine(.plain, "› read src/features/exams/attemptStore.ts"),
-                                TerminalLine(.plain, "› read 2 migrations"),
-                                TerminalLine(.dim, "? Where should partial exam state be persisted so an interrupted attempt can resume?"),
-                                TerminalLine(.dim, "Waiting for an answer in Decisions."),
-                            ],
-                            showsPrompt: false
-                        )),
-                    ],
-                    caption: "Agents & Terminals · views of one session, not new agents"
-                ),
-                parallel: .decision(
+dependencies: [Dependency(text: "Touches the same storage layer as [#59](desk://task/59).", taskID: "59")],
+parallel: .decision(
                     title: "Blocked on an architecture decision",
                     question: "Where should partial exam state be persisted so an interrupted attempt can resume?",
                     decisionID: "d-57",
@@ -254,10 +197,7 @@ extension SampleData {
                 requirements: emptyRequirements(goal: "Find out why lesson search is slow.", sources: "Issue #63 · roadmap item “Search responsiveness” (investigation)"),
                 changes: emptyChanges(note: "7 uncommitted files in the external checkout · not pushed. Dev Desk reads this checkout; it does not manage it."),
                 evidence: emptyEvidence(limitations: "No checks recorded. An earlier finding in this area (F-093) was declined on 28 Aug."),
-                agents: [],
-                agentsNote: "No managed session. This checkout is connected for repository tracking only.",
-                dock: nil,
-                parallel: .none("External checkout, not managed here"),
+parallel: .none("External checkout, not managed here"),
                 handoff: HandoffPlan(
                     warning: "This creates a **new session**. The earlier work is not resumed and its conversation is not adopted. The existing checkout, branch, and uncommitted changes stay as they are.",
                     rows: [
@@ -277,8 +217,7 @@ extension SampleData {
                 requirements: emptyRequirements(goal: "Fix streak calculation across time zones", sources: "Issue #59"),
                 changes: emptyChanges(note: "No diff is included for this task in the demo."),
                 evidence: emptyEvidence(),
-                agentsNote: "Agent ended.",
-                dependencies: [Dependency(text: "Blocks [#42](desk://task/42) — shared date helpers.", taskID: "42")],
+dependencies: [Dependency(text: "Blocks [#42](desk://task/42) — shared date helpers.", taskID: "42")],
                 parallel: .none("Agent ended")
             ),
             DeskTask(
@@ -288,8 +227,7 @@ extension SampleData {
                 requirements: emptyRequirements(goal: "Migrate settings store", sources: "Issue #38"),
                 changes: emptyChanges(note: "Merged into `main`."),
                 evidence: emptyEvidence(),
-                agentsNote: "No agent assigned",
-                parallel: .none("No agent assigned")
+parallel: .none("No agent assigned")
             ),
         ]
     }

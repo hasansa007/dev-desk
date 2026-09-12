@@ -11,7 +11,6 @@ struct BoardInput {
 
 /// Pure: git and GitHub facts in, tasks out. Columns mirror scripts/dev.py (`classify`, `build_board`, `order_next`).
 enum BoardBuilder {
-    static let agentsNote = "Start this task's agent from the Agents tab in the dock."
     static let checksLimitation = "CI results reported by GitHub for this pull request. Dev Desk has not verified behaviour in a running app."
     static let unlinkedRequirements = "No linked issue. Name the branch gh-<number>-… to link one."
     static let checksNotRead = "Checks are read for the \(GitHubReader.checkedPullRequests) newest open pull requests; this one was not read."
@@ -30,23 +29,6 @@ enum BoardBuilder {
     static let dockCaption = "Agents & Terminals · your shell and the task's agent, in the task's folder"
     static let forkNote = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
 
-    /// A real task's dock: the user's shell and the task's agent, both in the task's folder.
-    static var dock: DockContent {
-        DockContent(tabs: [
-            DockTab(id: "shell", title: "Shell", kind: .liveShell),
-            DockTab(id: "agents", title: "Agents", kind: .liveAgent),
-        ], caption: dockCaption)
-    }
-
-    static let mergedAgentReason = "This work is merged, so there's no agent to start for it."
-
-    /// Merged work keeps its shell, but leaves an agent nothing to do.
-    static var mergedDock: DockContent {
-        DockContent(tabs: [
-            DockTab(id: "shell", title: "Shell", kind: .liveShell),
-            DockTab(id: "agents", title: "Agents", kind: .unavailable(reason: mergedAgentReason)),
-        ], caption: dockCaption)
-    }
 
     static func note(github: GitHubState, activeMilestone: (title: String?, why: String), localBranchNote: String? = nil) -> String {
         let suffix = localBranchNote.map { " \($0)" } ?? ""
@@ -216,7 +198,6 @@ private struct BoardContext {
         let merged = mergedPullRequests.map(mergedTask)
         return (active + pullRequestTasks + branchTasks + orderNext(backlog) + deferred + merged).map { task in
             var task = task
-            task.dock = task.column == .done ? BoardBuilder.mergedDock : BoardBuilder.dock
             task.baseRef = input.git?.baseRef
             return task
         }
@@ -267,7 +248,6 @@ private struct BoardContext {
             requirements: .available(BoardBuilder.requirements(body: issue.body, title: issue.title, source: "Issue #\(issue.number)")),
             changes: changes(head, local: local),
             evidence: evidence(pullRequest: pullRequest?.number, state: state),
-            agentsNote: BoardBuilder.agentsNote,
             dependencies: BoardBuilder.dependencies(issue.body),
             parallel: parallel(head, local: local),
             impact: DeskTask.rating("impact", in: issue.labelNames),
@@ -291,7 +271,6 @@ private struct BoardContext {
                                                                source: "Pull request #\(pullRequest.number)")),
             changes: changes(head, local: local),
             evidence: evidence(pullRequest: pullRequest.number, state: state),
-            agentsNote: BoardBuilder.agentsNote,
             dependencies: BoardBuilder.dependencies(pullRequest.body),
             parallel: parallel(head, local: local))
     }
@@ -310,7 +289,6 @@ private struct BoardContext {
             requirements: .unavailable(BoardBuilder.unlinkedRequirements),
             changes: changes(branch.name, local: branch),
             evidence: evidence(pullRequest: nil, state: state),
-            agentsNote: BoardBuilder.agentsNote,
             parallel: parallel(branch.name, local: branch))
     }
 
@@ -329,7 +307,6 @@ private struct BoardContext {
             requirements: .unavailable(reason),
             changes: .unavailable(reason),
             evidence: .unavailable(reason),
-            agentsNote: BoardBuilder.agentsNote,
             parallel: .none("Merged"))
     }
 

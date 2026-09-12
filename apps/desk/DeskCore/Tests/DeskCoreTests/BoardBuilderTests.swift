@@ -315,32 +315,6 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(tasks()["14"]?.evidence.value?.limitations)
     }
 
-    private static let liveDock = DockContent(tabs: [
-        DockTab(id: "shell", title: "Shell", kind: .liveShell),
-        DockTab(id: "agents", title: "Agents", kind: .liveAgent),
-    ], caption: "Agents & Terminals · your shell and the task's agent, in the task's folder")
-
-    func testNoTaskShowsAgentRowsButEveryOpenTaskGetsTheLiveDock() {
-        for task in BoardBuilder.build(fixture) {
-            XCTAssertEqual(task.agents, [], task.id)
-            XCTAssertEqual(task.agentsNote, "Start this task's agent from the Agents tab in the dock.", task.id)
-            if task.column != .done { XCTAssertEqual(task.dock, Self.liveDock, task.id) }
-        }
-    }
-
-    func testEveryKindOfOpenTaskGetsTheShellAndAgentsTabsAndNoTranscript() throws {
-        for id in ["12", "14", "pr:20", "branch:spike/z"] {
-            XCTAssertEqual(try XCTUnwrap(tasks()[id], id).dock, Self.liveDock, id)
-        }
-        XCTAssertEqual(try XCTUnwrap(tasks()["12"]?.dock).tabs.map(\.transcript), [nil, nil])
-    }
-
-    func testMergedWorkKeepsItsShellButOffersNoAgent() throws {
-        let dock = try XCTUnwrap(tasks()["merged:9"]?.dock)
-        XCTAssertEqual(dock.tabs.map(\.kind), [.liveShell, .unavailable(reason: "This work is merged, so there's no agent to start for it.")])
-        XCTAssertEqual(dock.caption, Self.liveDock.caption)
-    }
-
     func testABranchStillAtItsMergedPullRequestsHeadIsOnlyDone() {
         var input = fixture
         input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, worktree: nil, head: Self.mergedHead))
@@ -395,7 +369,6 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(task.issueNumber)
         XCTAssertEqual(task.branch, "gh-12-x")
         XCTAssertEqual(task.taskNumber, 12)
-        XCTAssertEqual(task.dock, Self.liveDock)
     }
 
     func testAForkHeadIsNeverTakenForABranchHere() throws {

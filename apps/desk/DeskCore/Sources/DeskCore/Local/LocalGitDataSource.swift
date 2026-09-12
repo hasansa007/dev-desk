@@ -41,7 +41,6 @@ public struct LocalGitDataSource: ProjectDataSource {
         async let githubState = GitHubReader(directory: root, runner: runner).read(remote: project.remote)
         async let findings = Self.findings(in: topURL)
         async let ideation = Self.ideation(in: topURL)
-        async let decisions = Self.decisions(in: topURL)
         // These config reads run nothing; they must precede the branch fan-out, whose rev-list/log/diff could lazily fetch and run uploadpack.
         let refusal = try await lazyFetchRefusal()
         let facts = refusal != nil ? GitFacts(base: nil, baseRef: nil, baseShort: nil, branches: [])
@@ -60,7 +59,7 @@ public struct LocalGitDataSource: ProjectDataSource {
             project: project, isDemo: false, board: board,
             boardNote: refusal != nil ? "" : BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
             findings: .available(await findings), ideation: .available(await ideation),
-            roadmap: Self.roadmap(github), decisions: .available(await decisions),
+            roadmap: Self.roadmap(github),
             connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
             projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github),
@@ -158,7 +157,7 @@ public struct LocalGitDataSource: ProjectDataSource {
         return ProjectSnapshot(
             project: project, isDemo: false, board: .unavailable(reason), boardNote: "",
             findings: .unavailable(reason), ideation: .unavailable(reason),
-            roadmap: .unavailable(reason), decisions: .unavailable(reason),
+            roadmap: .unavailable(reason),
             connections: tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(insightsReason),
             projectFacts: facts(base: nil, baseShort: nil, remote: nil,
@@ -235,18 +234,6 @@ public struct LocalGitDataSource: ProjectDataSource {
             }
         }
         return IdeationReport(runs: runs, opportunities: opportunities)
-    }
-
-    private static func decisions(in toplevel: URL) -> [Decision] {
-        let folder = toplevel.appendingPathComponent("docs/adr")
-        func number(_ name: String) -> Int { Int(name.prefix { $0.isASCII && $0.isNumber }) ?? -1 }
-        return markdownFiles(in: folder)
-            .filter { $0.lowercased() != "readme.md" }
-            .sorted { (number($0), $0) > (number($1), $1) }
-            .compactMap { name -> Decision? in
-                guard case .text(let text) = SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) else { return nil }
-                return ADRParser.parse(text, fileName: name)
-            }
     }
 
     private static func markdownFiles(in folder: URL) -> [String] {

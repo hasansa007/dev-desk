@@ -140,22 +140,13 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(snapshot.board.unavailableReason, reason)
         XCTAssertEqual(snapshot.findings.unavailableReason, reason)
         XCTAssertEqual(snapshot.roadmap.unavailableReason, reason)
-        XCTAssertEqual(snapshot.decisions.unavailableReason, reason)
     }
 
-    func testGitHubReadyRepositoryReadsDecisionsNewestFirst() async throws {
+    func testGitHubReadyRepositoryLoads() async throws {
         let folder = try TempGitRepo()
-        try folder.write("docs/adr/0001-x.md", "# 0001 — Use x\n\nStatus: Accepted\nDate: 2026-09-01\n\n## Decision\n\nUse x.\n")
-        try folder.write("docs/adr/0010-y.md", "# 0010 — Use y\n\nStatus: Proposed\nDate: 2026-09-05\n")
-        try folder.write("docs/adr/0002-z.md", "# 0002 — Use z\n\nStatus: Superseded\nDate: 2026-09-02\n")
-        try folder.write("docs/adr/README.md", "# ADRs\n")
         let runner = githubReadyRunner(root: folder.url)
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
-        let decisions = try XCTUnwrap(snapshot.decisions.value)
-        XCTAssertEqual(decisions.map(\.id), ["0010-y", "0002-z", "0001-x"])
-        XCTAssertEqual(decisions.last?.listMeta, "ADR 0001 · Accepted · 2026-09-01")
-        XCTAssertEqual(decisions.last?.answer?.rationale, "Use x.")
         XCTAssertEqual(snapshot.connections.first { $0.id == "github" }, Connection(id: "github", name: "GitHub", state: .connected, label: "connected"))
         XCTAssertEqual(snapshot.board, .available([]))
         XCTAssertEqual(snapshot.findings, .available(FindingsReport(runs: [], findings: [])))

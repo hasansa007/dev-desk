@@ -16,7 +16,7 @@ public enum BoardColumn: String, CaseIterable, Codable, Hashable {
 
 public enum NextAction: Hashable {
     case reviewChanges
-    case answerDecision(decisionID: String)
+    case answerDecision
     case startHandoff
     case openURL(URL, title: String)
 
@@ -224,38 +224,6 @@ public struct Evidence: Hashable {
     }
 }
 
-public enum AgentCapability: String, Hashable { case interactive, activityOnly, completedResult }
-
-public enum AgentAction: String, CaseIterable, Hashable {
-    case openTerminal = "Open terminal"
-    case viewActivity = "View activity"
-    case continueSession = "Continue"
-    case stop = "Stop"
-    case requestFollowUp = "Request follow-up"
-    case readResult = "Read result"
-}
-
-public struct AgentSession: Identifiable, Hashable {
-    public var id: String
-    public var name: String
-    public var role: String          // "Primary", "Helper", "Ended"
-    public var capability: AgentCapability
-    public var stateLabel: String    // "Interactive session · running"
-    public var tone: StatusTone      // dot color
-    public var pulses: Bool
-    public var actions: [AgentAction]
-    public init(id: String, name: String, role: String, capability: AgentCapability, stateLabel: String, tone: StatusTone, pulses: Bool = false, actions: [AgentAction]) {
-        self.id = id
-        self.name = name
-        self.role = role
-        self.capability = capability
-        self.stateLabel = stateLabel
-        self.tone = tone
-        self.pulses = pulses
-        self.actions = actions
-    }
-}
-
 public struct Dependency: Hashable {
     /// Inline markdown with desk:// links, e.g. "Blocked by [#59](desk://task/59) — …".
     public var text: String
@@ -280,49 +248,6 @@ public struct TerminalTranscript: Hashable {
         self.lines = lines
         self.showsPrompt = showsPrompt
         self.isReadOnly = isReadOnly
-    }
-}
-
-public struct DockTab: Identifiable, Hashable {
-    public enum Kind: Hashable {
-        case transcript(TerminalTranscript)
-        /// A shell the app runs in the task's folder, once the user starts it.
-        case liveShell
-        /// The task's agent, which the app runs in the task's folder once the user or Auto starts it.
-        case liveAgent
-        case unavailable(reason: String)
-    }
-
-    public var id: String
-    public var title: String
-    public var kind: Kind
-
-    public init(id: String, title: String, transcript: TerminalTranscript) {
-        self.init(id: id, title: title, kind: .transcript(transcript))
-    }
-
-    public init(id: String, title: String, kind: Kind) {
-        self.id = id
-        self.title = title
-        self.kind = kind
-    }
-
-    /// Non-nil only for a transcript tab.
-    public var transcript: TerminalTranscript? {
-        if case .transcript(let transcript) = kind { return transcript }
-        return nil
-    }
-}
-
-public struct DockContent: Hashable {
-    public var tabs: [DockTab]
-    public var caption: String
-    /// The tab shown in the second pane when the dock is split.
-    public var splitTabID: String?
-    public init(tabs: [DockTab], caption: String, splitTabID: String? = nil) {
-        self.tabs = tabs
-        self.caption = caption
-        self.splitTabID = splitTabID
     }
 }
 
@@ -425,10 +350,7 @@ public struct DeskTask: Identifiable, Hashable {
     public var requirements: Surface<Requirements>
     public var changes: Surface<ChangeSet>
     public var evidence: Surface<Evidence>
-    public var agents: [AgentSession]
-    public var agentsNote: String?
     public var dependencies: [Dependency]
-    public var dock: DockContent?
     public var parallel: ParallelPreview
     public var comparison: OutputComparison?
     public var followUp: FollowUpDraft?
@@ -469,8 +391,8 @@ public struct DeskTask: Identifiable, Hashable {
                 baseRef: String? = nil, nextAction: NextAction? = nil, notice: TaskNotice? = nil, pipeline: PipelineProgress? = nil,
                 activity: Surface<[ActivityEvent]> = .available([]), canCompareOutputs: Bool = false,
                 requirements: Surface<Requirements>, changes: Surface<ChangeSet>, evidence: Surface<Evidence>,
-                agents: [AgentSession] = [], agentsNote: String? = nil, dependencies: [Dependency] = [],
-                dock: DockContent? = nil, parallel: ParallelPreview, comparison: OutputComparison? = nil,
+                dependencies: [Dependency] = [],
+                parallel: ParallelPreview, comparison: OutputComparison? = nil,
                 followUp: FollowUpDraft? = nil, handoff: HandoffPlan? = nil,
                 impact: String? = nil, complexity: String? = nil) {
         self.impact = impact
@@ -499,10 +421,7 @@ public struct DeskTask: Identifiable, Hashable {
         self.requirements = requirements
         self.changes = changes
         self.evidence = evidence
-        self.agents = agents
-        self.agentsNote = agentsNote
         self.dependencies = dependencies
-        self.dock = dock
         self.parallel = parallel
         self.comparison = comparison
         self.followUp = followUp
