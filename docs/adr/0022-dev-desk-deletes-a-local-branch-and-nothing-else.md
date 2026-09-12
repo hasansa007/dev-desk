@@ -1,6 +1,6 @@
 # 0022 — Dev Desk deletes a local branch, and nothing else
 
-Status:  Accepted
+Status:  Accepted — decisions 1 and 4 amended by [0023](0023-the-gate-ran-late-and-took-the-fold-with-it.md)
 Date:    2026-09-12
 Commit:  (this branch)  ·  `feat/desk-board-tracking-and-github`
 

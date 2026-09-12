@@ -38,6 +38,22 @@ final class BranchWriteTests: XCTestCase {
         XCTAssertEqual(runner.calls.first?.directory, URL(fileURLWithPath: "/repo"))
     }
 
+    /// ADR 0022 claims git's own refusal as a layer of the design. It only is one if `-d` actually runs, so it
+    /// runs first every time — a typed name authorises the escalation, it does not skip the safe attempt.
+    func testTheSafeFlagIsTriedFirstEvenWhenTheNameWasTyped() async throws {
+        let runner = FakeRunner([FakeRunner.gitRead("branch -d -- feat/x"): .failed(1, stderr: "error: the branch feat/x is not fully merged\n"),
+                                 FakeRunner.gitRead("branch -D -- feat/x"): .ok("Deleted branch feat/x\n")])
+        try await BranchWrite(directory: URL(fileURLWithPath: "/repo"), runner: runner).delete(branch: "feat/x", force: true)
+        XCTAssertEqual(runner.keys, [FakeRunner.gitRead("branch -d -- feat/x"), FakeRunner.gitRead("branch -D -- feat/x")])
+    }
+
+    /// A count read up to two minutes ago said commits were at risk; git says otherwise. git wins, and nothing forces.
+    func testAForcedDeleteNeverForcesWhatGitWouldAllowSafely() async throws {
+        let runner = FakeRunner([FakeRunner.gitRead("branch -d -- feat/x"): .ok("Deleted branch feat/x\n")])
+        try await BranchWrite(directory: URL(fileURLWithPath: "/repo"), runner: runner).delete(branch: "feat/x", force: true)
+        XCTAssertEqual(runner.keys, [FakeRunner.gitRead("branch -d -- feat/x")], "-D must not run when -d succeeded")
+    }
+
     func testAFailedDeleteCarriesGitsOwnLastLine() async {
         let runner = FakeRunner([FakeRunner.gitRead("branch -d -- feat/x"): .failed(1, stderr: "error: the branch is not fully merged\n")])
         do {

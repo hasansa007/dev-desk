@@ -30,4 +30,5 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0019](0019-deep-features-cant-skip-the-architecture-gate.md) | Deep features can't skip the architecture gate; dev:audit checks it | Accepted |
 | [0020](0020-impact-and-complexity-are-labels-the-doors-propose.md) | Impact and complexity are labels the doors propose and the developer corrects | Accepted |
 | [0021](0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md) | A card opens one dialog, and the panels are the window's edges | Accepted |
-| [0022](0022-dev-desk-deletes-a-local-branch-and-nothing-else.md) | Dev Desk deletes a local branch, and nothing else | Accepted |
+| [0022](0022-dev-desk-deletes-a-local-branch-and-nothing-else.md) | Dev Desk deletes a local branch, and nothing else | Accepted, amended by 0023 |
+| [0023](0023-the-gate-ran-late-and-took-the-fold-with-it.md) | The gate ran late, and took the fold with it | Accepted |
