@@ -113,10 +113,15 @@ struct SectionLabel: View {
 }
 
 extension View {
-    func deskCard(padding: CGFloat = 11, border: Color = DeskColor.border) -> some View {
-        self.padding(padding)
-            .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
-            .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(border))
+    /// Every card in the app: one fill, one radius, one border, and selection drawn the same way wherever a
+    /// card can be selected. A card that draws its own chrome drifts from this one the first time either moves.
+    func deskCard(padding: CGFloat = 11, border: Color = DeskColor.border, isSelected: Bool = false) -> some View {
+        let shape = RoundedRectangle(cornerRadius: DeskMetric.cardRadius)
+        return self.padding(padding)
+            .background(DeskColor.surface, in: shape)
+            .overlay(shape.strokeBorder(isSelected ? DeskColor.accent : border))
+            .overlay { if isSelected { shape.inset(by: -1.5).stroke(DeskColor.accent.opacity(0.14), lineWidth: 3) } }
+            .contentShape(shape)
     }
 
     /// One height, radius and border for the controls that are not buttons, so a header never mixes a capsule with a rounded rectangle.

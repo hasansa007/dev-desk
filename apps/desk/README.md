@@ -26,6 +26,21 @@ The first launch needs one extra step, because the app isn't notarized: right-cl
 
 ## Build and run
 
+To install the app where you actually open it — `~/Applications` — and launch it:
+
+```bash
+apps/desk/install.sh            # add --no-open to install without launching
+```
+
+Everything else builds into DerivedData, which is a **different bundle** from the installed one. That
+distinction has already cost a session: changes were built, launched and verified in DerivedData
+while the installed copy — the one being opened from Spotlight — stayed untouched and correctly
+appeared not to change. `install.sh` builds Release ad-hoc signed, exactly as `desk-release.yml`
+does, replaces `~/Applications/Dev Desk.app`, and prints the installed binary's timestamp so you can
+see which build you have.
+
+For development in Xcode:
+
 ```bash
 cd apps/desk && xcodegen generate && open DevDesk.xcodeproj   # then ⌘R in Xcode
 ```
