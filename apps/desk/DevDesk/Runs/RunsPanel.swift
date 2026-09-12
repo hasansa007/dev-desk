@@ -10,6 +10,8 @@ struct RunsPanel: View {
     @Bindable var model: ProjectWindowModel
     @Environment(\.shellTerminals) private var terminals
     @Environment(\.agentTerminals) private var agents
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
+    @State private var answers: [String: String] = [:]
 
     private var selected: DoorRun? {
         model.runs.selectedID.flatMap { model.runs.run($0) } ?? model.runs.runs.first
@@ -37,7 +39,7 @@ struct RunsPanel: View {
         return rows(model.agentSessions, kind: .agent) + rows(model.shellSessions, kind: .shell)
     }
 
-    private var isEmpty: Bool { model.runs.runs.isEmpty && sessionRows.isEmpty }
+    private var isEmpty: Bool { model.runs.runs.isEmpty && sessionRows.isEmpty && (jobs?.jobs.isEmpty ?? true) }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -89,7 +91,84 @@ struct RunsPanel: View {
             ForEach(sessionRows) { row in
                 sessionRow(row)
             }
+            if let jobs {
+                ForEach(jobs.jobs) { job in
+                    jobRow(job, registry: jobs)
+                }
+            }
         }
+    }
+
+    /// A background run has no terminal, so the row is where it lives: its log, its Stop, and — when it stopped
+    /// needing an answer — the box that answers it and resumes the same session (ADR 0025).
+    @ViewBuilder private func jobRow(_ job: BackgroundJob, registry: JobRegistry) -> some View {
+        let tone: StatusTone = {
+            switch job.state {
+            case .starting: return .info
+            case .running: return .running
+            case .asking: return .waiting
+            case .ended(_, let failed): return failed ? .failed : .ended
+            }
+        }()
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                StatusDot(tone: tone, pulses: job.state.isLive)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(job.title)
+                        .font(DeskFont.body.weight(.semibold))
+                        .foregroundStyle(DeskColor.ink)
+                        .lineLimit(1)
+                    Text("\(job.agent) · in the background · \(job.state.label)")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DeskColor.mutedInk)
+                }
+                Spacer(minLength: 4)
+                if job.state.isLive {
+                    Button("Stop") { registry.stop(job.id) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help("End this background run")
+                } else {
+                    Button("Remove") { registry.remove(job.id) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                }
+            }
+            if !job.log.isEmpty {
+                ScrollView {
+                    Text(job.log.joined(separator: "\n"))
+                        .font(DeskFont.mono(11))
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .frame(maxHeight: 120)
+                .padding(8)
+                .background(DeskColor.canvas, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+            }
+            if case .asking(let question) = job.state {
+                NoticeBanner(tone: .waiting, title: "This run needs an answer", message: question, style: .compact)
+                HStack(spacing: 8) {
+                    TextField("Your answer", text: Binding(get: { answers[job.id] ?? "" },
+                                                           set: { answers[job.id] = $0 }))
+                        .textFieldStyle(.plain)
+                        .font(DeskFont.body)
+                        .padding(8)
+                        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
+                    Button("Answer and continue") {
+                        let text = (answers[job.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
+                        guard !text.isEmpty else { return }
+                        answers[job.id] = ""
+                        registry.answer(text, to: job.id)
+                    }
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                    .disabled((answers[job.id] ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+        }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
     }
 
     /// A terminal or an agent someone started from a task's dialog. Open goes to it; Stop ends it here, which is

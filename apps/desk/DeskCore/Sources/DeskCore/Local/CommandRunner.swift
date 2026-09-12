@@ -71,6 +71,10 @@ public struct ProcessRunner: CommandRunner {
         }
     }
 
+    /// Public so a long-lived child — a background run's process — inherits the same widened PATH and the same
+    /// prompt-disabling variables as every one-shot command, rather than a second, drifting copy of the list.
+    public static func widenedEnvironment() -> [String: String] { ProcessRunner().environment() }
+
     func environment() -> [String: String] {
         var env = ProcessInfo.processInfo.environment
         let home = FileManager.default.homeDirectoryForCurrentUser.path
