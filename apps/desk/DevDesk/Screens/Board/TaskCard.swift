@@ -21,6 +21,13 @@ struct BranchActions {
     let delete: (() -> Void)?
 }
 
+/// The Start control is an overlay, so the note sharing its band has to be told how much room it takes.
+/// A constant would drift the moment the button's size token or its label changed, with nothing to catch it.
+private struct StartWidthKey: SwiftUI.PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 /// One board card; reused wherever a task list needs the same summary (D:162–232).
 struct TaskCard: View {
     let task: DeskTask
@@ -34,6 +41,7 @@ struct TaskCard: View {
     var start: (() -> Void)?
     /// What a card with a branch but no issue can do; `moves` covers the ones with an issue.
     var branchActions: BranchActions?
+    @State private var startWidth: CGFloat = 0
 
     var body: some View {
         Button(action: action) {
@@ -45,6 +53,7 @@ struct TaskCard: View {
         // Siblings, not children of the card's button, so pressing one never also opens the task.
         .overlay(alignment: .topTrailing) { movesMenu.padding(7) }
         .overlay(alignment: .bottomTrailing) { startButton.padding(11) }
+        .onPreferenceChange(StartWidthKey.self) { startWidth = $0 }
     }
 
     @ViewBuilder private var movesMenu: some View {
@@ -123,7 +132,7 @@ struct TaskCard: View {
             .font(.system(size: 11))
             .foregroundStyle(task.cardNoteIsWarning ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
             .lineLimit(1)
-            .padding(.trailing, offersStart ? 78 : 0)
+            .padding(.trailing, offersStart ? startWidth + 8 : 0)
             .frame(maxWidth: .infinity, minHeight: DeskButtonStyle.Size.mini.height,
                    maxHeight: DeskButtonStyle.Size.mini.height, alignment: .leading)
     }
@@ -138,6 +147,9 @@ struct TaskCard: View {
             }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             .accessibilityLabel("Start \(task.issueLabel.isEmpty ? task.title : task.issueLabel)")
+            .background(GeometryReader { proxy in
+                Color.clear.preference(key: StartWidthKey.self, value: proxy.size.width)
+            })
         }
     }
 
@@ -150,10 +162,12 @@ struct TaskCard: View {
                 Text(metaText)
                     .font(DeskFont.mono(11))
                     .foregroundStyle(DeskColor.mutedInk)
+                    .lineLimit(1)
             }
             Text(branchFacts)
                 .font(.system(size: 11))
                 .foregroundStyle(DeskColor.faintInk)
+                .lineLimit(1)
             if let badge = task.cardBadge {
                 StatusPill(badge: badge)
             } else if let inline = task.cardInlineText {

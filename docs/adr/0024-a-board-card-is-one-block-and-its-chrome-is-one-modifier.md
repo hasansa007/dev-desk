@@ -43,6 +43,10 @@ literal radii in `CompareOutputsSheet` and `ReconcileFindingSheet` are now the t
   uniform grid, and it is one constant to tune rather than a layout to re-derive.
 - **The next card-shaped surface has one thing to call.** The drift this ADR removes happened because
   copying four lines of chrome was easier than finding the modifier that already existed.
+- **`deskCard` now sets `contentShape` for all twelve of its call sites**, not just the board's. Traced
+  through each — `SurfaceView`, `RequirementsTab`, `IdeationScreen`, `FindingDetail`, `TaskNoticeViews`,
+  `EvidenceTab`, `RoadmapScreen` — and nothing depends on the old hit region: children keep their own,
+  so text selection still works. Recorded because it is a behaviour change riding in a refactor.
 
 ## Alternatives rejected
 
