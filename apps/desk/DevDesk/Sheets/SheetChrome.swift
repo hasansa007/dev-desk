@@ -6,6 +6,7 @@ struct SheetChrome<Content: View>: View {
     let title: String
     let confirmTitle: String
     let cancelTitle: String
+    let scrolls: Bool
     let confirmDisabled: Bool
     let cancelHelp: String?
     let onCancel: () -> Void
@@ -15,13 +16,16 @@ struct SheetChrome<Content: View>: View {
     /// "Cancel" abandons a pending action. A sheet that is a place rather than an action — the task dialog,
     /// Settings — is left, not cancelled, and says "Close": beside a Stop agent button, "Cancel" reads as if it
     /// would stop the work.
+    /// `scrolls: false` for a body that manages its own scrolling — a terminal — because a ScrollView around
+    /// one eats the events it needs (ADR 0021 still holds: the dialog's size is fixed either way).
     init(title: String, confirmTitle: String, confirmDisabled: Bool = false, cancelTitle: String = "Cancel",
-         cancelHelp: String? = nil,
+         scrolls: Bool = true, cancelHelp: String? = nil,
          onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void, @ViewBuilder content: () -> Content) {
         self.title = title
         self.confirmTitle = confirmTitle
         self.confirmDisabled = confirmDisabled
         self.cancelTitle = cancelTitle
+        self.scrolls = scrolls
         self.cancelHelp = cancelHelp
         self.onCancel = onCancel
         self.onConfirm = onConfirm
@@ -31,9 +35,18 @@ struct SheetChrome<Content: View>: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            ScrollView {
+            // A terminal scrolls itself, and an enclosing ScrollView takes the wheel and the arrow keys before
+            // it ever sees them — which is how a live shell ends up with no scrollback and no ↑/↓.
+            if scrolls {
+                ScrollView {
+                    content
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 18)
+                }
+            } else {
                 content
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
                     .padding(.vertical, 16)
                     .padding(.horizontal, 18)
             }

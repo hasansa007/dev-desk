@@ -106,8 +106,11 @@ enum DeskMetric {
     static let inspectorWidth: CGFloat = 262
     /// Runs is the bottom edge of the window: deep enough for a terminal, shallow enough to leave the work visible.
     static let runsPanelHeight: CGFloat = 300
+    /// Deep enough for a terminal, and never so deep the work behind it disappears.
+    static let runsHeightRange: ClosedRange<Double> = 140...760
     /// Files is the right edge: a tree over a viewer, so it is narrow.
     static let filesPanelWidth: CGFloat = 420
+    static let filesWidthRange: ClosedRange<Double> = 260...900
     static let boardColumnWidth: CGFloat = 246
     /// Every small control shares these: search fields, toggles and the toolbar's pill. Buttons carry their own table in `DeskButtonStyle.Size`.
     static let controlHeight: CGFloat = 26
@@ -125,4 +128,7 @@ enum DeskMetric {
     /// choose its own: `SheetChrome` takes neither a width nor a height, and its body scrolls instead.
     static let dialogWidth: CGFloat = 900
     static let dialogHeight: CGFloat = 660
+    /// A run's terminal inside that dialog. Explicit, because the dialog's body scrolls and a representable
+    /// asked to fill a ScrollView collapses to nothing.
+    static let runDialogTerminalHeight: CGFloat = 470
 }

@@ -256,7 +256,7 @@ private struct BoardContext {
             parallel: parallel(head, local: local),
             impact: DeskTask.rating("impact", in: issue.labelNames),
             complexity: DeskTask.rating("complexity", in: issue.labelNames),
-            lastCommit: fromFork ? nil : local?.lastCommit, unmergedCount: fromFork ? nil : local?.unmerged)
+            lastCommit: fromFork ? nil : local?.lastCommit, unmergedCount: fromFork ? nil : local?.countedUnmerged)
     }
 
     private func pullRequestTask(_ pullRequest: GitHubPullRequest) -> DeskTask {
@@ -279,7 +279,7 @@ private struct BoardContext {
             dependencies: BoardBuilder.dependencies(pullRequest.body),
             parallel: parallel(head, local: local),
             lastCommit: pullRequest.isCrossRepository ? nil : local?.lastCommit,
-            unmergedCount: pullRequest.isCrossRepository ? nil : local?.unmerged)
+            unmergedCount: pullRequest.isCrossRepository ? nil : local?.countedUnmerged)
     }
 
     private func branchTask(_ branch: BranchFacts) -> DeskTask {
@@ -297,7 +297,7 @@ private struct BoardContext {
             changes: changes(branch.name, local: branch),
             evidence: evidence(pullRequest: nil, state: state),
             parallel: parallel(branch.name, local: branch),
-            lastCommit: branch.lastCommit, unmergedCount: branch.unmerged)
+            lastCommit: branch.lastCommit, unmergedCount: branch.countedUnmerged)
     }
 
     private func mergedTask(_ pullRequest: GitHubMergedPullRequest) -> DeskTask {

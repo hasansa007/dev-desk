@@ -36,6 +36,13 @@ final class ShellTerminalHost: NSView {
         terminal.frame = bounds
         terminal.autoresizingMask = [.width, .height]
         addSubview(terminal)
+        // Re-parenting into a dialog leaves first responder wherever it was — on the sheet's buttons, which
+        // then take ↑/↓ before the terminal sees them. A terminal that has just appeared is the thing being
+        // looked at, so it asks for focus again.
+        if let focusing = terminal as? FocusingTerminalView {
+            focusing.focusOnAttach = true
+            focusing.takeFocusIfAsked()
+        }
     }
 
     /// The app's events reach a local monitor before any view, so this holds whatever SwiftUI draws around the terminal.

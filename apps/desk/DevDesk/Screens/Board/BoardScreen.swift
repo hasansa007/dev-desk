@@ -184,7 +184,9 @@ private struct BoardColumnView: View {
     private func runControls(for task: DeskTask) -> CardRunControls? {
         guard task.column != .done else { return nil }
         let live = model.activity(of: task) != nil
-        let canStartDoor = model.startBlockedReason(for: task, agent: defaultConnection) == nil
+        // Only the "no issue number" case belongs to the agent fallback: a sample project or an unverified
+        // connection blocks the agent for the same reason, so offering it there just moves the refusal.
+        let canStartDoor = task.taskNumber != nil && model.startBlockedReason(for: task, agent: defaultConnection) == nil
         return CardRunControls(
             isLive: live,
             stop: {
@@ -274,19 +276,7 @@ private struct BoardColumnView: View {
             isQueued: task.column == .queued,
             queue: { pending = PendingMove(issue: issue, action: .queue(milestone: model.activeMilestone ?? "")) },
             backlog: { pending = PendingMove(issue: issue, action: .backlog) },
-            cancel: { model.present(.cancelTask(task.id)) },
-            complete: { pending = PendingMove(issue: issue, action: .complete) },
-            completeBlockedReason: completeBlocked(task))
-    }
-
-    /// git's Done, not the tracker's: the work has to be in the base already. A merged pull request card
-    /// qualifies, and so does a branch with nothing the base lacks. A card that never had a branch has no
-    /// merge for git to agree with, so it says so rather than closing on a guess.
-    private func completeBlocked(_ task: DeskTask) -> String? {
-        if task.column == .done { return nil }
-        guard task.branch != nil else { return "nothing has been built for it" }
-        guard task.unmergedCount == 0 else { return "merge it first" }
-        return nil
+            cancel: { model.present(.cancelTask(task.id)) })
     }
 
     private func commit() {

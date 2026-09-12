@@ -16,9 +16,15 @@ struct NumstatEntry: Equatable {
 struct BranchFacts: Equatable {
     var name: String
     var unmerged: Int
+    /// Whether `rev-list` actually answered. Without this, an unreadable base and a branch with nothing to
+    /// merge are both 0 — and anything reading 0 as "already merged" is reading a failure as a fact.
+    var counted = false
     /// When the branch's tip was committed, from the same `for-each-ref` that already sorts by it. A branch
     /// with unmerged commits is In Progress by git's rule; without this, a dead branch and live work look alike.
     var lastCommit: Date?
+    /// The count, or nil when git never gave one. Everything that decides anything reads this, not `unmerged`.
+    var countedUnmerged: Int? { counted ? unmerged : nil }
+
     /// Set only when the branch is checked out in a worktree other than the opened one.
     var worktree: String?
     var commits: [GitCommit] = []
@@ -333,9 +339,10 @@ struct GitReader {
         var facts = BranchFacts(name: name, unmerged: 0, worktree: worktree)
         let ref = "refs/heads/\(name)"
         guard let baseRef,
-              let count = Int(trimmed(await output(["rev-list", "--count", "\(baseRef)..\(ref)"])) ?? ""),
-              count > 0 else { return facts }
+              let count = Int(trimmed(await output(["rev-list", "--count", "\(baseRef)..\(ref)"])) ?? "") else { return facts }
+        facts.counted = true
         facts.unmerged = count
+        guard count > 0 else { return facts }
         async let log = read(["log", "--format=%h%x1f%an%x1f%aI%x1f%s", "-n", "50", "\(baseRef)..\(ref)"])
         async let numstat = read(["diff", "--numstat", "--no-textconv", "\(baseRef)...\(ref)"])
         async let diff = read(["diff", "--no-color", "--no-ext-diff", "--no-textconv", "-U3", "\(baseRef)...\(ref)"])

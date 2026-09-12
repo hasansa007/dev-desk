@@ -14,8 +14,13 @@ struct DoorRunControl: View {
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
-    /// In a terminal or in the background — either way this door is busy.
-    private var isRunning: Bool { model.isDoorRunning(door) || (jobs?.hasLiveJob(door: door) ?? false) }
+    /// In a terminal or in the background — either way this door is busy **in this project**. The registry is
+    /// the app's, so the directory is what keeps one window's run out of another's button.
+    private var isRunning: Bool {
+        if model.isDoorRunning(door) { return true }
+        guard case .local(let path) = model.ref else { return false }
+        return jobs?.hasLiveJob(door: door, in: path) ?? false
+    }
 
     var body: some View {
         if isRunning {
