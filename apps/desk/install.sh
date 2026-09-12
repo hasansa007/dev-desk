@@ -14,11 +14,13 @@ cd "$(dirname "$0")"
 APP_NAME="Dev Desk.app"
 DEST="$HOME/Applications"
 OPEN_AFTER=1
+FORCE=0
 
 for arg in "$@"; do
     case "$arg" in
         --no-open) OPEN_AFTER=0 ;;
-        *) echo "usage: install.sh [--no-open]" >&2; exit 2 ;;
+        --force) FORCE=1 ;;
+        *) echo "usage: install.sh [--no-open] [--force]" >&2; exit 2 ;;
     esac
 done
 
@@ -63,6 +65,29 @@ wait_for_exit() {
     done
     return 1
 }
+
+# Installing quits the app, and quitting ends every run it is hosting. Twice on 2026-09-12 that took a
+# live door run with it, both times because a human eye judged "probably finished". The check is cheap and
+# the loss is not, so it is the script's job, and --force is the way to say you meant it.
+if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
+    LIVE=""
+    for pid in $(pgrep -x "Dev Desk"); do
+        # Any agent or CLI running underneath the app, at any depth — a run's claude sits under its login shell.
+        kids=$(pgrep -P "$pid" 2>/dev/null || true)
+        for kid in $kids; do
+            deep=$(pgrep -P "$kid" 2>/dev/null || true)
+            for one in $kid $deep; do
+                name=$(ps -p "$one" -o comm= 2>/dev/null | xargs basename 2>/dev/null || true)
+                case "$name" in claude|codex|node|python3) LIVE="$LIVE $name" ;; esac
+            done
+        done
+    done
+    if [ -n "$LIVE" ]; then
+        echo "Dev Desk is running something:$LIVE" >&2
+        echo "Installing quits the app, which would end it. Stop it in the Runs panel, or re-run with --force." >&2
+        exit 1
+    fi
+fi
 
 if pgrep -x "Dev Desk" >/dev/null 2>&1; then
     echo "==> Quitting the running Dev Desk"

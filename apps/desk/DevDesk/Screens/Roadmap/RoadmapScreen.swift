@@ -3,15 +3,21 @@ import SwiftUI
 
 struct RoadmapScreen: View {
     @Bindable var model: ProjectWindowModel
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
+
+    private var isRoadmapRunning: Bool {
+        model.isDoorRunning("roadmap") || (jobs?.hasLiveJob(door: "roadmap") ?? false)
+    }
 
     var body: some View {
         if let snapshot = model.snapshot {
             SurfaceView(snapshot.roadmap, fillsScreen: true) { roadmap in
                 if roadmap.themes.isEmpty && roadmap.milestones.isEmpty {
-                    EmptyStateView(title: "No roadmap yet",
-                                   message: "The roadmap door reads what this repository already records about its own gaps and proposes milestones with epic parents underneath. Nothing here is invented, and it asks before it files.") {
-                        Button("Run roadmap") { model.present(.runFocus("roadmap")) }
-                            .buttonStyle(DeskButtonStyle(kind: .primary))
+                    EmptyStateView(title: isRoadmapRunning ? "The roadmap door is running" : "No roadmap yet",
+                                   message: isRoadmapRunning
+                                       ? "It is reading this repository's recorded gaps now. Themes appear here once it files, and it asks before it does."
+                                       : "The roadmap door reads what this repository already records about its own gaps and proposes milestones with epic parents underneath. Nothing here is invented, and it asks before it files.") {
+                        DoorRunControl(model: model, door: "roadmap", title: "Run roadmap")
                     }
                 } else {
                     RoadmapContent(roadmap: roadmap, model: model)
@@ -56,9 +62,7 @@ private struct RoadmapContent: View {
                 .foregroundStyle(DeskColor.mutedInk)
             noteButton
             Spacer(minLength: 0)
-            Button("Run roadmap") { model.present(.runFocus("roadmap")) }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                .help("Propose milestones and epic parents from what this repository records")
+            DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
         }
         .screenHeaderBar()
     }

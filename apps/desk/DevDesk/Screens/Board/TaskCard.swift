@@ -28,6 +28,15 @@ private struct StartWidthKey: SwiftUI.PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
+/// Stopping and continuing what a card is running. A card in In Progress is git's judgement about commits,
+/// never a claim that anything is working — so the card says which, and offers the control that matches.
+struct CardRunControls {
+    let isLive: Bool
+    let stop: () -> Void
+    let resume: () -> Void
+    let resumeTitle: String
+}
+
 /// One board card; reused wherever a task list needs the same summary (D:162–232).
 struct TaskCard: View {
     let task: DeskTask
@@ -41,6 +50,8 @@ struct TaskCard: View {
     var start: (() -> Void)?
     /// What a card with a branch but no issue can do; `moves` covers the ones with an issue.
     var branchActions: BranchActions?
+    /// Stop and Continue, on every card that could be running something.
+    var runControls: CardRunControls?
     @State private var startWidth: CGFloat = 0
 
     var body: some View {
@@ -59,6 +70,7 @@ struct TaskCard: View {
     @ViewBuilder private var movesMenu: some View {
         if let branchActions {
             Menu {
+                runEntries
                 Button("Open a terminal here") { branchActions.openTerminal() }
                 Button("Compare with the base") { branchActions.compare() }
                 Button("Copy branch name") { branchActions.copyName() }
@@ -77,6 +89,7 @@ struct TaskCard: View {
             .accessibilityLabel("Actions for \(task.title)")
         } else if let moves {
             Menu {
+                runEntries
                 Button(moves.milestone.map { "Queue into \($0)" } ?? "Queue") { moves.queue() }
                     .disabled(moves.milestone == nil || moves.isQueued)
                 Button("Return to backlog") { moves.backlog() }
@@ -137,6 +150,18 @@ struct TaskCard: View {
                    maxHeight: DeskButtonStyle.Size.mini.height, alignment: .leading)
     }
 
+    /// Stop what is live; continue what is not. Shown first, because it is the only entry about right now.
+    @ViewBuilder private var runEntries: some View {
+        if let runControls {
+            if runControls.isLive {
+                Button("Stop") { runControls.stop() }
+            } else {
+                Button(runControls.resumeTitle) { runControls.resume() }
+            }
+            Divider()
+        }
+    }
+
     /// Offered only when there is something to start and nothing already running for this task.
     private var offersStart: Bool { start != nil && activity == nil }
 
@@ -157,6 +182,8 @@ struct TaskCard: View {
         HStack(spacing: 8) {
             if let activity {
                 StatusPill(badge: StatusBadge(.running, activity.label, pulses: true))
+            } else if isPaused {
+                StatusPill(badge: StatusBadge(.waiting, "Paused"))
             }
             if !metaText.isEmpty {
                 Text(metaText)
@@ -192,6 +219,11 @@ struct TaskCard: View {
         let ahead = task.unmergedCount.map { "\($0) ahead" } ?? "—"
         return "\(age) · \(ahead)"
     }
+
+    /// git puts a branch with unmerged commits In Progress (ADR 0011) and has no idea whether anyone is
+    /// working. Nineteen cards saying In Progress while nothing ran is what that gap looks like; the column
+    /// stays git's, and the card says what the app knows: nothing of this task is running.
+    private var isPaused: Bool { task.column == .inProgress && activity == nil && runControls != nil }
 
     private var metaText: String {
         guard let meta = task.cardMeta else { return task.issueLabel }

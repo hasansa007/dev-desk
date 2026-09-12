@@ -298,6 +298,9 @@ public final class ProjectWindowModel {
         }
     }
 
+    /// Whether this door already has a run of its own live in this window — the one a second press is refused.
+    public func isDoorRunning(_ door: String) -> Bool { isRunLive(DoorRuns.id(door: door)) }
+
     /// What this task has live right now, whichever screen started it — a door run, its own shell, or its agent.
     public func activity(of task: DeskTask) -> TaskActivity? {
         Self.activity(doorRun: task.taskNumber.map { isRunLive(DoorRuns.id(task: $0)) } ?? false,
