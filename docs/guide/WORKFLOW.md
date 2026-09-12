@@ -34,7 +34,7 @@ Standalone verification automatically continues into documentation checks. It do
 
 ## Rating an issue
 
-Two labels carry what an issue is worth and how big it is: `impact:high|medium|low` and `complexity:high|medium|low` ([ADR 0018](../adr/0018-impact-and-complexity-are-labels-the-doors-propose.md)). Priority is unchanged and still means urgency, which is what `dev:kanban` orders by; impact is the gain and complexity the cost, the ratio `dev:ideation` already ranks opportunities by.
+Two labels carry what an issue is worth and how big it is: `impact:high|medium|low` and `complexity:high|medium|low` ([ADR 0020](../adr/0020-impact-and-complexity-are-labels-the-doors-propose.md)). Priority is unchanged and still means urgency, which is what `dev:kanban` orders by; impact is the gain and complexity the cost, the ratio `dev:ideation` already ranks opportunities by.
 
 Every filing door proposes both values with its reasoning, marked as an assumption for you to correct. A repository that lacks a label is offered it and never has one created silently, the rule `dev:roadmap` applies to `epic`. An issue nobody has rated shows a dash in Dev Desk rather than a guess.
 

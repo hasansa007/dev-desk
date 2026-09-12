@@ -1,4 +1,4 @@
-# 0019 — A card opens one dialog, and the panels are the window's edges
+# 0021 — A card opens one dialog, and the panels are the window's edges
 
 Status:  Accepted
 Date:    2026-09-12
@@ -27,9 +27,15 @@ Those reports contradict the design record. A record exists to be contradicted b
 
 **1. A card opens a dialog, and only a dialog.** Started or not, every card on the board and every
 card in a parallel pane opens the same `TaskDialog` over the board — Activity, Overview, Changes,
-Evidence, with Start task on one that has not begun and View run on one that has. The board stays
-where it was underneath. The full-screen workspace and its parts are deleted:
+Evidence, Shell, Agent — with Start task on one that has not begun and View run on one that has. The
+board stays where it was underneath. The full-screen workspace and its parts are deleted:
 `TaskWorkspaceScreen`, `TaskHeader`, `AgentsInspector`, `AgentsDock`, `UnstartedTaskSheet`.
+
+**The dock's two panes moved into the dialog rather than dying with it.** ADR 0018 landed on `main`
+while this branch was open, putting the task's agent and an Auto mode in that dock. Nothing it
+decided is reversed: the task's shell and its agent each keep their own worktree, their own trust
+note and their own Start, as the Shell and Agent tabs. Auto is untouched — it was mounted on the
+window, not on the dock, and still starts a queued task's agent where it is turned on.
 
 **2. Every dialog is exactly 900 × 660.** `SheetChrome` takes neither a width nor a height, so a
 sheet cannot choose its own; a long body scrolls. The rule is enforced by the type, not by
@@ -65,10 +71,8 @@ count of tasks it would show and — when there are not two to show — the reas
 - **One shape to learn.** A card is a dialog, a door's report is a destination, a panel is an edge.
   Nothing in the window changes size or position because of what you opened.
 - **The task workspace's dock went with it.** Its open/placement/split state, its restored scene
-  storage and the agent-row router that set them are removed. `DeskTask.dock`, `DockContent`,
-  `DockTab`, `Agent` and `AgentAction` are still built by `BoardBuilder` and the sample data but
-  nothing renders them; they are recorded in `PROJECT_MAP.md` under ORPHANS rather than deleted in
-  the same diff.
+  storage and the agent-row router that set them are removed; its two panes are the dialog's last
+  two tabs.
 - **ADR 0011 is untouched.** The board still mirrors git and never decides. A running task shows a
   badge from the app's own session state; it is never moved between columns by the app.
 - **ADR 0014 is untouched.** Card writes are still the bounded Move and Cancel, through `gh`.

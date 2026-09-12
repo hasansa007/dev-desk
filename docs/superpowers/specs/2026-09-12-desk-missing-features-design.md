@@ -3,10 +3,10 @@
 **Date:** 2026-09-12
 
 **Status:** built. Decisions 1, 2, 3, 5 and 6 shipped as recorded; **4 and 7 were overridden by use
-on the same day** — see [ADR 0019](../../adr/0019-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md),
+on the same day** — see [ADR 0021](../../adr/0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md),
 which also records the reorganization that use asked for (one dialog for every card, one dialog
 size, Insights as a destination, Decisions removed, panels as window edges, Survey and Ideation as
-two workflows). Decision 3 is [ADR 0018](../../adr/0018-impact-and-complexity-are-labels-the-doors-propose.md).
+two workflows). Decision 3 is [ADR 0020](../../adr/0020-impact-and-complexity-are-labels-the-doors-propose.md).
 
 **Epic:** [#59](https://github.com/hasansa007/dev-skill/issues/59) · children #60–#67
 

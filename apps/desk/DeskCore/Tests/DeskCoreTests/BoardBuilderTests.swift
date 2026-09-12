@@ -315,27 +315,63 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(tasks()["14"]?.evidence.value?.limitations)
     }
 
-    private func shellDock(example: String) -> DockContent {
-        DockContent(tabs: [
-            DockTab(id: "shell", title: "Shell", kind: .liveShell),
-            DockTab(id: "agents", title: "Agents", kind: .unavailable(reason: "Dev Desk doesn't start agents yet. You can run one in the Shell tab, "
-                                                                     + "for example \(example). Starting agents from here, by hand or automatically, comes next.")),
-        ], caption: "Agents & Terminals · a shell in this task's folder")
-    }
+    private static let liveDock = DockContent(tabs: [
+        DockTab(id: "shell", title: "Shell", kind: .liveShell),
+        DockTab(id: "agents", title: "Agents", kind: .liveAgent),
+    ], caption: "Agents & Terminals · your shell and the task's agent, in the task's folder")
 
-    func testNoTaskShowsAgentsButEveryTaskGetsAShellDock() {
+    func testNoTaskShowsAgentRowsButEveryOpenTaskGetsTheLiveDock() {
         for task in BoardBuilder.build(fixture) {
             XCTAssertEqual(task.agents, [], task.id)
-            XCTAssertEqual(task.agentsNote, "No managed sessions. Dev Desk doesn't start agents yet.", task.id)
-            XCTAssertEqual(task.dock, shellDock(example: task.taskNumber.map { "claude \"/dev #\($0)\"" } ?? "claude \"/dev\""), task.id)
+            XCTAssertEqual(task.agentsNote, "Start this task's agent from the Agents tab in the dock.", task.id)
+            if task.column != .done { XCTAssertEqual(task.dock, Self.liveDock, task.id) }
         }
     }
 
-    func testTheAgentsTabNamesTheTasksDevCommandAndNoTabHasATranscript() throws {
-        XCTAssertEqual(try XCTUnwrap(tasks()["12"]).dock, shellDock(example: "claude \"/dev #12\""))
-        XCTAssertEqual(try XCTUnwrap(tasks()["pr:20"]).dock, shellDock(example: "claude \"/dev\""))
-        XCTAssertEqual(try XCTUnwrap(tasks()["branch:spike/z"]).dock, shellDock(example: "claude \"/dev\""))
+    func testEveryKindOfOpenTaskGetsTheShellAndAgentsTabsAndNoTranscript() throws {
+        for id in ["12", "14", "pr:20", "branch:spike/z"] {
+            XCTAssertEqual(try XCTUnwrap(tasks()[id], id).dock, Self.liveDock, id)
+        }
         XCTAssertEqual(try XCTUnwrap(tasks()["12"]?.dock).tabs.map(\.transcript), [nil, nil])
+    }
+
+    func testMergedWorkKeepsItsShellButOffersNoAgent() throws {
+        let dock = try XCTUnwrap(tasks()["merged:9"]?.dock)
+        XCTAssertEqual(dock.tabs.map(\.kind), [.liveShell, .unavailable(reason: "This work is merged, so there's no agent to start for it.")])
+        XCTAssertEqual(dock.caption, Self.liveDock.caption)
+    }
+
+    func testABranchStillAtItsMergedPullRequestsHeadIsOnlyDone() {
+        var input = fixture
+        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, worktree: nil, head: Self.mergedHead))
+        input.github?.mergedPullRequests[0].headRefOid = Self.mergedHead
+        let built = tasks(input)
+        XCTAssertNil(built["branch:feat/onboarding"], "a squash merge leaves the branch's own commits outside the base")
+        XCTAssertNotNil(built["merged:9"])
+    }
+
+    func testABranchWithCommitsAfterItsMergeStaysInProgress() {
+        var input = fixture
+        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 3, worktree: nil,
+                                               head: "1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a1a"))
+        input.github?.mergedPullRequests[0].headRefOid = Self.mergedHead
+        XCTAssertEqual(tasks(input)["branch:feat/onboarding"]?.column, .inProgress)
+    }
+
+    private static let mergedHead = "9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f9f"
+
+    func testEveryLocalTaskCarriesTheBaseRefItsAgentWorktreeStartsFrom() {
+        var input = fixture
+        input.git?.baseRef = "refs/remotes/origin/main"
+        for task in BoardBuilder.build(input) {
+            XCTAssertEqual(task.baseRef, "refs/remotes/origin/main", task.id)
+        }
+        input.git = nil
+        let withoutGit = BoardBuilder.build(input)
+        XCTAssertFalse(withoutGit.isEmpty)
+        for task in withoutGit {
+            XCTAssertNil(task.baseRef, task.id)
+        }
     }
 
     func testEveryTaskCarriesItsBranchWhenOneIsKnown() throws {
@@ -359,7 +395,7 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(task.issueNumber)
         XCTAssertEqual(task.branch, "gh-12-x")
         XCTAssertEqual(task.taskNumber, 12)
-        XCTAssertEqual(task.dock, shellDock(example: "claude \"/dev #12\""))
+        XCTAssertEqual(task.dock, Self.liveDock)
     }
 
     func testAForkHeadIsNeverTakenForABranchHere() throws {

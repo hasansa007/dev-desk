@@ -149,6 +149,15 @@ final class SnapshotMode {
         Capture(name: "14-task-dialog", isSheet: true) { model in
             if let id = firstUnstartedTaskID(model) { model.openTask(id) }
         },
+        // Idle too: the agent note and the planned folder. Auto never runs in snapshot mode.
+        Capture(name: "15-first-task-agent", isSheet: true) { model in
+            if let id = firstTaskID(model) { model.openTask(id) }
+            model.tab = .agent
+        },
+        Capture(name: "16-first-task-shell", isSheet: true) { model in
+            if let id = firstTaskID(model) { model.openTask(id) }
+            model.tab = .shell
+        },
     ]
 
     /// The first card nobody has started, so the sheet capture shows Start task against a real folder.
@@ -162,6 +171,21 @@ final class SnapshotMode {
         let visible = order.flatMap { column in model.tasks.filter { $0.column == column } }
         return (visible.first { $0.column == .inProgress } ?? visible.first)?.id
     }
+}
+
+/// `-DevDeskAgentExecutable <absolute path>`, honoured by Debug builds only: agents run that program in place of claude or codex,
+/// so a manual run never spends tokens. Only the launch argument counts, never a saved default.
+enum DebugLaunch {
+    static let agentExecutable: String? = {
+        #if DEBUG
+        guard let value = UserDefaults.standard.volatileDomain(forName: UserDefaults.argumentDomain)["DevDeskAgentExecutable"] as? String
+        else { return nil }
+        let path = (value as NSString).expandingTildeInPath
+        return path.hasPrefix("/") ? path : nil
+        #else
+        return nil
+        #endif
+    }()
 }
 
 /// Attached to the snapshot target's window; does nothing outside snapshot mode.

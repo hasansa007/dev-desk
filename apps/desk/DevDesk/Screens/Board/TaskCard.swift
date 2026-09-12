@@ -108,7 +108,7 @@ struct TaskCard: View {
         }
     }
 
-    /// Shown for anything still open with an issue behind it: a dash where the tracker has no rating, never a guess (ADR 0018).
+    /// Shown for anything still open with an issue behind it: a dash where the tracker has no rating, never a guess (ADR 0020).
     @ViewBuilder private var ratingRow: some View {
         if task.issueNumber != nil, task.column != .done {
             HStack(spacing: 6) {

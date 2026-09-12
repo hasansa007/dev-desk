@@ -37,7 +37,7 @@ struct ShellPane: View {
             DockMessage(text: "Preparing the folder…")
         case .running(let folder):
             VStack(spacing: 0) {
-                runningBar(note: folder.note)
+                TaskRunningBar(note: folder.note, stopTitle: "End shell") { terminals?.end(taskID: id) }
                 if let terminals {
                     ShellTerminalView(terminals: terminals, taskID: id)
                 }
@@ -54,33 +54,8 @@ struct ShellPane: View {
 
     /// Where the shell will open, and what it will be told to run, both before anything starts.
     private func detail(_ plan: TaskFolderPlan?) -> String? {
-        let lines = [plan.map(Self.planLine), command.map { "Runs: \($0)" }].compactMap { $0 }
+        let lines = [plan.map(TaskFolderText.planLine), command.map { "Runs: \($0)" }].compactMap { $0 }
         return lines.isEmpty ? nil : lines.joined(separator: "\n")
-    }
-
-    private func runningBar(note: String?) -> some View {
-        VStack(spacing: 0) {
-            HStack(spacing: 8) {
-                if let note {
-                    Text(verbatim: note)
-                        .font(.system(size: 11))
-                        .foregroundStyle(DeskColor.terminalDim2)
-                        .lineLimit(1)
-                        .truncationMode(.tail)
-                        .help(note)
-                }
-                Spacer(minLength: 0)
-                Button("End shell") { terminals?.end(taskID: id) }
-                    .buttonStyle(TaskDockControlStyle())
-                    .fixedSize()
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 30)
-            .background(DeskColor.terminalBar)
-            Rectangle()
-                .fill(DeskColor.terminalPaneBorder)
-                .frame(height: 1)
-        }
     }
 
     /// The values are taken at the click, so the shell starts once the folder is ready even if the user has moved on by then.
@@ -110,12 +85,20 @@ struct ShellPane: View {
                                    noBranchNote: folderNote, worktreeLocation: worktreeLocation)
     }
 
-    private static func planLine(_ plan: TaskFolderPlan) -> String {
+}
+
+/// The line under a pane's note naming the folder a start would use.
+enum TaskFolderText {
+    static func planLine(_ plan: TaskFolderPlan) -> String {
         switch plan {
         case .existing(let folder, let branch):
             return "Opens in \(display(folder)), where \(branch) is checked out."
+        case .existingOwn(let folder):
+            return "Opens in \(display(folder)), the task's own worktree."
         case .create(let path, let branch):
             return "Creates a worktree for \(branch) at \(display(path))."
+        case .createDetached(let path, let baseRef):
+            return "Creates a detached worktree at \(display(path)) from \(shortRef(baseRef)). \(TaskFolderResolver.detachedNote)"
         case .root(_, let note):
             // The task-folder notes already end in a full stop.
             return "Opens at the project root: \(note.hasSuffix(".") ? String(note.dropLast()) : note)."
@@ -124,6 +107,44 @@ struct ShellPane: View {
 
     private static func display(_ url: URL) -> String {
         (url.path as NSString).abbreviatingWithTildeInPath
+    }
+
+    /// "refs/remotes/origin/main" reads as "origin/main".
+    private static func shortRef(_ ref: String) -> String {
+        for prefix in ["refs/remotes/", "refs/heads/"] where ref.hasPrefix(prefix) { return String(ref.dropFirst(prefix.count)) }
+        return ref
+    }
+}
+
+/// Above a running terminal: the folder's note, when it has one, and the button that ends the process.
+struct TaskRunningBar: View {
+    let note: String?
+    let stopTitle: String
+    let stop: () -> Void
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 8) {
+                if let note {
+                    Text(verbatim: note)
+                        .font(.system(size: 11))
+                        .foregroundStyle(DeskColor.terminalDim2)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                        .help(note)
+                }
+                Spacer(minLength: 0)
+                Button(stopTitle, action: stop)
+                    .buttonStyle(TaskDockControlStyle())
+                    .fixedSize()
+            }
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(DeskColor.terminalBar)
+            Rectangle()
+                .fill(DeskColor.terminalPaneBorder)
+                .frame(height: 1)
+        }
     }
 }
 

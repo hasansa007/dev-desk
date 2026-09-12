@@ -6,11 +6,38 @@ A development workflow that investigates problems, plans solutions, writes code,
 
 ## Install
 
+Use it as a Mac app, as a skill in your agent CLI, or both. Both come from one clone:
+
 ```bash
-git clone https://github.com/hasansa007/dev-skill.git && dev-skill/install.sh
+git clone https://github.com/hasansa007/dev-skill.git
 ```
 
-This private repository requires GitHub access. The installer links the checkout into existing skill directories for **Claude Code, Codex, and Antigravity**, skipping missing directories. It is safe to rerun.
+This private repository requires GitHub access.
+
+### 1 · The Mac app: Dev Desk
+
+```bash
+(cd dev-skill/apps/desk && xcodegen generate && open DevDesk.xcodeproj)   # then ⌘R in Xcode
+```
+
+Dev Desk shows each project's board, a workspace for every task, findings, the roadmap and decisions. Each task also gets a real shell and its agent, Claude Code or Codex, which run in the task's own worktree. You start an agent yourself, or turn on Auto for a project so it works through the queue. Auto runs at most 3 agents at once and asks you to confirm a token warning first.
+
+**Download it.** The repository is private, so fetch the latest build with the GitHub CLI and unzip it into `/Applications`:
+
+```bash
+gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.zip'
+unzip -o "Dev-Desk-"*.zip -d /Applications
+```
+
+It's ad-hoc signed rather than notarized, so the first time you open it, right-click **Dev Desk.app** and choose **Open**. To build it yourself instead, as above, you need macOS 14 or later, Xcode and `xcodegen` (`brew install xcodegen`). For details, see [apps/desk/README.md](apps/desk/README.md).
+
+### 2 · The skill for your agent CLI
+
+```bash
+dev-skill/install.sh
+```
+
+The installer links the checkout into existing skill directories for **Claude Code, Codex, and Antigravity**, skipping any that are missing. It is safe to rerun.
 
 **Installing is required, not optional.** Every path inside the family resolves through the install root (`~/.claude/skills/dev/…`), which is what lets it run on any machine regardless of where you cloned it. A clone that has never been installed has no root to resolve against.
 
@@ -102,4 +129,4 @@ belongs to another tool — if it can't link, it says so and prints the alias to
 - [User guide](docs/guide/GUIDE.md) — usage, compatibility, and troubleshooting.
 - [Workflow](docs/guide/WORKFLOW.md) — phases, approvals, and known limitations.
 - [Contributing](docs/guide/CONTRIBUTING.md) — structure, design rules, and maintenance.
-- [System model](docs/guide/SYSTEM-MODEL.md) — the five layers, what Dev Desk (the Mac app) reads, and what's not built yet.
+- [System model](docs/guide/SYSTEM-MODEL.md) — the five layers, what Dev Desk (the Mac app) reads and runs, and what's not built yet.

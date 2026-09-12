@@ -85,6 +85,16 @@ struct TaskDialog: View {
         case .requirements: RequirementsTab(requirements: task.requirements)
         case .changes: ChangesTab(changes: task.changes)
         case .evidence: EvidenceTab(model: model, evidence: task.evidence)
+        // The dock these two lived in is gone; they keep their own worktree and their own trust note (ADRs 0017, 0018).
+        case .shell:
+            ShellPane(sessions: model.shellSessions, id: task.id, branch: task.branch,
+                      taskNumber: task.taskNumber, folderNote: task.noBranchNote)
+                .frame(minHeight: 360)
+                .clipShape(RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
+        case .agent:
+            AgentPane(model: model, task: task)
+                .frame(minHeight: 360)
+                .clipShape(RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
         }
     }
 

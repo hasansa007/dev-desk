@@ -27,6 +27,9 @@ struct ProjectToolbar: ToolbarContent {
                 ActivitySummary(badge: summary)
             }
         }
+        ToolbarItem(placement: .primaryAction) {
+            RefreshStatus(model: model)
+        }
         // The panel cluster, top right, one glyph per edge — where Xcode and every other Mac app keeps it.
         ToolbarItemGroup(placement: .primaryAction) {
             PanelToggle(symbol: "sidebar.leading", isOn: columns != .detailOnly,
