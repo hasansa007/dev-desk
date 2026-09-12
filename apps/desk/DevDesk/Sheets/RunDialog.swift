@@ -20,14 +20,14 @@ struct RunDialog: View {
 
     var body: some View {
         SheetChrome(title: title, confirmTitle: "Stop", confirmDisabled: !isLive,
-                    cancelTitle: "Close",
+                    cancelTitle: "Close", scrolls: false,
                     onCancel: model.dismissSheet, onConfirm: stop) {
             // An explicit height, not `maxHeight: .infinity`: SheetChrome's body scrolls (ADR 0021), and inside a
             // ScrollView an NSViewRepresentable asked to fill gets its ideal height, which for a terminal is
             // zero. The pane rendered, the terminal was simply 0 pt tall.
+            // Fills the dialog now that nothing around it scrolls, so the terminal gets every point available.
             pane
-                .frame(maxWidth: .infinity, minHeight: DeskMetric.runDialogTerminalHeight,
-                       maxHeight: DeskMetric.runDialogTerminalHeight)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
 
