@@ -60,6 +60,9 @@ everywhere.
   `Process` plumbing is exercised only by running one. Both CLIs were confirmed to resolve on the
   widened PATH a GUI app needs (claude 2.1.269, codex-cli 0.154.0 — the versions `RunPermission`'s
   flags were verified against).
+  **Observed working 2026-09-12** by the developer, on the installed build: a background run started,
+  streamed its log into its row, and stopped. Still untested — an observation is not a test, and this
+  one was made by a human because an agent cannot start an agent here without spending their tokens.
 
 ## Alternatives rejected
 
