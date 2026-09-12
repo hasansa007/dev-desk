@@ -6,6 +6,9 @@ public enum TrackerAction: Equatable, Hashable {
     case queue(milestone: String)
     case backlog
     case cancel(reason: String)
+    /// Only offered where git already agrees the work landed — the board's Done column is git's (ADR 0011),
+    /// so this closes the issue to match what git says, never to assert something git contradicts.
+    case complete
 }
 
 public enum TrackerWriteError: Error, Equatable, LocalizedError {
@@ -54,6 +57,8 @@ public struct TrackerWrite {
             let text = reason.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !text.isEmpty else { return nil }
             return ["issue", "close", String(issue), "--repo", slug, "--reason", "not planned", "--comment", text]
+        case .complete:
+            return ["issue", "close", String(issue), "--repo", slug, "--reason", "completed"]
         }
     }
 
@@ -66,6 +71,8 @@ public struct TrackerWrite {
             return "Remove \(slug)#\(issue) from its milestone, back to the backlog?"
         case .cancel:
             return "Close \(slug)#\(issue) as not planned, with your reason as a comment?"
+        case .complete:
+            return "Close \(slug)#\(issue) as completed? Its work is already in the base branch."
         }
     }
 
@@ -94,6 +101,7 @@ extension TrackerAction {
         case .queue: return .noActiveMilestone
         case .backlog: return .failed("nothing to remove")
         case .cancel: return .cancelNeedsReason
+        case .complete: return .failed("nothing to close")
         }
     }
 }

@@ -274,7 +274,19 @@ private struct BoardColumnView: View {
             isQueued: task.column == .queued,
             queue: { pending = PendingMove(issue: issue, action: .queue(milestone: model.activeMilestone ?? "")) },
             backlog: { pending = PendingMove(issue: issue, action: .backlog) },
-            cancel: { model.present(.cancelTask(task.id)) })
+            cancel: { model.present(.cancelTask(task.id)) },
+            complete: { pending = PendingMove(issue: issue, action: .complete) },
+            completeBlockedReason: completeBlocked(task))
+    }
+
+    /// git's Done, not the tracker's: the work has to be in the base already. A merged pull request card
+    /// qualifies, and so does a branch with nothing the base lacks. A card that never had a branch has no
+    /// merge for git to agree with, so it says so rather than closing on a guess.
+    private func completeBlocked(_ task: DeskTask) -> String? {
+        if task.column == .done { return nil }
+        guard task.branch != nil else { return "nothing has been built for it" }
+        guard task.unmergedCount == 0 else { return "merge it first" }
+        return nil
     }
 
     private func commit() {
@@ -293,6 +305,7 @@ private struct PendingMove {
         case .queue: return "Queue"
         case .backlog: return "Return to backlog"
         case .cancel: return "Close"
+        case .complete: return "Mark as completed"
         }
     }
 }
