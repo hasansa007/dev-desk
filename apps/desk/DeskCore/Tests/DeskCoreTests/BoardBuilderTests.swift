@@ -212,7 +212,11 @@ final class BoardBuilderTests: XCTestCase {
         let task = try XCTUnwrap(tasks()["branch:spike/z"])
         XCTAssertNil(task.issueNumber)
         XCTAssertEqual(task.title, "spike/z")
-        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "1 commit ahead"))
+        // The count is a field every card carries now, so the pill that said it a second time is gone; the
+        // dialog's header still shows it, because nothing else there says how far ahead the branch is.
+        XCTAssertNil(task.cardBadge)
+        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "1 commit ahead"))
+        XCTAssertEqual(task.unmergedCount, 1)
         XCTAssertEqual(task.nextAction, .reviewChanges)
         XCTAssertEqual(task.requirements, .unavailable("No linked issue. Name the branch gh-<number>-… to link one."))
         XCTAssertEqual(task.dependencies, [])

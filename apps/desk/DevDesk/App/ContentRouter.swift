@@ -10,9 +10,9 @@ struct ContentRouter: View {
                 NoticeBanner(tone: .failed, title: "Reload failed", message: Markdown.escape(reloadError))
                     .padding([.horizontal, .top], 12)
             }
-            if let trackerError = model.trackerError {
-                NoticeBanner(tone: .failed, title: "The tracker was not changed", message: trackerError) {
-                    Button("Dismiss") { model.dismissTrackerError() }
+            if let failure = model.writeFailure {
+                NoticeBanner(tone: .failed, title: failure.title, message: failure.message) {
+                    Button("Dismiss") { model.dismissWriteFailure() }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
                 }
                 .padding([.horizontal, .top], 12)

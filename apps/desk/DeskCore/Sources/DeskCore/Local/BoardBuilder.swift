@@ -251,7 +251,8 @@ private struct BoardContext {
             dependencies: BoardBuilder.dependencies(issue.body),
             parallel: parallel(head, local: local),
             impact: DeskTask.rating("impact", in: issue.labelNames),
-            complexity: DeskTask.rating("complexity", in: issue.labelNames))
+            complexity: DeskTask.rating("complexity", in: issue.labelNames),
+            lastCommit: fromFork ? nil : local?.lastCommit, unmergedCount: fromFork ? nil : local?.unmerged)
     }
 
     private func pullRequestTask(_ pullRequest: GitHubPullRequest) -> DeskTask {
@@ -272,7 +273,9 @@ private struct BoardContext {
             changes: changes(head, local: local),
             evidence: evidence(pullRequest: pullRequest.number, state: state),
             dependencies: BoardBuilder.dependencies(pullRequest.body),
-            parallel: parallel(head, local: local))
+            parallel: parallel(head, local: local),
+            lastCommit: pullRequest.isCrossRepository ? nil : local?.lastCommit,
+            unmergedCount: pullRequest.isCrossRepository ? nil : local?.unmerged)
     }
 
     private func branchTask(_ branch: BranchFacts) -> DeskTask {
@@ -280,7 +283,7 @@ private struct BoardContext {
         let badge = BoardBuilder.aheadBadge(branch.unmerged)
         return DeskTask(
             id: "branch:\(branch.name)", title: branch.name, column: .inProgress,
-            cardBadge: badge, cardNote: state?.cardNote, headerBadge: badge,
+            cardBadge: nil, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(branch.name, local: branch), parallelLine: parallelLine(branch.name, local: branch),
             branch: branch.name,
             nextAction: .reviewChanges,

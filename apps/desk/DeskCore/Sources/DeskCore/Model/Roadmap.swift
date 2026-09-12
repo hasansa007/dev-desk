@@ -25,6 +25,13 @@ public struct RoadmapTheme: Identifiable, Hashable {
     public var title: String        // "Theme · Learning continuity", "Critical concerns"
     public var isCritical: Bool
     public var items: [RoadmapItem]
+
+    /// The theme's glyph, chosen the way a board column chooses one, so the two screens read as one app.
+    public var icon: String {
+        if isCritical { return "exclamationmark.triangle" }
+        return id.hasPrefix("milestone:") ? "flag" : "tray"
+    }
+
     public init(id: String, title: String, isCritical: Bool = false, items: [RoadmapItem]) {
         self.id = id
         self.title = title

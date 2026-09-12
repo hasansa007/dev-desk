@@ -1,17 +1,18 @@
 import DeskCore
 import SwiftUI
 
-/// The only thing Dev Desk destroys. A branch already in the base goes with one press; one holding commits the
-/// base does not have asks for its own name first, because nothing else in the app can lose work.
+/// The only thing Dev Desk destroys. What the board knew when the sheet opened is what it asks about: a reload
+/// while it is open must not be able to lower the gate under the developer's hands.
 struct DeleteBranchSheet: View {
     let model: ProjectWindowModel
     let branch: String
+    @State private var unmerged: Int?
+    @State private var counted = false
     @State private var typed = ""
 
-    private var task: DeskTask? { model.tasks.first { $0.branch == branch } }
-    private var unmerged: Int { task?.unmergedCount ?? 0 }
-    private var needsTyping: Bool { unmerged > 0 }
+    private var needsTyping: Bool { BranchWrite.requiresTypedName(unmerged: unmerged) }
     private var confirmed: Bool { !needsTyping || typed.trimmingCharacters(in: .whitespacesAndNewlines) == branch }
+    private var task: DeskTask? { model.tasks.first { $0.branch == branch } }
 
     var body: some View {
         SheetChrome(title: "Delete \(branch)", confirmTitle: "Delete branch",
@@ -28,9 +29,7 @@ struct DeleteBranchSheet: View {
                         .foregroundStyle(DeskColor.mutedInk)
                 }
                 if needsTyping {
-                    NoticeBanner(tone: .failed, title: "This loses commits",
-                                 message: "Those \(unmerged) commits exist only on this branch. Deleting it is not undoable from here.",
-                                 style: .compact)
+                    NoticeBanner(tone: .failed, title: warningTitle, message: warning, style: .compact)
                     SectionLabel("Type the branch name to confirm").padding(.top, 2)
                     TextField(branch, text: $typed)
                         .textFieldStyle(.plain)
@@ -49,6 +48,21 @@ struct DeleteBranchSheet: View {
                     .padding(.top, 2)
             }
         }
+        // Read once. After this the sheet asks about the branch it opened on, whatever the board reloads into.
+        .onAppear {
+            guard !counted else { return }
+            counted = true
+            unmerged = task?.unmergedCount
+        }
+    }
+
+    private var warningTitle: String { (unmerged ?? 1) > 0 ? "This loses commits" : "Nothing counted this branch" }
+
+    private var warning: String {
+        guard let unmerged else {
+            return "Dev Desk has not counted this branch's commits, so it cannot tell you what deleting it would lose."
+        }
+        return "Those \(unmerged) commits exist only on this branch. Deleting it is not undoable from here."
     }
 
     private func confirm() {

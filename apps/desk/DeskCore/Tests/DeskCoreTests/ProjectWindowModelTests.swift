@@ -142,7 +142,7 @@ final class ProjectWindowModelTests: XCTestCase {
         await model.load()
         await model.performTrackerWrite(issue: 7, action: .queue(milestone: "1.4"))
         XCTAssertEqual(runner.keys, ["gh issue edit 7 --repo owner/repo --milestone 1.4"])
-        XCTAssertNil(model.trackerError)
+        XCTAssertNil(model.writeFailure)
         XCTAssertEqual(model.activeMilestone, "1.4")
     }
 
@@ -152,9 +152,10 @@ final class ProjectWindowModelTests: XCTestCase {
                                        insightsDelay: .zero, runner: runner)
         await model.load()
         await model.performTrackerWrite(issue: 7, action: .backlog)
-        XCTAssertEqual(model.trackerError?.contains("HTTP 403"), true)
-        model.dismissTrackerError()
-        XCTAssertNil(model.trackerError)
+        XCTAssertEqual(model.writeFailure?.message.contains("HTTP 403"), true)
+        XCTAssertEqual(model.writeFailure?.title, "The tracker was not changed")
+        model.dismissWriteFailure()
+        XCTAssertNil(model.writeFailure)
     }
 
     func testASampleProjectWritesNothingToTheTracker() async {
@@ -164,7 +165,7 @@ final class ProjectWindowModelTests: XCTestCase {
         await model.load()
         await model.performTrackerWrite(issue: 42, action: .backlog)
         XCTAssertTrue(runner.calls.isEmpty)
-        XCTAssertNotNil(model.trackerError)
+        XCTAssertNotNil(model.writeFailure)
     }
 
     func testEveryCardOpensTheSameDialog() async {

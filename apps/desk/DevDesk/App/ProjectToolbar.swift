@@ -27,12 +27,17 @@ struct ProjectToolbar: ToolbarContent {
                 ActivitySummary(badge: summary)
             }
         }
+        // The countdown times the project; the three glyphs open panels. Two groups, never one strip: on macOS 26
+        // adjacent toolbar items share one background, which is what made the ring look like part of the panels.
         ToolbarItem(placement: .primaryAction) {
             RefreshStatus(model: model)
         }
-        // The countdown times the project; the three glyphs open panels. A rule keeps them from reading as one set.
-        ToolbarItem(placement: .primaryAction) {
-            Divider().frame(height: 16)
+        if #available(macOS 26.0, *) {
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+        } else {
+            ToolbarItem(placement: .primaryAction) {
+                Divider().frame(height: 16)
+            }
         }
         // The panel cluster, top right, one glyph per edge — where Xcode and every other Mac app keeps it.
         ToolbarItemGroup(placement: .primaryAction) {

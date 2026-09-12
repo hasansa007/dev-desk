@@ -2,18 +2,12 @@ import Foundation
 
 public enum BranchWriteError: Error, Equatable, LocalizedError {
     case notThisRepository
-    case checkedOut(String)
-    case unmergedNeedsConfirmation(String)
     case failed(String)
 
     public var errorDescription: String? {
         switch self {
         case .notThisRepository:
             return "This project has no folder on disk, so there is no branch to delete."
-        case .checkedOut(let where_):
-            return "That branch is checked out in \(where_). Close or switch that checkout first."
-        case .unmergedNeedsConfirmation(let branch):
-            return "\(branch) holds commits the base branch does not. Type its name to delete it anyway."
         case .failed(let detail):
             return "git could not delete the branch: \(detail)"
         }
@@ -39,8 +33,14 @@ public struct BranchWrite {
         return ["branch", force ? "-D" : "-d", "--", name]
     }
 
-    public static func confirmation(branch: String, unmerged: Int) -> String {
-        unmerged > 0
+    /// An uncounted branch is not a branch counted at zero, so nil asks for the name (ADR 0022).
+    public static func requiresTypedName(unmerged: Int?) -> Bool { unmerged.map { $0 > 0 } ?? true }
+
+    public static func confirmation(branch: String, unmerged: Int?) -> String {
+        guard let unmerged else {
+            return "Delete the branch \(branch)? Dev Desk has not counted what it holds that the base branch does not."
+        }
+        return unmerged > 0
             ? "Delete the branch \(branch) and the \(unmerged) commit\(unmerged == 1 ? "" : "s") it holds that the base branch does not?"
             : "Delete the branch \(branch)? Its commits are already in the base branch."
     }
@@ -51,7 +51,8 @@ public struct BranchWrite {
         }
         let result: CommandResult
         do {
-            result = try await runner.run("git", arguments, in: directory, timeout: CommandTimeout.gh)
+            // `branch -D` fires reference-transaction hooks, so the delete is hardened like every other git call.
+            result = try await runner.run("git", GitCommand.read(arguments), in: directory, timeout: CommandTimeout.git)
         } catch let cancellation as CancellationError {
             throw cancellation
         } catch {
