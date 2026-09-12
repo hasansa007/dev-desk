@@ -61,12 +61,18 @@ public enum DoorCommand {
         return door == "dev" ? "\(base)/SKILL.md" : "\(base)/skills/\(door)/SKILL.md"
     }
 
-    /// nil for a CLI the family has no verified invocation for. `arguments` are the door's own, such as `--perf`.
-    public static func build(door: String, agent name: String, arguments: [String] = [], home: String) -> String? {
+    /// The prompt itself, shared by the command typed into a terminal and the argv a background run is spawned with.
+    public static func prompt(door: String, agent name: String, arguments: [String] = [], home: String) -> String? {
         guard let agent = agent(named: name) else { return nil }
         let extra = arguments.isEmpty ? "" : " Arguments: \(arguments.joined(separator: " "))"
-        let prompt = "Read \(doorPath(door, root: agent.root, home: home)) and execute it exactly as written, "
+        return "Read \(doorPath(door, root: agent.root, home: home)) and execute it exactly as written, "
             + "following every phase and gate it defines.\(extra)"
+    }
+
+    /// nil for a CLI the family has no verified invocation for. `arguments` are the door's own, such as `--perf`.
+    public static func build(door: String, agent name: String, arguments: [String] = [], home: String) -> String? {
+        guard let agent = agent(named: name),
+              let prompt = prompt(door: door, agent: name, arguments: arguments, home: home) else { return nil }
         return "\(agent.executable) \(quoted(prompt))"
     }
 
