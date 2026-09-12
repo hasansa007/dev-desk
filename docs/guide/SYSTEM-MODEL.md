@@ -32,7 +32,7 @@ Five destinations, and two panels on the window's edges ([ADR 0021](../adr/0021-
 - **Insights** is a destination, and unavailable for real projects.
 - **Files** down the right edge browses the project's own folder; **Runs** along the bottom lists every door this window started.
 - **A task's dialog holds its Shell and its agents.** Both run in the task's own worktree, and start only when you start them ([ADR 0017](../adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)) — or when Auto starts a queued task's agent, in a project where you turned Auto on ([ADR 0018](../adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).
-- **It writes to the tracker only through a card's bounded Move and Cancel** ([ADR 0014](../adr/0014-dev-desk-replaces-dev-ui.md)). In a repository it otherwise creates only worktrees, one per task, under the Execution setting's location; Clone and Create project each write a new folder. The agents it starts can change files, as they would in your terminal.
+- **It writes to the tracker only through a card's bounded Move and Cancel** ([ADR 0014](../adr/0014-dev-desk-replaces-dev-ui.md)). In a repository it creates worktrees, one per task, under the Execution setting's location, and it deletes a **local** branch when you ask it to — the one thing it destroys rather than moves, behind a typed confirmation when commits would be lost ([ADR 0022](../adr/0022-dev-desk-deletes-a-local-branch-and-nothing-else.md)). Clone and Create project each write a new folder. The agents it starts can change files, as they would in your terminal.
 
 ## Not built yet
 
@@ -40,8 +40,7 @@ The [container spec](../superpowers/specs/2026-09-11-container-design.md) descri
 
 - the shared runner and its jobs. The app starts and stops agents only as terminal processes, so it can't tell a working agent from a waiting one, resume an ended session, or answer a door from its own UI;
 - `dev snapshot` and `dev events` (container spec §3);
-- agent provider integrations;
-- tracker writes from the app.
+- agent provider integrations.
 
 ## See also
 
