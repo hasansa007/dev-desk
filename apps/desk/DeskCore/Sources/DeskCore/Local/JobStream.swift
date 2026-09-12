@@ -43,11 +43,13 @@ public enum JobStream {
 
     /// A run given `RunPermission` it turned out to need more than stops rather than prompting — there is no
     /// terminal to prompt in. That stop is the question, and it is what the answer box resumes from.
+    ///
+    /// Only a stop-to-ask qualifies. Treating every `is_error` as a question turns an exhausted credit balance
+    /// or a bad key into "Waiting for your answer" forever — the row never corrects, because an asking job
+    /// ignores its own exit, and answering resumes a session that fails identically.
     static func question(in object: [String: Any], text: String) -> String? {
-        let subtype = (object["subtype"] as? String) ?? ""
-        let isError = (object["is_error"] as? Bool) ?? false
-        if subtype == "error_max_turns" || subtype.hasPrefix("permission") { return text }
-        guard isError else { return nil }
+        let subtype = ((object["subtype"] as? String) ?? "").lowercased()
+        guard subtype == "error_max_turns" || subtype.contains("permission") || subtype.contains("interrupt") else { return nil }
         return text
     }
 

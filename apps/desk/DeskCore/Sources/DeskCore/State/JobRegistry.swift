@@ -33,6 +33,8 @@ public struct BackgroundJob: Identifiable, Equatable {
     public let door: String
     public let directory: String
     public var sessionID: String?
+    /// Kept so answering resumes under the same grant the run was started with.
+    public let permission: RunPermission
     public var state: JobState = .starting
     /// The last lines the run wrote, newest last. Capped: a run can talk for a long time and this is a row.
     public var log: [String] = []
@@ -73,6 +75,12 @@ public final class JobRegistry {
 
     public var liveCount: Int { jobs.filter { $0.state.isLive }.count }
 
+    /// One background run per door: two concurrent surveys in one repo write the same report file over
+    /// each other. The terminal path already refuses a second live run of a door.
+    public func hasLiveJob(door: String) -> Bool {
+        jobs.contains { $0.door == door && $0.state.isLive }
+    }
+
     /// Returns nil when the family has no verified invocation for that agent, rather than guessing one.
     @discardableResult
     public func start(door: String, title: String, agent: String, arguments: [String] = [],
@@ -80,8 +88,8 @@ public final class JobRegistry {
         guard let launch = JobCommand.launch(door: door, agent: agent, arguments: arguments,
                                              permission: permission, directory: directory, home: home) else { return nil }
         let id = "job:\(door):\(UUID().uuidString.prefix(8))"
-        jobs.insert(BackgroundJob(id: id, title: title, agent: agent, door: door,
-                                  directory: directory, sessionID: launch.sessionID), at: 0)
+        jobs.insert(BackgroundJob(id: id, title: title, agent: agent, door: door, directory: directory,
+                                  sessionID: launch.sessionID, permission: permission), at: 0)
         run(id: id, launch: launch, directory: directory)
         return id
     }
@@ -89,7 +97,11 @@ public final class JobRegistry {
     /// Answering continues the same session; a job that is not waiting on a question ignores this.
     public func answer(_ text: String, to id: String) {
         guard let index = jobs.firstIndex(where: { $0.id == id }), case .asking = jobs[index].state else { return }
-        guard let launch = JobCommand.resume(agent: jobs[index].agent, sessionID: jobs[index].sessionID, answer: text) else { return }
+        guard let launch = JobCommand.resume(agent: jobs[index].agent, sessionID: jobs[index].sessionID,
+                                            answer: text, permission: jobs[index].permission) else { return }
+        // The previous process may have written its result and not yet exited; re-spawning under the same id
+        // would let its termination handler fire against the new one and mark a live run finished.
+        spawner.stop(id: id)
         jobs[index].state = .starting
         append("› \(text)", to: index)
         run(id: id, launch: launch, directory: jobs[index].directory)

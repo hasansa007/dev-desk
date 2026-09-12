@@ -83,8 +83,11 @@ struct RunsPanel: View {
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
+    /// Scrolls: a job row carries a log box and, when it is asking, a banner and a field. Three of them used to
+    /// push Stop and Answer past the panel's edge with no way to reach them.
     private var runList: some View {
-        VStack(spacing: 0) {
+        ScrollView {
+            VStack(spacing: 0) {
             ForEach(model.runs.runs) { run in
                 runRow(run)
             }
@@ -96,7 +99,9 @@ struct RunsPanel: View {
                     jobRow(job, registry: jobs)
                 }
             }
+            }
         }
+        .frame(maxHeight: 260)
     }
 
     /// A background run has no terminal, so the row is where it lives: its log, its Stop, and — when it stopped

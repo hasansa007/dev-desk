@@ -30,7 +30,7 @@ fi
 # mktemp, not a fixed /tmp path: a predictable name in a world-writable directory can be pre-created
 # as a symlink and this redirect would truncate whatever it points at.
 LOG=$(mktemp -t dev-desk-install)
-trap 'rm -f "$LOG"' EXIT
+# Deliberately NOT removed on failure: two messages below tell the reader to open it.
 
 echo "==> Generating the Xcode project from project.yml"
 xcodegen generate --spec project.yml >/dev/null
@@ -72,6 +72,8 @@ if pgrep -x "Dev Desk" >/dev/null 2>&1; then
         exit 1
     }
 fi
+
+rm -f "$LOG"
 
 echo "==> Installing to $DEST/$APP_NAME"
 mkdir -p "$DEST"

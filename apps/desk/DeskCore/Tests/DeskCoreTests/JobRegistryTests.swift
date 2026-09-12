@@ -30,6 +30,12 @@ final class JobStreamTests: XCTestCase {
         XCTAssertEqual(event, .ended(text: "Needs permission to push", question: "Needs permission to push"))
     }
 
+    /// Only a stop-to-ask is a question. Anything else that failed simply failed.
+    func testAFailureIsNotAQuestion() {
+        let event = JobStream.event(from: #"{"type":"result","subtype":"error_during_execution","is_error":true,"result":"Credit balance too low"}"#)
+        XCTAssertEqual(event, .ended(text: "Credit balance too low", question: nil))
+    }
+
     /// Agents print plain notices between JSON lines; dropping them hides why a run stalled.
     func testANonJsonNoticeIsKeptAsALine() {
         XCTAssertEqual(JobStream.event(from: "warning: transcript saving is off"), .line("warning: transcript saving is off"))
@@ -112,7 +118,7 @@ final class JobRegistryTests: XCTestCase {
                                           permission: .readOnly, directory: "/repo"))
         let sessionID = jobs.job(id)?.sessionID
         XCTAssertNotNil(sessionID)
-        spawner.emit(#"{"type":"result","is_error":true,"result":"Push?"}"#, to: id)
+        spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
         jobs.answer("yes, push", to: id)
         XCTAssertEqual(spawner.launched.count, 2)
         let resumed = try XCTUnwrap(spawner.launched.last).launch.arguments
@@ -120,6 +126,48 @@ final class JobRegistryTests: XCTestCase {
         XCTAssertTrue(resumed.contains(sessionID ?? "—"))
         XCTAssertTrue(resumed.contains("yes, push"))
         XCTAssertEqual(jobs.job(id)?.state, .starting)
+    }
+
+    /// An exhausted balance or a bad key is a failure, not a question. Presenting it as one leaves the row
+    /// waiting forever: an asking job ignores its own exit, and answering resumes a session that fails the same.
+    func testARealFailureEndsRatherThanAsking() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        spawner.emit(#"{"type":"result","subtype":"error_during_execution","is_error":true,"result":"Credit balance too low"}"#, to: id)
+        XCTAssertEqual(jobs.job(id)?.state, .ended(text: "Credit balance too low", failed: false))
+        XCTAssertFalse(jobs.job(id)?.state.isLive ?? true)
+    }
+
+    /// Resuming without the grant drops a headless run back to prompting, and a run with no terminal to prompt
+    /// in stalls on its first tool call and asks again — a loop the developer cannot break.
+    func testAnsweringCarriesTheGrantTheRunStartedWith() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .everything, directory: "/repo"))
+        spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
+        jobs.answer("go", to: id)
+        let resumed = try XCTUnwrap(spawner.launched.last).launch.arguments
+        XCTAssertTrue(resumed.contains("--dangerously-skip-permissions"), "the grant must survive the answer")
+    }
+
+    /// Re-spawning under the same id without stopping the old process lets its termination handler fire against
+    /// the new one — marking a live run finished, and leaving it unstoppable.
+    func testAnsweringStopsThePreviousProcessFirst() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .readOnly, directory: "/repo"))
+        spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
+        jobs.answer("go", to: id)
+        XCTAssertEqual(spawner.stopped, [id])
+    }
+
+    func testOneBackgroundRunPerDoor() throws {
+        let (jobs, _) = registry()
+        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                     permission: .readOnly, directory: "/repo"))
+        XCTAssertTrue(jobs.hasLiveJob(door: "survey"))
+        XCTAssertFalse(jobs.hasLiveJob(door: "ideation"))
     }
 
     func testAnsweringAJobThatIsNotAskingDoesNothing() throws {

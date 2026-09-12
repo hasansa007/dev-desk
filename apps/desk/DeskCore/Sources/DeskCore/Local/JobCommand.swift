@@ -64,17 +64,22 @@ public enum JobCommand {
                          sessionID: nil)
     }
 
-    /// Answering a run's question continues that same session rather than starting a new one.
-    public static func resume(agent name: String, sessionID: String?, answer: String) -> JobLaunch? {
+    /// Answering a run's question continues that same session rather than starting a new one — under the grant
+    /// it was started with. Resuming without it drops a headless run back to prompting, and a run with no
+    /// terminal to prompt in stalls on its first tool call and asks again: a loop with no way out.
+    public static func resume(agent name: String, sessionID: String?, answer: String,
+                              permission: RunPermission) -> JobLaunch? {
         guard let agent = DoorCommand.agent(named: name) else { return nil }
         if agent.executable == "claude" {
             guard let sessionID else { return nil }
             return JobLaunch(executable: "claude",
-                             arguments: ["-p", "--output-format", "stream-json", "--verbose", "--resume", sessionID, answer],
+                             arguments: ["-p", "--output-format", "stream-json", "--verbose", "--resume", sessionID]
+                                 + permission.flags(for: "claude") + [answer],
                              sessionID: sessionID)
         }
         return JobLaunch(executable: agent.executable,
-                         arguments: ["exec", "resume", sessionID ?? "--last", "--json", answer],
+                         arguments: ["exec", "resume", sessionID ?? "--last", "--json"]
+                             + permission.flags(for: agent.executable) + [answer],
                          sessionID: sessionID)
     }
 }

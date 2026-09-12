@@ -76,6 +76,11 @@ struct RunFocusSheet: View {
                     FocusChip(title: "In a terminal", isOn: !inBackground) { inBackground = false }
                     FocusChip(title: "In the background", isOn: inBackground) { inBackground = true }
                 }
+                if inBackground, jobs?.hasLiveJob(door: door) == true {
+                    NoticeBanner(tone: .neutral, title: "One at a time",
+                                 message: "A background \(door) run is already going. Two would write the same report over each other.",
+                                 style: .compact)
+                }
                 if inBackground {
                     SectionLabel("What it may do without asking").padding(.top, 6)
                     FlowLayout(spacing: 6) {
@@ -108,7 +113,7 @@ struct RunFocusSheet: View {
             if !name.isEmpty { arguments.append(name) }
         }
         let title = isIdeation ? "Ideation" : "Survey"
-        if inBackground, let jobs, case .local(let path) = model.ref {
+        if inBackground, let jobs, !jobs.hasLiveJob(door: door), case .local(let path) = model.ref {
             jobs.start(door: door, title: title, agent: defaultConnection, arguments: arguments,
                        permission: permission, directory: path)
             model.showRuns()
