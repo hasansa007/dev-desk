@@ -22,7 +22,14 @@ This private repository requires GitHub access.
 
 Dev Desk shows each project's board, a workspace for every task, findings, the roadmap and decisions. Each task also gets a real shell and its agent, Claude Code or Codex, which run in the task's own worktree. You start an agent yourself, or turn on Auto for a project so it works through the queue. Auto runs at most 3 agents at once and asks you to confirm a token warning first.
 
-It needs macOS 14 or later, Xcode and `xcodegen` (`brew install xcodegen`). There is no prebuilt download yet. For details, see [apps/desk/README.md](apps/desk/README.md).
+**Download it.** The repository is private, so fetch the latest build with the GitHub CLI and unzip it into `/Applications`:
+
+```bash
+gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.zip'
+unzip -o "Dev-Desk-"*.zip -d /Applications
+```
+
+It's ad-hoc signed rather than notarized, so the first time you open it, right-click **Dev Desk.app** and choose **Open**. To build it yourself instead, as above, you need macOS 14 or later, Xcode and `xcodegen` (`brew install xcodegen`). For details, see [apps/desk/README.md](apps/desk/README.md).
 
 ### 2 · The skill for your agent CLI
 

@@ -9,12 +9,8 @@ struct TaskNoticeView: View {
 
     var body: some View {
         switch notice {
-        case .waitingForDecision(let title, let message, let decisionID):
-            NoticeBanner(tone: .waiting, title: title, message: message) {
-                Button("Answer decision") { model.openDecision(decisionID) }
-                    .buttonStyle(DeskButtonStyle(kind: .primary))
-                    .fixedSize()
-            }
+        case .waitingForDecision(let title, let message, _):
+            NoticeBanner(tone: .waiting, title: title, message: message)
         case .externalConnection(let connection):
             TaskExternalConnectionPanel(model: model, connection: connection, offersHandoff: offersHandoff)
         }

@@ -17,7 +17,7 @@ struct ParallelScreen: View {
         HStack(spacing: 10) {
             Button("‹ Back to Board") { model.setMode(.focus) }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-            Text("Parallel view")
+            Text("Side by side")
                 .font(DeskFont.section)
                 .foregroundStyle(DeskColor.ink)
             Text(explanation)
@@ -108,10 +108,7 @@ private struct ParallelPane: View {
         case .decision(let title, let question, let decisionID, let note):
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    NoticeBanner(tone: .waiting, title: title, message: question, style: .stacked) {
-                        Button("Answer decision") { model.openDecision(decisionID) }
-                            .buttonStyle(DeskButtonStyle(kind: .primary))
-                    }
+                    NoticeBanner(tone: .waiting, title: title, message: question, style: .stacked)
                     Text(note)
                         .font(DeskFont.secondary)
                         .foregroundStyle(DeskColor.mutedInk)

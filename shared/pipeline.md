@@ -40,7 +40,7 @@ app-wide auth redirect.
 |---|---|---|
 | **Light** (default) | Small diff, low blast radius, no money/security/migration | Existing test suite + a quick self-review of the diff. NO subagent reviews, NO browser-automation pass, no checklist ceremony. Phase 4 = only as much investigation as the bug demands. |
 | **Standard** | Multi-file features, user-visible flows | Tests + run the ONE most valuable live check (the bug repro or the new flow), not the full matrix. Self-review; subagent review only if something feels off. |
-| **Deep** | Money paths, auth/security, migrations, wide refactors, novel-design features — or the developer asks | Maximum **evidence and rigor**: the full evidence ladder, an agent-run checklist, verified AI review, and a security pass. The two fan-outs (Phase 2 explorers, Phase 6 architects) stay **independently conditional** — Deep does not mandate them, and a rename with one obvious shape should skip both. Deep buys care, not agents. |
+| **Deep** | Money paths, auth/security, migrations, wide refactors, novel-design features — or the developer asks | Maximum **evidence and rigor**: the full evidence ladder, an agent-run checklist, verified AI review, and a security pass. The Phase 2 explorers stay **conditional**. Phase 6 is **required for every Deep feature** (see Phase 6); Deep work that is not a feature and has one obvious shape (a fix, a migration, a rename) skips both. Beyond that, Deep buys care, not agents. |
 
 When in doubt between two tiers, pick the lighter one — the developer can always say "go deeper". A slow pipeline that gets skipped protects nothing.
 
@@ -61,7 +61,7 @@ will cost and get a word first:
 > "Deep tier: ~3 explorers + ~3 architects + the review fan-out. Go, or lighter?"
 
 Never open a fan-out on the developer's behalf and report the bill afterwards. If they say lighter,
-they are right — the tier is a proposal, not a verdict.
+they are right, and the task is Standard from then on — the tier is a proposal, not a verdict.
 
 **Use the developer as a fast collaborator:** when a blocker is their state (debugger, session, dashboard) or a 30-second human action beats minutes of automation, ask for it immediately and specifically — one sentence, what + why.
 
@@ -357,12 +357,12 @@ promotion.
 3. **Then file each as its own labelled issue and attach it to the parent:**
 
 ````bash
-CHILD=$(gh issue create --title "..." --label "..." --body "..." --json id -q .id)
-gh api repos/<owner>/<repo>/issues/<PARENT>/sub_issues -f sub_issue_id="$CHILD"
+N=$(gh issue create --title "..." --label "..." --body "..." | sed 's#.*/##')   # create prints the URL
+gh api repos/<owner>/<repo>/issues/<PARENT>/sub_issues -F sub_issue_id="$(gh api repos/<owner>/<repo>/issues/$N --jq .id)"
 ````
 
-   **`sub_issue_id` is the node `.id`, never the `number`.** Passing the number fails or silently
-   attaches the wrong issue, and it is the part of this that bites every time.
+   **`sub_issue_id` is the issue's DATABASE id, never its number** — and `gh issue create` has no
+   `--json`, so the id is read back with `gh api`. Verified 2026-09-12, gh 2.92.0, filing #60–#67.
 
 4. **Never `- [ ]` checkbox lines for slices.** A checklist in the parent body is invisible to every
    board query, carries no label, and cannot be worked by `/dev #N`.
@@ -388,11 +388,13 @@ settle the design here — before the plan, and long before the build:
 
 ---
 
-## Phase 6 — Architecture Alternatives (conditional)
+## Phase 6 — Architecture Alternatives (required for Deep features)
 
-**When:** Deep-tier features, genuinely novel design decisions (new module, new data flow, several
-plausible shapes), or the developer asks. **Skip** for bugs and for features with one obvious shape —
-a fan-out that can only produce one answer three times is ceremony.
+**When:** every Deep-tier feature, any novel design (new module, new data flow, several plausible
+shapes), or the developer asks. Phase 5's scope answers are not this gate; "go fast" and "use
+agents" change how it runs, never whether. A Deep feature skips it only after "lighter" at Deep's
+cost declaration, which makes the Tier Standard. **Skip** for bugs and for work with one obvious
+shape that is not a Deep feature — a fan-out that can only produce one answer three times is ceremony.
 
 1. Launch 2–3 `feature-dev:code-architect` agents **in parallel** with forced-different biases:
    - **minimal change** — smallest diff, maximum reuse of what exists
@@ -406,8 +408,6 @@ a fan-out that can only produce one answer three times is ceremony.
 4. **Write down the losers NOW.** The rejected approaches + why they lost are Phase 12's ADR
    rejected-alternatives section, and the arithmetic is only fresh once. Capture it in the spec
    (`## Rejected Alternatives`) so the ADR is a copy job, not a reconstruction.
-
-The winning approach seeds Phase 7's plan.
 
 ---
 

@@ -45,4 +45,11 @@ enum SafeFile {
         guard fcntl(fd, F_GETPATH, &buffer) != -1 else { return nil }
         return buffer.withUnsafeBufferPointer { String(cString: $0.baseAddress!) }
     }
+
+    /// The browser's listing rule, which walks paths rather than descriptors; a read still goes through `read`.
+    static func isInside(_ url: URL, _ root: URL) -> Bool {
+        let resolved = url.resolvingSymlinksInPath().standardizedFileURL.path
+        let base = root.resolvingSymlinksInPath().standardizedFileURL.path
+        return resolved == base || resolved.hasPrefix(base + "/")
+    }
 }

@@ -17,10 +17,8 @@ final class SampleDataTests: XCTestCase {
         let tasks = snapshot.board.value ?? []
         let openTaskCount = tasks.filter { $0.column != .done }.count
         let findingsCount = snapshot.findings.value?.findings.count
-        let pendingDecisionCount = (snapshot.decisions.value ?? []).filter { $0.state == .needsAttention }.count
         XCTAssertEqual(openTaskCount, 7)
         XCTAssertEqual(findingsCount, 3)
-        XCTAssertEqual(pendingDecisionCount, 1)
     }
 
     func testTask42CarriesDesignContent() throws {
@@ -32,9 +30,6 @@ final class SampleDataTests: XCTestCase {
         XCTAssertEqual(requirements.criteria.filter { $0.isMet }.count, 2)
         XCTAssertEqual(task.changes.value?.files.count, 3)
         XCTAssertEqual(task.evidence.value?.checks.count, 4)
-        XCTAssertEqual(task.agents.count, 3)
-        XCTAssertEqual(task.dock?.tabs.count, 3)
-        XCTAssertEqual(task.dock?.splitTabID, "reviewer")
     }
 
     func testSampleTasksKeepTheirDemoTranscriptsAndHaveNoBranch() {
@@ -42,13 +37,8 @@ final class SampleDataTests: XCTestCase {
             for task in snapshot.board.value ?? [] {
                 XCTAssertNil(task.branch, task.id)
                 XCTAssertNil(task.baseRef, task.id)
-                for tab in task.dock?.tabs ?? [] {
-                    XCTAssertNotNil(tab.transcript, "\(task.id) \(tab.id) is still a transcript")
-                }
             }
         }
-        let codex = SampleData.studyHub().board.value?.first { $0.id == "42" }?.dock?.tabs.first
-        XCTAssertEqual(codex?.transcript?.header, "codex session 3f9a · attached · demo output")
     }
 
     func testDevSkillBoardHasThreeTasks() {
@@ -77,11 +67,9 @@ final class SampleDataTests: XCTestCase {
         for theme in snapshot.roadmap.value?.themes ?? [] {
             texts.append(contentsOf: theme.items.compactMap(\.linkText))
         }
-        texts.append(contentsOf: (snapshot.decisions.value ?? []).map(\.context))
 
         let taskIDs = Set(tasks.map(\.id))
         let findingIDs = Set(snapshot.findings.value?.findings.map(\.id) ?? [])
-        let decisionIDs = Set(snapshot.decisions.value?.map(\.id) ?? [])
 
         var linkCount = 0
         for text in texts {
@@ -92,20 +80,10 @@ final class SampleDataTests: XCTestCase {
                 switch link {
                 case .task(let id): XCTAssertTrue(taskIDs.contains(id), "unknown task id \(id)")
                 case .finding(let id): XCTAssertTrue(findingIDs.contains(id), "unknown finding id \(id)")
-                case .decision(let id): XCTAssertTrue(decisionIDs.contains(id), "unknown decision id \(id)")
+                case .decision: break
                 }
             }
         }
         XCTAssertGreaterThan(linkCount, 0)
-    }
-
-    func testDecisionTaskIDsExist() {
-        let snapshot = SampleData.studyHub()
-        let taskIDs = Set((snapshot.board.value ?? []).map(\.id))
-        for decision in snapshot.decisions.value ?? [] {
-            if let taskID = decision.taskID {
-                XCTAssertTrue(taskIDs.contains(taskID), "decision \(decision.id) references missing task \(taskID)")
-            }
-        }
     }
 }

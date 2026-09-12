@@ -22,7 +22,7 @@ struct LauncherView: View {
     var body: some View {
         switch context {
         case .sheet:
-            SheetChrome(title: "Open project", confirmTitle: "Open", width: 1000, confirmDisabled: selectedRef == nil,
+            SheetChrome(title: "Open project", confirmTitle: "Open", confirmDisabled: selectedRef == nil,
                         onCancel: onDismiss, onConfirm: openSelected) {
                 launcherBody
             }

@@ -40,7 +40,7 @@ public struct LocalGitDataSource: ProjectDataSource {
         let topURL = URL(fileURLWithPath: top)
         async let githubState = GitHubReader(directory: root, runner: runner).read(remote: project.remote)
         async let findings = Self.findings(in: topURL)
-        async let decisions = Self.decisions(in: topURL)
+        async let ideation = Self.ideation(in: topURL)
         // These config reads run nothing; they must precede the branch fan-out, whose rev-list/log/diff could lazily fetch and run uploadpack.
         let refusal = try await lazyFetchRefusal()
         let facts = refusal != nil ? GitFacts(base: nil, baseRef: nil, baseShort: nil, branches: [])
@@ -58,10 +58,12 @@ public struct LocalGitDataSource: ProjectDataSource {
         return ProjectSnapshot(
             project: project, isDemo: false, board: board,
             boardNote: refusal != nil ? "" : BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
-            findings: .available(await findings), roadmap: Self.roadmap(github), decisions: .available(await decisions),
+            findings: .available(await findings), ideation: .available(await ideation),
+            roadmap: Self.roadmap(github),
             connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
-            projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github))
+            projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github),
+            slug: github.data?.slug, activeMilestone: active.title)
     }
 
     /// A partial clone, or any promisor remote, lazy-fetches missing objects mid-read, running remote.<name>.uploadpack — even without
@@ -154,7 +156,8 @@ public struct LocalGitDataSource: ProjectDataSource {
         let github = GitHubState.unavailable(unread ? "git could not read this folder" : "no GitHub remote")
         return ProjectSnapshot(
             project: project, isDemo: false, board: .unavailable(reason), boardNote: "",
-            findings: .unavailable(reason), roadmap: .unavailable(reason), decisions: .unavailable(reason),
+            findings: .unavailable(reason), ideation: .unavailable(reason),
+            roadmap: .unavailable(reason),
             connections: tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(insightsReason),
             projectFacts: facts(base: nil, baseShort: nil, remote: nil,
@@ -216,16 +219,25 @@ public struct LocalGitDataSource: ProjectDataSource {
         return FindingsReport(runs: runs, findings: findings)
     }
 
-    private static func decisions(in toplevel: URL) -> [Decision] {
-        let folder = toplevel.appendingPathComponent("docs/adr")
-        func number(_ name: String) -> Int { Int(name.prefix { $0.isASCII && $0.isNumber }) ?? -1 }
-        return markdownFiles(in: folder)
-            .filter { $0.lowercased() != "readme.md" }
-            .sorted { (number($0), $0) > (number($1), $1) }
-            .compactMap { name -> Decision? in
-                guard case .text(let text) = SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) else { return nil }
-                return ADRParser.parse(text, fileName: name)
+    private static func ideation(in toplevel: URL) -> IdeationReport {
+        let folder = toplevel.appendingPathComponent("docs/ideation")
+        var runs: [IdeationRun] = []
+        var opportunities: [Opportunity] = []
+        for name in markdownFiles(in: folder).sorted(by: >) {
+            let stem = String(name.dropLast(3))
+            switch SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) {
+            case .text(let text):
+                runs.append(IdeationRun(id: stem, label: stem, kinds: IdeationReportParser.kinds(text)))
+                opportunities.append(contentsOf: IdeationReportParser.parse(text, runID: stem))
+            case .tooLarge:
+                runs.append(IdeationRun(id: stem, label: "\(stem) · Report too large to read (over 1 MB)"))
+            case .hardLink:
+                runs.append(IdeationRun(id: stem, label: "\(stem) · Report not read (it is a hard link)"))
+            case .skipped:
+                continue
             }
+        }
+        return IdeationReport(runs: runs, opportunities: opportunities)
     }
 
     private static func markdownFiles(in folder: URL) -> [String] {

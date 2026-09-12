@@ -23,6 +23,8 @@ public final class ShellSessions {
 
     private var states: [String: ShellSessionState] = [:]
     private var generations: [String: Int] = [:]
+    /// Called when a session ends, so what a run wrote is read back without waiting for a manual reload.
+    public var onSessionEnded: ((String) -> Void)?
 
     @ObservationIgnored let purpose: SessionPurpose
     @ObservationIgnored private let projectRoot: URL?
@@ -80,6 +82,7 @@ public final class ShellSessions {
     public func markEnded(taskID: String, status: Int32?, generation: Int) {
         guard generation == generations[taskID, default: 0], case .running(let folder) = states[taskID] else { return }
         states[taskID] = .ended(folder, status: status)
+        onSessionEnded?(taskID)
     }
 
     public var runningTaskIDs: [String] {

@@ -3,6 +3,7 @@ import SwiftUI
 
 struct BoardScreen: View {
     @Bindable var model: ProjectWindowModel
+    @State private var showsRules = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -20,14 +21,11 @@ struct BoardScreen: View {
                 .foregroundStyle(DeskColor.ink)
             searchField
             BacklogToggle(isOn: $model.showBacklog)
-            Spacer(minLength: 0)
             if let note = model.snapshot?.boardNote, !note.isEmpty {
-                Text(note)
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineLimit(1)
-                    .truncationMode(.tail)
+                rulesButton(note)
             }
+            Spacer(minLength: 0)
+            sideBySideButton
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 12)
@@ -37,15 +35,52 @@ struct BoardScreen: View {
         }
     }
 
+    /// The toolbar's old Focus/Parallel pair named two modes without naming what changed, and pressing either
+    /// one usually changed nothing. This names the change, sits on the screen it changes, and says why it is
+    /// unavailable instead of going quiet.
+    @ViewBuilder private var sideBySideButton: some View {
+        let running = model.parallelTasks
+        Button(running.count > 1 ? "Side by side (\(running.count))" : "Side by side") {
+            model.setMode(.parallel)
+        }
+        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+        .disabled(running.count < 2)
+        .help(running.count < 2
+              ? "Side by side needs two tasks in progress, each in its own checkout"
+              : "Watch these \(running.count) tasks run next to each other")
+    }
+
     private var searchField: some View {
         TextField("Search tasks", text: $model.searchText)
             .textFieldStyle(.plain)
             .font(DeskFont.secondary)
             .foregroundStyle(DeskColor.ink)
             .padding(.horizontal, 10)
-            .frame(width: 200, height: 26, alignment: .leading)
-            .background(DeskColor.surface, in: Capsule())
-            .overlay(Capsule().strokeBorder(DeskColor.border))
+            .frame(width: 200, alignment: .leading)
+            .controlChrome()
+    }
+
+    /// The column rules are a paragraph; the header carries the control and shows the paragraph on demand.
+    private func rulesButton(_ note: String) -> some View {
+        Button { showsRules = true } label: {
+            Image(systemName: "info.circle")
+                .imageScale(.medium)
+                .foregroundStyle(DeskColor.mutedInk)
+                .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("How these columns are decided")
+        .accessibilityLabel("How these columns are decided")
+        .popover(isPresented: $showsRules) {
+            Text(note)
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.secondaryInk)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(width: 320)
+                .padding(12)
+        }
     }
 
     @ViewBuilder
@@ -66,7 +101,7 @@ struct BoardScreen: View {
     private func boardContent(_ tasks: [DeskTask]) -> some View {
         if tasks.isEmpty {
             EmptyStateView(title: "No tasks yet", message: "Describe the first piece of work, or run a survey to learn the codebase.") {
-                Button("Open Findings") { model.go(.findings) }
+                Button("Open Survey") { model.go(.survey) }
                     .buttonStyle(DeskButtonStyle(kind: .secondary))
             }
         } else {
@@ -126,9 +161,7 @@ private struct BacklogToggle: View {
                 .font(DeskFont.secondary)
                 .foregroundStyle(isOn ? Color.white : DeskColor.ink)
                 .padding(.horizontal, 10)
-                .frame(height: 26)
-                .background(isOn ? DeskColor.accent : DeskColor.surface, in: RoundedRectangle(cornerRadius: 6))
-                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(DeskColor.controlBorder))
+                .controlChrome(fill: isOn ? DeskColor.accent : DeskColor.surface)
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Show backlog")
@@ -141,6 +174,7 @@ private struct BoardColumnView: View {
     let column: BoardColumn
     let tasks: [DeskTask]
     let model: ProjectWindowModel
+    @State private var pending: PendingMove?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -152,12 +186,48 @@ private struct BoardColumnView: View {
                     .foregroundStyle(DeskColor.disabledDot)
             }
             ForEach(tasks) { task in
-                TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID) {
-                    model.openTask(task.id)
-                }
+                TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
+                         action: { model.openTask(task.id) }, moves: moves(for: task),
+                         isRunning: model.isTaskRunning(task))
             }
         }
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
+        .confirmationDialog(pending.map { TrackerWrite.confirmation(issue: $0.issue, slug: model.snapshot?.slug ?? "", action: $0.action) } ?? "",
+                            isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
+                            titleVisibility: .visible) {
+            Button(pending?.confirmTitle ?? "Move") { commit() }
+            Button("Cancel", role: .cancel) { pending = nil }
+        }
+    }
+
+    /// Only an issue can be moved: a branch or a pull request card has no issue to edit, and a merged card is history.
+    private func moves(for task: DeskTask) -> CardMoves? {
+        guard let issue = task.issueNumber, task.column != .done else { return nil }
+        return CardMoves(
+            milestone: model.activeMilestone,
+            isQueued: task.column == .queued,
+            queue: { pending = PendingMove(issue: issue, action: .queue(milestone: model.activeMilestone ?? "")) },
+            backlog: { pending = PendingMove(issue: issue, action: .backlog) },
+            cancel: { model.present(.cancelTask(task.id)) })
+    }
+
+    private func commit() {
+        guard let move = pending else { return }
+        pending = nil
+        Task { await model.performTrackerWrite(issue: move.issue, action: move.action) }
+    }
+}
+
+private struct PendingMove {
+    let issue: Int
+    let action: TrackerAction
+
+    var confirmTitle: String {
+        switch action {
+        case .queue: return "Queue"
+        case .backlog: return "Return to backlog"
+        case .cancel: return "Close"
+        }
     }
 }
 

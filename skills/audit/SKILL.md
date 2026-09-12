@@ -8,7 +8,7 @@ description: >
   Trigger when the user says "audit compliance", "verify pipeline phases", "audit pipeline", "check
   compliance", "did we actually run all phases", "audit this PR", or before pre-prod merging to enforce
   phase execution integrity.
-allowed-tools: [gh, git]
+allowed-tools: [gh, git, python3]
 ---
 
 # Dev — Phase Compliance Auditor
@@ -25,7 +25,7 @@ appends an objective **`## COMPLIANCE`** report to the PR body.
 
 ---
 
-## The Four Compliance Classifications
+## The Compliance Classifications
 
 | Classification | Meaning | Pipeline Rule | Action |
 |---|---|---|---|
@@ -34,6 +34,7 @@ appends an objective **`## COMPLIANCE`** report to the PR body.
 | **⚠️ UNMATCHED** | Phase is claimed in `Ran:`, but required evidence was not found or is ambiguous. | Warning: potential unverified claim. | Investigate or request proof from agent. |
 | **❌ HIDDEN SKIP** | Phase was required for the run tier but missing from both `Ran:` and `Skipped:`, OR claimed in `Ran:` with verifiable proof of complete omission. | Critical violation of pipeline rules. | **BLOCK PR MERGE** until addressed or legitimately declared. |
 | **❌ BARE SKIP** | Phase is listed in `Skipped:` without an explanatory reason (e.g. `Skipped: 6, 8`). | Direct violation of Phase 14 (`"Skipped: carries a reason per phase, never a bare list"`). | Add explanatory reason. |
+| **❌ FORBIDDEN SKIP** | Phase 5 or 6 is listed in `Skipped:` by a Deep-tier feature (a `feat` title and a `Tier:` naming Deep), with or without a reason. | Phase 6 is required for Deep features; only "lighter" at the cost declaration skips it, and that changes Tier. A Deep feature is never the trivial change Phase 5 exempts. | **Critical.** Run the phase, or correct `Tier:` if the developer answered "lighter". |
 
 ---
 
@@ -49,7 +50,7 @@ hard filesystem/git artifacts and phases that legitimately operate through conve
 | **3** | Git Branch Naming | Branch created from base; follows `<type>/<slug>` convention. | Branch existence in git is mandatory. |
 | **4** | Investigation | Search/grep operations, log inspection, reading reproduction scripts. | Exempt if bug reproduction was trivial or provided by user. |
 | **5** | Discuss Before Building | User interaction, prompts, architectural alignment questions. | **Conversational Gate:** Zero tool-call artifacts expected in git diff. Attested if Phases 7/9 proceed cleanly. |
-| **6** | Architecture Alternatives | ADR file in `docs/` or design section in spec. | If skipped, MUST have parenthetical reason in `Skipped:`. |
+| **6** | Architecture Alternatives | ADR file in `docs/` or design section in spec. | If skipped, MUST have parenthetical reason in `Skipped:`. A Deep-tier feature may not skip it at all (Forbidden Skip). |
 | **7** | Plan Output | Spec file in `specs/` or `docs/superpowers/specs/`, or a structured plan in chat. | Written plan artifact or structured prompt outline. |
 | **8** | Task Breakdown | Checklists, subtasks in plan, or phased task list. | Inline breakdown accepted; exempt on Light tier. |
 | **9** | Implement | Modified source code in `git diff` (excluding docs/specs/tests). | **Mandatory:** Non-empty git diff outside documentation. |
@@ -77,6 +78,13 @@ When auditing a branch or existing PR:
    git diff origin/<BASE_BRANCH>...HEAD --stat
    git log --oneline origin/<BASE_BRANCH>..HEAD
    ```
+3. Run the checker. It applies Steps 2–4 and prints the `## COMPLIANCE` section:
+   ```bash
+   python3 ~/.claude/skills/dev/skills/audit/compliance_auditor.py --pr <PR_NUMBER>
+   # no PR yet: --file <body.md> --title "<PR title>" — the title is what marks a feat PR
+   # --append-pr writes the section into the PR (Step 5); --format json gives the raw verdict
+   ```
+   Its findings are the floor: your own read of the evidence may add to them, never clear one.
 
 ### Mode B: In-Session / Transcript Mode
 When auditing an active session with execution logs:

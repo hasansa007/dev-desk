@@ -24,11 +24,15 @@ Dev Desk is a native Mac app in `apps/desk/`. It lives in this repository ([ADR 
 
 It opens two sample projects, StudyHub and dev-skill, which show the whole design with labelled sample data. It also opens real folders. For a real folder it reads git and GitHub directly, through `git` and `gh` ([ADR 0013](../adr/0013-the-app-reads-git-and-github-directly.md)): the board, diffs, commit activity, PR checks, `.dev/` state, and GitHub milestones as Roadmap.
 
-- **Findings** reads `docs/survey/` reports.
-- **Decisions** shows `docs/adr/` as history.
-- **Insights** is unavailable for real projects.
-- **Each task has a Shell tab and an Agents tab.** Both run in the task's own worktree. They start only when you start them ([ADR 0017](../adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)), or when Auto starts a queued task's agent in a project where you turned Auto on ([ADR 0018](../adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).
-- **It never writes to a tracker.** In a repository it creates only worktrees, one per task, under the Execution setting's location. Clone and Create project each write a new folder. The agents it starts can change files, as they would in your terminal.
+Five destinations, and two panels on the window's edges ([ADR 0021](../adr/0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md)):
+
+- **Board** — every card opens the same dialog over the board, started or not.
+- **Roadmap** — GitHub milestones.
+- **Survey** reads `docs/survey/` reports; **Ideation** reads `docs/ideation/`. Each asks what a run should focus on, runs the door, and files what you approve through `dev:create-issue`.
+- **Insights** is a destination, and unavailable for real projects.
+- **Files** down the right edge browses the project's own folder; **Runs** along the bottom lists every door this window started.
+- **A task's dialog holds its Shell and its agents.** Both run in the task's own worktree, and start only when you start them ([ADR 0017](../adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)) — or when Auto starts a queued task's agent, in a project where you turned Auto on ([ADR 0018](../adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).
+- **It writes to the tracker only through a card's bounded Move and Cancel** ([ADR 0014](../adr/0014-dev-desk-replaces-dev-ui.md)). In a repository it otherwise creates only worktrees, one per task, under the Execution setting's location; Clone and Create project each write a new folder. The agents it starts can change files, as they would in your terminal.
 
 ## Not built yet
 

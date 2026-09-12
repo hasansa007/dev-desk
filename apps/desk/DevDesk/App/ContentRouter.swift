@@ -10,25 +10,33 @@ struct ContentRouter: View {
                 NoticeBanner(tone: .failed, title: "Reload failed", message: Markdown.escape(reloadError))
                     .padding([.horizontal, .top], 12)
             }
+            if let trackerError = model.trackerError {
+                NoticeBanner(tone: .failed, title: "The tracker was not changed", message: trackerError) {
+                    Button("Dismiss") { model.dismissTrackerError() }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                }
+                .padding([.horizontal, .top], 12)
+            }
+            // Two window edges, the way Xcode arranges the same two things: output along the bottom of the
+            // work it came from, the file tree down the right of everything.
             HStack(spacing: 0) {
-                content
-                    .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                if model.insightsOpen && model.insightsDocked {
-                    InsightsPanel(model: model, placement: .docked)
-                        .frame(width: DeskMetric.insightsDockedWidth)
+                VStack(spacing: 0) {
+                    content
+                        .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                    if model.runsOpen {
+                        RunsPanel(model: model)
+                            .frame(height: DeskMetric.runsPanelHeight)
+                    }
+                }
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                if model.filesOpen {
+                    FilesPanel(model: model)
+                        .frame(width: DeskMetric.filesPanelWidth)
                 }
             }
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         .background(DeskColor.canvas)
-        .overlay(alignment: .bottomTrailing) {
-            if model.insightsOpen && !model.insightsDocked {
-                InsightsPanel(model: model, placement: .floating)
-                    .frame(width: DeskMetric.insightsFloatingSize.width, height: DeskMetric.insightsFloatingSize.height)
-                    .padding(.trailing, 36)
-                    .padding(.bottom, 34)
-            }
-        }
     }
 
     @ViewBuilder private var content: some View {
@@ -51,19 +59,17 @@ struct ContentRouter: View {
         case .board:
             if model.mode == .parallel {
                 ParallelScreen(model: model)
-            } else if let task = model.selectedTask {
-                TaskWorkspaceScreen(model: model, task: task)
             } else {
                 BoardScreen(model: model)
             }
         case .roadmap:
             RoadmapScreen(model: model)
-        case .findings:
+        case .survey:
             FindingsScreen(model: model)
-        case .decisions:
-            DecisionsScreen(model: model)
-        case .settings:
-            SettingsScreen(model: model)
+        case .ideation:
+            IdeationScreen(model: model)
+        case .insights:
+            InsightsScreen(model: model)
         }
     }
 }

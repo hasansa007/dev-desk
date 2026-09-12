@@ -4,13 +4,12 @@ extension SampleData {
             project: ProjectInfo(name: "StudyHub", displayPath: "~/code/studyhub", branch: "main",
                                   remote: "github.com/acme/studyhub", headRevision: "9c2e410"),
             isDemo: true,
-            launch: LaunchState(selectedTaskID: "42", insightsOpen: true),
+            launch: LaunchState(selectedTaskID: "42"),
             activitySummary: StatusBadge(.running, "2 running · 1 waiting", pulses: true),
             board: .available(studyHubTasks()),
             boardNote: "Columns map to prototype labels, not the repository's status field yet.",
             findings: .available(studyHubFindings()),
             roadmap: .available(studyHubRoadmap()),
-            decisions: .available(studyHubDecisions()),
             connections: studyHubConnections(),
             connectionsNote: "Illustrative prototype states. No tools are installed or called.",
             capabilities: studyHubCapabilities(),
@@ -137,61 +136,6 @@ extension SampleData {
                 Milestone(id: "m15", title: "1.5 · Performance", progress: 0.15, note: "1 of 6 tasks · investigation stage"),
             ]
         )
-    }
-
-    static func studyHubDecisions() -> [Decision] {
-        [
-            Decision(
-                id: "d-57", taskID: "57", listTitle: "Where should partial exam state live?",
-                listMeta: "Task #57 · asked 11:04 · blocking", state: .needsAttention,
-                question: "Where should partial exam state be persisted?",
-                context: "Task [#57 Improve exam recovery](desk://task/57) · raised by the Claude session during implementation · blocking",
-                notice: "Answering resumes the waiting session. No code has been written against any option.",
-                evidence: "Attempt writes currently go through `attemptStore.ts` with an in-memory cache. Two migrations already touch the same table. Finding F-111 suggests duplicate writes, but it is an unconfirmed observation.",
-                options: [
-                    DecisionOption(id: "db", title: "Persist to local database on each answer", detail: "Durable across crashes. Adds write pressure and a third migration."),
-                    DecisionOption(id: "checkpoint", title: "Checkpoint every N answers and on blur", detail: "Balanced. Loses at most a few answers; needs a recovery prompt."),
-                    DecisionOption(id: "memory", title: "Keep in memory, restore only within the session", detail: "Smallest change; does not address the reported crash case."),
-                ]
-            ),
-            Decision(
-                id: "d-scroll", taskID: "42", listTitle: "Scroll restoration scope",
-                listMeta: "Answered 4 Sep · context changed", state: .stale,
-                question: "Scroll restoration scope",
-                context: "Task [#42 Preserve course-list position](desk://task/42) · answered 4 Sep",
-                answer: DecisionAnswer(optionTitle: "Restore offsets for the non-virtualised course list only",
-                                       rationale: "The list is not virtualised, so a stored offset maps directly to the same rows.",
-                                       answeredLabel: "Answered 4 Sep"),
-                staleReason: "“Scroll restoration scope” was answered on 4 Sep assuming a non-virtualised list. #71 now proposes virtualisation, so the earlier answer needs review before #42 is verified."
-            ),
-            Decision(
-                id: "h-session", taskID: "42", listTitle: "Use session storage for list offsets",
-                listMeta: "Task #42 · answered 2 Sep", state: .answered,
-                question: "Where should list scroll offsets be stored?",
-                context: "Task [#42 Preserve course-list position](desk://task/42) · answered 2 Sep",
-                answer: DecisionAnswer(optionTitle: "Use session storage for list offsets",
-                                       rationale: "Offsets only need to survive navigation within a session; cross-device position sync is out of scope for #42.",
-                                       answeredLabel: "Answered 2 Sep")
-            ),
-            Decision(
-                id: "h-f093", listTitle: "Decline search index rewrite",
-                listMeta: "Finding F-093 · declined 28 Aug", state: .answered,
-                question: "Should the search index be rewritten?",
-                context: "Finding [F-093](desk://finding/F-093) · declined 28 Aug",
-                answer: DecisionAnswer(optionTitle: "Decline for now",
-                                       rationale: "Declined until search performance is measured; #63 investigates it.",
-                                       answeredLabel: "Declined 28 Aug")
-            ),
-            Decision(
-                id: "h-worktrees", listTitle: "Adopt worktrees for parallel tasks",
-                listMeta: "Project · answered 21 Aug", state: .answered,
-                question: "How should parallel tasks be isolated?",
-                context: "Project StudyHub · answered 21 Aug",
-                answer: DecisionAnswer(optionTitle: "Adopt worktrees for parallel tasks",
-                                       rationale: "Each parallel task gets its own branch and isolated checkout under `~/.devdesk/wt`, so two writers never share a working tree.",
-                                       answeredLabel: "Answered 21 Aug")
-            ),
-        ]
     }
 
     static func studyHubInsightsScript() -> InsightsScript {

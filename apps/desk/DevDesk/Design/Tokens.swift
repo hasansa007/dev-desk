@@ -104,13 +104,19 @@ enum DeskFont {
 enum DeskMetric {
     static let sidebarWidth: CGFloat = 236
     static let inspectorWidth: CGFloat = 262
-    static let dockHeight: CGFloat = 272
-    static let dockSideWidth: CGFloat = 460
-    static let insightsFloatingSize = CGSize(width: 404, height: 520)
-    static let insightsDockedWidth: CGFloat = 392
+    /// Runs is the bottom edge of the window: deep enough for a terminal, shallow enough to leave the work visible.
+    static let runsPanelHeight: CGFloat = 300
+    /// Files is the right edge: a tree over a viewer, so it is narrow.
+    static let filesPanelWidth: CGFloat = 420
     static let boardColumnWidth: CGFloat = 246
-    static let controlRadius: CGFloat = 5
+    /// Every small control shares these: search fields, toggles and the toolbar's pill. Buttons carry their own table in `DeskButtonStyle.Size`.
+    static let controlHeight: CGFloat = 26
+    static let controlRadius: CGFloat = 6
     static let cardRadius: CGFloat = 8
     static let pillRadius: CGFloat = 10
     static let sheetRadius: CGFloat = 12
+    /// Every dialog is exactly this size, so opening one never changes shape under you. A sheet cannot
+    /// choose its own: `SheetChrome` takes neither a width nor a height, and its body scrolls instead.
+    static let dialogWidth: CGFloat = 900
+    static let dialogHeight: CGFloat = 660
 }
