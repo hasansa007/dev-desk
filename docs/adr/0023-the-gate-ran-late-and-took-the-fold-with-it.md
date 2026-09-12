@@ -75,6 +75,12 @@ one-dialog rule to the card that opens it.
   `dev.py`'s priority ranking.
 - **A forced delete costs two git calls** when the branch really is unmerged. That is the price of
   the refusal being real, and it is paid only on the destructive path.
+- **`-D` runs less often than the card's count implies, and that is correct.** The card counts commits
+  the **base** does not have; `git branch -d` refuses only what is unmerged into the branch's
+  **upstream or HEAD**. So a pushed branch reading `6 commits ahead` is deleted by the safe attempt —
+  the work is on the remote, which is git's own definition of nothing lost, and ADR 0022's local-only
+  rule means the remote branch stays. Anyone reading the two call-order tests would otherwise expect
+  `-D` there.
 - **ADR 0022's consequence about a hidden stale branch no longer applies**, because nothing hides.
 - **The dead error cases are gone.** `checkedOut` and `unmergedNeedsConfirmation` carried user-facing
   sentences no code path could reach; git's own stderr is shown instead, under a banner that now
