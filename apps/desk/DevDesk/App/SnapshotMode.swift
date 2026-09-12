@@ -121,7 +121,7 @@ final class SnapshotMode {
         Capture(name: "13-roadmap") { $0.go(.roadmap) },
         Capture(name: "14-decisions") { $0.go(.decisions) },
         Capture(name: "15-decisions-history") { $0.go(.decisions); $0.decisionsTab = .history },
-        Capture(name: "16-settings-agents") { $0.go(.settings); $0.settingsSection = .agentsAndDefaults },
+        Capture(name: "16-settings-agents", isSheet: true) { $0.settingsSection = .agentsAndDefaults; $0.present(.settings) },
         Capture(name: "17-insights-docked") { $0.openTask("42"); $0.dockInsights() },
         Capture(name: "18-insights-floating") { $0.openTask("42"); $0.floatInsights() },
         Capture(name: "19-open-project-sheet", isSheet: true) { $0.go(.board); $0.present(.openProject) },
@@ -143,7 +143,7 @@ final class SnapshotMode {
         Capture(name: "03-survey") { $0.go(.survey) },
         Capture(name: "04-roadmap") { $0.go(.roadmap) },
         Capture(name: "05-decisions") { $0.go(.decisions) },
-        Capture(name: "06-settings-connections") { $0.go(.settings); $0.settingsSection = .accountsAndConnections },
+        Capture(name: "06-settings-connections", isSheet: true) { $0.settingsSection = .accountsAndConnections; $0.present(.settings) },
         // Idle, so the capture shows the trust note and the planned folder; nothing is started.
         Capture(name: "07-first-task-shell") { model in
             if let id = firstTaskID(model) { model.openTask(id) }

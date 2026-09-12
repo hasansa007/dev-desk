@@ -18,8 +18,7 @@ struct ReconcileFindingSheet: View {
     }
 
     var body: some View {
-        SheetChrome(title: title, confirmTitle: "Queue proposed update", width: 1000,
-                    confirmDisabled: reconcile == nil, onCancel: onCancel, onConfirm: onConfirm) {
+        SheetChrome(title: title, confirmTitle: "Queue proposed update",                     confirmDisabled: reconcile == nil, onCancel: onCancel, onConfirm: onConfirm) {
             if let reconcile {
                 content(reconcile)
             } else {
@@ -110,6 +109,6 @@ struct ReconcileFindingSheet_Previews: PreviewProvider {
     static var previews: some View {
         let finding = SampleData.studyHub().findings.value!.findings.first { $0.id == "F-108" }!
         ReconcileFindingSheet(title: "Compare finding F-108 with issue #42", reconcile: finding.reconcile, onCancel: {}, onConfirm: {})
-            .frame(width: 1000)
+            .frame(width: DeskMetric.dialogWidth)
     }
 }

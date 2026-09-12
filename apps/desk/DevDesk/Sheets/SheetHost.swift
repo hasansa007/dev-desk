@@ -18,7 +18,7 @@ struct SheetHost: View {
                 CompareOutputsSheet(title: taskTitled("Compare agent outputs"), comparison: comparison,
                                     onCancel: model.dismissSheet, onConfirm: { model.confirmSheet() })
             } else {
-                SheetChrome(title: taskTitled("Compare agent outputs"), confirmTitle: "Adopt result", width: 1000, confirmDisabled: true,
+                SheetChrome(title: taskTitled("Compare agent outputs"), confirmTitle: "Adopt result", confirmDisabled: true,
                             onCancel: model.dismissSheet, onConfirm: { model.confirmSheet() }) {
                     UnavailableView(reason: "No comparison is available for this task.")
                 }
@@ -27,7 +27,7 @@ struct SheetHost: View {
             if let draft = currentTask?.followUp {
                 FollowUpSheet(draft: draft, onCancel: model.dismissSheet, onConfirm: { model.confirmSheet() })
             } else {
-                SheetChrome(title: "Request follow-up", confirmTitle: "Send request", width: 720, confirmDisabled: true,
+                SheetChrome(title: "Request follow-up", confirmTitle: "Send request", confirmDisabled: true,
                             onCancel: model.dismissSheet, onConfirm: { model.confirmSheet() }) {
                     UnavailableView(reason: "No follow-up draft is available for this task.")
                 }
@@ -37,7 +37,7 @@ struct SheetHost: View {
                 HandoffSheet(title: taskTitled("Start with handoff"), plan: plan,
                              onCancel: model.dismissSheet, onConfirm: { model.confirmSheet(provider: $0) })
             } else {
-                SheetChrome(title: taskTitled("Start with handoff"), confirmTitle: "Create new session", width: 720, confirmDisabled: true,
+                SheetChrome(title: taskTitled("Start with handoff"), confirmTitle: "Create new session", confirmDisabled: true,
                             onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
                     UnavailableView(reason: "No handoff plan is available for this task.")
                 }
@@ -49,7 +49,7 @@ struct SheetHost: View {
             if let task = model.task(taskID) {
                 TaskDialog(model: model, task: task)
             } else {
-                SheetChrome(title: "Task", confirmTitle: "Start task", width: 720, confirmDisabled: true,
+                SheetChrome(title: "Task", confirmTitle: "Start task", confirmDisabled: true,
                             onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
                     UnavailableView(reason: "This task is no longer on the board.")
                 }
@@ -58,13 +58,15 @@ struct SheetHost: View {
             if let task = model.task(taskID) {
                 CancelTaskSheet(model: model, task: task)
             } else {
-                SheetChrome(title: "Close as not planned", confirmTitle: "Close", width: 560, confirmDisabled: true,
+                SheetChrome(title: "Close as not planned", confirmTitle: "Close", confirmDisabled: true,
                             onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
                     UnavailableView(reason: "This task is no longer on the board.")
                 }
             }
         case .runFocus(let door):
             RunFocusSheet(model: model, door: door)
+        case .settings:
+            SettingsSheet(model: model)
         case .cloneRepository:
             CloneRepositorySheet(onDismiss: model.dismissSheet)
         case .createProject:

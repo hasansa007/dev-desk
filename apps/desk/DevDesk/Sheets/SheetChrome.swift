@@ -5,18 +5,16 @@ import SwiftUI
 struct SheetChrome<Content: View>: View {
     let title: String
     let confirmTitle: String
-    let width: CGFloat
     let confirmDisabled: Bool
     let cancelHelp: String?
     let onCancel: () -> Void
     let onConfirm: () -> Void
     let content: Content
 
-    init(title: String, confirmTitle: String, width: CGFloat, confirmDisabled: Bool = false, cancelHelp: String? = nil,
+    init(title: String, confirmTitle: String, confirmDisabled: Bool = false, cancelHelp: String? = nil,
          onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void, @ViewBuilder content: () -> Content) {
         self.title = title
         self.confirmTitle = confirmTitle
-        self.width = width
         self.confirmDisabled = confirmDisabled
         self.cancelHelp = cancelHelp
         self.onCancel = onCancel
@@ -34,8 +32,7 @@ struct SheetChrome<Content: View>: View {
                     .padding(.horizontal, 18)
             }
         }
-        .frame(width: width)
-        .frame(maxHeight: 790)
+        .frame(width: DeskMetric.dialogWidth, height: DeskMetric.dialogHeight)
         .background(DeskColor.surface)
     }
 

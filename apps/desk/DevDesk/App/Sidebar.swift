@@ -46,7 +46,7 @@ struct Sidebar: View {
 
     private var destinations: some View {
         VStack(spacing: 2) {
-            ForEach(Destination.allCases.filter { $0 != .settings }, id: \.self) { destination in
+            ForEach(Destination.allCases, id: \.self) { destination in
                 destinationButton(destination)
             }
         }
@@ -54,11 +54,23 @@ struct Sidebar: View {
         .padding(.horizontal, 8)
     }
 
-    /// Settings sits at the bottom, away from the destinations that answer "what is happening"; its ⌘ shortcut is unchanged.
+    /// Settings is a dialog, not a place: it sits at the bottom and opens over whatever you were looking at.
     private var settingsRow: some View {
-        destinationButton(.settings)
-            .padding(.horizontal, 8)
-            .padding(.bottom, 8)
+        Button { model.present(.settings) } label: {
+            HStack(spacing: 9) {
+                Image(systemName: "gearshape").frame(width: 16)
+                Text("Settings")
+                Spacer(minLength: 4)
+            }
+            .font(DeskFont.body)
+            .foregroundStyle(DeskColor.navInk)
+            .padding(.vertical, 7)
+            .padding(.horizontal, 10)
+            .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 8)
+        .padding(.bottom, 8)
     }
 
     private func destinationButton(_ destination: Destination) -> some View {
@@ -102,7 +114,7 @@ struct Sidebar: View {
             return (count, false)
         case .decisions:
             return model.pendingDecisionCount > 0 ? (model.pendingDecisionCount, true) : nil
-        case .roadmap, .settings:
+        case .roadmap:
             return nil
         }
     }
@@ -119,7 +131,6 @@ struct Sidebar: View {
         case .survey: return "scope"
         case .ideation: return "lightbulb"
         case .decisions: return "questionmark.diamond"
-        case .settings: return "gearshape"
         }
     }
 

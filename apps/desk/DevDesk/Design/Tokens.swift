@@ -121,4 +121,8 @@ enum DeskMetric {
     static let cardRadius: CGFloat = 8
     static let pillRadius: CGFloat = 10
     static let sheetRadius: CGFloat = 12
+    /// Every dialog is exactly this size, so opening one never changes shape under you. A sheet cannot
+    /// choose its own: `SheetChrome` takes neither a width nor a height, and its body scrolls instead.
+    static let dialogWidth: CGFloat = 900
+    static let dialogHeight: CGFloat = 660
 }

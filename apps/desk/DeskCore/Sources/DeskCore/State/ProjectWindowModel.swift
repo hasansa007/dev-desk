@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, roadmap, survey, ideation, decisions, settings
+    case board, roadmap, survey, ideation, decisions
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
 
@@ -36,6 +36,7 @@ public enum SheetKind: Hashable, Identifiable {
     case task(String)
     case cancelTask(String)
     case runFocus(String)
+    case settings
 
     public var id: String {
         switch self {
@@ -49,6 +50,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .task(let taskID): return "task:\(taskID)"
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
         case .runFocus(let door): return "runFocus:\(door)"
+        case .settings: return "settings"
         }
     }
 }

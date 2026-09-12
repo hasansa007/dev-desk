@@ -93,8 +93,6 @@ struct ContentRouter: View {
             IdeationScreen(model: model)
         case .decisions:
             DecisionsScreen(model: model)
-        case .settings:
-            SettingsScreen(model: model)
         }
     }
 }

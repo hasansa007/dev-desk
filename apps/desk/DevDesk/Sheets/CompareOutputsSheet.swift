@@ -8,8 +8,7 @@ struct CompareOutputsSheet: View {
     let onConfirm: () -> Void
 
     var body: some View {
-        SheetChrome(title: title, confirmTitle: comparison.confirmTitle, width: 1000,
-                    onCancel: onCancel, onConfirm: onConfirm) {
+        SheetChrome(title: title, confirmTitle: comparison.confirmTitle,                     onCancel: onCancel, onConfirm: onConfirm) {
             VStack(alignment: .leading, spacing: 14) {
                 Text(comparison.intro)
                     .foregroundStyle(DeskColor.secondaryInk)
@@ -64,6 +63,6 @@ struct CompareOutputsSheet_Previews: PreviewProvider {
     static var previews: some View {
         let task = SampleData.studyHub().board.value!.first { $0.id == "42" }!
         CompareOutputsSheet(title: "Compare agent outputs · #42", comparison: task.comparison!, onCancel: {}, onConfirm: {})
-            .frame(width: 1000)
+            .frame(width: DeskMetric.dialogWidth)
     }
 }

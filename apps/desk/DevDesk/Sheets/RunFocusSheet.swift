@@ -16,7 +16,7 @@ struct RunFocusSheet: View {
     var body: some View {
         let blocked = model.runBlockedReason(agent: defaultConnection)
         SheetChrome(title: isIdeation ? "What should this ideation run look for?" : "What should this survey look at?",
-                    confirmTitle: "Start run", width: 560, confirmDisabled: blocked != nil,
+                    confirmTitle: "Start run", confirmDisabled: blocked != nil,
                     onCancel: model.dismissSheet, onConfirm: start) {
             VStack(alignment: .leading, spacing: 12) {
                 if let blocked {
