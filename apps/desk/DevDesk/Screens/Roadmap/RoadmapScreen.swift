@@ -28,6 +28,11 @@ private struct RoadmapContent: View {
 
     private var itemCount: Int { roadmap.themes.reduce(0) { $0 + $1.items.count } }
 
+    private var summary: String {
+        let themes = roadmap.themes.count
+        return "\(itemCount) item\(itemCount == 1 ? "" : "s") across \(themes) theme\(themes == 1 ? "" : "s")"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -43,7 +48,7 @@ private struct RoadmapContent: View {
             Text("Roadmap")
                 .font(DeskFont.section)
                 .foregroundStyle(DeskColor.ink)
-            Text("\(itemCount) across \(roadmap.themes.count) themes")
+            Text(summary)
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
             noteButton

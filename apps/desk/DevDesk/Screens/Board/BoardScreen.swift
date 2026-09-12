@@ -103,7 +103,7 @@ struct BoardScreen: View {
         } else {
             let columns = visibleColumns.map { column in
                 ColumnEntry(column: column,
-                            tasks: BoardOrder.newestFirst(tasks.filter { $0.column == column && matches($0) }))
+                            tasks: BoardOrder.inColumn(column, tasks.filter { $0.column == column && matches($0) }))
             }
             if !model.searchText.isEmpty && columns.allSatisfy({ $0.tasks.isEmpty }) {
                 Text("No tasks match “\(model.searchText)”.")
@@ -175,7 +175,7 @@ private struct BoardColumnView: View {
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
-    private var live: Int { model.liveCount(in: column) }
+    private var counts: (total: Int, live: Int) { model.counts(in: column) }
 
     /// A branch card's own menu. A card with an issue keeps the tracker moves instead, so neither card carries two.
     private func branchActions(for task: DeskTask) -> BranchActions? {
@@ -204,21 +204,21 @@ private struct BoardColumnView: View {
                     .imageScale(.small)
                     .foregroundStyle(DeskColor.mutedInk)
                 SectionLabel(column.title)
-                Text("\(tasks.count)")
+                Text("\(counts.total)")
                     .font(DeskFont.label)
                     .tracking(0.66)
                     .foregroundStyle(DeskColor.disabledDot)
                 // The count of what is actually running here, so a column never looks idle while it works.
-                if live > 0 {
+                if counts.live > 0 {
                     HStack(spacing: 4) {
                         StatusDot(tone: .running, pulses: true, size: 6)
-                        Text("\(live) live")
+                        Text("\(counts.live) live")
                             .font(DeskFont.label)
                             .tracking(0.66)
                             .foregroundStyle(DeskColor.tone(.running).foreground)
                     }
                     .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(live) running in \(column.title)")
+                    .accessibilityLabel("\(counts.live) running in \(column.title)")
                 }
             }
             ForEach(tasks) { task in

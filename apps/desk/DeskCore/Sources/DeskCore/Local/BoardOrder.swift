@@ -4,6 +4,12 @@ import Foundation
 /// `BoardBuilder` put it in. Sorting on a date alone drops that ordering, because Swift's sort is not stable
 /// and a queue of undated cards compares equal at every pair.
 public enum BoardOrder {
+    /// BACKLOG keeps the order `BoardBuilder.orderNext` gave it — priority, slice, then the issue ignored longest,
+    /// which is `dev.py`'s `order_next`. Every other column has no ranking of its own, so the newest commit leads.
+    public static func inColumn(_ column: BoardColumn, _ tasks: [DeskTask]) -> [DeskTask] {
+        column == .backlog ? tasks : newestFirst(tasks)
+    }
+
     public static func newestFirst(_ tasks: [DeskTask]) -> [DeskTask] {
         tasks.enumerated().sorted { left, right in
             switch (left.element.lastCommit, right.element.lastCommit) {

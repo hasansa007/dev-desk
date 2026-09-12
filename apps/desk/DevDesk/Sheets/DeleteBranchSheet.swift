@@ -56,7 +56,7 @@ struct DeleteBranchSheet: View {
         }
     }
 
-    private var warningTitle: String { (unmerged ?? 1) > 0 ? "This loses commits" : "Nothing counted this branch" }
+    private var warningTitle: String { unmerged == nil ? "Nothing counted this branch" : "This loses commits" }
 
     private var warning: String {
         guard let unmerged else {

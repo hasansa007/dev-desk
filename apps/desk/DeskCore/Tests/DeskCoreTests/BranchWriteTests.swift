@@ -126,6 +126,20 @@ final class BoardOrderTests: XCTestCase {
         XCTAssertEqual(BoardOrder.newestFirst(queue).map(\.id), queue.map(\.id))
     }
 
+    /// The ranking `orderNext` computes — priority, slice, the issue ignored longest — is the answer to "what
+    /// next", and a branch's commit date is not an input to it. Once every card carried a date, sorting BACKLOG
+    /// by date silently outranked it: one backlog issue with a branch would sit above every higher-priority card.
+    func testBacklogKeepsTheBuildersRankingEvenWhenACardHasADate() {
+        let ranked = [task("p1-no-branch", nil), task("p3-with-branch", 60), task("p2-no-branch", nil)]
+        XCTAssertEqual(BoardOrder.inColumn(.backlog, ranked).map(\.id), ranked.map(\.id))
+    }
+
+    func testEveryOtherColumnLeadsWithTheNewestCommit() {
+        let cards = [task("old", 86_400), task("new", 60)]
+        XCTAssertEqual(BoardOrder.inColumn(.inProgress, cards).map(\.id), ["new", "old"])
+        XCTAssertEqual(BoardOrder.inColumn(.queued, cards).map(\.id), ["new", "old"])
+    }
+
     func testCardsCommittedAtTheSameInstantKeepTheirOrder() {
         let ordered = BoardOrder.newestFirst([task("first", 600), task("second", 600)])
         XCTAssertEqual(ordered.map(\.id), ["first", "second"])

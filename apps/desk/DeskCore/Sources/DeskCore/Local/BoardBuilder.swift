@@ -227,18 +227,22 @@ private struct BoardContext {
         let fromFork = branch == nil && pullRequest?.isCrossRepository == true
         let state = head.flatMap { input.pipeline[$0] }
         let badge: StatusBadge?
+        // The ahead count is a field on every card now, so the pill that repeated it stays out of the card and
+        // keeps only the dialog's header, where nothing else says how far ahead the branch is.
+        var saysAheadOnly = false
         if isDeferred {
             badge = StatusBadge(.neutral, "Deferred")
         } else if let pullRequest {
             badge = BoardBuilder.reviewBadge(pullRequest)
         } else if column == .inProgress, let local {
             badge = BoardBuilder.aheadBadge(local.unmerged)
+            saysAheadOnly = true
         } else {
             badge = nil
         }
         return DeskTask(
             id: String(issue.number), issueNumber: issue.number, title: issue.title, column: column,
-            cardBadge: badge, cardNote: state?.cardNote,
+            cardBadge: saysAheadOnly ? nil : badge, cardNote: state?.cardNote,
             headerBadge: badge ?? StatusBadge(.neutral, column == .queued ? "Queued" : "Backlog"),
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
             branch: fromFork ? nil : head, noBranchNote: fromFork ? BoardBuilder.forkNote : nil,

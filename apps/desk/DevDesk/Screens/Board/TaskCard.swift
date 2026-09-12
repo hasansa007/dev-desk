@@ -186,7 +186,8 @@ struct TaskCard: View {
     }
 
     private var accessibilityLabel: String {
-        [task.title, task.issueLabel, task.cardBadge?.label]
+        // branchFacts is inside the button's label, which is a leaf to VoiceOver, so it is spoken only from here.
+        [task.title, task.issueLabel, branchFacts, task.cardBadge?.label]
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: ", ")

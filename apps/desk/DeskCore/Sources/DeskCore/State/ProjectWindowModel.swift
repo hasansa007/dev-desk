@@ -316,9 +316,10 @@ public final class ProjectWindowModel {
 
     public func isTaskRunning(_ task: DeskTask) -> Bool { activity(of: task) != nil }
 
-    /// How many of a column's cards are live, for the column's own header.
-    public func liveCount(in column: BoardColumn) -> Int {
-        tasks.filter { $0.column == column && isTaskRunning($0) }.count
+    /// A header describes its column, not the search box, so both numbers count every card in it.
+    public func counts(in column: BoardColumn) -> (total: Int, live: Int) {
+        let cards = tasks.filter { $0.column == column }
+        return (cards.count, cards.filter { isTaskRunning($0) }.count)
     }
 
     private static func isLive(_ state: ShellSessionState) -> Bool {

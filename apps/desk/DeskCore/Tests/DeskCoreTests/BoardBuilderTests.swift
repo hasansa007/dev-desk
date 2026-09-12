@@ -99,8 +99,10 @@ final class BoardBuilderTests: XCTestCase {
         let task = try XCTUnwrap(tasks()["12"])
         XCTAssertEqual(task.issueNumber, 12)
         XCTAssertEqual(task.title, "Crash on launch")
-        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "2 commits ahead"))
+        // The count is a field on every card now; the pill kept only the dialog's header, where nothing repeats it.
+        XCTAssertNil(task.cardBadge)
         XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "2 commits ahead"))
+        XCTAssertEqual(task.unmergedCount, 2)
         XCTAssertEqual(task.nextAction, .reviewChanges)
         XCTAssertEqual(task.branchLine, "gh-12-x · base main@abc1234 · worktree /tmp/wt/app-12")
         XCTAssertEqual(task.parallelLine, "gh-12-x · /tmp/wt/app-12")
@@ -450,7 +452,8 @@ final class BoardBuilderTests: XCTestCase {
         input.git?.branches[0].logFailure = "fatal: bad object c0ffee1"
         input.git?.branches[0].diffFailure = "git did not finish within 15 seconds"
         let task = try XCTUnwrap(tasks(input)["12"])
-        XCTAssertEqual(task.cardBadge, StatusBadge(.neutral, "2 commits ahead"))
+        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "2 commits ahead"))
+        XCTAssertEqual(task.unmergedCount, 2, "a failed diff read must not lose the count the card is named for")
         XCTAssertEqual(task.activity, .unavailable("git log failed: fatal: bad object c0ffee1"))
         XCTAssertEqual(task.changes, .unavailable("git diff failed: git did not finish within 15 seconds"))
         XCTAssertEqual(task.parallel, .none("git log failed: fatal: bad object c0ffee1"))
