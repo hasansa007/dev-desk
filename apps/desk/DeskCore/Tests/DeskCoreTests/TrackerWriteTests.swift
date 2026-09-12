@@ -68,4 +68,16 @@ final class TrackerWriteTests: XCTestCase {
                           "\(action) must name the repository and number")
         }
     }
+
+    /// The Done column is git's (ADR 0011). This write follows git rather than asserting over it, so it carries
+    /// no reason prose: there is nothing to explain when the commits are already in the base.
+    func testMarkingCompletedClosesWithGitHubsOwnCompletedReason() {
+        XCTAssertEqual(TrackerWrite.arguments(issue: 12, slug: "o/r", action: .complete),
+                       ["issue", "close", "12", "--repo", "o/r", "--reason", "completed"])
+    }
+
+    func testTheCompletedConfirmationSaysWhyItIsAllowed() {
+        XCTAssertEqual(TrackerWrite.confirmation(issue: 12, slug: "o/r", action: .complete),
+                       "Close o/r#12 as completed? Its work is already in the base branch.")
+    }
 }

@@ -41,6 +41,10 @@ literal radii in `CompareOutputsSheet` and `ReconcileFindingSheet` are now the t
   that every card opens (ADR 0021). Before, it was legible on the board at the cost of the column.
 - **A card carries a little slack when it has neither note nor action.** That is the price of a
   uniform grid, and it is one constant to tune rather than a layout to re-derive.
+- **A column header is one line at one height too**, for the same reason one row lower down: a theme
+  whose title wrapped — "Milestone · Tracker truth — one authoritative backlog" — made its own column
+  start a row below the two beside it. It truncates with the full title on hover, and the board's
+  column headers take the same height so it cannot come back there.
 - **The next card-shaped surface has one thing to call.** The drift this ADR removes happened because
   copying four lines of chrome was easier than finding the modifier that already existed.
 - **`deskCard` now sets `contentShape` for all twelve of its call sites**, not just the board's. Traced

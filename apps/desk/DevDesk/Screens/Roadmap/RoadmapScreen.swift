@@ -3,13 +3,22 @@ import SwiftUI
 
 struct RoadmapScreen: View {
     @Bindable var model: ProjectWindowModel
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
+
+    private var isRoadmapRunning: Bool {
+        model.isDoorRunning("roadmap") || (jobs?.hasLiveJob(door: "roadmap") ?? false)
+    }
 
     var body: some View {
         if let snapshot = model.snapshot {
             SurfaceView(snapshot.roadmap, fillsScreen: true) { roadmap in
                 if roadmap.themes.isEmpty && roadmap.milestones.isEmpty {
-                    EmptyStateView(title: "No roadmap yet",
-                                   message: "Run `/dev:roadmap` to turn recorded gaps into milestones and epics.")
+                    EmptyStateView(title: isRoadmapRunning ? "The roadmap door is running" : "No roadmap yet",
+                                   message: isRoadmapRunning
+                                       ? "It is reading this repository's recorded gaps now. Themes appear here once it files, and it asks before it does."
+                                       : "The roadmap door reads what this repository already records about its own gaps and proposes milestones with epic parents underneath. Nothing here is invented, and it asks before it files.") {
+                        DoorRunControl(model: model, door: "roadmap", title: "Run roadmap")
+                    }
                 } else {
                     RoadmapContent(roadmap: roadmap, model: model)
                 }
@@ -53,6 +62,7 @@ private struct RoadmapContent: View {
                 .foregroundStyle(DeskColor.mutedInk)
             noteButton
             Spacer(minLength: 0)
+            DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
         }
         .screenHeaderBar()
     }
@@ -111,18 +121,24 @@ private struct ThemeColumn: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Icon, title, count — the shape a board column's header already has.
+            // Icon, title, count — the shape a board column's header already has. One line at one height: a
+            // theme whose title wrapped made its own column start a row lower than the two beside it.
             HStack(spacing: 6) {
                 Image(systemName: theme.icon)
                     .imageScale(.small)
                     .foregroundStyle(theme.isCritical ? DeskColor.tone(.failed).foreground : DeskColor.mutedInk)
                 SectionLabel(theme.title)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Text("\(theme.items.count)")
                     .font(DeskFont.label)
                     .tracking(0.66)
                     .foregroundStyle(DeskColor.disabledDot)
+                    .layoutPriority(1)
                 Spacer(minLength: 0)
             }
+            .frame(height: DeskMetric.columnHeaderHeight)
+            .help(theme.title)
             VStack(alignment: .leading, spacing: 9) {
                 ForEach(theme.items) { item in
                     RoadmapItemCard(item: item, model: model)

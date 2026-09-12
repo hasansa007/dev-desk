@@ -26,11 +26,7 @@ private struct GenerateIdeasButton: View {
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
     var body: some View {
-        let blocked = model.runBlockedReason(agent: defaultConnection)
-        Button("Generate ideas") { model.present(.runFocus("ideation")) }
-        .buttonStyle(DeskButtonStyle(kind: .primary, size: .smallWide))
-        .disabled(blocked != nil)
-        .help(blocked ?? "Start dev:ideation in \(defaultConnection), in this project's folder")
+        DoorRunControl(model: model, door: "ideation", title: "Generate ideas")
     }
 }
 

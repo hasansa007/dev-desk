@@ -15,17 +15,24 @@ struct RunFocusSheet: View {
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var isIdeation: Bool { door == "ideation" }
+    private var isRoadmap: Bool { door == "roadmap" }
 
     var body: some View {
         let blocked = model.runBlockedReason(agent: defaultConnection)
-        SheetChrome(title: isIdeation ? "What should this ideation run look for?" : "What should this survey look at?",
+        SheetChrome(title: title,
                     confirmTitle: "Start run", confirmDisabled: blocked != nil,
                     onCancel: model.dismissSheet, onConfirm: start) {
             VStack(alignment: .leading, spacing: 12) {
                 if let blocked {
                     NoticeBanner(tone: .neutral, title: "Nothing to run here", message: blocked, style: .compact)
                 }
-                if isIdeation { kindPicker } else { scopePicker }
+                if isRoadmap {
+                    EmptyView()
+                } else if isIdeation {
+                    kindPicker
+                } else {
+                    scopePicker
+                }
                 backgroundPicker
                 Text(footnote)
                     .font(.system(size: 11))
@@ -97,8 +104,16 @@ struct RunFocusSheet: View {
         }
     }
 
+    private var title: String {
+        if isRoadmap { return "Run the roadmap door?" }
+        return isIdeation ? "What should this ideation run look for?" : "What should this survey look at?"
+    }
+
     private var footnote: String {
-        isIdeation
+        if isRoadmap {
+            return "The door reads this repository's own recorded gaps, PROJECT_MAP's orphans and pending work, and any survey or ideation reports — then proposes milestones with epic parents underneath. It never invents work, and it asks before filing anything."
+        }
+        return isIdeation
             ? "Nothing selected means all three kinds, which is the door's own default. The run still asks before it files anything."
             : "The door discovers the flows it can see, verifies every finding against the code, and asks before filing."
     }
@@ -112,7 +127,7 @@ struct RunFocusSheet: View {
             let name = flow.trimmingCharacters(in: .whitespacesAndNewlines)
             if !name.isEmpty { arguments.append(name) }
         }
-        let title = isIdeation ? "Ideation" : "Survey"
+        let title = isRoadmap ? "Roadmap" : (isIdeation ? "Ideation" : "Survey")
         if inBackground, let jobs, !jobs.hasLiveJob(door: door), case .local(let path) = model.ref {
             jobs.start(door: door, title: title, agent: defaultConnection, arguments: arguments,
                        permission: permission, directory: path)

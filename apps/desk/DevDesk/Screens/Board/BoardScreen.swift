@@ -173,9 +173,36 @@ private struct BoardColumnView: View {
     let model: ProjectWindowModel
     @State private var pending: PendingMove?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @Environment(\.shellTerminals) private var terminals
+    @Environment(\.agentTerminals) private var agents
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
     private var counts: (total: Int, live: Int) { model.counts(in: column) }
+
+    /// Stop what this card has live, or continue it. An issue card continues by running its door again; a
+    /// branch card has no issue for `/dev` to open, so it continues in its own agent, where Start is one press.
+    private func runControls(for task: DeskTask) -> CardRunControls? {
+        guard task.column != .done else { return nil }
+        let live = model.activity(of: task) != nil
+        let canStartDoor = model.startBlockedReason(for: task, agent: defaultConnection) == nil
+        return CardRunControls(
+            isLive: live,
+            stop: {
+                // Whichever of the three is live — the precedence that decides the badge does not decide this.
+                agents?.end(taskID: task.id)
+                terminals?.end(taskID: task.id)
+                if let number = task.taskNumber { terminals?.end(taskID: DoorRuns.id(task: number)) }
+            },
+            resume: {
+                if canStartDoor {
+                    model.startTask(task, agent: defaultConnection)
+                } else {
+                    model.openTask(task.id)
+                    model.tab = .agent
+                }
+            },
+            resumeTitle: canStartDoor ? "Continue — run the door" : "Continue in the agent")
+    }
 
     /// A branch card's own menu. A card with an issue keeps the tracker moves instead, so neither card carries two.
     private func branchActions(for task: DeskTask) -> BranchActions? {
@@ -221,11 +248,13 @@ private struct BoardColumnView: View {
                     .accessibilityLabel("\(counts.live) running in \(column.title)")
                 }
             }
+            .frame(height: DeskMetric.columnHeaderHeight)
             ForEach(tasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
                          activity: model.activity(of: task), start: start(for: task),
-                         branchActions: branchActions(for: task))
+                         branchActions: branchActions(for: task),
+                         runControls: runControls(for: task))
             }
         }
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
@@ -245,7 +274,19 @@ private struct BoardColumnView: View {
             isQueued: task.column == .queued,
             queue: { pending = PendingMove(issue: issue, action: .queue(milestone: model.activeMilestone ?? "")) },
             backlog: { pending = PendingMove(issue: issue, action: .backlog) },
-            cancel: { model.present(.cancelTask(task.id)) })
+            cancel: { model.present(.cancelTask(task.id)) },
+            complete: { pending = PendingMove(issue: issue, action: .complete) },
+            completeBlockedReason: completeBlocked(task))
+    }
+
+    /// git's Done, not the tracker's: the work has to be in the base already. A merged pull request card
+    /// qualifies, and so does a branch with nothing the base lacks. A card that never had a branch has no
+    /// merge for git to agree with, so it says so rather than closing on a guess.
+    private func completeBlocked(_ task: DeskTask) -> String? {
+        if task.column == .done { return nil }
+        guard task.branch != nil else { return "nothing has been built for it" }
+        guard task.unmergedCount == 0 else { return "merge it first" }
+        return nil
     }
 
     private func commit() {
@@ -264,6 +305,7 @@ private struct PendingMove {
         case .queue: return "Queue"
         case .backlog: return "Return to backlog"
         case .cancel: return "Close"
+        case .complete: return "Mark as completed"
         }
     }
 }

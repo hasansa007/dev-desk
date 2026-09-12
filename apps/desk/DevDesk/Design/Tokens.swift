@@ -117,6 +117,8 @@ enum DeskMetric {
     /// Two lines of title, meta, ratings, then one bottom band shared by the note and the action.
     static let cardContentHeight: CGFloat = 117
     static let cardTitleHeight: CGFloat = 34
+    /// One height for a column's header, so a long title truncates instead of dropping its own column a row.
+    static let columnHeaderHeight: CGFloat = 18
     static let pillRadius: CGFloat = 10
     static let sheetRadius: CGFloat = 12
     /// Every dialog is exactly this size, so opening one never changes shape under you. A sheet cannot

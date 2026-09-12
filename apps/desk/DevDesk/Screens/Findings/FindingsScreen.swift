@@ -26,11 +26,7 @@ private struct RunSurveyButton: View {
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
     var body: some View {
-        let blocked = model.runBlockedReason(agent: defaultConnection)
-        Button("Run survey") { model.present(.runFocus("survey")) }
-        .buttonStyle(DeskButtonStyle(kind: .primary, size: .smallWide))
-        .disabled(blocked != nil)
-        .help(blocked ?? "Start dev:survey in \(defaultConnection), in this project's folder")
+        DoorRunControl(model: model, door: "survey", title: "Run survey")
     }
 }
 
