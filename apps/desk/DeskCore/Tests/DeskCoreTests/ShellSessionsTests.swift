@@ -254,13 +254,13 @@ final class ShellSessionsTests: XCTestCase {
         let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly)])
         let agents = ShellSessions(projectRoot: Self.root, runner: runner)
         let shells = ShellSessions(projectRoot: Self.root, runner: runner)
-        await agents.refreshPlan(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
+        await agents.refreshPlan(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
         await shells.refreshPlan(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
         XCTAssertEqual(agents.state(for: "7"), .idle(.createDetached(path: location.url.appendingPathComponent("my-app-7", isDirectory: true), baseRef: Self.base)))
         XCTAssertEqual(shells.state(for: "7"), .idle(.root(Self.root, note: "No branch for #7 yet. The shell opens at the project root; "
                                                           + "running /dev #7 there cuts gh-7-… at its first write.")),
                        "a shell never makes a detached worktree")
-        await agents.refreshPlan(taskID: "8", branch: nil, taskNumber: 8, worktreeLocation: location.url.path)
+        await agents.refreshPlan(taskID: "8", purpose: .agent, branch: nil, taskNumber: 8, worktreeLocation: location.url.path)
         XCTAssertEqual(agents.state(for: "8"), .idle(.root(Self.root, note: "No base branch is known, so the agent opens at the project root.")))
     }
 
@@ -269,7 +269,7 @@ final class ShellSessionsTests: XCTestCase {
         let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
         let fake = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .ok()])
         let agents = ShellSessions(projectRoot: Self.root, runner: fake)
-        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
+        await agents.start(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
         let created = TaskFolder(url: path, note: nil, created: true)
         XCTAssertEqual(agents.state(for: "7"), .running(created))
         XCTAssertEqual(agents.runningTaskIDs, ["7"])
@@ -280,7 +280,7 @@ final class ShellSessionsTests: XCTestCase {
 
         // git now lists the detached worktree at the task's own path, so starting again opens in it (rule 1b).
         fake.script(Self.listKey, .ok(Self.mainOnly + "worktree \(path.path)\0HEAD \(String(repeating: "2", count: 40))\0detached\0\0"))
-        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
+        await agents.start(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
         XCTAssertEqual(agents.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: false)))
         XCTAssertEqual(fake.keys, [Self.listKey, detachKey(path), Self.listKey])
     }
@@ -288,9 +288,9 @@ final class ShellSessionsTests: XCTestCase {
     func testASampleAgentSessionFailsWithItsReasonAndNeverRunsACommand() async {
         let runner = FakeRunner()
         let agents = ShellSessions(projectRoot: nil, runner: runner)
-        await agents.refreshPlan(taskID: "42", branch: nil, taskNumber: 42, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
-        await agents.start(taskID: "42", branch: nil, taskNumber: 42, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
-        XCTAssertEqual(agents.state(for: "42"), .failed(Self.noFolderForAgent))
+        await agents.refreshPlan(taskID: "42", purpose: .agent, branch: nil, taskNumber: 42, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
+        await agents.start(taskID: "42", purpose: .agent, branch: nil, taskNumber: 42, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
+        XCTAssertEqual(agents.startRefusal(for: .agent), Self.noFolderForAgent)
         XCTAssertEqual(agents.runningTaskIDs, [])
         XCTAssertEqual(runner.calls, [])
     }
@@ -303,7 +303,7 @@ final class ShellSessionsTests: XCTestCase {
         let location = try TempGitRepo()
         let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly)])
         let agents = ShellSessions(projectRoot: Self.root, runner: runner)
-        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, refusingRoot: true)
+        await agents.start(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path, refusingRoot: true)
         XCTAssertEqual(agents.state(for: "7"), .failed(Self.noBase))
         XCTAssertEqual(agents.generation(for: "7"), 0, "nothing moved to running, so there is no process to launch")
         XCTAssertEqual(agents.runningTaskIDs, [])
@@ -311,7 +311,7 @@ final class ShellSessionsTests: XCTestCase {
         XCTAssertEqual(runner.keys, [Self.listKey], "and no worktree add")
 
         // Started by hand, without the refusal, the same task opens at the project root as before.
-        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path)
+        await agents.start(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path)
         XCTAssertEqual(agents.state(for: "7"), .running(TaskFolder(url: Self.root, note: Self.noBase, created: false)))
     }
 
@@ -320,7 +320,7 @@ final class ShellSessionsTests: XCTestCase {
         let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
         let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .failed(128, stderr: "fatal: invalid reference: \(Self.base)\n")])
         let agents = ShellSessions(projectRoot: Self.root, runner: runner)
-        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base, refusingRoot: true)
+        await agents.start(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base, refusingRoot: true)
         XCTAssertEqual(agents.state(for: "7"), .failed("Couldn't create a worktree for \(Self.base), so the agent opens at the project root: "
                                                       + "fatal: invalid reference: \(Self.base)"))
         XCTAssertEqual(agents.generation(for: "7"), 0)
@@ -334,7 +334,7 @@ final class ShellSessionsTests: XCTestCase {
         let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
         let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .ok()])
         let agents = ShellSessions(projectRoot: Self.root, runner: runner)
-        await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base, refusingRoot: true)
+        await agents.start(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base, refusingRoot: true)
         XCTAssertEqual(agents.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: true)))
         XCTAssertEqual(agents.generation(for: "7"), 1)
     }
@@ -347,7 +347,7 @@ final class ShellSessionsTests: XCTestCase {
         let agents = ShellSessions(projectRoot: Self.root, runner: runner)
         XCTAssertEqual(agents.activeTaskIDs, [])
 
-        let start = Task { await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base) }
+        let start = Task { await agents.start(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base) }
         await waitUntil { runner.isHolding }
         XCTAssertEqual(agents.state(for: "7"), .preparing)
         XCTAssertEqual(agents.activeTaskIDs, ["7"], "a start waiting on git already holds its slot")

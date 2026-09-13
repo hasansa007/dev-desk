@@ -118,6 +118,9 @@ final class LocalGitDataSourceTests: XCTestCase {
         try repo.git("checkout", "-q", "-b", "feature/x")
         try repo.write("Sources/Feature.swift", "let x = 1\n")
         try repo.commitAll("add feature")
+        // Back to main: the branch you are STANDING on is not a card — the window's title already names it,
+        // and every action a card offers it is impossible or already true.
+        try repo.git("checkout", "-q", "main")
 
         let snapshot = try await LocalGitDataSource(root: repo.url).load()
         let task = try XCTUnwrap(snapshot.board.value?.first { $0.id == "branch:feature/x" })
@@ -720,5 +723,23 @@ final class LocalGitDataSourceTests: XCTestCase {
         let reason = try await boardReason(toplevel: .failed(128, stderr: "fatal: bad config value for 'diff.renameLimit': [x](file:///y)\n"))
         XCTAssertEqual(reason, "git could not read this folder: fatal: bad config value for 'diff.renameLimit': \\[x\\](file\\:///y)")
         XCTAssertFalse(reason!.contains("[x]("), "the link must be escaped")
+    }
+
+    /// The checked-out branch is where you are, not something to pick up. It was a card that could not be
+    /// deleted (git refuses), could not be opened elsewhere (you are already there), and duplicated the
+    /// window's own title bar.
+    func testTheCheckedOutBranchIsNotACard() async throws {
+        let repo = try TempGitRepo()
+        try repo.git("init", "-q", "-b", "main")
+        try repo.write("README.md", "hello\n")
+        try repo.commitAll("initial")
+        try repo.git("checkout", "-q", "-b", "feature/here")
+        try repo.write("Sources/Here.swift", "let here = 1\n")
+        try repo.commitAll("work")
+
+        let snapshot = try await LocalGitDataSource(root: repo.url).load()
+        XCTAssertNil(snapshot.board.value?.first { $0.id == "branch:feature/here" },
+                     "the branch this project has checked out is not a task")
+        XCTAssertEqual(snapshot.project.branch, "feature/here", "and the window still names it")
     }
 }

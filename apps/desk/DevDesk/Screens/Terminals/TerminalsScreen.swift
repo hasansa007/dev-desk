@@ -23,7 +23,7 @@ struct TerminalsScreen: View {
                         .buttonStyle(DeskButtonStyle(kind: .secondary))
                 }
             } else {
-                grid
+                list
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -39,29 +39,31 @@ struct TerminalsScreen: View {
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
             Spacer(minLength: 0)
-            if rows.count > 1 {
-                FlowLayout(spacing: 6) {
-                    ForEach([1, 2, 4], id: \.self) { count in
-                        FocusChip(title: "\(count) up", isOn: columns == count) { columns = count }
-                    }
-                }
-            }
         }
         .screenHeaderBar()
     }
 
-    private var grid: some View {
-        let shown = rows
-        let across = min(columns, max(shown.count, 1))
-        return ScrollView {
-            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: across), spacing: 12) {
-                ForEach(shown) { row in
-                    TerminalTile(model: model, row: row)
-                        .frame(height: columns == 1 ? DeskMetric.terminalTileTallHeight : DeskMetric.terminalTileHeight)
+    /// An accordion, not a grid. Two terminals at half height are two terminals you cannot read, and only the
+    /// expanded one hosts its view — which is the one-host rule (ADR 0026) enforced by the layout rather than
+    /// remembered by whoever adds the next surface.
+    private var list: some View {
+        ScrollView {
+            VStack(spacing: 8) {
+                ForEach(rows) { row in
+                    TerminalTile(model: model, row: row, isExpanded: expanded == row.id) {
+                        expanded = expanded == row.id ? nil : row.id
+                    }
                 }
             }
             .padding(12)
         }
+    }
+
+    /// The one in front. Opening a session from the board or the Runs panel sets it, so arriving here lands on
+    /// the thing you came for; otherwise the newest running session is expanded.
+    private var expanded: String? {
+        get { model.selectedSessionID ?? rows.first(where: \.isLive)?.id ?? rows.first?.id }
+        nonmutating set { model.selectedSessionID = newValue }
     }
 }
 
@@ -69,11 +71,17 @@ struct TerminalsScreen: View {
 private struct TerminalTile: View {
     let model: ProjectWindowModel
     let row: SessionRow
+    let isExpanded: Bool
+    let toggle: () -> Void
     @Environment(\.terminals) private var terminals
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
+                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                    .imageScale(.small)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .frame(width: 12)
                 StatusDot(tone: row.isLive ? .running : .ended, pulses: row.isLive)
                 Text(row.title)
                     .font(DeskFont.body.weight(.semibold))
@@ -92,9 +100,14 @@ private struct TerminalTile: View {
             .padding(.horizontal, 11)
             .padding(.vertical, 9)
             .background(DeskColor.headerFill)
-            .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
-            pane
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .contentShape(Rectangle())
+            .onTapGesture(perform: toggle)
+            if isExpanded {
+                Rectangle().fill(DeskColor.divider).frame(height: 1)
+                pane
+                    .frame(maxWidth: .infinity, minHeight: DeskMetric.terminalTileTallHeight,
+                           maxHeight: DeskMetric.terminalTileTallHeight)
+            }
         }
         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
         .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))

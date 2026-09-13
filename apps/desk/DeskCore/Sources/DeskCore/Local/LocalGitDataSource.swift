@@ -52,7 +52,8 @@ public struct LocalGitDataSource: ProjectDataSource {
         if let refusal {
             board = .unavailable(refusal)
         } else {
-            board = .available(BoardBuilder.build(BoardInput(git: facts, github: github.data, activeMilestone: active.title,
+            board = .available(BoardBuilder.build(BoardInput(git: facts, currentBranch: project.branch,
+                                                             github: github.data, activeMilestone: active.title,
                                                              pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL))))
         }
         return ProjectSnapshot(

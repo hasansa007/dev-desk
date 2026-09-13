@@ -2,6 +2,10 @@ import Foundation
 
 struct BoardInput {
     var git: GitFacts?
+    /// The branch this project has checked out. It is where you are, not something to pick up: the window's
+    /// own title already names it, and every action a card offers is either impossible (git refuses to delete
+    /// a checked-out branch) or already true (open a terminal here — you are here).
+    var currentBranch: String?
     var github: GitHubData?
     var activeMilestone: String?
     var pipeline: [String: PipelineState] = [:]
@@ -194,6 +198,7 @@ private struct BoardContext {
         let branchTasks = branches.filter { branch in
             branch.unmerged > 0 && !claimedBranches.contains(branch.name) && !heads.contains(branch.name)
                 && !(branch.head.map(mergedHeads.contains) ?? false)
+                && branch.name != input.currentBranch
         }.map(branchTask)
         let merged = mergedPullRequests.map(mergedTask)
         return (active + pullRequestTasks + branchTasks + orderNext(backlog) + deferred + merged).map { task in
