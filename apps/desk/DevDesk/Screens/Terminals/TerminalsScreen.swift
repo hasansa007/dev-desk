@@ -92,6 +92,7 @@ private struct TerminalTile: View {
     let isExpanded: Bool
     let toggle: () -> Void
     @Environment(\.terminals) private var terminals
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -120,14 +121,20 @@ private struct TerminalTile: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(isExpanded ? "Collapse" : "Expand") \(row.title)")
+                // The row's action, where a row's action belongs: top right, and primary when it is the thing
+                // to do. It was a small button buried under the trust note in the body.
                 if row.isLive {
-                    // The only Stop: the pane's own "End shell" is suppressed, and a collapsed row can reach this.
                     Button("Stop") { terminals?.end(taskID: row.id) }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                } else if case .scratch = row.kind {
-                    Button("Close") { model.closeTerminal(row.id) }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                        .help("Remove this terminal from the list")
+                } else {
+                    if case .scratch = row.kind {
+                        Button("Close") { model.closeTerminal(row.id) }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                            .help("Remove this terminal from the list")
+                    }
+                    Button(startTitle) { start() }
+                        .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
+                        .disabled(terminals == nil)
                 }
             }
             .padding(.horizontal, 11)
@@ -144,17 +151,49 @@ private struct TerminalTile: View {
         .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
     }
 
+    private var startTitle: String {
+        if case .ended = model.sessions.state(for: row.id) { return "Start again" }
+        switch row.kind {
+        case .door: return "Start run"
+        case .task: return "Start"
+        case .scratch: return "Start terminal"
+        }
+    }
+
+    /// The same start the pane does, from the header — the pane's own button is suppressed so one row asks once.
+    private func start() {
+        guard let terminals else { return }
+        let id = row.id
+        let branch: String?
+        let number: Int?
+        let note: String?
+        let command: String?
+        switch row.kind {
+        case .door(let run): branch = nil; number = nil; note = run.folderNote; command = run.command
+        case .task(let task): branch = task.branch; number = task.taskNumber; note = task.noBranchNote; command = nil
+        case .scratch: branch = nil; number = nil; note = nil; command = nil
+        }
+        let location = worktreeLocation
+        Task {
+            await model.sessions.start(taskID: id, branch: branch, taskNumber: number,
+                                       noBranchNote: note, worktreeLocation: location)
+            guard case .running(let folder) = model.sessions.state(for: id) else { return }
+            terminals.start(taskID: id, folder: folder.url)
+            if let command { terminals.send(command + "\n", to: id) }
+        }
+    }
+
     @ViewBuilder private var pane: some View {
         switch row.kind {
         case .door(let run):
             ShellPane(sessions: model.sessions, id: run.id, folderNote: run.folderNote,
-                      command: run.command, startTitle: "Start run", showsStop: false)
+                      command: run.command, startTitle: "Start run", showsStop: false, showsStart: false)
         case .task(let task):
             ShellPane(sessions: model.sessions, id: task.id, branch: task.branch,
                       taskNumber: task.taskNumber, folderNote: task.noBranchNote, startTitle: "Start shell",
-                      showsStop: false)
+                      showsStop: false, showsStart: false)
         case .scratch:
-            ShellPane(sessions: model.sessions, id: row.id, startTitle: "Start terminal", showsStop: false)
+            ShellPane(sessions: model.sessions, id: row.id, startTitle: "Start terminal", showsStop: false, showsStart: false)
         }
     }
 }

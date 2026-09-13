@@ -16,6 +16,8 @@ struct ShellPane: View {
     /// Terminals puts Stop in the row's own header, where a collapsed row can still reach it, so the pane does
     /// not add a second button for the same action.
     var showsStop = true
+    /// Terminals puts Start in the row's header too, so the pane shows the note without repeating the button.
+    var showsStart = true
 
     @Environment(\.terminals) private var terminals
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
@@ -33,8 +35,10 @@ struct ShellPane: View {
         switch sessions.state(for: id) {
         case .idle(let plan):
             DockMessage(text: Self.trustNote, detail: detail(plan)) {
-                Button(startTitle) { start() }
-                    .disabled(terminals == nil)
+                if showsStart {
+                    Button(startTitle) { start() }
+                        .disabled(terminals == nil)
+                }
             }
         case .preparing:
             DockMessage(text: "Preparing the folder…")
@@ -51,8 +55,10 @@ struct ShellPane: View {
             }
         case .ended(_, let status):
             DockMessage(text: status.map { "Shell ended (status \($0))." } ?? "Shell ended.") {
-                Button("Start again") { start() }
-                    .disabled(terminals == nil)
+                if showsStart {
+                    Button("Start again") { start() }
+                        .disabled(terminals == nil)
+                }
             }
         case .failed(let message):
             DockMessage(text: message)
