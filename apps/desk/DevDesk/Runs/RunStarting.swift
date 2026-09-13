@@ -57,6 +57,14 @@ extension ProjectWindowModel {
                        folderNote: "filing reads the tracker, so it runs at the project root.")
             return nil
         }
+        // One run per item, wherever the call came from. Two runs drafting the same finding file two issues
+        // for it, and the second is discovered by reading the tracker afterwards.
+        if let existing = jobs.job(subject: itemID, in: path) {
+            switch existing.state {
+            case .starting, .running, .asking: return existing.id
+            case .ended(_, let failed): if !failed { return existing.id }
+            }
+        }
         return jobs.start(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
                           permission: .everything, directory: path, subject: itemID)
     }

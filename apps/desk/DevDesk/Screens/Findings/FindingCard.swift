@@ -11,7 +11,15 @@ struct FindingCard: View {
     @State private var fileWidth: CGFloat = 0
 
     private var isIgnored: Bool { model.ignoredFindings.contains(finding.id) }
-    private var blockedReason: String? { model.runBlockedReason(agent: defaultConnection) }
+
+    /// Why filing cannot be asked for right now. A run of its own already going is one of the reasons: a
+    /// second one would draft a second issue for the same finding, and the app can see that before it happens.
+    private var blockedReason: String? {
+        if let filing, filing.state.isLive { return "A run is already filing this one." }
+        if let filing, case .asking = filing.state { return "The run filing this one is waiting for an answer." }
+        if let filing, case .ended(_, let failed) = filing.state, !failed { return "This one has been filed." }
+        return model.runBlockedReason(agent: defaultConnection)
+    }
 
     /// The run this card started, if it started one. Filing takes a door and a minute, and a card that shows
     /// nothing while that happens is a card whose button "does nothing".
@@ -117,8 +125,24 @@ struct FindingCard: View {
 
     private var menu: some View {
         Menu {
-            Button("Add to backlog…") { file() }
-                .disabled(blockedReason != nil)
+            // What this finding's own run can do, when it has one. Offering "Add to backlog…" beside a card
+            // that says "Filing…" is offering to file it twice.
+            if let filing {
+                switch filing.state {
+                case .starting, .running:
+                    Button("Show the run") { showRun(filing) }
+                    Button("Stop filing") { jobs?.stop(filing.id) }
+                case .asking:
+                    Button("Answer the run…") { showRun(filing) }
+                    Button("Stop filing") { jobs?.stop(filing.id) }
+                case .ended(_, let failed):
+                    if failed { Button("Try filing again") { file() } }
+                    Button("Show what the run said") { showRun(filing) }
+                }
+            } else {
+                Button("Add to backlog…") { file() }
+                    .disabled(blockedReason != nil)
+            }
             if isIgnored {
                 Button("Stop ignoring") { model.restoreFinding(finding.id) }
             } else {
@@ -152,7 +176,7 @@ struct FindingCard: View {
                     Color.clear.preference(key: FileWidthKey.self, value: proxy.size.width)
                 })
         } else if let filing, case .asking = filing.state {
-            Button("Answer…") { model.go(.terminals) }
+            Button("Answer…") { showRun(filing) }
                 .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
                 .help("The run stopped to ask something; it is waiting in Terminals")
                 .background(GeometryReader { proxy in
@@ -175,6 +199,13 @@ struct FindingCard: View {
     private func file() {
         model.fileFromReport(jobs: jobs, itemID: finding.id, description: finding.backlogDescription,
                              agent: defaultConnection)
+    }
+
+    /// Opens the run's own row in Terminals. A background run's id is its row's id there, so selecting it
+    /// expands the one that belongs to this finding rather than landing on whatever was open.
+    private func showRun(_ job: BackgroundJob) {
+        model.selectedSessionID = job.id
+        model.go(.terminals)
     }
 
     /// What the run left behind, under the title: the only place a failed filing could ever be seen from here.

@@ -17,6 +17,20 @@ struct FindingDialog: View {
 
     private var isIgnored: Bool { model.ignoredFindings.contains(finding.id) }
 
+    /// The run this finding already has, if any — the dialog's primary action has to know, or it offers to
+    /// file a finding that is being filed.
+    private var filing: BackgroundJob? {
+        guard let jobs, case .local(let path) = model.ref else { return nil }
+        return jobs.job(subject: finding.id, in: path)
+    }
+
+    private var fileBlockedReason: String? {
+        if let filing, filing.state.isLive { return "A run is already filing this one." }
+        if let filing, case .asking = filing.state { return "That run is waiting for an answer." }
+        if let filing, case .ended(_, let failed) = filing.state, !failed { return "This one has been filed." }
+        return model.runBlockedReason(agent: defaultConnection)
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             DialogHeader(title: finding.title, identifier: finding.id, badges: badges, editURL: issueURL,
@@ -130,15 +144,35 @@ struct FindingDialog: View {
     }
 
     private var footer: some View {
-        DialogFooter(primary: DialogAction(title: "Add to backlog…",
-                                           blockedReason: model.runBlockedReason(agent: defaultConnection),
-                                           help: "Queues dev:create-issue for this finding; it drafts and files with this repository's labels",
-                                           run: file),
+        DialogFooter(primary: primaryAction,
                      secondary: DialogAction(title: isIgnored ? "Stop ignoring" : "Ignore",
                                              help: isIgnored ? "Puts it back in the list"
                                                              : "Keeps this out of the list until you ask for ignored findings",
                                              run: setAside),
                      close: model.dismissSheet)
+    }
+
+    /// Filing, unless this finding already has a run — then the action is to go and look at it.
+    private var primaryAction: DialogAction {
+        if let filing, filing.state.isLive || isAsking(filing) {
+            return DialogAction(title: isAsking(filing) ? "Answer the run…" : "Show the run",
+                                help: "Its log and its question are in Terminals") {
+                model.dismissSheet()
+                model.selectedSessionID = filing.id
+                model.go(.terminals)
+            }
+        }
+        if let filing, case .ended(_, true) = filing.state {
+            return DialogAction(title: "Try filing again", help: "The last run ended with an error", run: file)
+        }
+        return DialogAction(title: "Add to backlog…", blockedReason: fileBlockedReason,
+                            help: "Queues dev:create-issue for this finding; it drafts and files with this repository's labels",
+                            run: file)
+    }
+
+    private func isAsking(_ job: BackgroundJob) -> Bool {
+        if case .asking = job.state { return true }
+        return false
     }
 
     private func file() {
