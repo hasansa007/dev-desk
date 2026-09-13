@@ -45,6 +45,8 @@ public final class DoorRuns {
     /// One id shape the whole app agrees on, so a card, a run row and a shell all mean the same session.
     public static func id(door: String) -> String { "door:\(door)" }
     public static func id(task number: Int) -> String { "task:\(number)" }
+    /// A run for work that exists only in `docs/backlog/`, which has no number to name it by.
+    public static func id(local entry: String) -> String { "local:\(entry)" }
 }
 
 /// Builds what a door is started with: the prompt form `scripts/dev.py` builds, so one string works in either CLI.

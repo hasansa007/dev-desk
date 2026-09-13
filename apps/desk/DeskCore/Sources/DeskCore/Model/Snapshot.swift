@@ -44,6 +44,13 @@ public struct ProjectSnapshot: Hashable {
     public var slug: String?
     /// The milestone that decides the Queued column, so a card can be moved into or out of it.
     public var activeMilestone: String?
+    /// Work recorded in `docs/backlog/` while there was no tracker to file into (ADR 0027).
+    public var localBacklog: [BacklogItem] = []
+    /// Keys of local entries that have since become issues, so what filed them never offers to file them again.
+    public var filedBacklogKeys: Set<String> = []
+    /// The repository's top level, where `docs/backlog/` is read from — so a write lands in the folder the board
+    /// reads, even when the window was opened on a subfolder. Nil for a sample or a folder that is not a repo.
+    public var repositoryRoot: String?
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,
@@ -51,7 +58,11 @@ public struct ProjectSnapshot: Hashable {
                 roadmap: Surface<Roadmap>,
                 connections: [Connection], connectionsNote: String, capabilities: CapabilityMatrix,
                 insights: InsightsAvailability, projectFacts: [KeyValue] = [],
-                slug: String? = nil, activeMilestone: String? = nil) {
+                slug: String? = nil, activeMilestone: String? = nil,
+                localBacklog: [BacklogItem] = [], filedBacklogKeys: Set<String> = [], repositoryRoot: String? = nil) {
+        self.repositoryRoot = repositoryRoot
+        self.localBacklog = localBacklog
+        self.filedBacklogKeys = filedBacklogKeys
         self.ideation = ideation
         self.project = project
         self.isDemo = isDemo

@@ -42,7 +42,7 @@ skill root      ok    /Users/you/.claude/skills/dev
 |---|---|
 | `git repo` | Run from inside the project you want to work on |
 | `origin` | Add a remote — the family resolves `owner/repo` from it |
-| `gh auth` | `gh auth login`. Without it there is no tracker, so the board and the filing doors cannot work |
+| `gh auth` | `gh auth login`. Without it the filing doors cannot reach GitHub; Dev Desk records work in `docs/backlog/` instead and files it later ([ADR 0027](../adr/0027-work-without-a-tracker-is-recorded-locally-and-promoted-on-request.md)) |
 | `.dev/ ignored` | Add `.dev/` to `.gitignore`. **Nothing edits your `.gitignore` for you** — that would be this family writing into a repo it does not own |
 | `skill root` | Run `install.sh` |
 

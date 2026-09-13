@@ -134,7 +134,7 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(task.changes.value?.files.map(\.id), ["Sources/Feature.swift"])
         XCTAssertEqual(task.changes.value?.diffs["Sources/Feature.swift"]?.hunks.first?.lines, [DiffLine(.addition, "let x = 1")])
         XCTAssertTrue(snapshot.boardNote.hasPrefix("GitHub is unavailable"))
-        XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (no GitHub remote), so only local branches are shown.")
+        XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (no GitHub remote), so the board shows local branches and docs/backlog/.")
         XCTAssertEqual(snapshot.connections.first { $0.id == "github" }?.state, .unavailable)
         XCTAssertFalse(snapshot.isDemo)
         XCTAssertEqual(snapshot.projectFacts.first { $0.key == "Base branch" }?.value, "main")
@@ -192,7 +192,7 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(github, Connection(id: "github", name: "GitHub", state: .unavailable, label: "gh not installed",
                                           detail: "gh not installed " + install))
         XCTAssertEqual(snapshot.boardNote,
-                       "GitHub is unavailable (gh not installed), so only local branches are shown. " + install)
+                       "GitHub is unavailable (gh not installed), so the board shows local branches and docs/backlog/. " + install)
         XCTAssertEqual(snapshot.roadmap.unavailableReason,
                        "GitHub is unavailable (gh not installed), so the roadmap can't be read. " + install)
         XCTAssertEqual(snapshot.projectFacts.first { $0.key == "GitHub account" }?.value, "gh not installed")
@@ -259,7 +259,7 @@ final class LocalGitDataSourceTests: XCTestCase {
         // The row gets a short label; the sentence that would have filled the sidebar is the tooltip.
         XCTAssertEqual(github?.label, "unavailable")
         XCTAssertEqual(github?.detail, "could not read open pull requests: HTTP 502: Bad Gateway")
-        XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (could not read open pull requests: HTTP 502: Bad Gateway), so only local branches are shown.")
+        XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (could not read open pull requests: HTTP 502: Bad Gateway), so the board shows local branches and docs/backlog/.")
     }
 
     func testToolsAreDetectedAndNothingClaimsAnAgentConnection() async throws {

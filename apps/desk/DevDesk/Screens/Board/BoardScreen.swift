@@ -174,6 +174,7 @@ private struct BoardColumnView: View {
     @State private var pending: PendingMove?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
     @Environment(\.terminals) private var terminals
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
@@ -227,6 +228,16 @@ private struct BoardColumnView: View {
                 ? { model.present(.deleteBranch(branch)) } : nil)
     }
 
+    private func localActions(for task: DeskTask) -> LocalActions? {
+        guard let item = model.localBacklogItem(for: task) else { return nil }
+        let canPromote = model.localBacklogReason == nil && model.runBlockedReason(agent: defaultConnection) == nil
+        return LocalActions(
+            fileOnGitHub: canPromote ? { model.promoteLocalItem(task, jobs: jobs, agent: defaultConnection) } : nil,
+            openFile: { NSWorkspace.shared.open(URL(fileURLWithPath: item.path)) },
+            // Removal is confirmed in the dialog, where the entry's title is on screen to confirm against.
+            remove: { model.openTask(task.id) })
+    }
+
     /// A card offers Start only when pressing it would actually run something; the dialog still explains why not.
     private func start(for task: DeskTask) -> (() -> Void)? {
         guard column != .done, model.startBlockedReason(for: task, agent: defaultConnection) == nil else { return nil }
@@ -263,6 +274,7 @@ private struct BoardColumnView: View {
                          action: { model.openTask(task.id) }, moves: moves(for: task),
                          activity: model.activity(of: task), start: start(for: task),
                          branchActions: branchActions(for: task),
+                         localActions: localActions(for: task),
                          runControls: runControls(for: task),
                          isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch)
             }

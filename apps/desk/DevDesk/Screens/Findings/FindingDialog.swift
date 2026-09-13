@@ -25,10 +25,7 @@ struct FindingDialog: View {
     }
 
     private var fileBlockedReason: String? {
-        if let filing, filing.state.isLive { return "A run is already filing this one." }
-        if let filing, case .asking = filing.state { return "That run is waiting for an answer." }
-        if let filing, case .ended(_, let failed) = filing.state, !failed { return "This one has been filed." }
-        return model.trackerBlockedReason ?? model.runBlockedReason(agent: defaultConnection)
+        model.fileBlockedReason(key: finding.id, job: filing, agent: defaultConnection)
     }
 
     var body: some View {
@@ -165,8 +162,15 @@ struct FindingDialog: View {
         if let filing, case .ended(_, true) = filing.state {
             return DialogAction(title: "Try filing again", help: "The last run ended with an error", run: file)
         }
+        if model.isInLocalBacklog(finding.id) {
+            return DialogAction(title: "Show on the board", help: "It is in docs/backlog/, as a Backlog card") {
+                model.dismissSheet()
+                model.go(.board)
+                model.showBacklog = true
+            }
+        }
         return DialogAction(title: "Add to backlog…", blockedReason: fileBlockedReason,
-                            help: "Queues dev:create-issue for this finding; it drafts and files with this repository's labels",
+                            help: model.backlogDestination,
                             run: file)
     }
 
@@ -176,8 +180,7 @@ struct FindingDialog: View {
     }
 
     private func file() {
-        model.fileFromReport(jobs: jobs, itemID: finding.id, description: finding.backlogDescription,
-                             agent: defaultConnection)
+        model.fileToBacklog(finding.backlogDraft, jobs: jobs, agent: defaultConnection)
         model.dismissSheet()
     }
 

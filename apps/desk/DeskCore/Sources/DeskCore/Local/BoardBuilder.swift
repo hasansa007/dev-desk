@@ -9,6 +9,8 @@ struct BoardInput {
     var github: GitHubData?
     var activeMilestone: String?
     var pipeline: [String: PipelineState] = [:]
+    /// Entries in `docs/backlog/`. They sit in Backlog after the tracker's own, marked as local (ADR 0027).
+    var localBacklog: [BacklogItem] = []
     var now: Date = Date()
     var timeZone: TimeZone = .current
 }
@@ -38,7 +40,7 @@ enum BoardBuilder {
         let suffix = localBranchNote.map { " \($0)" } ?? ""
         guard let data = github.data else {
             let remedy = github.unavailableRemedy.map { " \($0)" } ?? ""
-            return "GitHub is unavailable (\(github.unavailableReason ?? "")), so only local branches are shown.\(remedy)" + suffix
+            return "GitHub is unavailable (\(github.unavailableReason ?? "")), so the board shows local branches and docs/backlog/.\(remedy)" + suffix
         }
         let rule = "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued."
         let milestone = activeMilestone.title.map { " Active milestone: \($0), \(activeMilestone.why)." } ?? " No active milestone, so Queued is empty."
@@ -202,7 +204,9 @@ private struct BoardContext {
                 && branch.name != input.currentBranch
         }.map(branchTask)
         let merged = mergedPullRequests.map(mergedTask)
-        return (active + pullRequestTasks + branchTasks + orderNext(backlog) + deferred + merged).map { task in
+        // An entry that already names its issue is waiting to be moved to filed/; the issue is the card.
+        let local = input.localBacklog.filter { $0.issue == nil }.map(localTask)
+        return (active + pullRequestTasks + branchTasks + orderNext(backlog) + local + deferred + merged).map { task in
             var task = task
             task.baseRef = input.git?.baseRef
             return task
@@ -304,6 +308,23 @@ private struct BoardContext {
             evidence: evidence(pullRequest: nil, state: state),
             parallel: parallel(branch.name, local: branch),
             lastCommit: branch.lastCommit, unmergedCount: branch.countedUnmerged)
+    }
+
+    /// A card for work that exists only as a file. No issue, no branch yet: its Overview is the file itself.
+    private func localTask(_ item: BacklogItem) -> DeskTask {
+        let path = "\(LocalBacklog.folder)/\(item.id).md"
+        return DeskTask(
+            id: DeskTask.localPrefix + item.id, title: item.title, column: .backlog,
+            cardMeta: item.area, cardBadge: StatusBadge(.info, "Local"),
+            headerBadge: StatusBadge(.info, "Local backlog"),
+            branchLine: "No branch yet", parallelLine: "",
+            // The source is rendered as markdown, and a file name is the repository's text — a file called
+            // "[open](file:///…).md" would otherwise arrive as a link.
+            requirements: .available(BoardBuilder.requirements(body: item.body, title: item.title, source: Markdown.escape(path))),
+            changes: .unavailable("Nothing has been started for this yet."),
+            evidence: .unavailable("Nothing has been started for this yet."),
+            parallel: .none("No branch yet"),
+            impact: item.impact, complexity: item.complexity)
     }
 
     private func mergedTask(_ pullRequest: GitHubMergedPullRequest) -> DeskTask {

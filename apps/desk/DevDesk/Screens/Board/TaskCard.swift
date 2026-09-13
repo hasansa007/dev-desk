@@ -21,6 +21,16 @@ struct BranchActions {
     let delete: (() -> Void)?
 }
 
+/// What a `docs/backlog/` entry can do from its card (ADR 0027). It has no issue to move and no branch to
+/// compare, so neither of the other two menus applies — and a card with no menu at all is a card that looks
+/// broken beside the rest.
+struct LocalActions {
+    /// nil when there is no tracker to file into.
+    let fileOnGitHub: (() -> Void)?
+    let openFile: () -> Void
+    let remove: () -> Void
+}
+
 /// The Start control is an overlay, so the note sharing its band has to be told how much room it takes.
 /// A constant would drift the moment the button's size token or its label changed, with nothing to catch it.
 private struct StartWidthKey: SwiftUI.PreferenceKey {
@@ -50,6 +60,8 @@ struct TaskCard: View {
     var start: (() -> Void)?
     /// What a card with a branch but no issue can do; `moves` covers the ones with an issue.
     var branchActions: BranchActions?
+    /// What a local backlog entry can do.
+    var localActions: LocalActions?
     /// Stop and Continue, on every card that could be running something.
     var runControls: CardRunControls?
     /// The branch this project has checked out. It is on the board like any other — a branch with unmerged
@@ -75,7 +87,25 @@ struct TaskCard: View {
     }
 
     @ViewBuilder private var movesMenu: some View {
-        if let branchActions {
+        if let localActions {
+            Menu {
+                runEntries
+                if let file = localActions.fileOnGitHub {
+                    Button("File on GitHub") { file() }
+                }
+                Button("Open the file") { localActions.openFile() }
+                Divider()
+                Button("Remove…", role: .destructive) { localActions.remove() }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .imageScale(.medium)
+                    .foregroundStyle(DeskColor.mutedInk)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel("Actions for \(task.title)")
+        } else if let branchActions {
             Menu {
                 runEntries
                 Button("Open a terminal here") { branchActions.openTerminal() }

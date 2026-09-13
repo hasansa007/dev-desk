@@ -98,25 +98,43 @@ struct ProjectWindow: View {
 
 /// A background door that files or edits an issue changes the tracker this window is reading, and nothing on
 /// screen knows that. Rather than wait out the refresh interval, reload as soon as one finishes here: filing
-/// from the survey is supposed to put a card on the board, and a board that only catches up a minute later
-/// reads as filing having done nothing.
+/// is supposed to put a card on the board, and a board that only catches up a minute later reads as filing
+/// having done nothing.
+///
+/// It also finishes a promotion (ADR 0027): when a run filing a `docs/backlog/` entry reports its issue, the
+/// entry is moved to `filed/` so GitHub owns it from then on. A run that reports no number leaves the file
+/// where it is — guessing which issue it made is how an entry gets marked as the wrong one.
 private struct FiledWorkHook: View {
     let model: ProjectWindowModel
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
+    @State private var settled: Set<String> = []
 
-    /// Counts the finished jobs that ran in THIS project. A count only ever grows as runs end, so a change
-    /// means one just did — and jobs from another window's project never move it.
-    private var finishedHere: Int {
-        guard let jobs, case .local(let path) = model.ref else { return 0 }
-        return jobs.jobs.filter { $0.directory == path && !$0.state.isLive }.count
+    /// Finished runs in THIS project, by id. A change means one just ended — and jobs from another window's
+    /// project never move it.
+    private var finishedHere: [BackgroundJob] {
+        guard let jobs, case .local(let path) = model.ref else { return [] }
+        return jobs.jobs.filter { $0.directory == path && !$0.state.isLive }
     }
 
     var body: some View {
         Color.clear
             .frame(width: 0, height: 0)
-            .onChange(of: finishedHere) { _, _ in
-                Task { await model.load() }
+            .onChange(of: finishedHere.map(\.id)) { _, _ in settle() }
+    }
+
+    private func settle() {
+        let fresh = finishedHere.filter { !settled.contains($0.id) }
+        guard !fresh.isEmpty else { return }
+        settled.formUnion(fresh.map(\.id))
+        Task {
+            for job in fresh {
+                guard job.door == "create-issue", let subject = job.subject, subject.hasPrefix(DeskTask.localPrefix),
+                      case .ended(let text, false) = job.state,
+                      let number = LocalBacklog.issueNumber(inRunResult: text, slug: model.snapshot?.slug) else { continue }
+                await model.markLocalItemFiled(entry: String(subject.dropFirst(DeskTask.localPrefix.count)), issue: number)
             }
+            await model.load()
+        }
     }
 }
 

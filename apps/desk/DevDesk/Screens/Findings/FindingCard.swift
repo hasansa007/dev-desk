@@ -15,11 +15,10 @@ struct FindingCard: View {
     /// Why filing cannot be asked for right now. A run of its own already going is one of the reasons: a
     /// second one would draft a second issue for the same finding, and the app can see that before it happens.
     private var blockedReason: String? {
-        if let filing, filing.state.isLive { return "A run is already filing this one." }
-        if let filing, case .asking = filing.state { return "The run filing this one is waiting for an answer." }
-        if let filing, case .ended(_, let failed) = filing.state, !failed { return "This one has been filed." }
-        return model.trackerBlockedReason ?? model.runBlockedReason(agent: defaultConnection)
+        model.fileBlockedReason(key: finding.id, job: filing, agent: defaultConnection)
     }
+
+    private var isInLocalBacklog: Bool { model.isInLocalBacklog(finding.id) }
 
     /// The run this card started, if it started one. Filing takes a door and a minute, and a card that shows
     /// nothing while that happens is a card whose button "does nothing".
@@ -182,13 +181,19 @@ struct FindingCard: View {
                 .background(GeometryReader { proxy in
                     Color.clear.preference(key: FileWidthKey.self, value: proxy.size.width)
                 })
+        } else if isInLocalBacklog {
+            StatusPill(badge: StatusBadge(.info, "In backlog"))
+                .help("Filed to docs/backlog/ — it is on the board")
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: FileWidthKey.self, value: proxy.size.width)
+                })
         } else if !isIgnored {
             Button { file() } label: {
                 Label("Backlog", systemImage: "tray.and.arrow.down")
             }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             .disabled(blockedReason != nil)
-            .help(blockedReason ?? "Queues dev:create-issue for this finding, in the background")
+            .help(blockedReason ?? model.backlogDestination)
             .accessibilityLabel("Add \(finding.id) to the backlog")
             .background(GeometryReader { proxy in
                 Color.clear.preference(key: FileWidthKey.self, value: proxy.size.width)
@@ -197,8 +202,7 @@ struct FindingCard: View {
     }
 
     private func file() {
-        model.fileFromReport(jobs: jobs, itemID: finding.id, description: finding.backlogDescription,
-                             agent: defaultConnection)
+        model.fileToBacklog(finding.backlogDraft, jobs: jobs, agent: defaultConnection)
     }
 
     /// Opens the run's own row in Terminals. A background run's id is its row's id there, so selecting it

@@ -378,6 +378,12 @@ public struct DeskTask: Identifiable, Hashable {
     /// A local branch with no issue and no pull request behind it — the only card whose branch this app may delete.
     public var isBranchCard: Bool { id.hasPrefix("branch:") }
 
+    public static let localPrefix = "local:"
+    /// Work recorded in `docs/backlog/` rather than in a tracker (ADR 0027).
+    public var isLocalBacklog: Bool { id.hasPrefix(Self.localPrefix) }
+    /// The entry's file stem, for the card that has to find its file again.
+    public var localBacklogID: String? { isLocalBacklog ? String(id.dropFirst(Self.localPrefix.count)) : nil }
+
     /// The value of a `kind:value` label, capitalised: `impact:high` becomes "High".
     public static func rating(_ kind: String, in labels: [String]) -> String? {
         guard let label = labels.first(where: { $0.lowercased().hasPrefix("\(kind):") }) else { return nil }

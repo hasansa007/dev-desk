@@ -23,6 +23,7 @@ public struct WriteFailure: Equatable {
 
     static func tracker(_ message: String) -> WriteFailure { WriteFailure(title: "The tracker was not changed", message: message) }
     static func branch(_ message: String) -> WriteFailure { WriteFailure(title: "The branch was not deleted", message: message) }
+    static func backlog(_ message: String) -> WriteFailure { WriteFailure(title: "docs/backlog/ was not changed", message: message) }
 }
 
 /// The kinds of live work a card can carry. They are the app's own process state, never a claim about git's columns.
@@ -293,6 +294,60 @@ public final class ProjectWindowModel {
         return nil
     }
 
+    // MARK: - Local backlog (ADR 0027)
+
+    /// Whether this item is already in a backlog — `docs/backlog/`, or promoted out of it into an issue. What
+    /// filed it must not offer to file it again, and a reload must not forget that it did.
+    public func isInLocalBacklog(_ key: String) -> Bool {
+        guard let snapshot, !key.isEmpty else { return false }
+        return snapshot.localBacklog.contains { $0.key == key } || snapshot.filedBacklogKeys.contains(key)
+    }
+
+    public func localBacklogItem(for task: DeskTask) -> BacklogItem? {
+        guard let id = task.localBacklogID else { return nil }
+        return snapshot?.localBacklog.first { $0.id == id }
+    }
+
+    /// Writes the draft into `docs/backlog/` and reloads, so its card is on the board by the time you look.
+    /// Instant and local: no agent, no run, nothing to stall — there is no tracker for one to talk to.
+    public func fileLocally(_ draft: BacklogDraft) async {
+        guard let root = snapshot?.repositoryRoot else { return }
+        do {
+            try LocalBacklog.write(projectPath: root, key: draft.key, title: draft.title, body: draft.body,
+                                   area: draft.area, source: draft.source)
+            writeFailure = nil
+            await load()
+        } catch {
+            writeFailure = .backlog(Markdown.escape(error.localizedDescription))
+        }
+    }
+
+    /// To the Trash, so a removal has the undo the app does not otherwise offer.
+    public func removeLocalItem(_ task: DeskTask) async {
+        guard let root = snapshot?.repositoryRoot, let item = localBacklogItem(for: task) else { return }
+        do {
+            try LocalBacklog.remove(atPath: item.path, projectPath: root)
+            writeFailure = nil
+            if selectedTaskID == task.id { selectedTaskID = nil }
+            await load()
+        } catch {
+            writeFailure = .backlog(Markdown.escape(error.localizedDescription))
+        }
+    }
+
+    /// Called when a promoting run has reported its issue: GitHub owns the item now, and the file becomes history.
+    public func markLocalItemFiled(entry: String, issue number: Int) async {
+        guard let root = snapshot?.repositoryRoot,
+              let item = snapshot?.localBacklog.first(where: { $0.id == entry }) else { return }
+        do {
+            try LocalBacklog.markFiled(number, atPath: item.path, projectPath: root)
+            writeFailure = nil
+            await load()
+        } catch {
+            writeFailure = .backlog(Markdown.escape(error.localizedDescription))
+        }
+    }
+
     /// Opens the finding's card, the way a task's card opens: the dialog, not a reading pane. A link from
     /// elsewhere in the app lands on the survey screen with that finding open on top of it.
     public func openFinding(_ id: String) {
@@ -353,7 +408,9 @@ public final class ProjectWindowModel {
 
     /// What this task has live right now, whichever screen started it — a door run, its own shell, or its agent.
     public func activity(of task: DeskTask) -> TaskActivity? {
-        Self.activity(doorRun: task.taskNumber.map { isRunLive(DoorRuns.id(task: $0)) } ?? false,
+        let doorRun = task.taskNumber.map { isRunLive(DoorRuns.id(task: $0)) }
+            ?? task.localBacklogID.map { isRunLive(DoorRuns.id(local: $0)) } ?? false
+        return Self.activity(doorRun: doorRun,
                       session: sessions.state(for: task.id),
                       purpose: sessions.purpose(for: task.id))
     }

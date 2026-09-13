@@ -43,7 +43,8 @@ struct RequirementsTab: View {
                         .padding(.top, 6)
                 }
                 if let issueBody = requirements.body, !issueBody.isEmpty {
-                    SectionLabel("Issue description")
+                    // An issue, a pull request, or a local entry: "Issue description" was wrong for two of them.
+                    SectionLabel("Description")
                         .padding(.top, 18)
                     Text(issueBody)
                         .font(DeskFont.body)

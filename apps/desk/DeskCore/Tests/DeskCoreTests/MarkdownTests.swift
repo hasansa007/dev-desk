@@ -71,4 +71,12 @@ final class MarkdownTests: XCTestCase {
     func testPlainUnescapesWhatEscapeWrote() {
         XCTAssertEqual(Markdown.plain(Markdown.escape("a *literal* star")), "a *literal* star")
     }
+
+    /// Text leaving the app as a file must read as the person wrote it.
+    func testUnescapeIsTheInverseOfEscape() {
+        for text in ["@ObservedObject instead of @StateObject", "a [link](file:///x) and `code` *stars* ~ & <tag>",
+                     "see https://example.com and www.example.com", "mail me@example.com", "snake_case_name"] {
+            XCTAssertEqual(Markdown.unescape(Markdown.escape(text)), text)
+        }
+    }
 }

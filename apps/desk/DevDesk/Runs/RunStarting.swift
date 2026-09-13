@@ -41,38 +41,91 @@ extension ProjectWindowModel {
         go(.terminals)
     }
 
-    /// Approving an item files it through `dev:create-issue` rather than writing the issue here, so the door's
-    /// checks and this repository's labels still apply to anything that reaches the backlog.
-    /// Filing is not somewhere you go. It drafts an issue with this repository's own labels and files it, which
-    /// takes a door and a minute — so it runs in the BACKGROUND and you stay on the report you are reading.
-    /// It used to open a terminal and jump you to it, which answered a question nobody asked.
+    // MARK: - Filing (ADR 0027)
+
+    /// Why filing goes to `docs/backlog/` rather than a tracker, or nil when there is a tracker to file into.
+    /// `dev:create-issue` writes to GitHub; when gh cannot see the repository, a run told to file anyway does
+    /// not stop — it retries in the background. So the work is recorded locally instead, and promoted later.
+    var localBacklogReason: String? {
+        guard let github = snapshot?.connections.first(where: { $0.id == "github" }),
+              github.state == .unavailable else { return nil }
+        return "GitHub is unavailable here (\(github.label))"
+    }
+
+    /// Where a press of "Add to backlog" will put this, in the words a button's help can use.
+    var backlogDestination: String {
+        localBacklogReason.map { "Writes it to docs/backlog/ — \($0). It can be filed on GitHub later." }
+            ?? "Queues dev:create-issue for it; it drafts and files with this repository's labels"
+    }
+
+    /// Why this item cannot be filed right now, or nil when it can. One answer for the card, the dialog and
+    /// Ideation, so no two of them disagree about whether the same item can be filed.
+    func fileBlockedReason(key: String, job: BackgroundJob?, agent: String) -> String? {
+        if isInLocalBacklog(key) { return "Already in docs/backlog/." }
+        if let job, job.state.isLive { return "A run is already filing this one." }
+        if let job, case .asking = job.state { return "The run filing this one is waiting for an answer." }
+        if let job, case .ended(_, let failed) = job.state, !failed { return "This one has been filed." }
+        // Writing a file needs no agent — only a folder to write it in.
+        if localBacklogReason != nil, snapshot?.repositoryRoot != nil { return nil }
+        return runBlockedReason(agent: agent)
+    }
+
+    /// Files one item into whichever backlog this project has: `docs/backlog/` at once when there is no tracker,
+    /// otherwise `dev:create-issue` in the background, so you stay on what you were reading.
     ///
-    /// Returns the job so the caller can show it filing, or nil when the door cannot run here.
+    /// Returns the job id when a run was started, so the caller can show it filing.
     @discardableResult
-    func fileFromReport(jobs: JobRegistry?, itemID: String, description: String, agent: String) -> String? {
-        guard trackerBlockedReason == nil else { return nil }
+    func fileToBacklog(_ draft: BacklogDraft, jobs: JobRegistry?, agent: String) -> String? {
+        if localBacklogReason != nil {
+            Task { await fileLocally(draft) }
+            return nil
+        }
         guard let jobs, case .local(let path) = ref else {
             // No background registry (a sample project, or a preview): fall back to the terminal it used to use.
-            prepareRun(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
-                       id: DoorRuns.id(door: "create-issue:\(itemID)"),
+            prepareRun(door: "create-issue", title: "File \(draft.key)", agent: agent, arguments: [draft.description],
+                       id: DoorRuns.id(door: "create-issue:\(draft.key)"),
                        folderNote: "filing reads the tracker, so it runs at the project root.")
             return nil
         }
         // One run per item, wherever the call came from. Two runs drafting the same finding file two issues
         // for it, and the second is discovered by reading the tracker afterwards.
-        if let existing = jobs.job(subject: itemID, in: path) {
+        if let existing = jobs.job(subject: draft.key, in: path) {
             switch existing.state {
             case .starting, .running, .asking: return existing.id
             case .ended(_, let failed): if !failed { return existing.id }
             }
         }
-        return jobs.start(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
-                          permission: .everything, directory: path, subject: itemID)
+        return jobs.start(door: "create-issue", title: "File \(draft.key)", agent: agent, arguments: [draft.description],
+                          permission: .everything, directory: path, subject: draft.key)
     }
 
-    /// Starts `/dev #N` for a task. The card and the dialog both call this, so they cannot disagree about
-    /// what starting means, and the one-run-per-task rule in `prepareRun` still holds across both.
+    /// Promotes a local entry to a GitHub issue — only ever on request, never because a remote appeared. The
+    /// door reads the file itself, so the issue carries the whole entry rather than a one-line summary of it.
+    /// When the run reports its number, `FiledWorkHook` moves the file to `filed/`.
+    @discardableResult
+    func promoteLocalItem(_ task: DeskTask, jobs: JobRegistry?, agent: String) -> String? {
+        guard localBacklogReason == nil, let jobs, case .local(let path) = ref,
+              let item = localBacklogItem(for: task), item.issue == nil else { return nil }
+        if let existing = jobs.job(subject: task.id, in: path), existing.state.isLive { return existing.id }
+        let file = "\(LocalBacklog.folder)/\(item.id).md"
+        return jobs.start(door: "create-issue", title: "File \(item.title)", agent: agent,
+                          arguments: ["\(item.title). The full description is in \(file); file it as written, and report the issue URL."],
+                          permission: .everything, directory: path, subject: task.id)
+    }
+
+    // MARK: - Starting
+
+    /// Starts `/dev` for a task. The card and the dialog both call this, so they cannot disagree about what
+    /// starting means, and the one-run-per-task rule in `prepareRun` still holds across both.
     func startTask(_ task: DeskTask, agent: String) {
+        if let entry = task.localBacklogID {
+            // No issue to name. `/dev` takes a description as readily as a number, and the file is the description.
+            prepareRun(door: "dev", title: task.title, agent: agent,
+                       arguments: ["\(task.title) — described in \(LocalBacklog.folder)/\(entry).md"],
+                       id: DoorRuns.id(local: entry),
+                       folderNote: "this has no issue yet; /dev cuts a branch at its first write.")
+            return
+        }
         guard let number = task.taskNumber else { return }
         prepareRun(door: "dev", title: "Task #\(number)", agent: agent,
                    arguments: ["#\(number)"], id: DoorRuns.id(task: number),
@@ -81,17 +134,9 @@ extension ProjectWindowModel {
 
     /// Why this task cannot be started, or nil when it can.
     func startBlockedReason(for task: DeskTask, agent: String) -> String? {
+        if task.isLocalBacklog { return runBlockedReason(agent: agent) }
         guard task.taskNumber != nil else { return "This card has no issue number, so `/dev` has nothing to open." }
         return runBlockedReason(agent: agent)
-    }
-
-    /// Why nothing can be filed into this project's tracker, or nil when it can. `dev:create-issue` writes to
-    /// GitHub; when gh cannot see the repository the run cannot succeed — and a headless agent told to file an
-    /// issue anyway does not stop, it retries, in the background, until someone notices and stops it.
-    var trackerBlockedReason: String? {
-        guard let github = snapshot?.connections.first(where: { $0.id == "github" }),
-              github.state == .unavailable else { return nil }
-        return "GitHub is unavailable here (\(github.label)), so there is nothing to file into."
     }
 
     /// Why the button that would start `agent` is disabled, or nil when it can run.

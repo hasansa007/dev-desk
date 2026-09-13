@@ -44,6 +44,26 @@ public enum Markdown {
         return output.trimmingCharacters(in: .whitespaces)
     }
 
+    /// The exact inverse of `escape`, for text leaving the app as a file rather than being rendered in it.
+    /// Written escaped, a backlog entry about `@ObservedObject` would read `^[@]()ObservedObject` to a person.
+    public static func unescape(_ text: String) -> String {
+        var output = text.replacingOccurrences(of: "^[@]()", with: "@")
+        var result = ""
+        var characters = Array(output)[...]
+        while let character = characters.first {
+            if character == "\\", characters.count > 1,
+               "\\`*_[]<>~&:.".contains(characters[characters.startIndex + 1]) {
+                result.append(characters[characters.startIndex + 1])
+                characters = characters.dropFirst(2)
+            } else {
+                result.append(character)
+                characters = characters.dropFirst()
+            }
+        }
+        output = result
+        return output
+    }
+
     /// A fragment of command output (git or gh stderr/stdout) made safe for a markdown-rendered reason.
     static func reason(_ commandOutput: String) -> String { escape(commandOutput) }
 }

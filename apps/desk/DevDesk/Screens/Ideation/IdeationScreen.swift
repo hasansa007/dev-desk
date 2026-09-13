@@ -238,7 +238,7 @@ private struct OpportunityDetail: View {
                             .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
                             .disabled(fileBlockedReason != nil)
                             .help(fileBlockedReason
-                                  ?? "Queues dev:create-issue for this opportunity, labelled as an enhancement")
+                                  ?? model.backlogDestination)
                     }
                 }
             }
@@ -260,18 +260,11 @@ private struct OpportunityDetail: View {
     /// Filing needs a tracker to file into and an agent to do it; naming which one is missing beats a
     /// button that is dim for no stated reason.
     private var fileBlockedReason: String? {
-        model.trackerBlockedReason ?? model.runBlockedReason(agent: defaultConnection)
+        model.fileBlockedReason(key: opportunity.id, job: nil, agent: defaultConnection)
     }
 
     private func file() {
-        let sources = opportunity.locations.isEmpty ? "" : " Sources: \(opportunity.locations.joined(separator: ", "))."
-        let proposal = opportunity.proposed.map { " Proposed: \($0)." } ?? ""
-        model.fileFromReport(jobs: jobs, itemID: opportunity.id,
-                             description: "\(opportunity.title).\(proposal)\(sources) "
-                                 + "Gain: \(opportunity.gain ?? "not stated"). Cost: \(opportunity.cost ?? "not stated"). "
-                                 + "Doing nothing: \(opportunity.doingNothing ?? "not stated"). "
-                                 + "Found by dev:ideation, run \(opportunity.runID). \(opportunity.limits)",
-                             agent: defaultConnection)
+        model.fileToBacklog(opportunity.backlogDraft, jobs: jobs, agent: defaultConnection)
     }
 
     private func valueCard(_ title: String, _ value: String) -> some View {

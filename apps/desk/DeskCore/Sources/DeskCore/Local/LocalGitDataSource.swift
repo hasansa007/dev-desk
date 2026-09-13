@@ -48,13 +48,15 @@ public struct LocalGitDataSource: ProjectDataSource {
         let github = await githubState
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
         let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
+        let localBacklog = LocalBacklog.read(projectPath: top)
         let board: Surface<[DeskTask]>
         if let refusal {
             board = .unavailable(refusal)
         } else {
             board = .available(BoardBuilder.build(BoardInput(git: facts, currentBranch: project.branch,
                                                              github: github.data, activeMilestone: active.title,
-                                                             pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL))))
+                                                             pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL),
+                                                             localBacklog: localBacklog)))
         }
         return ProjectSnapshot(
             project: project, isDemo: false, board: board,
@@ -64,7 +66,8 @@ public struct LocalGitDataSource: ProjectDataSource {
             connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
             projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github),
-            slug: github.data?.slug, activeMilestone: active.title)
+            slug: github.data?.slug, activeMilestone: active.title,
+            localBacklog: localBacklog, filedBacklogKeys: LocalBacklog.filedKeys(projectPath: top), repositoryRoot: top)
     }
 
     /// A partial clone, or any promisor remote, lazy-fetches missing objects mid-read, running remote.<name>.uploadpack — even without

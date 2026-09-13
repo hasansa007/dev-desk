@@ -435,7 +435,7 @@ final class BoardBuilderTests: XCTestCase {
                        rule + " No active milestone, so Queued is empty.")
         // An unavailable GitHub says what to do about it: the note is the only place the developer is told.
         XCTAssertEqual(BoardBuilder.note(github: .unavailable("gh not installed"), activeMilestone: (nil, "gh not installed")),
-                       "GitHub is unavailable (gh not installed), so only local branches are shown. " + install)
+                       "GitHub is unavailable (gh not installed), so the board shows local branches and docs/backlog/. " + install)
         var noIssues = GitHubData(slug: "acme/app")
         noIssues.issuesUnavailable = "the 'acme/app' repository has disabled issues"
         XCTAssertEqual(BoardBuilder.note(github: .ready(noIssues), activeMilestone: (nil, "no open milestone")),
@@ -461,5 +461,26 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.activity, .unavailable("git log failed: fatal: bad object c0ffee1"))
         XCTAssertEqual(task.changes, .unavailable("git diff failed: git did not finish within 15 seconds"))
         XCTAssertEqual(task.parallel, .none("git log failed: fatal: bad object c0ffee1"))
+    }
+
+    /// Work recorded with no tracker is on the board, in Backlog, marked as local (ADR 0027).
+    func testALocalBacklogEntryIsABacklogCard() {
+        let item = BacklogItem(id: "c1-callback", key: "C1", title: "Callback fetch returns 0", area: "Logic",
+                               impact: "High", body: "mechanism: it schedules and returns.", path: "/p/docs/backlog/c1-callback.md")
+        let tasks = BoardBuilder.build(BoardInput(localBacklog: [item]))
+        let card = tasks.first { $0.isLocalBacklog }
+        XCTAssertEqual(card?.id, "local:c1-callback")
+        XCTAssertEqual(card?.localBacklogID, "c1-callback")
+        XCTAssertEqual(card?.column, .backlog)
+        XCTAssertNil(card?.issueNumber, "nothing has been filed to a tracker")
+        XCTAssertEqual(card?.cardBadge?.label, "Local")
+        XCTAssertEqual(card?.impact, "High")
+        XCTAssertEqual(card?.requirements.value?.body, "mechanism: it schedules and returns.")
+    }
+
+    /// An entry that already names its issue is on its way to filed/; the issue is the card, not both.
+    func testAPromotedEntryIsNotASecondCard() {
+        let item = BacklogItem(id: "c1", key: "C1", title: "Filed", issue: 87, body: "", path: "/p/docs/backlog/c1.md")
+        XCTAssertFalse(BoardBuilder.build(BoardInput(localBacklog: [item])).contains { $0.isLocalBacklog })
     }
 }
