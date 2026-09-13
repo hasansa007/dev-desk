@@ -244,6 +244,11 @@ Declared <shape>  ·  Actual <agents, wall, tokens, calls>  ·  Overrun <what an
 <per-flow table: findings, duration, tokens, calls — FAILED rows included>
 ```
 
+**A finding's line may be bulleted (`-`) or numbered (`1.`)** — numbering a ranked CONFIRMED list is
+expected, and the section heading is what decides a verdict, not the marker. A drift list keeps its
+`**Drift — CONFIRMED**` / `**Drift — PLAUSIBLE**` heading inside `## ARCHITECTURE`: those bold lines
+are what separate the section's verdicts from its prose, for a human and for Dev Desk alike.
+
 ### The `## COST` section — reconcile the estimate, or it never improves
 
 Right-Size makes this skill declare a fan-out before spending it. Declaring without ever reporting

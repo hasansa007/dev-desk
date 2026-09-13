@@ -112,6 +112,62 @@ final class SurveyReportParserTests: XCTestCase {
         XCTAssertEqual(finding.locations, ["Services/ReminderService.swift:54-66", "Services/ReminderService.swift"])
     }
 
+    /// A real run ranked CONFIRMED by cost and wrote it numbered. Reading only dashes showed the seven held
+    /// PLAUSIBLE items and dropped twelve confirmed defects — the worst seventh of the report, alone on screen.
+    func testANumberedFindingIsAFinding() {
+        let report = """
+        ## CONFIRMED (2)          ← eligible to file (ranked by cost-if-it-bites)
+
+        1. **Tapping "Don't Allow" shows "Something Went Wrong"**
+           · `ContactsStore.swift:103`
+           · mechanism: the request throws on denial, so the guard never runs.
+           touches: ContactsStore.swift        conflicts: #2, #11 (same file)
+
+        2. **The whole contacts fetch runs on the main thread**
+           · `ContactsStore.swift:68` · mechanism: the store is MainActor-isolated.
+
+        """
+        let findings = SurveyReportParser.parse(report, runID: "2026-09-13")
+        XCTAssertEqual(findings.map(\.id), ["2026-09-13-C1", "2026-09-13-C2"])
+        XCTAssertEqual(findings.map(\.title), ["Tapping \"Don't Allow\" shows \"Something Went Wrong\"",
+                                               "The whole contacts fetch runs on the main thread"])
+        XCTAssertEqual(findings[0].locations, ["ContactsStore.swift:103", "ContactsStore.swift"])
+        XCTAssertTrue(findings[0].summary.contains("mechanism"), findings[0].summary)
+        XCTAssertFalse(findings[0].summary.contains("conflicts:"), "structured fields are not prose")
+    }
+
+    /// ARCHITECTURE carries its own verdicts under bold lines. Its drift lists are findings with a move
+    /// attached; its prose and its "missed by the surveyor" note are not.
+    func testTheArchitectureSectionsDriftListsAreFindings() {
+        let report = """
+        ## ARCHITECTURE
+
+        Two checkers recounted from the files independently. Every count matches.
+
+        - **Actual:** 2 screens, 7 call sites
+        - **Recommend:** all access lives in the store
+
+        **Drift — CONFIRMED (both checkers)**
+        - arch-1: dead `requestAccessIfNeeded` copy at `ContactDetailView.swift:104-115` → delete it.
+        - arch-3: `FavoritesManager` in a view file → move it to its own file.
+
+        **Drift — PLAUSIBLE (held)**
+        - arch-4: delete the CHANGELOG block at `ContactsStore.swift:15-19`.
+
+        **Missed by the surveyor, found by both checkers**
+        - `MockGenerator` has no callers. Already CONFIRMED as #12.
+        """
+        let findings = SurveyReportParser.parse(report, runID: "r")
+        XCTAssertEqual(findings.map(\.id), ["r-C1", "r-C2", "r-P1"])
+        XCTAssertEqual(findings.map(\.categories), [[.new], [.new], [.needsDecision]])
+        XCTAssertTrue(findings[0].title.hasPrefix("arch-1:"), findings[0].title)
+        XCTAssertEqual(findings[0].locations, ["ContactDetailView.swift:104-115"])
+        XCTAssertFalse(findings.contains { $0.title.contains("MockGenerator") },
+                       "a note about what the surveyor missed is not itself a finding")
+        XCTAssertFalse(findings.contains { $0.title.contains("Actual") || $0.title.contains("Recommend") },
+                       "the section's own prose bullets are not findings")
+    }
+
     /// A location on the continuation line is still where the finding is, and used to be lost entirely.
     func testLocationBelowTheClaimIsStillALocation() {
         let report = """
