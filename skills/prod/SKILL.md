@@ -23,7 +23,7 @@ model — say so and stop; Phase 14's merge already reached production.
 ## Run
 
 1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
-2. Read `~/.claude/skills/dev/shared/pipeline.md` → execute **Phase 16 — Prod Promotion**.
+2. Read `~/.claude/skills/dev/shared/pipeline/17-phase-16-prod-promotion.md` → execute **Phase 16 — Prod Promotion**.
 3. Present, then ask. **Never promote autonomously.**
 
 ## Why this is a second gate, not a formality

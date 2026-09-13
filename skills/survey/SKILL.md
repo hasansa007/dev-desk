@@ -46,8 +46,8 @@ Read `~/.claude/skills/dev/shared/entry.md` — **the absolute path, because thi
 inside somebody else's repo**, where a bare `shared/entry.md` resolves to a file that does not
 exist. The resolved repo is the boundary, for reading, for writing and for filing.
 
-Also read `~/.claude/skills/dev/shared/pipeline.md` → **Guiding Principles, Universal Rules,
-and Right-Size the Process**. Right-Size is not optional here despite this being a tool: it owns the
+Also read `~/.claude/skills/dev/shared/pipeline/00-principles.md` → **Guiding Principles
+and Right-Size the Process**, and `~/.claude/skills/dev/shared/pipeline/18-output-and-universal-rules.md` → **Universal Rules**. Right-Size is not optional here despite this being a tool: it owns the
 fan-out rule, and Phases 4 and 5 are the largest fan-out in the family.
 
 **A survey that files a bug already in the tracker has made the board worse.** Dedupe runs at

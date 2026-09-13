@@ -148,46 +148,52 @@ Then state it in the form **`<result> — from <command>, which covers <domain>`
 
 ---
 
-## What to load from `shared/pipeline.md`
+## What to load from `shared/pipeline/`
+
+`shared/pipeline.md` is now an index; the phases live as one file per phase under
+`~/.claude/skills/dev/shared/pipeline/`, and every file named below is relative to that folder —
+these doors run inside somebody else's repo, where a bare relative path resolves to nothing, so the
+folder is spelled absolutely once here and by basename everywhere else. **A door loads only the files
+its row below names** — that is the rule the whole split exists to state.
 
 **Always, for every entry point** — these are cheap and they govern how you work:
 
-| Section | Why |
-|---|---|
-| Guiding Principles | Simplicity First, Stop on Ambiguity, Surgical Editing |
-| Right-Size the Process | pick Light / Standard / Deep and SAY which |
-| Universal Rules | commit hygiene, no AI attribution, no worktrees in this repo |
+| Section | File | Why |
+|---|---|---|
+| Guiding Principles | `00-principles.md` | Simplicity First, Stop on Ambiguity, Surgical Editing |
+| Right-Size the Process | `00-principles.md` | pick Light / Standard / Deep and SAY which |
+| Universal Rules | `18-output-and-universal-rules.md` | commit hygiene, no AI attribution, no worktrees in this repo |
 
 **Conditionally** — a sibling loads these only when its own phase actually consumes them.
 Right-Size applies to the preamble too: loading discovery for a read-only gate is the ceremony
 this pipeline exists to refuse.
 
-| Section | Load it when | So: |
-|---|---|---|
-| **Phase 1 — Context Load** | your phase reads or changes code, and needs to know the system | `dev:verify`, `dev:review` |
-| **Phase 2 — Tech Stack & Discovery** | **your phase has a platform overlay.** `pipeline-<platform>.md` defines additions to Phases 10, 11 and 14 ONLY — no other phase has one, so no other phase needs the stack detected | `dev:verify` (11), `dev:pre-prod` (14) |
+| Section | File | Load it when | So: |
+|---|---|---|---|
+| **Phase 1 — Context Load** | `02-phase-01-context-load.md` | your phase reads or changes code, and needs to know the system | `dev:verify`, `dev:review` |
+| **Phase 2 — Tech Stack & Discovery** | `03-phase-02-tech-stack.md` | **your phase has a platform overlay.** `pipeline-<platform>.md` defines additions to Phases 10, 11 and 14 ONLY — no other phase has one, so no other phase needs the stack detected | `dev:verify` (11), `dev:pre-prod` (14) |
 
 | Sibling | Phase | Loads |
 |---|---|---|
-| `dev` | 1–16 | everything except Phase 0 — the item already exists by the time it runs |
-| `dev:create-bug` | 0 | always **minus Right-Size** + Phase 0 |
-| `dev:create-issue` | 0 | always **minus Right-Size** + Phase 0 |
-| `dev:create-epic` | 0 | always **minus Right-Size** + Phase 0 |
-| `dev:verify` | 11 | always + Phase 1 + Phase 2 → platform pipeline |
-| `dev:pre-prod` | 14 | always + Phase 2 → platform pipeline |
-| `dev:review` | 15 | always + Phase 1 |
-| `dev:docs` | 12 | always only |
-| `dev:code-review` | 13 | always only — the diff is the whole subject |
-| `dev:prod` | 16 | always only — plus the release runbook, per Workspace Resolution above |
-| `dev:rollback` | 16 ↺ | always + Phase 1 — plus classification and dual-branch sync |
-| `dev:audit` | — | always only — mechanical phase compliance verification against evidence |
+| `dev` | 1–16 | every file under `~/.claude/skills/dev/shared/pipeline/` except `01-phase-00-filing.md` — the item already exists by the time it runs |
+| `dev:create-bug` | 0 | `00-principles.md` **minus Right-Size** + `18-output-and-universal-rules.md` + `01-phase-00-filing.md` |
+| `dev:create-issue` | 0 | `00-principles.md` **minus Right-Size** + `18-output-and-universal-rules.md` + `01-phase-00-filing.md` |
+| `dev:create-epic` | 0 | `00-principles.md` **minus Right-Size** + `18-output-and-universal-rules.md` + `01-phase-00-filing.md` |
+| `dev:verify` | 11 | `00-principles.md` + `18-output-and-universal-rules.md` + `02-phase-01-context-load.md` + `03-phase-02-tech-stack.md` + `12-phase-11-verification.md` → platform pipeline |
+| `dev:pre-prod` | 14 | `00-principles.md` + `18-output-and-universal-rules.md` + `03-phase-02-tech-stack.md` + `15-phase-14-pr-and-merge.md` → platform pipeline |
+| `dev:review` | 15 | `00-principles.md` + `18-output-and-universal-rules.md` + `02-phase-01-context-load.md` + `16-phase-15-review-cycle.md` |
+| `dev:docs` | 12 | `00-principles.md` + `18-output-and-universal-rules.md` + `13-phase-12-docs.md` |
+| `dev:code-review` | 13 | `00-principles.md` + `18-output-and-universal-rules.md` + `14-phase-13-code-review.md` — the diff is the whole subject |
+| `dev:prod` | 16 | `00-principles.md` + `18-output-and-universal-rules.md` + `17-phase-16-prod-promotion.md` — plus the release runbook, per Workspace Resolution above |
+| `dev:rollback` | 16 ↺ | `00-principles.md` + `18-output-and-universal-rules.md` + `02-phase-01-context-load.md` + `17-phase-16-prod-promotion.md` — plus classification and dual-branch sync |
+| `dev:audit` | — | `00-principles.md` + `18-output-and-universal-rules.md` — mechanical phase compliance verification against evidence |
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
 | `dev:launch-kill` | — | **nothing** — a tool; it reads `dev:launch`'s discovery, not this pipeline |
 | `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
-| `dev:kanban` | — | **Universal Rules only** — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
-| `dev:comment-budget` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
-| `dev:arch` | — | **Guiding Principles + Universal Rules only** — a tool, so it skips Right-Size; it consumes Simplicity First, which is what lets it REFUSE a diagram the target does not need |
-| `dev:survey` · `dev:ideation` | — | **Guiding Principles + Universal Rules + Right-Size** — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
+| `dev:kanban` | — | **Universal Rules only** (`18-output-and-universal-rules.md`) — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
+| `dev:comment-budget` | — | **Guiding Principles + Universal Rules only** (`00-principles.md` + `18-output-and-universal-rules.md`) — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
+| `dev:arch` | — | **Guiding Principles + Universal Rules only** (`00-principles.md` + `18-output-and-universal-rules.md`) — a tool, so it skips Right-Size; it consumes Simplicity First, which is what lets it REFUSE a diagram the target does not need |
+| `dev:survey` · `dev:ideation` | — | **Guiding Principles + Universal Rules + Right-Size** (`00-principles.md` + `18-output-and-universal-rules.md`) — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
 
 **A tool-kind door loads only what it consumes.** The always-list is the floor for *phases*, which
 are sized by tier; a tool runs no phase, so Right-Size has nothing to size and loading it is the

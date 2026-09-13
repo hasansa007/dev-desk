@@ -26,7 +26,7 @@ working state. They are different claims.
 ## Run
 
 1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
-2. Read `~/.claude/skills/dev/shared/pipeline.md` → execute **Phase 11 — Verification Gate**
+2. Read `~/.claude/skills/dev/shared/pipeline/12-phase-11-verification.md` → execute **Phase 11 — Verification Gate**
    in full, including the platform additions from the matching `pipeline-<platform>.md`.
 3. Present the evidence table. Hand back only the rows you genuinely cannot reach.
 

@@ -230,8 +230,9 @@ description, and produces an issue number. That is why it can be a door when Pha
 
 1. Read `~/.claude/skills/dev/shared/entry.md` — workspace + base-branch resolution, shared with
    every `dev-*` sibling.
-2. Read `~/.claude/skills/dev/shared/pipeline.md` and execute all phases from it, incorporating the
-   Phase 14 additions defined above.
+2. Read `~/.claude/skills/dev/shared/pipeline.md` — the index — then read the phase files it lists
+   under `~/.claude/skills/dev/shared/pipeline/` in order and execute all phases from them,
+   incorporating the Phase 14 additions defined above.
 
 The pipeline's Phase 2 detects the stack and routes to the matching platform pipeline automatically.
 
