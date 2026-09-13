@@ -129,6 +129,10 @@ struct TaskCard: View {
                 .foregroundStyle(DeskColor.ink)
                 .lineSpacing(2)
                 .lineLimit(2)
+                .truncationMode(.tail)
+                // The ⋮ is a top-trailing overlay and takes no layout space, so without this a long title
+                // runs straight under it — worst on a branch name, which has no spaces to wrap at.
+                .padding(.trailing, DeskMetric.cardMenuInset)
                 .frame(maxWidth: .infinity, minHeight: DeskMetric.cardTitleHeight,
                        maxHeight: DeskMetric.cardTitleHeight, alignment: .topLeading)
             metaRow

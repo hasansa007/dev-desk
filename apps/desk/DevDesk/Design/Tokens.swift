@@ -120,7 +120,7 @@ enum DeskMetric {
     /// Two lines of title, meta, ratings, then one bottom band shared by the note and the action.
     static let cardContentHeight: CGFloat = 117
     /// Room the title leaves for the ⋮ overlay, which takes no layout space of its own.
-    static let cardMenuInset: CGFloat = 26
+    static let cardMenuInset: CGFloat = 30
     static let cardTitleHeight: CGFloat = 34
     /// One height for a column's header, so a long title truncates instead of dropping its own column a row.
     static let columnHeaderHeight: CGFloat = 18
