@@ -18,7 +18,7 @@ struct FindingCard: View {
         if let filing, filing.state.isLive { return "A run is already filing this one." }
         if let filing, case .asking = filing.state { return "The run filing this one is waiting for an answer." }
         if let filing, case .ended(_, let failed) = filing.state, !failed { return "This one has been filed." }
-        return model.runBlockedReason(agent: defaultConnection)
+        return model.trackerBlockedReason ?? model.runBlockedReason(agent: defaultConnection)
     }
 
     /// The run this card started, if it started one. Filing takes a door and a minute, and a card that shows

@@ -35,6 +35,9 @@ public struct BackgroundJob: Identifiable, Equatable {
     /// What this run is about, in the caller's own terms — a finding's id, an opportunity's. It lets the card
     /// that started a run find it again and say what it is doing, rather than the run being invisible.
     public var subject: String?
+    /// When it started, so a row can say how long it has been going. A run with no terminal and no clock is
+    /// indistinguishable from a run that is stuck.
+    public var startedAt = Date()
     public var sessionID: String?
     /// Kept so answering resumes under the same grant the run was started with.
     public let permission: RunPermission

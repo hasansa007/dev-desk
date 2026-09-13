@@ -61,11 +61,50 @@ public enum JobStream {
         let parts = content.compactMap { block -> String? in
             switch block["type"] as? String {
             case "text": return (block["text"] as? String)?.nonEmpty
-            case "tool_use": return (block["name"] as? String).map { "· \($0)" }
+            case "tool_use": return toolUse(block)
+            case "tool_result": return failedResult(block)
             default: return nil
             }
         }
         return parts.isEmpty ? nil : parts.joined(separator: "\n")
+    }
+
+    /// The tool AND what it was pointed at. A log of "Read / Read / Bash / Bash / Bash" says a run is doing
+    /// something and nothing else — you cannot see what it read, whether it is making progress, or that it has
+    /// run the same failing command eleven times.
+    static func toolUse(_ block: [String: Any]) -> String? {
+        guard let name = (block["name"] as? String)?.nonEmpty else { return nil }
+        let input = block["input"] as? [String: Any] ?? [:]
+        return "· " + [name, argument(in: input)].compactMap { $0 }.joined(separator: " ")
+    }
+
+    /// What a tool call was about, from the field that carries it. `description` first: an agent writes one
+    /// for a shell command precisely because the command itself is not the readable version.
+    static let argumentKeys = ["description", "command", "file_path", "path", "pattern", "url", "query", "prompt"]
+
+    static func argument(in input: [String: Any]) -> String? {
+        for key in argumentKeys {
+            if let value = (input[key] as? String)?.nonEmpty { return oneLine(value) }
+        }
+        return nil
+    }
+
+    /// A tool that failed is the thing worth seeing in a run with no terminal — a loop is a failure repeating.
+    static func failedResult(_ block: [String: Any]) -> String? {
+        guard (block["is_error"] as? Bool) == true else { return nil }
+        if let text = (block["content"] as? String)?.nonEmpty { return "! " + oneLine(text) }
+        if let content = block["content"] as? [[String: Any]] {
+            let text = content.compactMap { ($0["text"] as? String)?.nonEmpty }.joined(separator: " ")
+            return text.isEmpty ? "! Failed" : "! " + oneLine(text)
+        }
+        return "! Failed"
+    }
+
+    /// One line, capped. A row is a row: a pasted file or a heredoc would otherwise be the whole log.
+    static func oneLine(_ text: String, limit: Int = 120) -> String {
+        let flat = text.split(whereSeparator: \.isNewline).joined(separator: " ")
+            .trimmingCharacters(in: .whitespaces)
+        return flat.count <= limit ? flat : String(flat.prefix(limit - 1)) + "…"
     }
 }
 

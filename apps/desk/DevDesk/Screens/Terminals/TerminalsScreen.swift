@@ -118,6 +118,14 @@ private struct TerminalTile: View {
                             .font(.system(size: 11))
                             .foregroundStyle(DeskColor.mutedInk)
                             .lineLimit(1)
+                        // A background run has no clock of its own. This one ticks by itself, so a run that
+                        // has been "running" for twenty minutes reads as one.
+                        if case .job(let job) = row.kind, job.state.isLive {
+                            Text(job.startedAt, style: .relative)
+                                .font(.system(size: 11))
+                                .foregroundStyle(DeskColor.faintInk)
+                                .lineLimit(1)
+                        }
                         Spacer(minLength: 4)
                     }
                     .contentShape(Rectangle())

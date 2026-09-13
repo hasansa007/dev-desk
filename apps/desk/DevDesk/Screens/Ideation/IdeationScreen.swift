@@ -236,8 +236,8 @@ private struct OpportunityDetail: View {
                     if opportunity.verdict == .confirmed {
                         Button("Add to backlog…") { file() }
                             .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
-                            .disabled(model.runBlockedReason(agent: defaultConnection) != nil)
-                            .help(model.runBlockedReason(agent: defaultConnection)
+                            .disabled(fileBlockedReason != nil)
+                            .help(fileBlockedReason
                                   ?? "Queues dev:create-issue for this opportunity, labelled as an enhancement")
                     }
                 }
@@ -257,6 +257,12 @@ private struct OpportunityDetail: View {
     }
 
     /// Only a confirmed opportunity can be filed: a plausible one is held in the report with its reason, by design.
+    /// Filing needs a tracker to file into and an agent to do it; naming which one is missing beats a
+    /// button that is dim for no stated reason.
+    private var fileBlockedReason: String? {
+        model.trackerBlockedReason ?? model.runBlockedReason(agent: defaultConnection)
+    }
+
     private func file() {
         let sources = opportunity.locations.isEmpty ? "" : " Sources: \(opportunity.locations.joined(separator: ", "))."
         let proposal = opportunity.proposed.map { " Proposed: \($0)." } ?? ""

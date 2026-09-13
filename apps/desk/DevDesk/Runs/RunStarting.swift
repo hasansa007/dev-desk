@@ -50,6 +50,7 @@ extension ProjectWindowModel {
     /// Returns the job so the caller can show it filing, or nil when the door cannot run here.
     @discardableResult
     func fileFromReport(jobs: JobRegistry?, itemID: String, description: String, agent: String) -> String? {
+        guard trackerBlockedReason == nil else { return nil }
         guard let jobs, case .local(let path) = ref else {
             // No background registry (a sample project, or a preview): fall back to the terminal it used to use.
             prepareRun(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
@@ -82,6 +83,15 @@ extension ProjectWindowModel {
     func startBlockedReason(for task: DeskTask, agent: String) -> String? {
         guard task.taskNumber != nil else { return "This card has no issue number, so `/dev` has nothing to open." }
         return runBlockedReason(agent: agent)
+    }
+
+    /// Why nothing can be filed into this project's tracker, or nil when it can. `dev:create-issue` writes to
+    /// GitHub; when gh cannot see the repository the run cannot succeed — and a headless agent told to file an
+    /// issue anyway does not stop, it retries, in the background, until someone notices and stops it.
+    var trackerBlockedReason: String? {
+        guard let github = snapshot?.connections.first(where: { $0.id == "github" }),
+              github.state == .unavailable else { return nil }
+        return "GitHub is unavailable here (\(github.label)), so there is nothing to file into."
     }
 
     /// Why the button that would start `agent` is disabled, or nil when it can run.

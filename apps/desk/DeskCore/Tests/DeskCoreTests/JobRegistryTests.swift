@@ -14,9 +14,37 @@ final class JobStreamTests: XCTestCase {
         XCTAssertEqual(event, .line("Reading the door"))
     }
 
-    func testAToolUseIsNamedRatherThanDumped() {
+    func testAToolUseSaysWhatItWasPointedAt() {
         let event = JobStream.event(from: #"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"ls"}}]}}"#)
-        XCTAssertEqual(event, .line("· Bash"))
+        XCTAssertEqual(event, .line("· Bash ls"))
+        let read = JobStream.event(from: #"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Read","input":{"file_path":"Services/ReminderService.swift"}}]}}"#)
+        XCTAssertEqual(read, .line("· Read Services/ReminderService.swift"))
+    }
+
+    /// An agent writes a description for a shell command because the command is not the readable version.
+    func testADescribedCommandShowsItsDescription() {
+        let event = JobStream.event(from: #"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"gh issue create --title x","description":"File the issue"}}]}}"#)
+        XCTAssertEqual(event, .line("· Bash File the issue"))
+    }
+
+    /// A row is a row: a heredoc would otherwise be the whole log.
+    func testALongArgumentIsCutToOneLine() {
+        let command = String(repeating: "a", count: 300) + #"\n"# + "second line"
+        let json = "{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"tool_use\",\"name\":\"Bash\",\"input\":{\"command\":\"\(command)\"}}]}}"
+        guard case .line(let text)? = JobStream.event(from: json) else { return XCTFail("expected a line") }
+        XCTAssertEqual(text.count, 127, text)          // "· Bash " + 120
+        XCTAssertTrue(text.hasSuffix("…"))
+        XCTAssertFalse(text.contains("\n"))
+    }
+
+    /// A loop is a failure repeating, and it is invisible if failures are not shown.
+    func testAFailedToolResultIsShown() {
+        let event = JobStream.event(from: #"{"type":"user","message":{"content":[{"type":"tool_result","is_error":true,"content":"GraphQL: Could not resolve to a Repository"}]}}"#)
+        XCTAssertEqual(event, .line("! GraphQL: Could not resolve to a Repository"))
+    }
+
+    func testASuccessfulToolResultIsNotNoise() {
+        XCTAssertNil(JobStream.event(from: #"{"type":"user","message":{"content":[{"type":"tool_result","is_error":false,"content":"ok"}]}}"#))
     }
 
     func testASuccessfulResultEndsWithoutAQuestion() {
