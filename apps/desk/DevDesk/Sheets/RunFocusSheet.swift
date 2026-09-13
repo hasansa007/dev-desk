@@ -131,7 +131,7 @@ struct RunFocusSheet: View {
         if inBackground, let jobs, case .local(let path) = model.ref, !jobs.hasLiveJob(door: door, in: path) {
             jobs.start(door: door, title: title, agent: defaultConnection, arguments: arguments,
                        permission: permission, directory: path)
-            model.showRuns()
+            model.go(.terminals)
         } else {
             model.prepareRun(door: door, title: title, agent: defaultConnection, arguments: arguments)
         }

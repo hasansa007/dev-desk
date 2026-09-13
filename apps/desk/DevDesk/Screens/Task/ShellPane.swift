@@ -13,6 +13,9 @@ struct ShellPane: View {
     /// Typed into the shell once it is running, as the user would type it; nil leaves a plain prompt.
     var command: String?
     var startTitle = "Start shell"
+    /// Terminals puts Stop in the row's own header, where a collapsed row can still reach it, so the pane does
+    /// not add a second button for the same action.
+    var showsStop = true
 
     @Environment(\.terminals) private var terminals
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
@@ -37,7 +40,11 @@ struct ShellPane: View {
             DockMessage(text: "Preparing the folder…")
         case .running(let folder):
             VStack(spacing: 0) {
-                TaskRunningBar(note: folder.note, stopTitle: "End shell") { terminals?.end(taskID: id) }
+                if showsStop {
+                    TaskRunningBar(note: folder.note, stopTitle: "End shell") { terminals?.end(taskID: id) }
+                } else if let note = folder.note {
+                    DockMessage(text: note) { EmptyView() }
+                }
                 if let terminals {
                     ShellTerminalView(terminals: terminals, taskID: id)
                 }

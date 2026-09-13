@@ -9,7 +9,8 @@ import SwiftUI
 /// that is the thing an edge panel and a modal both cannot do.
 struct TerminalsScreen: View {
     @Bindable var model: ProjectWindowModel
-    @AppStorage("desk.terminals.columns") private var columns = 2
+    @State private var expandedID: String?
+    @State private var hasChosen = false
 
     private var rows: [SessionRow] { SessionRow.all(in: model) }
 
@@ -28,6 +29,12 @@ struct TerminalsScreen: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
+        .onAppear(perform: syncExpansion)
+        .onChange(of: model.selectedSessionID) { _, id in
+            guard let id else { return }
+            hasChosen = true
+            expandedID = id
+        }
     }
 
     private var header: some View {
@@ -50,8 +57,9 @@ struct TerminalsScreen: View {
         ScrollView {
             VStack(spacing: 8) {
                 ForEach(rows) { row in
-                    TerminalTile(model: model, row: row, isExpanded: expanded == row.id) {
-                        expanded = expanded == row.id ? nil : row.id
+                    TerminalTile(model: model, row: row, isExpanded: expandedID == row.id) {
+                        hasChosen = true
+                        expandedID = expandedID == row.id ? nil : row.id
                     }
                 }
             }
@@ -59,11 +67,14 @@ struct TerminalsScreen: View {
         }
     }
 
-    /// The one in front. Opening a session from the board or the Runs panel sets it, so arriving here lands on
-    /// the thing you came for; otherwise the newest running session is expanded.
-    private var expanded: String? {
-        get { model.selectedSessionID ?? rows.first(where: \.isLive)?.id ?? rows.first?.id }
-        nonmutating set { model.selectedSessionID = newValue }
+    /// Which row is open. Arriving from a card or a door start lands on that session; after that it is whatever
+    /// you last clicked, including nothing.
+    ///
+    /// It has to be real state. Deriving it as `selection ?? firstLive` meant collapsing a row set the selection
+    /// to nil and the fallback immediately re-opened the same row — the chevron did nothing, every time.
+    private func syncExpansion() {
+        guard !hasChosen else { return }
+        expandedID = model.selectedSessionID ?? rows.first(where: \.isLive)?.id ?? rows.first?.id
     }
 }
 
@@ -78,21 +89,32 @@ private struct TerminalTile: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                    .imageScale(.small)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .frame(width: 12)
-                StatusDot(tone: row.isLive ? .running : .ended, pulses: row.isLive)
-                Text(row.title)
-                    .font(DeskFont.body.weight(.semibold))
-                    .foregroundStyle(DeskColor.ink)
-                    .lineLimit(1)
-                Text(row.subtitle)
-                    .font(.system(size: 11))
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
+                // The expander is its own button and Stop is its sibling. A tap gesture on the whole row
+                // swallows the clicks of the buttons inside it — the same way the card's outer Button ate its
+                // own Start, and reported the same way: "stop is not working".
+                Button(action: toggle) {
+                    HStack(spacing: 8) {
+                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                            .imageScale(.small)
+                            .foregroundStyle(DeskColor.mutedInk)
+                            .frame(width: 12)
+                        StatusDot(tone: row.isLive ? .running : .ended, pulses: row.isLive)
+                        Text(row.title)
+                            .font(DeskFont.body.weight(.semibold))
+                            .foregroundStyle(DeskColor.ink)
+                            .lineLimit(1)
+                        Text(row.subtitle)
+                            .font(.system(size: 11))
+                            .foregroundStyle(DeskColor.mutedInk)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(isExpanded ? "Collapse" : "Expand") \(row.title)")
                 if row.isLive {
+                    // The only Stop: the pane's own "End shell" is suppressed, and a collapsed row can reach this.
                     Button("Stop") { terminals?.end(taskID: row.id) }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
                 }
@@ -100,8 +122,6 @@ private struct TerminalTile: View {
             .padding(.horizontal, 11)
             .padding(.vertical, 9)
             .background(DeskColor.headerFill)
-            .contentShape(Rectangle())
-            .onTapGesture(perform: toggle)
             if isExpanded {
                 Rectangle().fill(DeskColor.divider).frame(height: 1)
                 pane
@@ -117,10 +137,11 @@ private struct TerminalTile: View {
         switch row.kind {
         case .door(let run):
             ShellPane(sessions: model.sessions, id: run.id, folderNote: run.folderNote,
-                      command: run.command, startTitle: "Start run")
+                      command: run.command, startTitle: "Start run", showsStop: false)
         case .task(let task):
             ShellPane(sessions: model.sessions, id: task.id, branch: task.branch,
-                      taskNumber: task.taskNumber, folderNote: task.noBranchNote, startTitle: "Start shell")
+                      taskNumber: task.taskNumber, folderNote: task.noBranchNote, startTitle: "Start shell",
+                      showsStop: false)
         }
     }
 }
@@ -140,7 +161,7 @@ struct SessionRow: Identifiable {
         let doorIDs = Set(model.runs.runs.map(\.id))
         let doors = model.runs.runs.map { run in
             SessionRow(id: run.id, title: run.title,
-                       subtitle: "\(run.agent) · \(RunsPanel.label(for: model.sessions.state(for: run.id)).label)",
+                       subtitle: "\(run.agent) · \(RunLabel.label(for: model.sessions.state(for: run.id)).label)",
                        isLive: model.sessions.state(for: run.id).isLive, kind: .door(run))
         }
         let tasks = model.sessions.activeTaskIDs.filter { !doorIDs.contains($0) }.compactMap { id -> SessionRow? in

@@ -23,11 +23,7 @@ struct ContentRouter: View {
                 VStack(spacing: 0) {
                     content
                         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-                    if model.runsOpen {
-                        EdgeResizer(edge: .bottom, size: $model.runsHeight, range: DeskMetric.runsHeightRange)
-                        RunsPanel(model: model)
-                            .frame(height: model.runsHeight)
-                    }
+
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 if model.filesOpen {

@@ -55,10 +55,6 @@ struct ProjectToolbar: ToolbarContent {
                         label: "Sidebar", help: "Hide or show the project sidebar") {
                 columns = columns == .detailOnly ? .all : .detailOnly
             }
-            PanelToggle(symbol: "square.bottomhalf.filled", isOn: model.runsOpen, badge: liveRuns,
-                        label: "Runs", help: runsHelp) {
-                model.toggleRuns()
-            }
             PanelToggle(symbol: "sidebar.trailing", isOn: model.filesOpen,
                         label: "Files", help: "Hide or show this project's files") {
                 model.toggleFiles()

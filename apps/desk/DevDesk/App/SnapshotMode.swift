@@ -78,7 +78,6 @@ final class SnapshotMode {
 
     private func reset(_ model: ProjectWindowModel) {
         model.sheet = nil
-        model.runsOpen = false
         model.filesOpen = false
         model.mode = .focus
         model.showBacklog = false
@@ -136,7 +135,7 @@ final class SnapshotMode {
         Capture(name: "08-runs-panel") { model in
             model.go(.survey)
             model.prepareRun(door: "survey", title: "Survey", agent: "Claude")
-            model.showRuns()
+            model.go(.terminals)
         },
         Capture(name: "09-unstarted-task-sheet", isSheet: true) { model in
             if let id = firstUnstartedTaskID(model) { model.openTask(id) }

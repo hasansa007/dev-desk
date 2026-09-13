@@ -24,7 +24,7 @@ struct DoorRunControl: View {
 
     var body: some View {
         if isRunning {
-            Button { model.showRuns() } label: {
+            Button { model.go(.terminals) } label: {
                 HStack(spacing: 6) {
                     StatusDot(tone: .running, pulses: true, size: 6)
                     Text("Running")
