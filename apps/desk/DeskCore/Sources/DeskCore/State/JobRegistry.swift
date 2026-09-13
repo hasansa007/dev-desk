@@ -141,8 +141,45 @@ public final class JobRegistry {
         jobs.insert(BackgroundJob(id: id, title: title, agent: agent, door: door, scope: scope?.rawValue,
                                   directory: directory, subject: subject, sessionID: launch.sessionID,
                                   permission: permission, mode: mode), at: 0)
+        writeRecord(for: jobs[0])
         run(id: id, launch: launch, directory: directory)
         return id
+    }
+
+    /// What the recovery offer can honestly do for a run the app was killed under, when that run got as far as
+    /// reporting a session id: a new run continuing that same session, under the grant and mode the original
+    /// was started with rather than today's preference. Nil when there is no session to continue — the caller
+    /// then has nothing to resume, and must say so rather than restart something and call it a recovery.
+    @discardableResult
+    public func resumeFromRecord(_ record: JournalRecord) -> String? {
+        guard record.kind == .backgroundRun, let sessionID = record.sessionID else { return nil }
+        let permission = record.permission.flatMap(RunPermission.init(rawValue:)) ?? .readOnly
+        let mode = record.mode.flatMap(RunMode.init(rawValue:)) ?? .standard
+        guard let launch = JobCommand.resume(agent: record.agent, sessionID: sessionID, answer: Self.resumePrompt,
+                                             permission: permission, home: home, mode: mode) else { return nil }
+        let id = "job:\(record.door ?? "resume"):\(UUID().uuidString.prefix(8))"
+        jobs.insert(BackgroundJob(id: id, title: record.title, agent: record.agent, door: record.door ?? "",
+                                  scope: nil, directory: record.directory, subject: record.subject,
+                                  sessionID: sessionID, permission: permission, mode: mode), at: 0)
+        // The dead run has been acted on; left alone, its record would be offered again at the next launch.
+        journalFor?(record.directory)?.clear(id: record.id)
+        writeRecord(for: jobs[0])
+        run(id: id, launch: launch, directory: record.directory)
+        return id
+    }
+
+    /// What a resumed session is told first. It says the run was interrupted rather than pretending the agent
+    /// merely paused — what to redo is the agent's call, and it can only make it if it is told.
+    static let resumePrompt = "Dev Desk was closed while this run was going. Continue from where you stopped."
+
+    /// The graceful-quit path (ADR 0030). The processes die with the app either way; a record marked clean is
+    /// one the next launch will not offer to recover. Nothing marks them when the app is killed — which is the
+    /// whole signal.
+    public func markAllClean() {
+        for job in jobs {
+            if case .ended = job.state { continue }
+            journalFor?(job.directory)?.markClean(id: job.id)
+        }
     }
 
     /// Answering continues the same session; a job that is not waiting on a question ignores this.
@@ -178,6 +215,20 @@ public final class JobRegistry {
         case .asking, .ended: onSettled?(jobs[index])
         case .starting, .running: break
         }
+        writeRecord(for: jobs[index])
+    }
+
+    /// The run's durable trace, rewritten wherever it materially changed (ADR 0030). A run that has ended is
+    /// deleted instead: recovery offers to continue what was interrupted, and a finished run resurfaced as
+    /// "in progress" is a lie the user would act on.
+    private func writeRecord(for job: BackgroundJob) {
+        guard let journal = journalFor?(job.directory) else { return }
+        if case .ended = job.state { return journal.clear(id: job.id) }
+        journal.write(JournalRecord(id: job.id, kind: .backgroundRun, title: job.title, agent: job.agent,
+                                    directory: job.directory, startedAt: job.startedAt, lastSeenAt: Date(),
+                                    sessionID: job.sessionID, door: job.door, subject: job.subject,
+                                    permission: job.permission.rawValue, mode: job.mode.rawValue,
+                                    stateLabel: job.state.label, logTail: job.log))
     }
 
     private func run(id: String, launch: JobLaunch, directory: String) {
@@ -195,9 +246,12 @@ public final class JobRegistry {
         guard let event = JobStream.event(from: line) else { return }
         switch event {
         case .session(let sessionID):
+            // The id is what a recovery could resume with, so it is worth a write the moment it is learned.
             jobs[index].sessionID = sessionID
+            writeRecord(for: jobs[index])
         case .line(let text):
             append(text, to: index)
+            writeRecord(for: jobs[index])
         case .ended(let text, let question):
             append(text, to: index)
             setState(question.map { JobState.asking($0) } ?? .ended(text: text, failed: false), at: index)

@@ -113,7 +113,9 @@ private struct RoadmapContent: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(EdgeInsets(top: 16, leading: 16, bottom: 18, trailing: 16))
+            .pullToRefresh(isRefreshing: model.isRefreshing) { await model.load() }
         }
+        .pullToRefreshSpace()
     }
 }
 
@@ -155,7 +157,6 @@ private struct ThemeColumn: View {
 private struct RoadmapItemCard: View {
     let item: RoadmapItem
     let model: ProjectWindowModel
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
 
     /// The same issue, as the board sees it. A roadmap row is the upcoming end of the board, so it shows what
     /// the card shows and offers what the card offers, rather than being a report you read and leave.
@@ -192,22 +193,30 @@ private struct RoadmapItemCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: 9))
         .overlay(RoundedRectangle(cornerRadius: 9).strokeBorder(item.isCritical ? DeskColor.tone(.failed).border : DeskColor.border))
+        .contentShape(RoundedRectangle(cornerRadius: 9))
+        // A card opens its dialog, here as on the board (ADR 0021). Tap, not Button: the Open control is a
+        // child, and an outer Button would eat its click — the mistake TaskCard records.
+        .onTapGesture { if let task { model.openTaskHere(task.id) } }
+        .accessibilityElement(children: .contain)
+        .accessibilityAction(named: "Open") { if let task { model.openTaskHere(task.id) } }
     }
 
-    /// Build, in the roadmap's own terms: start the work if it can start, else open the card it belongs to.
+    /// Open, not Build. "Build" ran `/dev` straight from a one-line summary — the roadmap is where you read
+    /// what a thing is before deciding it should happen, so the button opens the issue's own page (ADR 0021's
+    /// one dialog: goal, acceptance criteria, scope, description) and the decision is taken there, where its
+    /// footer offers Start.
     @ViewBuilder private var action: some View {
         if let task {
             if let activity = model.activity(of: task) {
-                StatusPill(badge: StatusBadge(.running, activity.label, pulses: true))
-            } else if model.startBlockedReason(for: task, agent: defaultConnection) == nil {
-                Button { model.startTask(task, agent: defaultConnection) } label: {
-                    Label("Build", systemImage: "play.fill")
+                Button { model.openTaskHere(task.id) } label: {
+                    StatusPill(badge: StatusBadge(.running, activity.label, pulses: true))
                 }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                .help("Run /dev #\(task.issueNumber.map(String.init) ?? "") for this, in the Runs panel")
+                .buttonStyle(.plain)
+                .help("Open this task — it is running")
             } else {
-                Button("Open card") { model.openTask(task.id) }
+                Button("Open") { model.openTaskHere(task.id) }
                     .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    .help("Read the goal, acceptance criteria and description, and start it from there")
             }
         }
     }

@@ -8,9 +8,18 @@ struct ResetSurveySheet: View {
     @Bindable var model: ProjectWindowModel
     @State private var options = SurveyResetOptions()
     @State private var runAfterwards = false
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var olderReports: [String] { model.olderSurveyReports }
     private var ignoredCount: Int { model.ignoredFindingsCount }
+
+    /// Any survey at all, of any scope, in a terminal or in the background. Scope buys nothing here: a reset
+    /// moves the reports both halves are being written into, so one going at all is enough to refuse.
+    private var isAnySurveyRunning: Bool {
+        if model.isSurveyRunning() { return true }
+        guard case .local(let path) = model.ref else { return false }
+        return jobs?.hasLiveJob(door: "survey", in: path) ?? false
+    }
 
     var body: some View {
         SheetChrome(title: "Reset survey", confirmTitle: confirmTitle, confirmDisabled: options.isEmpty,
@@ -60,7 +69,7 @@ struct ResetSurveySheet: View {
                             .foregroundStyle(DeskColor.mutedInk)
                     }
                 }
-                .disabled(!model.canRunDoors || model.isDoorRunning("survey"))
+                .disabled(!model.canRunDoors || isAnySurveyRunning)
             }
         }
     }

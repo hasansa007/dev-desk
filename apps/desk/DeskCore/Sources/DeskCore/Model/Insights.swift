@@ -67,5 +67,7 @@ public struct InsightsScript: Hashable {
 
 public enum InsightsAvailability: Hashable {
     case demo(InsightsScript)
+    /// A real agent is installed and signed in, so the panel asks the insights door instead of replaying a script.
+    case live(InsightsAgentPlan)
     case unavailable(String)
 }

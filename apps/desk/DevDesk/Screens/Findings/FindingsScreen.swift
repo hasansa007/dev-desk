@@ -52,6 +52,7 @@ private struct FindingsBoard: View {
         runFindings
             .filter { model.ignoredFindings.contains($0.id) == model.showsIgnoredFindings }
             .filter { model.findingFilter == nil || $0.categories.contains(model.findingFilter!) }
+            .filter { model.findingKindFilter == nil || $0.kind == model.findingKindFilter }
     }
 
     private var summary: String {
@@ -164,6 +165,16 @@ private struct FindingsBoard: View {
                     model.findingFilter = isSelected ? nil : category
                 }
             }
+            // The other half of what a finding is: which side of the report it came out of. It filters beside
+            // the categories rather than inside them — "New" and "Architecture" are two questions about one
+            // finding, so a category and a kind can be on together.
+            ForEach(FindingKind.allCases, id: \.self) { kind in
+                let isSelected = model.findingKindFilter == kind
+                FindingFilterChip(title: "\(kind.rawValue) \(report.count(of: kind, run: model.selectedRunID))",
+                                  isSelected: isSelected) {
+                    model.findingKindFilter = isSelected ? nil : kind
+                }
+            }
             if ignoredCount > 0 || model.showsIgnoredFindings {
                 FindingFilterChip(title: "Ignored \(ignoredCount)", category: .closedOrDeclined,
                                   isSelected: model.showsIgnoredFindings) {
@@ -189,7 +200,9 @@ private struct FindingsBoard: View {
                     }
                 }
                 .padding(EdgeInsets(top: 12, leading: 16, bottom: 18, trailing: 16))
+                .pullToRefresh(isRefreshing: model.isRefreshing) { await model.load() }
             }
+            .pullToRefreshSpace()
         }
     }
 
@@ -202,7 +215,9 @@ private struct FindingsBoard: View {
 /// New findings carry the info tone (D:535); the active filter takes the accent fill the design uses for selected controls.
 private struct FindingFilterChip: View {
     let title: String
-    let category: FindingCategory
+    /// The category this chip filters by, when it filters by one. A kind chip passes none: it is neutral,
+    /// because only "New" carries the info tone and a kind is not a category.
+    var category: FindingCategory?
     let isSelected: Bool
     let action: () -> Void
 

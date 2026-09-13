@@ -8,12 +8,15 @@ struct Sidebar: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
+            openProjectButton
             if !isRail { header } else { railHeader }
-            if let snapshot = model.snapshot {
+            if model.snapshot != nil {
                 destinations
                 Spacer(minLength: 12)
+                // Connections used to live here as four permanent rows. Settings → Accounts holds the same
+                // four with their identity and their sign-in, so the sidebar copy was a screen you visit
+                // twice a year, kept open, with an email address on it (decision 14 made it redundant).
                 settingsRow
-                if !isRail { connections(snapshot) } else { railConnections(snapshot) }
             } else {
                 Spacer(minLength: 0)
             }
@@ -41,9 +44,36 @@ struct Sidebar: View {
                     .padding(.top, 2)
             }
         }
-        .padding(.top, 14)
+        .padding(.top, 10)
         .padding(.horizontal, 14)
         .padding(.bottom, 10)
+    }
+
+    /// The one action that is not about this project, so it sits above everything that is — where a
+    /// sidebar's primary action belongs, rather than in the toolbar beside the panel toggles.
+    private var openProjectButton: some View {
+        Button { model.present(.openProject) } label: {
+            HStack(spacing: 7) {
+                Image(systemName: "plus.circle")
+                    .imageScale(.medium)
+                if !isRail {
+                    Text("Open project")
+                        .font(DeskFont.body.weight(.medium))
+                }
+            }
+            .foregroundStyle(DeskColor.ink)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 9)
+            .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+            .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.border))
+            .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+        }
+        .buttonStyle(.plain)
+        .help(isRail ? "Open project (⌘O)" : "⌘O")
+        .accessibilityLabel("Open project")
+        .padding(.horizontal, isRail ? 8 : 12)
+        .padding(.top, 12)
+        .padding(.bottom, 4)
     }
 
     /// The project's initial, so the rail still says which window this is.
@@ -55,28 +85,6 @@ struct Sidebar: View {
             .padding(.top, 16)
             .padding(.bottom, 12)
             .help(model.snapshot?.project.name ?? model.ref.displayName)
-    }
-
-    /// Dots only: which connections are unhappy is the part that has to survive the width.
-    private func railConnections(_ snapshot: ProjectSnapshot) -> some View {
-        VStack(spacing: 8) {
-            ForEach(snapshot.connections) { connection in
-                Button {
-                    model.settingsSection = .accountsAndConnections
-                    model.present(.settings)
-                } label: {
-                    StatusDot(tone: style(for: connection.state).tone)
-                        .frame(maxWidth: .infinity)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("\(connection.name): \(connection.label)")
-                .accessibilityLabel("\(connection.name), \(connection.label)")
-            }
-        }
-        .padding(.vertical, 12)
-        .frame(maxWidth: .infinity)
-        .overlay(alignment: .top) { Rectangle().fill(DeskColor.border).frame(height: 1) }
     }
 
     private var destinations: some View {
@@ -188,73 +196,4 @@ struct Sidebar: View {
         }
     }
 
-    private func connections(_ snapshot: ProjectSnapshot) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            SectionLabel("Connections")
-            ForEach(snapshot.connections) { connection in
-                connectionRow(connection)
-            }
-            if !snapshot.connectionsNote.isEmpty {
-                Text(snapshot.connectionsNote)
-                    .font(.system(size: 11))
-                    .foregroundStyle(DeskColor.faintInk)
-                    .lineSpacing(2)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-        }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .overlay(alignment: .top) {
-            Rectangle().fill(DeskColor.border).frame(height: 1)
-        }
-    }
-
-    /// A row is what the app knows, and a way to the one place that can change it: the rows themselves are
-    /// display, and Accounts holds the actions (decision 14).
-    private func connectionRow(_ connection: Connection) -> some View {
-        let style = style(for: connection.state)
-        return Button {
-            model.settingsSection = .accountsAndConnections
-            model.present(.settings)
-        } label: {
-            HStack(spacing: 8) {
-                StatusDot(tone: style.tone)
-                Text(connection.name)
-                Spacer(minLength: 4)
-                Text(connection.label)
-                    .font(.system(size: 11))
-                    .foregroundStyle(style.label)
-                    // One line. A gh failure is a paragraph with a repository path in it, and rendering it whole
-                    // turned this row into a red wall of text nobody could read; the rest is in the tooltip.
-                    .lineLimit(1)
-                    .truncationMode(.tail)
-            }
-            .font(DeskFont.secondary)
-            .foregroundStyle(style.text)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(helpText(connection))
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(connection.detail ?? connection.label)
-    }
-
-    /// The tooltip says what to do when there is something to do, rather than only what is wrong.
-    private func helpText(_ connection: Connection) -> String {
-        let base = connection.detail ?? connection.label
-        guard let auth = connection.auth else { return base }
-        return connection.isSignedOut ? "\(base) — Settings → Accounts runs `\(auth.signIn)`." : base
-    }
-
-    private func style(for state: ConnectionState) -> (tone: StatusTone, text: Color, label: Color) {
-        switch state {
-        case .connected: return (.running, DeskColor.navInk, DeskColor.faintInk)
-        case .detected: return (.info, DeskColor.navInk, DeskColor.faintInk)
-        case .notConnected, .missing: return (.neutral, DeskColor.faintInk, DeskColor.faintInk)
-        case .unavailable:
-            let failed = DeskColor.tone(.failed).dot
-            return (.failed, failed, failed)
-        }
-    }
 }

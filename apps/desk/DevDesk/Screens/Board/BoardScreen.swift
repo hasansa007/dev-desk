@@ -121,7 +121,9 @@ struct BoardScreen: View {
                         }
                         .padding(16)
                         .frame(minWidth: proxy.size.width, minHeight: proxy.size.height, alignment: .topLeading)
+                        .pullToRefresh(isRefreshing: model.isRefreshing) { await model.load() }
                     }
+                    .pullToRefreshSpace()
                 }
             }
         }
@@ -203,7 +205,8 @@ private struct BoardColumnView: View {
                     // Continue means continue: start the agent, then go to where it lives (ADR 0026).
                     // Opening a tab and leaving Start to be pressed was navigation wearing an action's label.
                     if case .ready(let kind) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? []) {
-                        _ = terminals?.startAgent(for: task, agent: kind, worktreeLocation: worktreeLocation)
+                        _ = terminals?.startAgent(for: task, agent: kind, worktreeLocation: worktreeLocation,
+                                                  mode: RunModeChoice.current(for: model.ref))
                     }
                     model.selectedSessionID = task.id
                     model.go(.terminals)

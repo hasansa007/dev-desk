@@ -9,6 +9,11 @@ struct DeskCommands: Commands {
     @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
 
     var body: some Commands {
+        CommandGroup(replacing: .appSettings) {
+            Button("Settings…") { openSettings() }
+                .keyboardShortcut(",", modifiers: .command)
+                .disabled(model == nil)
+        }
         CommandGroup(replacing: .newItem) {
             Button("Open Project…") { openWindow(id: "launcher") }
                 .keyboardShortcut("o")
@@ -32,6 +37,8 @@ struct DeskCommands: Commands {
                 Divider()
                 Button("Reload") { reload() }
                     .keyboardShortcut("r")
+                Divider()
+                Button("Settings…") { openSettings() }
             }
             .disabled(model == nil)
         }
@@ -60,5 +67,9 @@ struct DeskCommands: Commands {
     private func reload() {
         guard let model else { return }
         Task { await model.load() }
+    }
+
+    private func openSettings() {
+        model?.present(.settings)
     }
 }

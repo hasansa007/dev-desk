@@ -10,6 +10,7 @@ struct LauncherView: View {
 
     @Environment(OpenProjectRegistry.self) private var registry
     @Environment(\.openWindow) private var openWindow
+    @Environment(\.dismiss) private var dismissWindow
     @AppStorage(PreferenceKey.showSamples) private var showSamples = true
     @State private var selectedID: String?
     @State private var activeSubSheet: SubSheet?
@@ -235,9 +236,13 @@ struct LauncherView: View {
         open(ref)
     }
 
+    /// The launcher is a step on the way to a project, not a place to leave open: as a window it closes
+    /// behind the project it opened, the way a welcome window does. It comes back with Open Project (⌘O),
+    /// and as a sheet it is dismissed by its host instead.
     private func open(_ ref: ProjectRef) {
         openWindow(value: ref)
         onDismiss()
+        if context == .window { dismissWindow() }
     }
 
     private func openLocalFolder() {

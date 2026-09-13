@@ -105,7 +105,9 @@ extension SampleData {
                     verificationLabel: "Code-inspected · not reproduced",
                     locations: [],
                     limits: "Inspected revision `9c2e410`. Declined on 28 Aug; see Decisions › History, “Decline search index rewrite”.",
-                    historyNote: "Previously declined. Reconsider only with a documented change in circumstances."
+                    historyNote: "Previously declined. Reconsider only with a documented change in circumstances.",
+                    // The drift half of a report, so the sample shows both kinds of chip and both filters.
+                    kind: .architecture
                 ),
             ],
             searchNote: "Issue search is unavailable (GitHub disconnected). This is different from a search that returned nothing."

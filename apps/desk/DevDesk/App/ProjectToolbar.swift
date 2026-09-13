@@ -16,22 +16,13 @@ struct ProjectToolbar: ToolbarContent {
     }
 
     var body: some ToolbarContent {
-        ToolbarItem(placement: .navigation) {
-            Button { model.present(.openProject) } label: {
-                Label("Open project", systemImage: "folder")
-                    .labelStyle(.titleAndIcon)
-            }
-        }
         if let summary = model.snapshot?.activitySummary {
             ToolbarItem(placement: .primaryAction) {
                 ActivitySummary(badge: summary)
             }
         }
-        // The countdown times the project; the three glyphs open panels. Two groups, never one strip: on macOS 26
-        // adjacent toolbar items share one background, which is what made the ring look like part of the panels.
-        ToolbarItem(placement: .primaryAction) {
-            RefreshStatus(model: model)
-        }
+        // The reload ring lived here, spending its life counting down to an automatic reload nobody had asked
+        // about. Reloading is a pull at the top of the screen now, and ⌘R in the Project menu.
         // `#available` cannot rescue a symbol the SDK lacks: ToolbarSpacer is macOS 26 API and CI builds on
         // Xcode 16.4 (macOS 15 SDK), where it does not exist to be referenced. Swift 6.2 ships with that SDK.
         #if compiler(>=6.2)

@@ -83,6 +83,9 @@ struct FindingCard: View {
     private var chips: some View {
         HStack(spacing: 6) {
             StatusPill(badge: StatusBadge(FindingTone.of(finding), finding.listDetail))
+            // Which half of the survey it came out of. A drift and a defect read the same otherwise, and the
+            // report itself is the only place that said which this was.
+            PropertyChip(finding.kind.rawValue, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             if let area = finding.area {
                 PropertyChip(area.rawValue, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             }

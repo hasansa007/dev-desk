@@ -49,6 +49,7 @@ public struct LocalGitDataSource: ProjectDataSource {
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
         let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
         let localBacklog = LocalBacklog.read(projectPath: top)
+        let detected = await tools
         let board: Surface<[DeskTask]>
         if let refusal {
             board = .unavailable(refusal)
@@ -63,8 +64,9 @@ public struct LocalGitDataSource: ProjectDataSource {
             boardNote: refusal != nil ? "" : BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
             findings: .available(await findings), ideation: .available(await ideation),
             roadmap: Self.roadmap(github),
-            connections: await tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
-            capabilities: ToolDetection.capabilities, insights: .unavailable(Self.insightsReason),
+            connections: detected + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
+            capabilities: ToolDetection.capabilities,
+            insights: InsightsAgent.availability(connections: detected, repositoryRoot: top, noAgentReason: Self.insightsReason),
             projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github),
             slug: github.data?.slug, activeMilestone: active.title,
             localBacklog: localBacklog, filedBacklogKeys: LocalBacklog.filedKeys(projectPath: top), repositoryRoot: top)
@@ -163,7 +165,8 @@ public struct LocalGitDataSource: ProjectDataSource {
             findings: .unavailable(reason), ideation: .unavailable(reason),
             roadmap: .unavailable(reason),
             connections: tools + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
-            capabilities: ToolDetection.capabilities, insights: .unavailable(insightsReason),
+            capabilities: ToolDetection.capabilities,
+            insights: InsightsAgent.availability(connections: tools, repositoryRoot: nil, noAgentReason: insightsReason),
             projectFacts: facts(base: nil, baseShort: nil, remote: nil,
                                 active: (nil, unread ? "git could not read this folder" : "not a git repository"), github: github))
     }

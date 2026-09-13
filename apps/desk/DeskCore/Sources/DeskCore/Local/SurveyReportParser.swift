@@ -72,19 +72,22 @@ enum SurveyReportParser {
         var section: Section?
         var bullet: String?
         var continuation: [String] = []
+        /// Inside ARCHITECTURE a bold line decides what follows: its drift lists are findings, its prose
+        /// and its "missed by the surveyor" note are not. Elsewhere a bold line is ordinary text.
+        ///
+        /// It is also the only thing that knows a drift from a defect once a bullet is flushed, so it is
+        /// declared above `flush` rather than below it — a nested function cannot read what comes after it.
+        var inArchitecture = false
 
         func flush() {
             guard let section, let text = bullet else { return }
             let index = (counts[section] ?? 0) + 1
             counts[section] = index
-            findings.append(finding(text, continuation: continuation, section: section, index: index, runID: runID))
+            findings.append(finding(text, continuation: continuation, section: section, index: index, runID: runID,
+                                    kind: inArchitecture ? .architecture : .defect))
             bullet = nil
             continuation = []
         }
-
-        /// Inside ARCHITECTURE a bold line decides what follows: its drift lists are findings, its prose
-        /// and its "missed by the surveyor" note are not. Elsewhere a bold line is ordinary text.
-        var inArchitecture = false
 
         for line in GitOutput.lines(markdown) {
             if line.hasPrefix("#") {
@@ -115,7 +118,10 @@ enum SurveyReportParser {
         return String(line[match.range.upperBound...])
     }
 
-    private static func finding(_ text: String, continuation: [String], section: Section, index: Int, runID: String) -> Finding {
+    /// `kind` comes from the section the bullet was read under, because nothing in the bullet itself says
+    /// whether it is a defect or a drift — only where the report put it does.
+    private static func finding(_ text: String, continuation: [String], section: Section, index: Int, runID: String,
+                                kind: FindingKind) -> Finding {
         // A bullet's claim is its first line; the mechanism, what was expected and what was measured are on
         // the indented lines under it. Reading only the first line gave every finding a title and an empty
         // body — a report of fifteen that said nothing once you opened one.
@@ -161,7 +167,8 @@ enum SurveyReportParser {
                        // alone left the markers AND added backslashes. Escaping still runs, so a link in a
                        // report's own text stays literal text.
                        summary: Markdown.escape(Markdown.plain(rest.joined(separator: " · "))),
-                       verificationLabel: section.verificationLabel, locations: locations, limits: limits)
+                       verificationLabel: section.verificationLabel, locations: locations, limits: limits,
+                       kind: kind)
     }
 
     /// The paths after "touches:" on a bullet's continuation line, up to whatever structured field follows —

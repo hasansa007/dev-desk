@@ -26,6 +26,14 @@ extension FindingCategory {
     }
 }
 
+/// Which half of the survey a finding came out of. `dev:survey` writes them in one report but they are two
+/// different claims: a defect is something that misbehaves, a drift is the shape of the code disagreeing with
+/// the shape it is documented to have. The card said neither, so the two read as one list.
+public enum FindingKind: String, CaseIterable, Hashable {
+    case defect = "Defect"
+    case architecture = "Architecture"
+}
+
 public struct SurveyRun: Identifiable, Hashable {
     public var id: String
     public var label: String       // "today 09:40", or a report file stem
@@ -92,6 +100,9 @@ public struct Finding: Identifiable, Hashable {
     public var title: String
     public var listDetail: String
     public var categories: Set<FindingCategory>
+    /// Defect unless the report put it under ARCHITECTURE. Everything the door writes outside that section is
+    /// a defect, so the default is the right answer for every caller with no section to read it from.
+    public var kind: FindingKind
     public var summary: String
     public var verificationLabel: String
     public var locations: [String]
@@ -99,12 +110,14 @@ public struct Finding: Identifiable, Hashable {
     public var reconcile: Reconciliation?
     public var historyNote: String?
     public init(id: String, runID: String, title: String, listDetail: String, categories: Set<FindingCategory>, summary: String,
-                verificationLabel: String, locations: [String], limits: String, reconcile: Reconciliation? = nil, historyNote: String? = nil) {
+                verificationLabel: String, locations: [String], limits: String, reconcile: Reconciliation? = nil, historyNote: String? = nil,
+                kind: FindingKind = .defect) {
         self.id = id
         self.runID = runID
         self.title = title
         self.listDetail = listDetail
         self.categories = categories
+        self.kind = kind
         self.summary = summary
         self.verificationLabel = verificationLabel
         self.locations = locations
@@ -134,5 +147,10 @@ public struct FindingsReport: Hashable {
 
     public func count(of category: FindingCategory, run runID: String?) -> Int {
         findings.filter { ($0.runID == runID || runID == nil) && $0.categories.contains(category) }.count
+    }
+
+    /// The same count for the other half of what a finding is, so its filter chip can carry a number too.
+    public func count(of kind: FindingKind, run runID: String?) -> Int {
+        findings.filter { ($0.runID == runID || runID == nil) && $0.kind == kind }.count
     }
 }

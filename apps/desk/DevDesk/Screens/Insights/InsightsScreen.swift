@@ -2,28 +2,118 @@ import DeskCore
 import SwiftUI
 
 /// Asking about the project is a place you go, not a panel over something else: history on the left, the
-/// conversation down the middle, the composer along the bottom.
+/// conversation down the middle, the composer along the bottom. Architecture is the same question drawn rather
+/// than asked, so it is a tab here and not a destination of its own.
 struct InsightsScreen: View {
     @Bindable var model: ProjectWindowModel
     @Bindable private var insights: InsightsConversation
     @FocusState private var composerFocused: Bool
+    @State private var tab = Tab.chat
+    @State private var diagrams: [ArchDiagram] = []
+    @State private var selectedDiagramID: String?
+
+    private enum Tab: String, CaseIterable {
+        case chat = "Chat", architecture = "Architecture"
+    }
 
     init(model: ProjectWindowModel) {
         self.model = model
         self.insights = model.insights
     }
 
+    private var repositoryRoot: String? { model.snapshot?.repositoryRoot }
+    private var selectedDiagram: ArchDiagram? {
+        diagrams.first { $0.id == selectedDiagramID } ?? diagrams.first
+    }
+
     var body: some View {
         HStack(spacing: 0) {
-            historyRail
+            rail
             VStack(spacing: 0) {
                 header
-                conversation
-                composer
+                DialogTabBar(titles: Tab.allCases.map(\.rawValue), selected: tab.rawValue) { title in
+                    if let next = Tab(rawValue: title) { tab = next }
+                }
+                if tab == .chat {
+                    conversation
+                    composer
+                } else {
+                    architecture
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(DeskColor.canvas)
+        // The folder is read when the project is, not on every redraw: a pane that lists files must not list them in body.
+        .task(id: repositoryRoot) {
+            diagrams = repositoryRoot.map(ArchDiagrams.list) ?? []
+            if selectedDiagramID == nil { selectedDiagramID = diagrams.first?.id }
+        }
+    }
+
+    @ViewBuilder private var rail: some View {
+        if tab == .chat { historyRail } else { diagramRail }
+    }
+
+    /// The diagrams `dev:arch` wrote, by name. The app lists and shows them; it never draws one.
+    private var diagramRail: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text("Diagrams")
+                .font(DeskFont.body.weight(.semibold))
+                .foregroundStyle(DeskColor.ink)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 12))
+                .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+
+            if diagrams.isEmpty {
+                Text("No diagrams yet")
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .padding(14)
+            } else {
+                ForEach(diagrams) { diagram in
+                    Button { selectedDiagramID = diagram.id } label: {
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(diagram.title)
+                                .font(DeskFont.secondary)
+                                .foregroundStyle(DeskColor.ink)
+                                .lineLimit(2)
+                            Text(diagram.url.lastPathComponent)
+                                .font(DeskFont.mono(11))
+                                .foregroundStyle(DeskColor.faintInk)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 12))
+                        .background(selectedDiagram?.id == diagram.id ? DeskColor.tone(.info).fill : Color.clear)
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityAddTraits(selectedDiagram?.id == diagram.id ? .isSelected : [])
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .frame(width: 248, alignment: .leading)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(DeskColor.surface)
+        .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
+    }
+
+    @ViewBuilder private var architecture: some View {
+        if let diagram = selectedDiagram {
+            WebView(file: diagram.url)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        } else {
+            VStack {
+                Spacer(minLength: 0)
+                NoticeBanner(tone: .neutral, title: "No diagrams yet",
+                             message: "dev:arch draws this project and writes each diagram to docs/arch/ as a standalone HTML file. Run it, and they appear here.")
+                    .frame(maxWidth: 560)
+                Spacer(minLength: 0)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(24)
+        }
     }
 
     private var historyRail: some View {
@@ -218,12 +308,12 @@ struct InsightsScreen: View {
                                       lineWidth: composerFocused ? 2 : 1))
                     .focused($composerFocused)
                     .onSubmit { insights.send() }
-                    .disabled(insights.script == nil)
+                    .disabled(!insights.canAsk)
                 Button("Send") { insights.send() }
                     .buttonStyle(DeskButtonStyle(kind: .primary, size: .composer))
-                    .disabled(insights.script == nil || insights.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .disabled(!insights.canAsk || insights.draft.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
-            Text(insights.script?.footnote ?? "Press Enter to send. Exploration is read-only.")
+            Text(insights.script?.footnote ?? liveFootnote)
                 .font(.system(size: 11))
                 .foregroundStyle(DeskColor.faintInk)
                 .lineSpacing(3)
@@ -233,6 +323,13 @@ struct InsightsScreen: View {
         .padding(EdgeInsets(top: 12, leading: 24, bottom: 14, trailing: 24))
         .background(DeskColor.surface)
         .overlay(alignment: .top) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+    }
+
+    /// A real run reads the repository through the insights door, which takes as long as reading takes; saying so
+    /// under the composer is the only warning a question needs.
+    private var liveFootnote: String {
+        guard let plan = insights.plan else { return "Press Enter to send. Exploration is read-only." }
+        return "Press Enter to send. \(plan.provider) reads this repository to answer, which can take a few minutes. Exploration is read-only."
     }
 }
 

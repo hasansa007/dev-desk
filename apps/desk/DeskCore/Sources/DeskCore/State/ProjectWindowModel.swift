@@ -177,6 +177,9 @@ public final class ProjectWindowModel {
     public var selectedFindingID: String?
     public var selectedRunID: String?
     public var findingFilter: FindingCategory?
+    /// Architecture or defect, the other half of what a finding is. It filters beside the category rather
+    /// than inside it: "New" and "Architecture" are different questions about the same finding.
+    public var findingKindFilter: FindingKind?
     public var selectedOpportunityID: String?
     public var selectedIdeationRunID: String?
     public var ideationFilter: OpportunityVerdict?
@@ -196,7 +199,7 @@ public final class ProjectWindowModel {
         self.runner = runner
         self.ref = ref
         self.source = source
-        self.insights = InsightsConversation(delay: insightsDelay)
+        self.insights = InsightsConversation(delay: insightsDelay, runner: runner)
         var root: URL?
         if case .local(let path) = ref { root = URL(fileURLWithPath: path, isDirectory: true) }
         sessions = ShellSessions(projectRoot: root)
@@ -278,6 +281,12 @@ public final class ProjectWindowModel {
     /// so the board stays where it was and the dialog carries the whole task.
     public func openTask(_ id: String) {
         destination = .board
+        openTaskHere(id)
+    }
+
+    /// The same dialog, opened over the screen that asked for it. The roadmap is a view of the board's own
+    /// issues, so reading one there should not move you to the board and leave you to find your way back.
+    public func openTaskHere(_ id: String) {
         lastOpenedTaskID = id
         selectedTaskID = id
         tab = task(id)?.isUnstarted == true ? .requirements : .activity
@@ -379,6 +388,7 @@ public final class ProjectWindowModel {
             selectedFindingID = nil
             selectedRunID = nil
             findingFilter = nil
+            findingKindFilter = nil
         }
         if options.olderReports, case .local(let path) = ref {
             do {
@@ -402,6 +412,7 @@ public final class ProjectWindowModel {
     public func openFinding(_ id: String) {
         destination = .survey
         findingFilter = nil
+        findingKindFilter = nil
         showsIgnoredFindings = ignoredFindings.contains(id)
         selectedFindingID = id
         present(.finding(id))
@@ -454,6 +465,16 @@ public final class ProjectWindowModel {
 
     /// Whether this door already has a run of its own live in this window — the one a second press is refused.
     public func isDoorRunning(_ door: String) -> Bool { isRunLive(DoorRuns.id(door: door)) }
+
+    /// Whether a survey in a terminal would clash with one already going here. Passing a scope asks about
+    /// that half of the report only — `defects` is free to start beside a live `architecture` run, and both
+    /// are refused beside a live `both`, which occupies the whole report. Passing nothing asks the door-wide
+    /// question ("is any survey going?"), which is what resetting the survey has to know.
+    public func isSurveyRunning(scope: SurveyRunScope? = nil) -> Bool {
+        SurveyRunScope.allCases.contains { live in
+            isRunLive(DoorRuns.id(door: "survey", scope: live)) && (scope.map(live.conflicts(with:)) ?? true)
+        }
+    }
 
     /// What this task has live right now, whichever screen started it — a door run, its own shell, or its agent.
     public func activity(of task: DeskTask) -> TaskActivity? {

@@ -318,4 +318,82 @@ final class JobRegistryTests: XCTestCase {
         XCTAssertEqual(jobs.job(id)?.log.count, BackgroundJob.logLimit)
         XCTAssertEqual(jobs.job(id)?.log.last, "line \(BackgroundJob.logLimit + 40)")
     }
+
+    /// A journal over a real temporary folder rather than a stub: what is being proved is that a killed app
+    /// leaves a record behind on disk, which a stub would only assert had been asked for.
+    private func journalled() throws -> (JobRegistry, FakeSpawner, RunJournal, URL) {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        let journal = RunJournal(projectRoot: root)
+        let (jobs, spawner) = registry()
+        jobs.journalFor = { $0 == root.path ? journal : nil }
+        return (jobs, spawner, journal, root)
+    }
+
+    /// The crash case, end to end: a live run is on disk and unclean from its first moment, every change it
+    /// makes rewrites it, and only its end takes it away (ADR 0030).
+    func testALiveRunIsWrittenDownAndItsEndClearsIt() throws {
+        let (jobs, spawner, journal, root) = try journalled()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Codex",
+                                          permission: .writeInRepo, directory: root.path, mode: .delegate))
+        let started = try XCTUnwrap(journal.recover().first)
+        XCTAssertEqual(started.id, id)
+        XCTAssertEqual(started.kind, .backgroundRun)
+        XCTAssertEqual(started.clean, false, "a record is unclean while it is live — that is what recovery reads")
+        XCTAssertEqual(started.stateLabel, "Starting")
+        XCTAssertEqual(started.permission, RunPermission.writeInRepo.rawValue)
+        XCTAssertEqual(started.mode, RunMode.delegate.rawValue)
+
+        spawner.emit(#"{"type":"system","subtype":"init","session_id":"sess-9"}"#, to: id)
+        spawner.emit(#"{"type":"assistant","message":{"content":[{"type":"text","text":"Reading the door"}]}}"#, to: id)
+        let running = try XCTUnwrap(journal.recover().first)
+        XCTAssertEqual(journal.all().count, 1, "the same run stays one record")
+        XCTAssertEqual(running.stateLabel, "Running in the background")
+        XCTAssertEqual(running.sessionID, "sess-9", "without the id there is nothing to resume")
+        XCTAssertEqual(running.logTail, ["Reading the door"])
+
+        spawner.emit(#"{"type":"result","subtype":"success","is_error":false,"result":"Survey written"}"#, to: id)
+        XCTAssertTrue(journal.all().isEmpty, "a finished run is history, not something to offer to continue")
+    }
+
+    /// Quitting ends the run the same way a kill does, but on the app's terms. Without the clean mark every
+    /// ordinary quit would reappear as a crash to recover from.
+    func testAGracefulQuitMarksTheRecordCleanInsteadOfLeavingItLookingLikeACrash() throws {
+        let (jobs, _, journal, root) = try journalled()
+        defer { try? FileManager.default.removeItem(at: root) }
+        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                     permission: .readOnly, directory: root.path))
+        jobs.markAllClean()
+        XCTAssertTrue(journal.recover().isEmpty)
+        XCTAssertEqual(journal.all().map(\.clean), [true])
+    }
+
+    /// The one thing recovery can honestly do when the session id was captured: continue that session, under
+    /// the grant the dead run held, and take its record away so it is not offered twice.
+    func testResumingFromARecordContinuesTheSessionAndClearsTheRecord() throws {
+        let (jobs, spawner, journal, root) = try journalled()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .everything, directory: root.path))
+        let record = try XCTUnwrap(journal.recover().first)
+        // The run itself is gone; this stands in for the app it died with.
+        jobs.stop(id)
+        let resumed = try XCTUnwrap(jobs.resumeFromRecord(record))
+        let launch = try XCTUnwrap(spawner.launched.last).launch
+        XCTAssertTrue(launch.arguments.contains("--resume"))
+        XCTAssertTrue(launch.arguments.contains(try XCTUnwrap(record.sessionID)))
+        XCTAssertTrue(launch.arguments.contains("--dangerously-skip-permissions"), "the dead run's grant, not today's default")
+        XCTAssertEqual(jobs.job(resumed)?.title, "Survey")
+        XCTAssertEqual(journal.recover().map(\.id), [resumed], "the old record is gone; the new run has its own")
+    }
+
+    func testARecordWithNoSessionIdHasNothingToResume() throws {
+        let (jobs, _, _, root) = try journalled()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let record = JournalRecord(id: "job:survey:dead", kind: .backgroundRun, title: "Survey", agent: "Claude",
+                                   directory: root.path, stateLabel: "Running in the background")
+        XCTAssertNil(jobs.resumeFromRecord(record))
+        XCTAssertTrue(jobs.jobs.isEmpty, "a resume that cannot continue the session must start nothing")
+    }
 }

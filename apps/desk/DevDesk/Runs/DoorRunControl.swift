@@ -16,10 +16,22 @@ struct DoorRunControl: View {
 
     /// In a terminal or in the background — either way this door is busy **in this project**. The registry is
     /// the app's, so the directory is what keeps one window's run out of another's button.
+    ///
+    /// Survey is the exception: a defects run and an architecture run write different halves of the report,
+    /// so one of them going does not mean the button has nothing left to offer. This button opens the sheet
+    /// where that half is chosen, so it only says "Running" when no scope at all could still be started —
+    /// a `both` run, which occupies the whole report, or a defects run and an architecture run together.
     private var isRunning: Bool {
+        if door == "survey" { return SurveyScope.allCases.allSatisfy(isSurveyBlocked) }
         if model.isDoorRunning(door) { return true }
         guard case .local(let path) = model.ref else { return false }
         return jobs?.hasLiveJob(door: door, in: path) ?? false
+    }
+
+    private func isSurveyBlocked(_ scope: SurveyScope) -> Bool {
+        if model.isSurveyRunning(scope: scope) { return true }
+        guard case .local(let path) = model.ref else { return false }
+        return jobs?.hasLiveSurvey(scope: scope, in: path) ?? false
     }
 
     var body: some View {

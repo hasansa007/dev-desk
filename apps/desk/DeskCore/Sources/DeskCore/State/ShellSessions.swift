@@ -49,11 +49,17 @@ public final class ShellSessions {
     @ObservationIgnored private var usageReads: [String: Date] = [:]
     @ObservationIgnored private let projectRoot: URL?
     @ObservationIgnored private let runner: CommandRunner
+    /// Where this project's live sessions are written down, so the app being killed leaves a trace of them
+    /// (ADR 0030). Nil for a sample, which has no folder to write in and nothing to record.
+    @ObservationIgnored public let journal: RunJournal?
+    /// What each live session would be called in a recovered row, since nothing else on disk knows the task's title.
+    @ObservationIgnored private var titles: [String: String] = [:]
 
     /// A nil root, as a sample has, leaves every session failed and runs nothing.
     public init(projectRoot: URL?, runner: CommandRunner = ProcessRunner()) {
         self.projectRoot = projectRoot
         self.runner = runner
+        self.journal = projectRoot.map { RunJournal(projectRoot: $0) }
     }
 
     /// What this task's session is, or nil when it has never started one.

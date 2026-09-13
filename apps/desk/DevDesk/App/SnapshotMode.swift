@@ -139,7 +139,9 @@ final class SnapshotMode {
         // Idle, so the capture shows the run with the command it would type; nothing is started.
         Capture(name: "08-runs-panel") { model in
             model.go(.survey)
-            model.prepareRun(door: "survey", title: "Survey", agent: "Claude")
+            // Scoped like every survey the app starts, so the capture shows the id a real run carries.
+            model.prepareRun(door: "survey", title: SurveyRunScope.both.runTitle, agent: "Claude",
+                             id: DoorRuns.id(door: "survey", scope: .both))
             model.go(.terminals)
         },
         Capture(name: "09-unstarted-task-sheet", isSheet: true) { model in
