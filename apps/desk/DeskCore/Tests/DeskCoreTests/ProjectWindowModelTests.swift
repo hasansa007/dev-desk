@@ -32,6 +32,21 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertFalse(model.ignoredFindings.contains("F-108"))
     }
 
+    /// Closing one and opening another must not hand out an id that is already on screen: two rows with one
+    /// id collide in the list and in the session registry, and the new terminal draws the old one's frame.
+    func testAClosedTerminalsIdIsNeverHandedOutAgain() async {
+        let model = await makeStudyHubModel()
+        let first = model.newTerminal()
+        let second = model.newTerminal()
+        model.closeTerminal(first)
+        let third = model.newTerminal()
+
+        XCTAssertNotEqual(third, second)
+        XCTAssertNotEqual(third, first)
+        XCTAssertEqual(model.scratchTerminals, [second, third])
+        XCTAssertEqual(Set(model.scratchTerminals).count, model.scratchTerminals.count)
+    }
+
     func testIgnoredFindingsAreKeptPerProject() async {
         let model = await makeStudyHubModel()
         let other = ProjectWindowModel(ref: .local(path: "/tmp/other-project"), source: SampleDataSource(project: .studyHub),

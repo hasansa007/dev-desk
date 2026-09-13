@@ -140,9 +140,15 @@ public final class ProjectWindowModel {
     /// is where you would have opened Terminal yourself.
     public private(set) var scratchTerminals: [String] = []
 
+    /// Never reused, because the count is not an identity: open two, close the first, open another, and
+    /// "count + 1" hands out term:2 a second time — two rows with one id, colliding in the list and in the
+    /// session registry, so the new terminal draws the old one's frame.
+    @ObservationIgnored private var terminalsOpened = 0
+
     @discardableResult
     public func newTerminal() -> String {
-        let id = "term:\(scratchTerminals.count + 1)"
+        terminalsOpened += 1
+        let id = "term:\(terminalsOpened)"
         scratchTerminals.append(id)
         selectedSessionID = id
         return id
