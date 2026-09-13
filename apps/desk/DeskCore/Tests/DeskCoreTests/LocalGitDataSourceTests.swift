@@ -69,6 +69,9 @@ final class TempGitRepo {
     }
 }
 
+/// The remedy an unavailable GitHub carries, pinned here so a change to the wording has to be deliberate.
+private let install = "Install the GitHub CLI (`brew install gh`), then `gh auth login`."
+
 final class LocalGitDataSourceTests: XCTestCase {
     private let issueList = "gh issue list --repo acme/app --state open --limit 200 --json number,title,labels,milestone,updatedAt,body,url"
     private let openPRs = "gh pr list --repo acme/app --state open --limit 100 --json number,title,headRefName,isCrossRepository,reviewDecision,isDraft,url,body"
@@ -187,8 +190,10 @@ final class LocalGitDataSourceTests: XCTestCase {
             $0.script(activeAuth, .failed(127, stderr: "env: gh: No such file or directory"))
         }
         XCTAssertEqual(github, Connection(id: "github", name: "GitHub", state: .unavailable, label: "gh not installed"))
-        XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (gh not installed), so only local branches are shown.")
-        XCTAssertEqual(snapshot.roadmap.unavailableReason, "GitHub is unavailable (gh not installed), so the roadmap can't be read.")
+        XCTAssertEqual(snapshot.boardNote,
+                       "GitHub is unavailable (gh not installed), so only local branches are shown. " + install)
+        XCTAssertEqual(snapshot.roadmap.unavailableReason,
+                       "GitHub is unavailable (gh not installed), so the roadmap can't be read. " + install)
         XCTAssertEqual(snapshot.projectFacts.first { $0.key == "GitHub account" }?.value, "gh not installed")
     }
 

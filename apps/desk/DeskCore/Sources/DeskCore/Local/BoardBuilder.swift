@@ -37,7 +37,8 @@ enum BoardBuilder {
     static func note(github: GitHubState, activeMilestone: (title: String?, why: String), localBranchNote: String? = nil) -> String {
         let suffix = localBranchNote.map { " \($0)" } ?? ""
         guard let data = github.data else {
-            return "GitHub is unavailable (\(github.unavailableReason ?? "")), so only local branches are shown." + suffix
+            let remedy = github.unavailableRemedy.map { " \($0)" } ?? ""
+            return "GitHub is unavailable (\(github.unavailableReason ?? "")), so only local branches are shown.\(remedy)" + suffix
         }
         let rule = "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued."
         let milestone = activeMilestone.title.map { " Active milestone: \($0), \(activeMilestone.why)." } ?? " No active milestone, so Queued is empty."

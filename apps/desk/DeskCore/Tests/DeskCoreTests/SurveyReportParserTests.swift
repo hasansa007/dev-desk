@@ -72,4 +72,20 @@ final class SurveyReportParserTests: XCTestCase {
         XCTAssertEqual(finding.locations, ["app/[id]/page.tsx:12", "app/(auth)/login/page.tsx:7", "src/routes/+page.svelte:3"])
         XCTAssertEqual(finding.summary, "mechanism: step 1 drops the id")
     }
+
+    /// The row menu and the detail pane both file; they have to hand the door the same thing.
+    func testBacklogDescriptionCarriesTheClaimItsEvidenceAndItsRun() {
+        let report = "## CONFIRMED (1)\n- Token never refreshes · src/auth.ts:31 · mechanism: the timer is cleared on blur\n"
+        let finding = SurveyReportParser.parse(report, runID: "run-0940")[0]
+        let description = finding.backlogDescription
+        XCTAssertTrue(description.hasPrefix("Token never refreshes. "), description)
+        XCTAssertTrue(description.contains("Sources: src/auth.ts:31."), description)
+        XCTAssertTrue(description.contains("run run-0940"), description)
+        XCTAssertTrue(description.contains(finding.verificationLabel), description)
+    }
+
+    func testBacklogDescriptionOmitsSourcesWhenThereAreNone() {
+        let finding = SurveyReportParser.parse("## PLAUSIBLE (1)\n- Slow start\n", runID: "r")[0]
+        XCTAssertFalse(finding.backlogDescription.contains("Sources:"))
+    }
 }

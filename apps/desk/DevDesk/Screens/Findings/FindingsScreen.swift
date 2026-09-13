@@ -34,9 +34,17 @@ private struct FindingsSplitView: View {
     @Bindable var model: ProjectWindowModel
     let report: FindingsReport
 
+    private var ignoredCount: Int {
+        report.findings.filter { model.selectedRunID == nil || $0.runID == model.selectedRunID }
+            .filter { model.ignoredFindings.contains($0.id) }.count
+    }
+
+    /// Ignored findings are out of every category list until the Ignored chip is on, and then they are the list:
+    /// setting something aside that keeps appearing under "New" has not been set aside.
     private var visibleFindings: [Finding] {
         report.findings
             .filter { model.selectedRunID == nil || $0.runID == model.selectedRunID }
+            .filter { model.ignoredFindings.contains($0.id) == model.showsIgnoredFindings }
             .filter { model.findingFilter == nil || $0.categories.contains(model.findingFilter!) }
     }
 
@@ -56,7 +64,8 @@ private struct FindingsSplitView: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                     }
                 } else {
-                    Text("No findings match this filter.")
+                    Text(model.showsIgnoredFindings ? "Nothing is ignored in this run."
+                                                    : "No findings match this filter.")
                         .font(DeskFont.body)
                         .foregroundStyle(DeskColor.mutedInk)
                         .padding(18)
@@ -72,7 +81,7 @@ private struct FindingsSplitView: View {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(visibleFindings) { finding in
-                        FindingRow(finding: finding, isSelected: finding.id == selectedFinding?.id) {
+                        FindingRow(model: model, finding: finding, isSelected: finding.id == selectedFinding?.id) {
                             model.selectedFindingID = finding.id
                         }
                     }
@@ -107,6 +116,13 @@ private struct FindingsSplitView: View {
                     FindingFilterChip(title: "\(category.rawValue) \(report.count(of: category, run: model.selectedRunID))",
                                       category: category, isSelected: isSelected) {
                         model.findingFilter = isSelected ? nil : category
+                    }
+                }
+                if ignoredCount > 0 || model.showsIgnoredFindings {
+                    FindingFilterChip(title: "Ignored \(ignoredCount)", category: .closedOrDeclined,
+                                      isSelected: model.showsIgnoredFindings) {
+                        model.showsIgnoredFindings.toggle()
+                        model.selectedFindingID = nil
                     }
                 }
             }
@@ -172,30 +188,68 @@ private struct FindingFilterChip: View {
 }
 
 private struct FindingRow: View {
+    let model: ProjectWindowModel
     let finding: Finding
     let isSelected: Bool
     let action: () -> Void
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+
+    private var isIgnored: Bool { model.ignoredFindings.contains(finding.id) }
 
     var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("\(finding.id) \(finding.title)")
-                    .font(DeskFont.body.weight(.semibold))
-                    .foregroundStyle(DeskColor.ink)
-                Text(finding.listDetail)
-                    .font(DeskFont.small)
-                    .foregroundStyle(DeskColor.secondaryInk)
+        HStack(spacing: 6) {
+            // The row's own button, with the menu beside it rather than inside it — a menu nested in a button
+            // gets its clicks eaten by the button, which is how Start and Stop both came to do nothing.
+            Button(action: action) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(finding.id) \(finding.title)")
+                        .font(DeskFont.body.weight(.semibold))
+                        .foregroundStyle(isIgnored ? DeskColor.faintInk : DeskColor.ink)
+                    Text(isIgnored ? "Ignored · \(finding.listDetail)" : finding.listDetail)
+                        .font(DeskFont.small)
+                        .foregroundStyle(DeskColor.secondaryInk)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle())
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(EdgeInsets(top: 11, leading: 14, bottom: 11, trailing: 14))
-            .contentShape(Rectangle())
-            .background(isSelected ? DeskColor.tone(.info).fill : Color.clear)
-            .overlay(alignment: .leading) {
-                if isSelected { Rectangle().fill(DeskColor.accent).frame(width: 3) }
-            }
-            .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
+            .buttonStyle(.plain)
+            menu
         }
-        .buttonStyle(.plain)
+        .padding(EdgeInsets(top: 11, leading: 14, bottom: 11, trailing: 10))
+        .background(isSelected ? DeskColor.tone(.info).fill : Color.clear)
+        .opacity(isIgnored ? 0.6 : 1)
+        .overlay(alignment: .leading) {
+            if isSelected { Rectangle().fill(DeskColor.accent).frame(width: 3) }
+        }
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
+    }
+
+    /// Filing and ignoring without opening the finding first: the list is where you triage, and reading every
+    /// item before you can set it aside is how a report of fifteen stops being read.
+    private var menu: some View {
+        Menu {
+            Button("Add to backlog…") { file() }
+                .disabled(model.runBlockedReason(agent: defaultConnection) != nil)
+            if isIgnored {
+                Button("Stop ignoring") { model.restoreFinding(finding.id) }
+            } else {
+                Button("Ignore") { model.ignoreFinding(finding.id) }
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .imageScale(.medium)
+                .foregroundStyle(DeskColor.mutedInk)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel("Actions for \(finding.id)")
+    }
+
+    private func file() {
+        model.fileFromReport(jobs: jobs, itemID: finding.id, description: finding.backlogDescription,
+                             agent: defaultConnection)
     }
 }
 

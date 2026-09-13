@@ -92,6 +92,25 @@ enum GitHubState: Equatable {
         if case .unavailable(let reason) = self { return reason }
         return nil
     }
+
+    /// What to do about it, when the reason says something actionable. A GraphQL error pasted at the developer
+    /// names a failure without naming a fix, and the commonest cause here is a remote pointing at a repository
+    /// this account can no longer see — a deleted fork, a take-home repo, an org you left.
+    var unavailableRemedy: String? {
+        guard let reason = unavailableReason else { return nil }
+        if reason.contains("Could not resolve to a Repository") {
+            return "The remote points at a repository this GitHub account cannot see — it may have been deleted, "
+                + "made private, or your access removed. Point origin at a repository you own "
+                + "(`git remote set-url origin …`), or sign in as an account that can see this one (`gh auth login`)."
+        }
+        if reason.contains("gh not installed") {
+            return "Install the GitHub CLI (`brew install gh`), then `gh auth login`."
+        }
+        if reason.lowercased().contains("auth") || reason.contains("not logged") {
+            return "Run `gh auth login`, then reload."
+        }
+        return nil
+    }
 }
 
 /// Pure decoding of gh output.

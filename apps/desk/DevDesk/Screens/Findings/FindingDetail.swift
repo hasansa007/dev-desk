@@ -5,6 +5,7 @@ struct FindingDetail: View {
     let finding: Finding
     let model: ProjectWindowModel
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -42,21 +43,27 @@ struct FindingDetail: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 8) {
                 PropertyChip(finding.verificationLabel, verticalPadding: 2, horizontalPadding: 9)
-                Button("Add to backlog…") { file() }
-                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
-                    .disabled(model.runBlockedReason(agent: defaultConnection) != nil)
-                    .help(model.runBlockedReason(agent: defaultConnection)
-                          ?? "Queues dev:create-issue for this finding; it drafts and files with this repository's labels")
+                HStack(spacing: 8) {
+                    if model.ignoredFindings.contains(finding.id) {
+                        Button("Stop ignoring") { model.restoreFinding(finding.id) }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    } else {
+                        Button("Ignore") { model.ignoreFinding(finding.id) }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                            .help("Keeps this out of the list until you ask for ignored findings")
+                    }
+                    Button("Add to backlog…") { file() }
+                        .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                        .disabled(model.runBlockedReason(agent: defaultConnection) != nil)
+                        .help(model.runBlockedReason(agent: defaultConnection)
+                              ?? "Queues dev:create-issue for this finding; it drafts and files with this repository's labels")
+                }
             }
         }
     }
 
-    /// The door drafts the issue; this hands it the finding, its evidence and where it came from.
     private func file() {
-        let sources = finding.locations.isEmpty ? "" : " Sources: \(finding.locations.joined(separator: ", "))."
-        model.fileFromReport(itemID: finding.id,
-                             description: "\(finding.title). \(finding.summary)\(sources) "
-                                 + "Found by dev:survey, run \(finding.runID); \(finding.verificationLabel). \(finding.limits)",
+        model.fileFromReport(jobs: jobs, itemID: finding.id, description: finding.backlogDescription,
                              agent: defaultConnection)
     }
 

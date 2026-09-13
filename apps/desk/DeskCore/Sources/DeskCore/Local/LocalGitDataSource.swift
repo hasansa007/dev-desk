@@ -167,7 +167,10 @@ public struct LocalGitDataSource: ProjectDataSource {
 
     /// Without open issues every theme would look empty, so an issue-read failure makes the roadmap unavailable rather than bare.
     private static func roadmap(_ github: GitHubState) -> Surface<Roadmap> {
-        guard let data = github.data else { return .unavailable("GitHub is unavailable (\(github.unavailableReason ?? "")), so the roadmap can't be read.") }
+        guard let data = github.data else {
+            let remedy = github.unavailableRemedy.map { " \($0)" } ?? ""
+            return .unavailable("GitHub is unavailable (\(github.unavailableReason ?? "")), so the roadmap can't be read.\(remedy)")
+        }
         if let detail = data.issuesUnavailable { return .unavailable("Open issues could not be read (\(detail)), so the roadmap can't be read.") }
         return .available(RoadmapBuilder.build(milestones: data.milestones, issues: data.issues))
     }

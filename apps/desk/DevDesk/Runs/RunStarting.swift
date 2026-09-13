@@ -43,10 +43,22 @@ extension ProjectWindowModel {
 
     /// Approving an item files it through `dev:create-issue` rather than writing the issue here, so the door's
     /// checks and this repository's labels still apply to anything that reaches the backlog.
-    func fileFromReport(itemID: String, description: String, agent: String) {
-        prepareRun(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
-                   id: DoorRuns.id(door: "create-issue:\(itemID)"),
-                   folderNote: "filing reads the tracker, so it runs at the project root.")
+    /// Filing is not somewhere you go. It drafts an issue with this repository's own labels and files it, which
+    /// takes a door and a minute — so it runs in the BACKGROUND and you stay on the report you are reading.
+    /// It used to open a terminal and jump you to it, which answered a question nobody asked.
+    ///
+    /// Returns the job so the caller can show it filing, or nil when the door cannot run here.
+    @discardableResult
+    func fileFromReport(jobs: JobRegistry?, itemID: String, description: String, agent: String) -> String? {
+        guard let jobs, case .local(let path) = ref else {
+            // No background registry (a sample project, or a preview): fall back to the terminal it used to use.
+            prepareRun(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
+                       id: DoorRuns.id(door: "create-issue:\(itemID)"),
+                       folderNote: "filing reads the tracker, so it runs at the project root.")
+            return nil
+        }
+        return jobs.start(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
+                          permission: .everything, directory: path)
     }
 
     /// Starts `/dev #N` for a task. The card and the dialog both call this, so they cannot disagree about

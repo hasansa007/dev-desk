@@ -60,6 +60,7 @@ struct ProjectWindow: View {
         SnapshotWindowHook(ref: ref, model: model)
         ShellLifetimeHook(registries: [terminals])
         AutoAgentsHook(auto: auto, ref: ref)
+        FiledWorkHook(model: model)
     }
 
     private var subtitle: String {
@@ -92,6 +93,30 @@ struct ProjectWindow: View {
     private func recordRecent() {
         guard case .local = ref, let project = model.snapshot?.project else { return }
         AppServices.recents.record(ref, name: project.name, displayPath: project.displayPath)
+    }
+}
+
+/// A background door that files or edits an issue changes the tracker this window is reading, and nothing on
+/// screen knows that. Rather than wait out the refresh interval, reload as soon as one finishes here: filing
+/// from the survey is supposed to put a card on the board, and a board that only catches up a minute later
+/// reads as filing having done nothing.
+private struct FiledWorkHook: View {
+    let model: ProjectWindowModel
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
+
+    /// Counts the finished jobs that ran in THIS project. A count only ever grows as runs end, so a change
+    /// means one just did — and jobs from another window's project never move it.
+    private var finishedHere: Int {
+        guard let jobs, case .local(let path) = model.ref else { return 0 }
+        return jobs.jobs.filter { $0.directory == path && !$0.state.isLive }.count
+    }
+
+    var body: some View {
+        Color.clear
+            .frame(width: 0, height: 0)
+            .onChange(of: finishedHere) { _, _ in
+                Task { await model.load() }
+            }
     }
 }
 

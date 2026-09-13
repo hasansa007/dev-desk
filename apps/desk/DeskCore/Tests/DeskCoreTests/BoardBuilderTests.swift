@@ -1,6 +1,9 @@
 import XCTest
 @testable import DeskCore
 
+/// The remedy an unavailable GitHub carries, pinned here so a change to the wording has to be deliberate.
+private let install = "Install the GitHub CLI (`brew install gh`), then `gh auth login`."
+
 final class BoardBuilderTests: XCTestCase {
     private static let issue12Body = """
     ## Summary
@@ -430,8 +433,9 @@ final class BoardBuilderTests: XCTestCase {
                        rule + " Active milestone: v2, nearest due date 2026-10-01.")
         XCTAssertEqual(BoardBuilder.note(github: ready, activeMilestone: (nil, "no open milestone")),
                        rule + " No active milestone, so Queued is empty.")
+        // An unavailable GitHub says what to do about it: the note is the only place the developer is told.
         XCTAssertEqual(BoardBuilder.note(github: .unavailable("gh not installed"), activeMilestone: (nil, "gh not installed")),
-                       "GitHub is unavailable (gh not installed), so only local branches are shown.")
+                       "GitHub is unavailable (gh not installed), so only local branches are shown. " + install)
         var noIssues = GitHubData(slug: "acme/app")
         noIssues.issuesUnavailable = "the 'acme/app' repository has disabled issues"
         XCTAssertEqual(BoardBuilder.note(github: .ready(noIssues), activeMilestone: (nil, "no open milestone")),

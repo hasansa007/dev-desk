@@ -113,6 +113,26 @@ public final class ProjectWindowModel {
     public var tab: TaskTab = .activity
     /// Which session the Terminals destination has in front, when more than one is live.
     public var selectedSessionID: String?
+    /// Findings the developer has set aside. A survey reports what the code says; whether a finding is worth
+    /// acting on is a judgement the report cannot make, and re-reading the same fifteen items every run is how
+    /// a report stops being read at all. Kept per project in the app, never written into `docs/survey/`.
+    public var ignoredFindings: Set<String> {
+        get { Set(UserDefaults.standard.stringArray(forKey: Self.ignoredKey(ref)) ?? []) }
+        set { UserDefaults.standard.set(Array(newValue).sorted(), forKey: Self.ignoredKey(ref)) }
+    }
+
+    public func ignoreFinding(_ id: String) {
+        ignoredFindings.insert(id)
+        if selectedFindingID == id { selectedFindingID = nil }
+    }
+
+    public func restoreFinding(_ id: String) { ignoredFindings.remove(id) }
+
+    /// Ignored findings leave the category lists entirely; this chip is how they are seen again.
+    public var showsIgnoredFindings = false
+
+    static func ignoredKey(_ ref: ProjectRef) -> String { "desk.ignoredFindings.\(ref.id)" }
+
     /// Terminals opened for their own sake — not a door's, not a task's. They open at the project root, which
     /// is where you would have opened Terminal yourself.
     public private(set) var scratchTerminals: [String] = []

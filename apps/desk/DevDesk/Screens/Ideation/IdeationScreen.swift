@@ -210,6 +210,7 @@ private struct OpportunityRow: View {
 private struct OpportunityDetail: View {
     let opportunity: Opportunity
     let model: ProjectWindowModel
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
 
     var body: some View {
@@ -259,7 +260,7 @@ private struct OpportunityDetail: View {
     private func file() {
         let sources = opportunity.locations.isEmpty ? "" : " Sources: \(opportunity.locations.joined(separator: ", "))."
         let proposal = opportunity.proposed.map { " Proposed: \($0)." } ?? ""
-        model.fileFromReport(itemID: opportunity.id,
+        model.fileFromReport(jobs: jobs, itemID: opportunity.id,
                              description: "\(opportunity.title).\(proposal)\(sources) "
                                  + "Gain: \(opportunity.gain ?? "not stated"). Cost: \(opportunity.cost ?? "not stated"). "
                                  + "Doing nothing: \(opportunity.doingNothing ?? "not stated"). "

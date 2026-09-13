@@ -18,6 +18,34 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertEqual(model.selectedRunID, "run-0940")
     }
 
+    func testIgnoringAFindingDropsTheSelectionAndIsRestorable() async {
+        let model = await makeStudyHubModel()
+        defer { UserDefaults.standard.removeObject(forKey: ProjectWindowModel.ignoredKey(model.ref)) }
+        model.selectedFindingID = "F-108"
+
+        model.ignoreFinding("F-108")
+        XCTAssertTrue(model.ignoredFindings.contains("F-108"))
+        // The detail pane was showing it; leaving it selected would keep an ignored finding on screen.
+        XCTAssertNil(model.selectedFindingID)
+
+        model.restoreFinding("F-108")
+        XCTAssertFalse(model.ignoredFindings.contains("F-108"))
+    }
+
+    func testIgnoredFindingsAreKeptPerProject() async {
+        let model = await makeStudyHubModel()
+        let other = ProjectWindowModel(ref: .local(path: "/tmp/other-project"), source: SampleDataSource(project: .studyHub),
+                                       insightsDelay: .zero)
+        defer {
+            UserDefaults.standard.removeObject(forKey: ProjectWindowModel.ignoredKey(model.ref))
+            UserDefaults.standard.removeObject(forKey: ProjectWindowModel.ignoredKey(other.ref))
+        }
+
+        model.ignoreFinding("F-108")
+        XCTAssertTrue(model.ignoredFindings.contains("F-108"))
+        XCTAssertFalse(other.ignoredFindings.contains("F-108"))
+    }
+
     func testGoBoardClearsSelectionButKeepsLastOpened() async {
         let model = await makeStudyHubModel()
         model.openTask("57")

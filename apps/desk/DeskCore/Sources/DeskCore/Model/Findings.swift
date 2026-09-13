@@ -91,6 +91,13 @@ public struct Finding: Identifiable, Hashable {
         self.reconcile = reconcile
         self.historyNote = historyNote
     }
+
+    /// What `dev:create-issue` is handed when a finding is filed. The door drafts the issue; this gives it the
+    /// claim, the evidence, and where the claim came from, so the issue can be judged without the report.
+    public var backlogDescription: String {
+        let sources = locations.isEmpty ? "" : " Sources: \(locations.joined(separator: ", "))."
+        return "\(title). \(summary)\(sources) Found by dev:survey, run \(runID); \(verificationLabel). \(limits)"
+    }
 }
 
 public struct FindingsReport: Hashable {
