@@ -6,7 +6,7 @@ import SwiftUI
 struct RunFocusSheet: View {
     @Bindable var model: ProjectWindowModel
     let door: String
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @State private var kinds: Set<IdeationKind> = []
     @State private var scope: SurveyScope = .both
     @State private var flow = ""

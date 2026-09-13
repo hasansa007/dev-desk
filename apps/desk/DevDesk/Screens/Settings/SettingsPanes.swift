@@ -22,6 +22,38 @@ private struct SettingsRow<Content: View>: View {
     }
 }
 
+/// Whose setting this is. A pane that does not say it invites the question on every visit — and the
+/// Project overrides pane answered it wrongly, with a caption denying the two Dev Desk preferences under it.
+enum SettingScope {
+    case everyProject, thisProject
+
+    var label: String {
+        switch self {
+        case .everyProject: return "all projects"
+        case .thisProject: return "this project"
+        }
+    }
+}
+
+/// A pane's heading and the scope of everything under it.
+struct PaneTitle: View {
+    let title: String
+    let scope: SettingScope
+
+    init(_ title: String, scope: SettingScope) {
+        self.title = title
+        self.scope = scope
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(title).font(DeskFont.section)
+            PropertyChip(scope.label)
+            Spacer(minLength: 0)
+        }
+    }
+}
+
 @MainActor
 private func isGitHubUnavailable(_ model: ProjectWindowModel) -> Bool {
     model.snapshot?.connections.first { $0.id == "github" }?.state == .unavailable
@@ -51,7 +83,7 @@ struct GeneralPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("General").font(DeskFont.section)
+            PaneTitle("General", scope: .everyProject)
             Toggle("Show sample projects in the project picker", isOn: $showSamples)
                 .padding(.top, 16)
             Text("Dev Desk \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
@@ -68,7 +100,7 @@ struct AppearancePane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Appearance").font(DeskFont.section)
+            PaneTitle("Appearance", scope: .everyProject)
             SettingsRow("Appearance") {
                 Picker("", selection: $appearance) {
                     ForEach(AppearanceChoice.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -94,11 +126,11 @@ struct AppearancePane: View {
 
 struct AgentsAndDefaultsPane: View {
     @Bindable var model: ProjectWindowModel
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Agents and defaults").font(DeskFont.section)
+            PaneTitle("Agents and defaults", scope: .everyProject)
 
             SettingsRow("App default connection") {
                 Picker("", selection: $defaultConnection) {
@@ -121,18 +153,15 @@ struct AgentsAndDefaultsPane: View {
 
             SectionLabel("Capabilities of the selected connection").padding(.top, 18)
             capabilitiesTable.padding(.top, 8)
-            Text(model.snapshot?.capabilities.note ?? "")
+            // The models sentence used to be a section of its own, whose whole content was that it had none.
+            Text([model.snapshot?.capabilities.note,
+                  "Models are listed by the connected tool at runtime; Dev Desk stores no version names or pricing."]
+                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)
                 .frame(maxWidth: 700, alignment: .leading)
                 .padding(.top, 10)
-
-            SectionLabel("Available models").padding(.top, 18)
-            Text("Model choices are listed by the connected tool at runtime. Dev Desk does not store version names or pricing.")
-                .foregroundStyle(DeskColor.secondaryInk)
-                .lineSpacing(4)
-                .padding(.top, 8)
 
             if isGitHubUnavailable(model) {
                 GitHubUnavailableNotice().padding(.top, 18)
@@ -197,7 +226,7 @@ struct AccountsPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Accounts and connections").font(DeskFont.section)
+            PaneTitle("Accounts and connections", scope: .everyProject)
 
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(model.snapshot?.connections ?? []) { connection in
@@ -238,14 +267,14 @@ struct NotificationsPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Notifications").font(DeskFont.section)
+            PaneTitle("Notifications", scope: .everyProject)
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Decisions that need you", isOn: $notifyDecisions)
                 Toggle("Completed work", isOn: $notifyCompletion)
                 Toggle("Failed runs", isOn: $notifyFailures)
             }
             .padding(.top, 16)
-            Text("Notifications apply to managed work, which Dev Desk doesn't run yet. Your choices are kept for when it does.")
+            Text("These cover background runs — a run that needs an answer, one that finished, one that failed. A session in a terminal joins them when it can report its own state.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)
@@ -257,10 +286,11 @@ struct NotificationsPane: View {
 struct ExecutionPane: View {
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
     @AppStorage(PreferenceKey.agentLimit) private var agentLimit = AgentLimit.defaultValue
+    @AppStorage(PreferenceKey.confirmQuit) private var confirmQuit = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Execution").font(DeskFont.section)
+            PaneTitle("Execution", scope: .everyProject)
             SettingsRow("Parallel task checkouts") {
                 HStack(spacing: 8) {
                     TextField("", text: $worktreeLocation)
@@ -268,23 +298,51 @@ struct ExecutionPane: View {
                         .padding(.horizontal, 10)
                         .frame(width: 260, height: 28)
                         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
+                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius)
+                            .strokeBorder(pathProblem == nil ? DeskColor.controlBorder : DeskColor.tone(.failed).dot))
                     Button("Choose…") { chooseFolder() }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
                 }
             }
             .padding(.top, 16)
-            Text("Task worktrees are created here when you start a shell or an agent for a task that isn't checked out yet, including a detached one for a task with no branch.")
+            // A typo used to surface much later, as a git error when a session tried to start in it.
+            Text(pathProblem ?? "Task worktrees are created here when you start a shell or an agent for a task that isn't checked out yet, including a detached one for a task with no branch.")
                 .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
+                .foregroundStyle(pathProblem == nil ? DeskColor.mutedInk : DeskColor.tone(.failed).dot)
                 .lineSpacing(4)
+                .frame(maxWidth: 700, alignment: .leading)
                 .padding(.top, 12)
             Stepper(value: $agentLimit, in: AgentLimit.range) {
                 Text(agentLimit == 1 ? "Run at most 1 agent at once" : "Run at most \(agentLimit) agents at once")
             }
             .fixedSize()
             .padding(.top, 16)
+            Toggle("Ask before quitting while something is running", isOn: $confirmQuit)
+                .padding(.top, 16)
+            Text("Quitting ends every session and background run. The question is only ever asked when one of them is live.")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(4)
+                .padding(.top, 8)
         }
+    }
+
+    /// Why this location cannot hold worktrees, or nil when it can. Checked as it is typed, because the
+    /// alternative is finding out from a git error at the moment a task was supposed to start.
+    private var pathProblem: String? {
+        let trimmed = worktreeLocation.trimmingCharacters(in: .whitespaces)
+        if trimmed.isEmpty { return "A folder is needed: worktrees have to be created somewhere." }
+        let expanded = (trimmed as NSString).expandingTildeInPath
+        guard expanded.hasPrefix("/") else { return "Use a full path, or one starting with ~." }
+        var isDirectory: ObjCBool = false
+        if FileManager.default.fileExists(atPath: expanded, isDirectory: &isDirectory) {
+            if !isDirectory.boolValue { return "That path is a file, not a folder." }
+            if !FileManager.default.isWritableFile(atPath: expanded) { return "That folder cannot be written to." }
+            return nil
+        }
+        // Not there yet is fine — it is created on first use — as long as something above it exists.
+        let parent = (expanded as NSString).deletingLastPathComponent
+        return FileManager.default.fileExists(atPath: parent) ? nil : "Neither that folder nor the one above it exists."
     }
 
     private func chooseFolder() {
@@ -303,18 +361,26 @@ struct ProjectOverridesPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Project overrides").font(DeskFont.section)
+            PaneTitle("Project overrides", scope: .thisProject)
+            // Two different things sat under one caption: facts the repository owns, and preferences Dev Desk
+            // owns. The caption spoke for the first and denied the second, which was sitting right below it.
+            SectionLabel("From the repository").padding(.top, 18)
             KeyValueTable(rows: model.snapshot?.projectFacts ?? [])
-                .padding(.top, 16)
+                .padding(.top, 8)
             Text("Read from the repository. Dev Desk never overrides the repository's own configuration.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)
-                .padding(.top, 12)
+                .padding(.top, 10)
             // Auto applies to local projects only.
             if !model.ref.isSample {
+                SectionLabel("Dev Desk, for this project").padding(.top, 20)
+                Text("Kept on this Mac, not in the repository.")
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .padding(.top, 6)
                 AutoModeSetting(ref: model.ref)
-                    .padding(.top, 18)
+                    .padding(.top, 12)
             }
         }
     }

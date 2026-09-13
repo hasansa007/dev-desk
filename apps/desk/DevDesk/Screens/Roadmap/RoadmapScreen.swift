@@ -155,7 +155,7 @@ private struct ThemeColumn: View {
 private struct RoadmapItemCard: View {
     let item: RoadmapItem
     let model: ProjectWindowModel
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
 
     /// The same issue, as the board sees it. A roadmap row is the upcoming end of the board, so it shows what
     /// the card shows and offers what the card offers, rather than being a report you read and leave.

@@ -12,7 +12,7 @@ struct DoorRunControl: View {
     let title: String
     var size: DeskButtonStyle.Size = .smallWide
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
 
     /// In a terminal or in the background — either way this door is busy **in this project**. The registry is
     /// the app's, so the directory is what keeps one window's run out of another's button.

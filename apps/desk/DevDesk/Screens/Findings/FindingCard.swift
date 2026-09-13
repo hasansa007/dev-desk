@@ -7,7 +7,7 @@ struct FindingCard: View {
     let finding: Finding
     let model: ProjectWindowModel
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @State private var fileWidth: CGFloat = 0
 
     private var isIgnored: Bool { model.ignoredFindings.contains(finding.id) }

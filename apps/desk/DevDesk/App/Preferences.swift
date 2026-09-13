@@ -11,9 +11,16 @@ enum PreferenceKey {
     static let notifyFailures = "desk.notifyFailures"
     static let worktreeLocation = "desk.worktreeLocation"
     static let agentLimit = "desk.agentLimit"
+    static let confirmQuit = "desk.confirmQuit"
 
     static func connectionOverride(_ ref: ProjectRef) -> String { "desk.connectionOverride.\(ref.id)" }
     static func autoMode(_ ref: ProjectRef) -> String { "desk.autoMode.\(ref.id)" }
+}
+
+/// What a fresh install runs before anything is chosen. It was written out at every site that read the
+/// preference — the dialog, the Settings pane, the resolver — so a change of default meant finding all three.
+enum AgentDefaults {
+    static let connection = "Codex"
 }
 
 /// How many agents may run at once, across every window.
@@ -53,7 +60,7 @@ enum AgentChoice: Equatable {
     static func current(for ref: ProjectRef, connections: [Connection]) -> AgentChoice {
         let defaults = UserDefaults.standard
         return resolve(override: defaults.string(forKey: PreferenceKey.connectionOverride(ref)) ?? "",
-                       defaultConnection: defaults.string(forKey: PreferenceKey.defaultConnection) ?? "Codex",
+                       defaultConnection: defaults.string(forKey: PreferenceKey.defaultConnection) ?? AgentDefaults.connection,
                        connections: connections)
     }
 }

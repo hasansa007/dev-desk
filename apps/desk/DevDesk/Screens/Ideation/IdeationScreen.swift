@@ -23,7 +23,7 @@ struct IdeationScreen: View {
 /// Starts `dev:ideation` as a run, with the kinds the developer left on; none selected means the door's own default, all three.
 private struct GenerateIdeasButton: View {
     let model: ProjectWindowModel
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
 
     var body: some View {
         DoorRunControl(model: model, door: "ideation", title: "Generate ideas")
@@ -211,7 +211,7 @@ private struct OpportunityDetail: View {
     let opportunity: Opportunity
     let model: ProjectWindowModel
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

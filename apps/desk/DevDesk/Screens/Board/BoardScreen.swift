@@ -172,7 +172,7 @@ private struct BoardColumnView: View {
     let tasks: [DeskTask]
     let model: ProjectWindowModel
     @State private var pending: PendingMove?
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @Environment(\.terminals) private var terminals
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"

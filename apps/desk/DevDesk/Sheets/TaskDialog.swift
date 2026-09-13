@@ -6,7 +6,7 @@ import SwiftUI
 struct TaskDialog: View {
     @Bindable var model: ProjectWindowModel
     let task: DeskTask
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
     @Environment(\.terminals) private var terminals
     @Environment(JobRegistry.self) private var jobs: JobRegistry?

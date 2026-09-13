@@ -7,7 +7,7 @@ import SwiftUI
 struct FindingDialog: View {
     let finding: Finding
     @Bindable var model: ProjectWindowModel
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @State private var tab = Tab.overview
 

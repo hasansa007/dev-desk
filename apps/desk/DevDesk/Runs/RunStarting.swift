@@ -32,12 +32,18 @@ extension ProjectWindowModel {
         guard canRunDoors, !isRunLive(runID),
               let command = DoorCommand.build(door: door, agent: agent, arguments: arguments, home: NSHomeDirectory())
         else {
-            if isRunLive(runID) { go(.terminals) }
+            if isRunLive(runID) {
+                selectedSessionID = runID
+                go(.terminals)
+            }
             runs.selectedID = isRunLive(runID) ? runID : runs.selectedID
             return
         }
         runs.add(DoorRun(id: runID, title: title, agent: agent, command: command,
                          folderNote: folderNote ?? "a door reads the whole project, not one task's branch."))
+        // Land on the run that was just started, the way starting an agent does. Without this the accordion
+        // opened whatever was already live and the new row sat collapsed below it — a start with nothing to see.
+        selectedSessionID = runID
         go(.terminals)
     }
 

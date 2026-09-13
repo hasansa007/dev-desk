@@ -1,0 +1,40 @@
+import AppKit
+import DeskCore
+import SwiftUI
+
+/// Quitting used to end every agent and every background run without a word: `endAllBeforeQuit` fires on
+/// `willTerminate`, by which point the decision is already made. An agent mid-task is minutes of work and
+/// tokens already spent, so quit asks first — and only ever when something is actually live.
+@MainActor
+final class QuitGuard: NSObject, NSApplicationDelegate {
+    /// The app's background runs, handed over once the scene that owns them exists.
+    static var jobs: JobRegistry?
+
+    /// What is running right now, as the alert would say it, or nil when nothing is.
+    static var liveWork: String? {
+        let sessions = LiveShells.shared.agentCount
+        let background = jobs?.liveCount ?? 0
+        let parts = [sessions > 0 ? "\(sessions) \(sessions == 1 ? "session" : "sessions")" : nil,
+                     background > 0 ? "\(background) background \(background == 1 ? "run" : "runs")" : nil]
+            .compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " and ")
+    }
+
+    static var confirmsQuit: Bool {
+        UserDefaults.standard.object(forKey: PreferenceKey.confirmQuit) as? Bool ?? true
+    }
+
+    func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        guard Self.confirmsQuit, let work = Self.liveWork else { return .terminateNow }
+        let alert = NSAlert()
+        alert.messageText = "\(work) still running"
+        alert.informativeText = "Quitting ends them. An agent's work in its worktree is kept; what it had not finished is lost."
+        alert.alertStyle = .warning
+        alert.addButton(withTitle: "Quit anyway")
+        alert.addButton(withTitle: "Cancel")
+        // The default is Cancel: the destructive answer should not be the one a stray Return sends.
+        alert.buttons.last?.keyEquivalent = "\r"
+        alert.buttons.first?.keyEquivalent = ""
+        return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+}
