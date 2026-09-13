@@ -113,6 +113,23 @@ public final class ProjectWindowModel {
     public var tab: TaskTab = .activity
     /// Which session the Terminals destination has in front, when more than one is live.
     public var selectedSessionID: String?
+    /// Terminals opened for their own sake — not a door's, not a task's. They open at the project root, which
+    /// is where you would have opened Terminal yourself.
+    public private(set) var scratchTerminals: [String] = []
+
+    @discardableResult
+    public func newTerminal() -> String {
+        let id = "term:\(scratchTerminals.count + 1)"
+        scratchTerminals.append(id)
+        selectedSessionID = id
+        return id
+    }
+
+    /// Only when nothing of it is live: closing a row must never orphan the process behind it.
+    public func closeTerminal(_ id: String) {
+        guard !sessions.state(for: id).isLive else { return }
+        scratchTerminals.removeAll { $0 == id }
+    }
     public var mode: ViewMode = .focus
     public var showBacklog = false
     public var searchText = ""

@@ -46,6 +46,13 @@ struct TerminalsScreen: View {
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
             Spacer(minLength: 0)
+            Button("New terminal") {
+                hasChosen = true
+                expandedID = model.newTerminal()
+            }
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+            .disabled(model.sessions.startRefusal(for: .shell) != nil)
+            .help(model.sessions.startRefusal(for: .shell) ?? "A login shell at the project root")
         }
         .screenHeaderBar()
     }
@@ -117,6 +124,10 @@ private struct TerminalTile: View {
                     // The only Stop: the pane's own "End shell" is suppressed, and a collapsed row can reach this.
                     Button("Stop") { terminals?.end(taskID: row.id) }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                } else if case .scratch = row.kind {
+                    Button("Close") { model.closeTerminal(row.id) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help("Remove this terminal from the list")
                 }
             }
             .padding(.horizontal, 11)
@@ -142,13 +153,15 @@ private struct TerminalTile: View {
             ShellPane(sessions: model.sessions, id: task.id, branch: task.branch,
                       taskNumber: task.taskNumber, folderNote: task.noBranchNote, startTitle: "Start shell",
                       showsStop: false)
+        case .scratch:
+            ShellPane(sessions: model.sessions, id: row.id, startTitle: "Start terminal", showsStop: false)
         }
     }
 }
 
 /// A door this window started, or a task's own session. Both are one session in one registry (ADR 0026).
 struct SessionRow: Identifiable {
-    enum Kind { case door(DoorRun), task(DeskTask) }
+    enum Kind { case door(DoorRun), task(DeskTask), scratch }
 
     let id: String
     let title: String
@@ -170,6 +183,11 @@ struct SessionRow: Identifiable {
                               subtitle: model.sessions.purpose(for: id) == .agent ? "Agent" : "Terminal",
                               isLive: model.sessions.state(for: id).isLive, kind: .task(task))
         }
-        return doors + tasks
+        let scratch = model.scratchTerminals.map { id in
+            SessionRow(id: id, title: "Terminal \(id.replacingOccurrences(of: "term:", with: ""))",
+                       subtitle: RunLabel.label(for: model.sessions.state(for: id)).label,
+                       isLive: model.sessions.state(for: id).isLive, kind: .scratch)
+        }
+        return doors + tasks + scratch
     }
 }
