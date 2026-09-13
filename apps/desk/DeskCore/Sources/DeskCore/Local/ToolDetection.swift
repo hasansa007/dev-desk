@@ -27,7 +27,10 @@ enum ToolDetection {
     static func github(_ state: GitHubState) -> Connection {
         switch state {
         case .ready: return Connection(id: "github", name: "GitHub", state: .connected, label: "connected")
-        case .unavailable(let reason): return Connection(id: "github", name: "GitHub", state: .unavailable, label: reason)
+        case .unavailable(let reason):
+            return Connection(id: "github", name: "GitHub", state: .unavailable,
+                              label: state.shortUnavailableReason ?? reason,
+                              detail: [reason, state.unavailableRemedy].compactMap { $0 }.joined(separator: " "))
         }
     }
 }

@@ -55,4 +55,20 @@ final class MarkdownTests: XCTestCase {
         XCTAssertTrue(titled.runs.allSatisfy { $0.link == task5 }, "escaped text in a link's title must not break the link")
         XCTAssertEqual(String(titled.characters), "Fix a@b.co")
     }
+
+    func testPlainDropsEmphasisAndCodeMarkers() {
+        XCTAssertEqual(Markdown.plain("**Callback fetch returns 0 reminders, never 12**"),
+                       "Callback fetch returns 0 reminders, never 12")
+        XCTAssertEqual(Markdown.plain("`navigationDestination` inside the `isLoading` branch"),
+                       "navigationDestination inside the isLoading branch")
+    }
+
+    /// An identifier is not emphasis. Eating these renames the thing the finding is about.
+    func testPlainKeepsUnderscores() {
+        XCTAssertEqual(Markdown.plain("**is_loading is never reset**"), "is_loading is never reset")
+    }
+
+    func testPlainUnescapesWhatEscapeWrote() {
+        XCTAssertEqual(Markdown.plain(Markdown.escape("a *literal* star")), "a *literal* star")
+    }
 }

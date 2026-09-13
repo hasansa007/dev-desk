@@ -5,11 +5,14 @@ public struct Connection: Identifiable, Hashable {
     public var name: String
     public var state: ConnectionState
     public var label: String        // "connected", "not connected", "unavailable", "CLI found", "not found"
-    public init(id: String, name: String, state: ConnectionState, label: String) {
+    /// The whole story when `label` is the short version of it: the failure in full, and what to do about it.
+    public var detail: String?
+    public init(id: String, name: String, state: ConnectionState, label: String, detail: String? = nil) {
         self.id = id
         self.name = name
         self.state = state
         self.label = label
+        self.detail = detail
     }
 }
 

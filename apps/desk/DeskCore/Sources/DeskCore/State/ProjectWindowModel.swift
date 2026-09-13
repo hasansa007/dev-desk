@@ -62,6 +62,7 @@ public enum SettingsSection: String, CaseIterable, Codable, Hashable {
 public enum SheetKind: Hashable, Identifiable {
     case openProject, compareOutputs, followUp, handoff, reconcileFinding(String), cloneRepository, createProject
     case task(String)
+    case finding(String)
     case cancelTask(String)
     case runFocus(String)
     case deleteBranch(String)
@@ -77,6 +78,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .cloneRepository: return "cloneRepository"
         case .createProject: return "createProject"
         case .task(let taskID): return "task:\(taskID)"
+        case .finding(let findingID): return "finding:\(findingID)"
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
         case .runFocus(let door): return "runFocus:\(door)"
         case .deleteBranch(let branch): return "deleteBranch:\(branch)"
@@ -291,10 +293,14 @@ public final class ProjectWindowModel {
         return nil
     }
 
+    /// Opens the finding's card, the way a task's card opens: the dialog, not a reading pane. A link from
+    /// elsewhere in the app lands on the survey screen with that finding open on top of it.
     public func openFinding(_ id: String) {
         destination = .survey
         findingFilter = nil
+        showsIgnoredFindings = ignoredFindings.contains(id)
         selectedFindingID = id
+        present(.finding(id))
     }
 
     public func handle(_ link: DeskLink) {

@@ -167,10 +167,16 @@ struct Sidebar: View {
             Text(connection.label)
                 .font(.system(size: 11))
                 .foregroundStyle(style.label)
+                // One line. A gh failure is a paragraph with a repository path in it, and rendering it whole
+                // turned this row into a red wall of text nobody could read; the rest is in the tooltip.
+                .lineLimit(1)
+                .truncationMode(.tail)
         }
         .font(DeskFont.secondary)
         .foregroundStyle(style.text)
+        .help(connection.detail ?? connection.label)
         .accessibilityElement(children: .combine)
+        .accessibilityValue(connection.detail ?? connection.label)
     }
 
     private func style(for state: ConnectionState) -> (tone: StatusTone, text: Color, label: Color) {

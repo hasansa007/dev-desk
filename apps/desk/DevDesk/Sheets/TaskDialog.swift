@@ -1,11 +1,8 @@
 import DeskCore
 import SwiftUI
 
-/// Every card opens this: the task's identity at the top, its work in the middle, and what you can do to it
-/// along the bottom. Its size is fixed (ADR 0021) — only the contents changed.
-///
-/// The footer is where actions live now. They were in the header beside the title, which put "Start task" and
-/// "Close" in the same place a window's own controls sit, and left the destructive action nowhere.
+/// A task's card, opened. The chrome — header, tabs, body, footer — is shared with every other card's dialog
+/// and lives in `DialogChrome.swift`; what is here is only what a task puts in it.
 struct TaskDialog: View {
     @Bindable var model: ProjectWindowModel
     let task: DeskTask
@@ -19,62 +16,23 @@ struct TaskDialog: View {
         VStack(spacing: 0) {
             header
             tabs
-            ScrollView {
-                VStack(alignment: .leading, spacing: 12) {
-                    meta
-                    content
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                        .padding(14)
-                        .background(DeskColor.canvas, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
-                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
-                }
-                .padding(EdgeInsets(top: 14, leading: 18, bottom: 14, trailing: 18))
-            }
+            DialogBody { meta } content: { content }
             footer
         }
-        .frame(width: DeskMetric.dialogWidth, height: DeskMetric.dialogHeight)
-        .background(DeskColor.surface)
+        .deskDialogFrame()
     }
 
     // MARK: - Header
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .top, spacing: 10) {
-                Text(task.title)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(DeskColor.ink)
-                    .lineLimit(2)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
-                if let url = issueURL {
-                    glyph("pencil", label: "Edit on GitHub") { NSWorkspace.shared.open(url) }
-                }
-                glyph("xmark", label: "Close") { model.dismissSheet() }
-                    .keyboardShortcut(.cancelAction)
-            }
-            HStack(spacing: 8) {
-                Text(identifier)
-                    .font(DeskFont.mono(12))
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 5)
-                    .background(DeskColor.canvas, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
-                    .overlay(RoundedRectangle(cornerRadius: DeskMetric.pillRadius).strokeBorder(DeskColor.border))
-                StatusPill(badge: statusBadge, showsDot: false, verticalPadding: 4, horizontalPadding: 10)
-                if isCheckedOut {
-                    StatusPill(badge: StatusBadge(.info, "Checked out here"), showsDot: false,
-                               verticalPadding: 4, horizontalPadding: 10)
-                }
-                Spacer(minLength: 0)
-            }
-        }
-        .padding(.horizontal, 18)
-        .padding(.top, 16)
-        .padding(.bottom, 12)
-        .background(DeskColor.headerFill)
+        DialogHeader(title: task.title, identifier: identifier, badges: badges, editURL: issueURL,
+                     close: model.dismissSheet)
+    }
+
+    private var badges: [StatusBadge] {
+        var badges = [statusBadge]
+        if isCheckedOut { badges.append(StatusBadge(.info, "Checked out here")) }
+        return badges
     }
 
     /// Where this task is edited: GitHub. The app does not edit an issue body, so the pencil goes to the place
@@ -84,19 +42,6 @@ struct TaskDialog: View {
     private var issueURL: URL? {
         guard let number = task.issueNumber, let slug = model.snapshot?.slug else { return nil }
         return URL(string: "https://github.com/\(slug)/issues/\(number)")
-    }
-
-    private func glyph(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: symbol)
-                .imageScale(.medium)
-                .foregroundStyle(DeskColor.mutedInk)
-                .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help(label)
-        .accessibilityLabel(label)
     }
 
     private var identifier: String {
@@ -114,30 +59,9 @@ struct TaskDialog: View {
     // MARK: - Tabs
 
     private var tabs: some View {
-        HStack(spacing: 2) {
-            ForEach(TaskTab.allCases, id: \.self) { tab in
-                Button { model.tab = tab } label: {
-                    VStack(spacing: 0) {
-                        Text(Self.tabTitle(tab))
-                            .font(DeskFont.body)
-                            .foregroundStyle(model.tab == tab ? DeskColor.ink : DeskColor.mutedInk)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 12)
-                        Rectangle()
-                            .fill(model.tab == tab ? DeskColor.accent : Color.clear)
-                            .frame(height: 2)
-                    }
-                    .fixedSize()
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityAddTraits(model.tab == tab ? .isSelected : [])
-            }
-            Spacer(minLength: 0)
+        DialogTabBar(titles: TaskTab.allCases.map(Self.tabTitle), selected: Self.tabTitle(model.tab)) { title in
+            if let tab = TaskTab.allCases.first(where: { Self.tabTitle($0) == title }) { model.tab = tab }
         }
-        .padding(.horizontal, 12)
-        .background(DeskColor.headerFill)
-        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
     static func tabTitle(_ tab: TaskTab) -> String {
@@ -176,7 +100,8 @@ struct TaskDialog: View {
     // MARK: - Footer
 
     private var footer: some View {
-        HStack(spacing: 10) {
+        DialogFooter(primary: DialogAction(title: primary.title, blockedReason: primary.blockedReason, run: primary.run),
+                     close: model.dismissSheet) {
             if let delete = deleteBranch {
                 Button(role: .destructive) { delete() } label: {
                     Label("Delete branch", systemImage: "trash")
@@ -184,24 +109,7 @@ struct TaskDialog: View {
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
                 .help("Deletes the local branch only; a branch pushed to GitHub stays there")
             }
-            Spacer(minLength: 8)
-            if let blocked = primary.blockedReason {
-                Text(blocked)
-                    .font(.system(size: 11))
-                    .foregroundStyle(DeskColor.faintInk)
-                    .lineLimit(1)
-            }
-            Button(primary.title) { primary.run() }
-                .buttonStyle(DeskButtonStyle(kind: .primary, size: .regular))
-                .disabled(primary.blockedReason != nil)
-                .keyboardShortcut(.defaultAction)
-            Button("Close") { model.dismissSheet() }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .regular))
         }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 13)
-        .background(DeskColor.headerFill)
-        .overlay(alignment: .top) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
     /// Never the branch this project has checked out: git refuses to delete it, so the action could only ever

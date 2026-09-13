@@ -93,6 +93,17 @@ enum GitHubState: Equatable {
         return nil
     }
 
+    /// The reason in three words. The full sentence is a GraphQL error with a repository path in it, and a
+    /// sidebar row rendering it whole turned the connection into a red wall of text — the detail belongs in
+    /// the tooltip, not in the row.
+    var shortUnavailableReason: String? {
+        guard let reason = unavailableReason else { return nil }
+        if reason.contains("Could not resolve to a Repository") { return "repository not found" }
+        if reason.contains("gh not installed") { return "gh not installed" }
+        if reason.lowercased().contains("auth") || reason.contains("not logged") { return "not signed in" }
+        return reason.count > 40 ? "unavailable" : reason
+    }
+
     /// What to do about it, when the reason says something actionable. A GraphQL error pasted at the developer
     /// names a failure without naming a fix, and the commonest cause here is a remote pointing at a repository
     /// this account can no longer see — a deleted fork, a take-home repo, an org you left.

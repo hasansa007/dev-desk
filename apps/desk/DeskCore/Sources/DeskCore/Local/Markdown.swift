@@ -21,6 +21,29 @@ public enum Markdown {
         return escaped
     }
 
+    /// Strips inline emphasis and code markers, for text that is drawn as plain text rather than rendered.
+    /// A survey bullet bolds its claim, and a title shown with its own `**` around it reads as a typo.
+    ///
+    /// Only `*` and backticks go. Underscores stay: in this app's text they are far more often part of an
+    /// identifier (`is_loading`) than a pair of emphasis markers, and silently eating them renames the thing
+    /// the finding is about.
+    public static func plain(_ text: String) -> String {
+        var output = ""
+        var characters = Array(text)[...]
+        while let character = characters.first {
+            if character == "\\", characters.count > 1, "\\`*_[]<>~&".contains(characters[characters.startIndex + 1]) {
+                output.append(characters[characters.startIndex + 1])   // an escaped marker is a literal character
+                characters = characters.dropFirst(2)
+            } else if character == "*" || character == "`" {
+                characters = characters.dropFirst()                    // the marker itself, however many there are
+            } else {
+                output.append(character)
+                characters = characters.dropFirst()
+            }
+        }
+        return output.trimmingCharacters(in: .whitespaces)
+    }
+
     /// A fragment of command output (git or gh stderr/stdout) made safe for a markdown-rendered reason.
     static func reason(_ commandOutput: String) -> String { escape(commandOutput) }
 }

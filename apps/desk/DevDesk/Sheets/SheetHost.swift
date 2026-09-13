@@ -54,6 +54,15 @@ struct SheetHost: View {
                     UnavailableView(reason: "This task is no longer on the board.")
                 }
             }
+        case .finding(let findingID):
+            if let finding = findFinding(findingID) {
+                FindingDialog(finding: finding, model: model)
+            } else {
+                SheetChrome(title: "Finding", confirmTitle: "Add to backlog…", confirmDisabled: true,
+                            onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
+                    UnavailableView(reason: "This finding is not in the survey report any more.")
+                }
+            }
         case .cancelTask(let taskID):
             if let task = model.task(taskID) {
                 CancelTaskSheet(model: model, task: task)

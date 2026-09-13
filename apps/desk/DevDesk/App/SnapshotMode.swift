@@ -109,7 +109,8 @@ final class SnapshotMode {
         Capture(name: "09-task63-activity") { $0.openTask("63") },
         Capture(name: "10-parallel") { $0.setMode(.parallel) },
         Capture(name: "11-survey") { $0.go(.survey) },
-        Capture(name: "12-reconcile-sheet", isSheet: true) { $0.go(.survey); $0.present(.reconcileFinding("F-108")) },
+        Capture(name: "12-finding-dialog", isSheet: true) { $0.go(.survey); $0.present(.finding("F-108")) },
+        Capture(name: "13-reconcile-sheet", isSheet: true) { $0.go(.survey); $0.present(.reconcileFinding("F-108")) },
         Capture(name: "13-roadmap") { $0.go(.roadmap) },
         Capture(name: "16-settings-agents", isSheet: true) { $0.settingsSection = .agentsAndDefaults; $0.present(.settings) },
         Capture(name: "19-open-project-sheet", isSheet: true) { $0.go(.board); $0.present(.openProject) },
@@ -129,6 +130,10 @@ final class SnapshotMode {
             model.tab = .changes
         },
         Capture(name: "03-survey") { $0.go(.survey) },
+        Capture(name: "03b-finding-dialog", isSheet: true) { model in
+            model.go(.survey)
+            if let id = model.snapshot?.findings.value?.findings.first?.id { model.openFinding(id) }
+        },
         Capture(name: "04-roadmap") { $0.go(.roadmap) },
         Capture(name: "06-settings-connections", isSheet: true) { $0.settingsSection = .accountsAndConnections; $0.present(.settings) },
         // Idle, so the capture shows the run with the command it would type; nothing is started.

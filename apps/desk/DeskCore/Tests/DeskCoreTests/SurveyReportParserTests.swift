@@ -63,7 +63,8 @@ final class SurveyReportParserTests: XCTestCase {
         XCTAssertEqual(finding.title, "Looks fine")
         XCTAssertTrue(finding.summary.hasPrefix("click \\[Open\\]"), "the link brackets must be escaped")
         XCTAssertFalse(finding.summary.contains("[Open]("), "a raw link would render as a one-click launch")
-        XCTAssertTrue(finding.summary.contains("\\`rm -rf \\~\\`"), "the code span must be escaped")
+        XCTAssertTrue(finding.summary.contains("run rm -rf \\~ to see"), "code markers come off, the text stays")
+        XCTAssertFalse(finding.summary.contains("`"), "a code span is not rendered, so its markers are noise")
     }
 
     func testFrameworkRoutePathsCountAsLocations() {
@@ -87,5 +88,41 @@ final class SurveyReportParserTests: XCTestCase {
     func testBacklogDescriptionOmitsSourcesWhenThereAreNone() {
         let finding = SurveyReportParser.parse("## PLAUSIBLE (1)\n- Slow start\n", runID: "r")[0]
         XCTAssertFalse(finding.backlogDescription.contains("Sources:"))
+    }
+
+    /// The shape dev:survey actually writes: a claim on the bullet, everything else indented beneath it.
+    func testABulletsIndentedLinesAreItsBody() {
+        let report = """
+        ## CONFIRMED (1)
+
+        - **Combine publisher emits 0 reminders** · `Services/ReminderService.swift:54-66`
+          · mechanism: `promise(.success(reminders))` at :63 fires synchronously after merely scheduling the
+          three fetches. · expected: compose three publishers (Zip/MergeMany + collect).
+          touches: `Services/ReminderService.swift`   blocks: shares the file with two other findings
+
+        """
+        let finding = SurveyReportParser.parse(report, runID: "2026-08-31")[0]
+        XCTAssertEqual(finding.title, "Combine publisher emits 0 reminders")
+        XCTAssertTrue(finding.summary.contains("mechanism"), finding.summary)
+        XCTAssertTrue(finding.summary.contains("fires synchronously after merely scheduling the three fetches"),
+                      "a wrapped line continues the sentence: \(finding.summary)")
+        XCTAssertTrue(finding.summary.contains("expected"), finding.summary)
+        XCTAssertFalse(finding.summary.contains("touches:"), "structured fields are not prose")
+        XCTAssertFalse(finding.summary.contains("blocks:"), "structured fields are not prose")
+        XCTAssertEqual(finding.locations, ["Services/ReminderService.swift:54-66", "Services/ReminderService.swift"])
+    }
+
+    /// A location on the continuation line is still where the finding is, and used to be lost entirely.
+    func testLocationBelowTheClaimIsStillALocation() {
+        let report = """
+        ## CONFIRMED (1)
+
+        - **Async fetch returns 0 reminders**
+          · `Services/ReminderService.swift:68-79` · mechanism: three unstructured tasks are fire-and-forget.
+
+        """
+        let finding = SurveyReportParser.parse(report, runID: "r")[0]
+        XCTAssertEqual(finding.locations, ["Services/ReminderService.swift:68-79"])
+        XCTAssertEqual(finding.title, "Async fetch returns 0 reminders")
     }
 }

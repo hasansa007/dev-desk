@@ -81,7 +81,13 @@ enum SurveyReportParser {
     }
 
     private static func finding(_ text: String, continuation: [String], section: Section, index: Int, runID: String) -> Finding {
-        let parts = text.components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }
+        // A bullet's claim is its first line; the mechanism, what was expected and what was measured are on
+        // the indented lines under it. Reading only the first line gave every finding a title and an empty
+        // body — a report of fifteen that said nothing once you opened one.
+        let body = continuation.map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.hasPrefix("touches:") && !$0.hasPrefix("blocks:") }   // structured fields, not prose
+        let parts = ([text] + body).joined(separator: " ")
+            .components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }
         var locations: [String] = []
         var rest: [String] = []
         for part in parts.dropFirst() {
@@ -91,9 +97,13 @@ enum SurveyReportParser {
         for path in continuation.flatMap(touchedPaths) where !locations.contains(path) {
             locations.append(path)
         }
-        return Finding(id: "\(runID)-\(section.idLetter)\(index)", runID: runID, title: parts.first ?? text,
+        return Finding(id: "\(runID)-\(section.idLetter)\(index)", runID: runID, title: Markdown.plain(parts.first ?? text),
                        listDetail: section.category.rawValue, categories: [section.category],
-                       summary: Markdown.escape(rest.joined(separator: " · ")),
+                       // Markers off first, then escape what is left: the body is read, not rendered, so a
+                       // paragraph of `backticks` and \*stars\* is punctuation nobody asked for — and escaping
+                       // alone left the markers AND added backslashes. Escaping still runs, so a link in a
+                       // report's own text stays literal text.
+                       summary: Markdown.escape(Markdown.plain(rest.joined(separator: " · "))),
                        verificationLabel: section.verificationLabel, locations: locations, limits: limits)
     }
 

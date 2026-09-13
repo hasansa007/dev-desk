@@ -189,7 +189,8 @@ final class LocalGitDataSourceTests: XCTestCase {
         let (github, snapshot) = try await githubConnection { [activeAuth] in
             $0.script(activeAuth, .failed(127, stderr: "env: gh: No such file or directory"))
         }
-        XCTAssertEqual(github, Connection(id: "github", name: "GitHub", state: .unavailable, label: "gh not installed"))
+        XCTAssertEqual(github, Connection(id: "github", name: "GitHub", state: .unavailable, label: "gh not installed",
+                                          detail: "gh not installed " + install))
         XCTAssertEqual(snapshot.boardNote,
                        "GitHub is unavailable (gh not installed), so only local branches are shown. " + install)
         XCTAssertEqual(snapshot.roadmap.unavailableReason,
@@ -255,7 +256,9 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     func testFailedPullRequestReadMakesGitHubUnavailable() async throws {
         let (github, snapshot) = try await githubConnection { [openPRs] in $0.script(openPRs, .failed(1, stderr: "HTTP 502: Bad Gateway\n")) }
-        XCTAssertEqual(github?.label, "could not read open pull requests: HTTP 502: Bad Gateway")
+        // The row gets a short label; the sentence that would have filled the sidebar is the tooltip.
+        XCTAssertEqual(github?.label, "unavailable")
+        XCTAssertEqual(github?.detail, "could not read open pull requests: HTTP 502: Bad Gateway")
         XCTAssertEqual(snapshot.boardNote, "GitHub is unavailable (could not read open pull requests: HTTP 502: Bad Gateway), so only local branches are shown.")
     }
 
