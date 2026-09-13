@@ -127,7 +127,9 @@ echo "==> Launching"
 open -a "$DEST/$APP_NAME"
 sleep 2
 # Say which bundle is actually running, rather than assuming `open` did what was asked.
-RUNNING=$(ps -eo command | grep -m1 "[D]ev Desk.app/Contents/MacOS/Dev Desk" || true)
+# By pid, not by scanning every command line: this script's own invocation contains the app's path, so a
+# grep over `ps -eo command` matches itself and reports "a different bundle is running".
+RUNNING=$(pgrep -x "Dev Desk" | head -1 | xargs -I{} ps -p {} -o comm= 2>/dev/null || true)
 case "$RUNNING" in
     "$DEST/$APP_NAME"*) echo "    running: $DEST/$APP_NAME" ;;
     "")                 echo "    warning: Dev Desk does not appear to be running" >&2 ;;
