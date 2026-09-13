@@ -5,6 +5,27 @@ public enum FindingCategory: String, CaseIterable, Hashable {
     case closedOrDeclined = "Closed or declined"
 }
 
+extension FindingCategory {
+    /// What this category is actually asking of the developer. "Needs a decision" named a decision without
+    /// ever saying what it was or where to make it — the label promised a question the app never asked.
+    public var decision: (title: String, message: String)? {
+        switch self {
+        case .new:
+            return nil
+        case .needsDecision:
+            return ("This one is yours to decide",
+                    "dev:survey could not confirm it, so it held it back and filed nothing — it is not claiming a defect. "
+                        + "Add it to the backlog to have it worked on anyway, or ignore it. Either way it stays in the report.")
+        case .knownNewEvidence:
+            return ("An issue already covers this",
+                    "The run matched it to existing work and brought new evidence. Compare them before filing a second issue for the same thing.")
+        case .closedOrDeclined:
+            return ("This was closed or declined before",
+                    "Someone already decided against it. Reopen it only if this run brought something the decision did not have.")
+        }
+    }
+}
+
 public struct SurveyRun: Identifiable, Hashable {
     public var id: String
     public var label: String       // "today 09:40", or a report file stem

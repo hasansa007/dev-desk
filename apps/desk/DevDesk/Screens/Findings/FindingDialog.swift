@@ -45,6 +45,11 @@ struct FindingDialog: View {
 
     private var meta: some View {
         HStack(spacing: 6) {
+            if let area = finding.area {
+                PropertyChip(area.rawValue, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+            }
+            PropertyChip("impact \(trackedTask?.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+            PropertyChip("complexity \(trackedTask?.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             PropertyChip(finding.verificationLabel, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             PropertyChip(finding.locations.isEmpty ? "no source locations" : "\(finding.locations.count) source\(finding.locations.count == 1 ? "" : "s")",
                          fill: DeskColor.neutralChipFill2, verticalPadding: 1)
@@ -64,8 +69,19 @@ struct FindingDialog: View {
         }
     }
 
+    /// A rating comes from the tracker, so it exists only once this has been filed as an issue.
+    private var trackedTask: DeskTask? {
+        guard let number = finding.reconcile?.candidateIssue else { return nil }
+        return model.tasks.first { $0.issueNumber == number }
+    }
+
     private var overview: some View {
         VStack(alignment: .leading, spacing: 14) {
+            // What the category is asking of you, and where to answer it. "Needs a decision" named a decision
+            // without ever saying what it was — the question was in the skill, not on screen.
+            if let decision = finding.categories.compactMap(\.decision).first {
+                NoticeBanner(tone: .waiting, title: decision.title, message: decision.message, style: .compact)
+            }
             MarkdownText(finding.summary, color: DeskColor.secondaryInk)
                 .lineSpacing(5)
                 .frame(maxWidth: 760, alignment: .leading)

@@ -58,7 +58,7 @@ extension ProjectWindowModel {
             return nil
         }
         return jobs.start(door: "create-issue", title: "File \(itemID)", agent: agent, arguments: [description],
-                          permission: .everything, directory: path)
+                          permission: .everything, directory: path, subject: itemID)
     }
 
     /// Starts `/dev #N` for a task. The card and the dialog both call this, so they cannot disagree about

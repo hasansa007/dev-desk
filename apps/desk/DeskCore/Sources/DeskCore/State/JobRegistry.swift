@@ -32,6 +32,9 @@ public struct BackgroundJob: Identifiable, Equatable {
     public let agent: String
     public let door: String
     public let directory: String
+    /// What this run is about, in the caller's own terms — a finding's id, an opportunity's. It lets the card
+    /// that started a run find it again and say what it is doing, rather than the run being invisible.
+    public var subject: String?
     public var sessionID: String?
     /// Kept so answering resumes under the same grant the run was started with.
     public let permission: RunPermission
@@ -73,6 +76,16 @@ public final class JobRegistry {
 
     public func job(_ id: String) -> BackgroundJob? { jobs.first { $0.id == id } }
 
+    /// The newest run started for this subject in this project, whatever state it is in.
+    public func job(subject: String, in directory: String) -> BackgroundJob? {
+        jobs.first { $0.subject == subject && $0.directory == directory }
+    }
+
+    /// Every run in one project, newest first — what a window can show without claiming another window's work.
+    public func jobs(in directory: String) -> [BackgroundJob] {
+        jobs.filter { $0.directory == directory }
+    }
+
     public var liveCount: Int { jobs.filter { $0.state.isLive }.count }
 
     /// One background run per door **per project**. The registry is the app's, so asking by door alone let a
@@ -86,12 +99,12 @@ public final class JobRegistry {
     /// Returns nil when the family has no verified invocation for that agent, rather than guessing one.
     @discardableResult
     public func start(door: String, title: String, agent: String, arguments: [String] = [],
-                      permission: RunPermission, directory: String) -> String? {
+                      permission: RunPermission, directory: String, subject: String? = nil) -> String? {
         guard let launch = JobCommand.launch(door: door, agent: agent, arguments: arguments,
                                              permission: permission, directory: directory, home: home) else { return nil }
         let id = "job:\(door):\(UUID().uuidString.prefix(8))"
         jobs.insert(BackgroundJob(id: id, title: title, agent: agent, door: door, directory: directory,
-                                  sessionID: launch.sessionID, permission: permission), at: 0)
+                                  subject: subject, sessionID: launch.sessionID, permission: permission), at: 0)
         run(id: id, launch: launch, directory: directory)
         return id
     }

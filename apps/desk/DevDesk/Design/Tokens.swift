@@ -122,6 +122,9 @@ enum DeskMetric {
     /// Room the title leaves for the ⋮ overlay, which takes no layout space of its own.
     static let cardMenuInset: CGFloat = 30
     static let cardTitleHeight: CGFloat = 34
+    /// A finding's card carries one row a task's does not — its area and rating sit above the line saying how
+    /// far it was verified — so it is taller by exactly that row rather than clipping its own bottom band.
+    static let findingCardHeight: CGFloat = 143
     /// One height for a column's header, so a long title truncates instead of dropping its own column a row.
     static let columnHeaderHeight: CGFloat = 18
     static let pillRadius: CGFloat = 10

@@ -13,6 +13,20 @@ struct FindingCard: View {
     private var isIgnored: Bool { model.ignoredFindings.contains(finding.id) }
     private var blockedReason: String? { model.runBlockedReason(agent: defaultConnection) }
 
+    /// The run this card started, if it started one. Filing takes a door and a minute, and a card that shows
+    /// nothing while that happens is a card whose button "does nothing".
+    private var filing: BackgroundJob? {
+        guard let jobs, case .local(let path) = model.ref else { return nil }
+        return jobs.job(subject: finding.id, in: path)
+    }
+
+    /// The issue this finding is tracked by, when the report matched one. It is the only place a rating can
+    /// come from: a survey rates nothing — `dev:survey` sets impact and complexity when it *files*.
+    private var trackedTask: DeskTask? {
+        guard let number = finding.reconcile?.candidateIssue else { return nil }
+        return model.tasks.first { $0.issueNumber == number }
+    }
+
     var body: some View {
         // Not a Button: the menu and the file control are its children, and a button inside a button never
         // gets its own clicks — which is how Start, then Stop, came to do nothing.
@@ -43,6 +57,8 @@ struct FindingCard: View {
                        maxHeight: DeskMetric.cardTitleHeight, alignment: .topLeading)
             chips
                 .padding(.top, 9)
+            ratings
+                .padding(.top, 7)
             // How far it was verified, on its own line. It shared the bottom band with the file control and
             // came out as "Code-inspected · confi…", which is the half that says nothing.
             Text(finding.verificationLabel)
@@ -53,14 +69,27 @@ struct FindingCard: View {
             bottomBand
                 .padding(.top, 9)
         }
-        .frame(height: DeskMetric.cardContentHeight, alignment: .topLeading)
+        .frame(height: DeskMetric.findingCardHeight, alignment: .topLeading)
         .deskCard()
     }
 
     private var chips: some View {
         HStack(spacing: 6) {
             StatusPill(badge: StatusBadge(FindingTone.of(finding), finding.listDetail))
+            if let area = finding.area {
+                PropertyChip(area.rawValue, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+            }
             if isIgnored { StatusPill(badge: StatusBadge(.neutral, "Ignored")) }
+            Spacer(minLength: 0)
+        }
+    }
+
+    /// On every card, dashed where nothing rated it (ADR 0020). A finding is rated when it becomes an issue,
+    /// so these stay dashes until it is filed and read back from the tracker.
+    private var ratings: some View {
+        HStack(spacing: 6) {
+            PropertyChip("impact \(trackedTask?.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+            PropertyChip("complexity \(trackedTask?.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             Spacer(minLength: 0)
         }
     }
@@ -75,9 +104,10 @@ struct FindingCard: View {
     /// Always present, so a card with something to say is not a different size from one without. A path
     /// truncates from the head, so what is left is the file rather than the first folder.
     private var bottomBand: some View {
-        Text(sourceLine)
-            .font(DeskFont.mono(11))
-            .foregroundStyle(DeskColor.faintInk)
+        Text(filingNote?.text ?? sourceLine)
+            .font(filingNote == nil ? DeskFont.mono(11) : .system(size: 11))
+            .foregroundStyle(filingNote.map { $0.isWarning ? DeskColor.tone(.failed).dot : DeskColor.mutedInk }
+                             ?? DeskColor.faintInk)
             .lineLimit(1)
             .truncationMode(.head)
             .padding(.trailing, fileWidth + 8)
@@ -114,8 +144,21 @@ struct FindingCard: View {
     }
 
     /// Filing is what you do with a finding, so it is on the card — the place Start sits on a task card.
+    /// While its run is going the card says so, because the run itself has no other sign on this screen.
     @ViewBuilder private var fileButton: some View {
-        if !isIgnored {
+        if let filing, filing.state.isLive {
+            StatusPill(badge: StatusBadge(.running, "Filing…", pulses: true))
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: FileWidthKey.self, value: proxy.size.width)
+                })
+        } else if let filing, case .asking = filing.state {
+            Button("Answer…") { model.go(.terminals) }
+                .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
+                .help("The run stopped to ask something; it is waiting in Terminals")
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: FileWidthKey.self, value: proxy.size.width)
+                })
+        } else if !isIgnored {
             Button { file() } label: {
                 Label("Backlog", systemImage: "tray.and.arrow.down")
             }
@@ -132,6 +175,16 @@ struct FindingCard: View {
     private func file() {
         model.fileFromReport(jobs: jobs, itemID: finding.id, description: finding.backlogDescription,
                              agent: defaultConnection)
+    }
+
+    /// What the run left behind, under the title: the only place a failed filing could ever be seen from here.
+    private var filingNote: (text: String, isWarning: Bool)? {
+        guard let filing else { return nil }
+        switch filing.state {
+        case .starting, .running: return ("Filing this as an issue…", false)
+        case .asking: return ("The run is waiting for an answer in Terminals", false)
+        case .ended(let text, let failed): return (failed ? "Filing failed: \(text)" : "Filed — see the board", failed)
+        }
     }
 }
 

@@ -11,15 +11,16 @@ struct TerminalsScreen: View {
     @Bindable var model: ProjectWindowModel
     @State private var expandedID: String?
     @State private var hasChosen = false
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
-    private var rows: [SessionRow] { SessionRow.all(in: model) }
+    private var rows: [SessionRow] { SessionRow.all(in: model, jobs: jobs) }
 
     var body: some View {
         VStack(spacing: 0) {
             header
             if rows.isEmpty {
                 EmptyStateView(title: "Nothing running",
-                               message: "Start a task from the board, or run a door from Findings, Ideation or Roadmap. Its terminal appears here.") {
+                               message: "Start a task from the board, or run a door from Survey, Ideation or Roadmap. Whether it takes a terminal or runs in the background, it appears here.") {
                     Button("Go to the board") { model.go(.board) }
                         .buttonStyle(DeskButtonStyle(kind: .secondary))
                 }
@@ -92,7 +93,9 @@ private struct TerminalTile: View {
     let isExpanded: Bool
     let toggle: () -> Void
     @Environment(\.terminals) private var terminals
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @State private var answer = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -123,7 +126,16 @@ private struct TerminalTile: View {
                 .accessibilityLabel("\(isExpanded ? "Collapse" : "Expand") \(row.title)")
                 // The row's action, where a row's action belongs: top right, and primary when it is the thing
                 // to do. It was a small button buried under the trust note in the body.
-                if row.isLive {
+                if case .job(let job) = row.kind {
+                    if job.state.isLive {
+                        Button("Stop") { jobs?.stop(job.id) }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    } else {
+                        Button("Remove") { jobs?.remove(job.id) }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                            .help("Takes the finished run off this list")
+                    }
+                } else if row.isLive {
                     Button("Stop") { terminals?.end(taskID: row.id) }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
                 } else {
@@ -157,6 +169,8 @@ private struct TerminalTile: View {
         case .door: return "Start run"
         case .task: return "Start"
         case .scratch: return "Start terminal"
+        // A background run has no shell to start; its row offers Stop or Remove instead.
+        case .job: return "Start"
         }
     }
 
@@ -172,6 +186,7 @@ private struct TerminalTile: View {
         case .door(let run): branch = nil; number = nil; note = run.folderNote; command = run.command
         case .task(let task): branch = task.branch; number = task.taskNumber; note = task.noBranchNote; command = nil
         case .scratch: branch = nil; number = nil; note = nil; command = nil
+        case .job: return
         }
         let location = worktreeLocation
         Task {
@@ -185,6 +200,8 @@ private struct TerminalTile: View {
 
     @ViewBuilder private var pane: some View {
         switch row.kind {
+        case .job(let job):
+            JobPane(job: job, answer: $answer) { jobs?.answer($0, to: job.id) }
         case .door(let run):
             ShellPane(sessions: model.sessions, id: run.id, folderNote: run.folderNote,
                       command: run.command, startTitle: "Start run", showsStop: false, showsStart: false)
@@ -198,9 +215,11 @@ private struct TerminalTile: View {
     }
 }
 
-/// A door this window started, or a task's own session. Both are one session in one registry (ADR 0026).
+/// A door this window started, a task's own session, or a run with no terminal at all. One list: a background
+/// run is still a run, and it had no surface anywhere in the app — you pressed a button, a job started, and
+/// nothing on screen ever mentioned it again.
 struct SessionRow: Identifiable {
-    enum Kind { case door(DoorRun), task(DeskTask), scratch }
+    enum Kind { case door(DoorRun), task(DeskTask), scratch, job(BackgroundJob) }
 
     let id: String
     let title: String
@@ -209,7 +228,7 @@ struct SessionRow: Identifiable {
     let kind: Kind
 
     @MainActor
-    static func all(in model: ProjectWindowModel) -> [SessionRow] {
+    static func all(in model: ProjectWindowModel, jobs: JobRegistry? = nil) -> [SessionRow] {
         let doorIDs = Set(model.runs.runs.map(\.id))
         let doors = model.runs.runs.map { run in
             SessionRow(id: run.id, title: run.title,
@@ -227,6 +246,13 @@ struct SessionRow: Identifiable {
                        subtitle: RunLabel.label(for: model.sessions.state(for: id)).label,
                        isLive: model.sessions.state(for: id).isLive, kind: .scratch)
         }
-        return doors + tasks + scratch
+        var background: [SessionRow] = []
+        if let jobs, case .local(let path) = model.ref {
+            background = jobs.jobs(in: path).map { job in
+                SessionRow(id: job.id, title: job.title, subtitle: "\(job.agent) · \(job.state.label)",
+                           isLive: job.state.isLive, kind: .job(job))
+            }
+        }
+        return background + doors + tasks + scratch
     }
 }
