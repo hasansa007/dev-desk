@@ -55,16 +55,19 @@ struct TaskCard: View {
     @State private var startWidth: CGFloat = 0
 
     var body: some View {
-        Button(action: action) {
-            content
-        }
-        .buttonStyle(.plain)
-        .opacity(task.isDimmed ? 0.72 : 1)
-        .accessibilityLabel(accessibilityLabel)
-        // Siblings, not children of the card's button, so pressing one never also opens the task.
-        .overlay(alignment: .topTrailing) { movesMenu.padding(7) }
-        .overlay(alignment: .bottomTrailing) { startButton.padding(11) }
-        .onPreferenceChange(StartWidthKey.self) { startWidth = $0 }
+        // The card is NOT a Button. It was, with Start and the menu as overlays on top — and SwiftUI gives the
+        // click to the outer button, so Start did nothing when pressed. Reported four times before it was
+        // believed. A tap gesture on the card's own shape leaves its controls as ordinary children that work.
+        content
+            .opacity(task.isDimmed ? 0.72 : 1)
+            .overlay(alignment: .topTrailing) { movesMenu.padding(7) }
+            .overlay(alignment: .bottomTrailing) { startButton.padding(11) }
+            .onPreferenceChange(StartWidthKey.self) { startWidth = $0 }
+            .onTapGesture(perform: action)
+            .accessibilityElement(children: .contain)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction(named: "Open") { action() }
     }
 
     @ViewBuilder private var movesMenu: some View {
@@ -127,6 +130,8 @@ struct TaskCard: View {
             metaRow
                 .padding(.top, 9)
             ratingRow
+                .padding(.top, 7)
+            stageRow
                 .padding(.top, 7)
             // One band at the bottom, reserved on every card: the note reads along it, and the Start control
             // sits at its right as a sibling overlay — never a button inside a button. Two separate reserved
@@ -201,6 +206,37 @@ struct TaskCard: View {
                 Text(inline)
                     .font(.system(size: 11))
                     .foregroundStyle(DeskColor.mutedInk)
+            }
+        }
+    }
+
+    /// What the pipeline says this task has reached, from `.dev/<branch>.json` — the one thing the board knew
+    /// and never showed. A bar rather than chips, because a card is 246 pt wide and seventeen phases are not.
+    /// Advisory by `dev:kanban` 4.4: git decides the column, this only says how far along the branch claims to be.
+    @ViewBuilder private var stageRow: some View {
+        if let stages = task.pipeline?.stages, !stages.isEmpty {
+            let done = stages.filter { $0.state == .done }.count
+            let current = stages.first { $0.state == .current }?.name
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 6) {
+                    Text(current ?? (done == stages.count ? "Complete" : "Not started"))
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text("\(done)/\(stages.count)")
+                        .font(DeskFont.mono(10))
+                        .foregroundStyle(DeskColor.faintInk)
+                }
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule().fill(DeskColor.controlBorder)
+                        Capsule()
+                            .fill(DeskColor.accent)
+                            .frame(width: proxy.size.width * CGFloat(done) / CGFloat(max(stages.count, 1)))
+                    }
+                }
+                .frame(height: 3)
             }
         }
     }

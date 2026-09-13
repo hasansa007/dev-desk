@@ -467,24 +467,15 @@ final class ShellLifetimeView: NSView {
     @objc private func windowWillClose(_ notification: Notification) { registries.forEach { $0.endAll() } }
 }
 
-private struct ShellTerminalsKey: EnvironmentKey {
-    static let defaultValue: ShellTerminalRegistry? = nil
-}
-
-private struct AgentTerminalsKey: EnvironmentKey {
+private struct TerminalsKey: EnvironmentKey {
     static let defaultValue: ShellTerminalRegistry? = nil
 }
 
 extension EnvironmentValues {
-    /// The window's shells; nil outside a project window, where the Shell tab can't start one.
-    var shellTerminals: ShellTerminalRegistry? {
-        get { self[ShellTerminalsKey.self] }
-        set { self[ShellTerminalsKey.self] = newValue }
-    }
-
-    /// The window's agents; nil outside a project window, where the Agents tab can't start one.
-    var agentTerminals: ShellTerminalRegistry? {
-        get { self[AgentTerminalsKey.self] }
-        set { self[AgentTerminalsKey.self] = newValue }
+    /// The window's sessions — one per task, shell or agent (ADR 0026). Nil outside a project window, where
+    /// nothing can start one.
+    var terminals: ShellTerminalRegistry? {
+        get { self[TerminalsKey.self] }
+        set { self[TerminalsKey.self] = newValue }
     }
 }

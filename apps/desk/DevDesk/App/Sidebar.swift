@@ -106,6 +106,9 @@ struct Sidebar: View {
         switch destination {
         case .board:
             return model.snapshot?.board.value == nil ? nil : (model.openTaskCount, false)
+        case .terminals:
+            let live = SessionRow.all(in: model).filter(\.isLive).count
+            return live > 0 ? (live, true) : nil
         case .survey:
             guard let count = model.findingsCount, count > 0 else { return nil }
             return (count, false)
@@ -125,6 +128,7 @@ struct Sidebar: View {
     private func symbol(for destination: Destination) -> String {
         switch destination {
         case .board: return "square.grid.3x2"
+        case .terminals: return "apple.terminal"
         case .roadmap: return "map"
         case .survey: return "scope"
         case .ideation: return "lightbulb"

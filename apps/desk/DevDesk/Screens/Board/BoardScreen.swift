@@ -173,8 +173,8 @@ private struct BoardColumnView: View {
     let model: ProjectWindowModel
     @State private var pending: PendingMove?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = "Codex"
-    @Environment(\.shellTerminals) private var terminals
-    @Environment(\.agentTerminals) private var agents
+    @Environment(\.terminals) private var terminals
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
     private var counts: (total: Int, live: Int) { model.counts(in: column) }
@@ -191,7 +191,7 @@ private struct BoardColumnView: View {
             isLive: live,
             stop: {
                 // Whichever of the three is live — the precedence that decides the badge does not decide this.
-                agents?.end(taskID: task.id)
+                terminals?.end(taskID: task.id)
                 terminals?.end(taskID: task.id)
                 if let number = task.taskNumber { terminals?.end(taskID: DoorRuns.id(task: number)) }
             },
@@ -199,8 +199,13 @@ private struct BoardColumnView: View {
                 if canStartDoor {
                     model.startTask(task, agent: defaultConnection)
                 } else {
-                    model.openTask(task.id)
-                    model.tab = .agent
+                    // Continue means continue: start the agent, then go to where it lives (ADR 0026).
+                    // Opening a tab and leaving Start to be pressed was navigation wearing an action's label.
+                    if case .ready(let kind) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? []) {
+                        _ = terminals?.startAgent(for: task, agent: kind, worktreeLocation: worktreeLocation)
+                    }
+                    model.selectedSessionID = task.id
+                    model.go(.terminals)
                 }
             },
             resumeTitle: canStartDoor ? "Continue — run the door" : "Continue in the agent")
@@ -210,7 +215,7 @@ private struct BoardColumnView: View {
     private func branchActions(for task: DeskTask) -> BranchActions? {
         guard task.issueNumber == nil, let branch = task.branch else { return nil }
         return BranchActions(
-            openTerminal: { model.openTask(task.id); model.tab = .shell },
+            openTerminal: { model.selectedSessionID = task.id; model.go(.terminals) },
             compare: { model.openTask(task.id); model.tab = .changes },
             copyName: {
                 NSPasteboard.general.clearContents()

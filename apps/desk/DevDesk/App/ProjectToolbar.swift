@@ -8,7 +8,7 @@ struct ProjectToolbar: ToolbarContent {
     /// Counts only what is actually live, so the dot never claims a finished run is still going.
     private var liveRuns: Int {
         model.runs.runs.filter {
-            switch model.shellSessions.state(for: $0.id) {
+            switch model.sessions.state(for: $0.id) {
             case .running, .preparing: return true
             default: return false
             }

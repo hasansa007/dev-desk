@@ -71,39 +71,37 @@ final class ProjectWindowRefreshTests: XCTestCase {
     }
 }
 
-/// The board's own liveness, which asked only about door runs until a started shell and a started agent
-/// both proved invisible on it.
+/// The board's own liveness. It asked only about door runs until a started shell and a started agent both
+/// proved invisible on it; since ADR 0026 a task has ONE session, so what is left to decide is which kind.
 @MainActor
 final class TaskActivityTests: XCTestCase {
     private let folder = TaskFolder(url: URL(fileURLWithPath: "/tmp/x"), note: nil, created: false)
 
     func testNothingLiveIsNoActivity() {
-        XCTAssertNil(ProjectWindowModel.activity(doorRun: false, agent: .idle(nil), shell: .idle(nil)))
+        XCTAssertNil(ProjectWindowModel.activity(doorRun: false, session: .idle(nil), purpose: nil))
     }
 
-    func testAStartedShellIsActivity() {
-        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .idle(nil), shell: .running(folder)), .shell)
+    func testASessionNamesItsOwnKind() {
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, session: .running(folder), purpose: .shell), .shell)
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, session: .running(folder), purpose: .agent), .agent)
     }
 
-    func testAStartedAgentIsActivity() {
-        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .running(folder), shell: .idle(nil)), .agent)
+    /// A session that started before anything recorded a purpose is a shell: it is what `start` defaults to.
+    func testASessionWithNoRecordedPurposeIsAShell() {
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, session: .running(folder), purpose: nil), .shell)
     }
 
     func testPreparingCountsBeforeAnythingRuns() {
-        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .preparing, shell: .idle(nil)), .agent)
-        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .idle(nil), shell: .preparing), .shell)
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, session: .preparing, purpose: .agent), .agent)
     }
 
     func testADoorRunSpeaksForTheWholeTask() {
-        XCTAssertEqual(ProjectWindowModel.activity(doorRun: true, agent: .running(folder), shell: .running(folder)), .run)
-    }
-
-    func testTheAgentOutranksAShellLeftOpenBesideIt() {
-        XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, agent: .running(folder), shell: .running(folder)), .agent)
+        XCTAssertEqual(ProjectWindowModel.activity(doorRun: true, session: .running(folder), purpose: .agent), .run)
     }
 
     func testAFinishedSessionIsNotLive() {
-        XCTAssertNil(ProjectWindowModel.activity(doorRun: false, agent: .ended(folder, status: 0), shell: .failed("no")))
+        XCTAssertNil(ProjectWindowModel.activity(doorRun: false, session: .ended(folder, status: 0), purpose: .agent))
+        XCTAssertNil(ProjectWindowModel.activity(doorRun: false, session: .failed("no"), purpose: .shell))
     }
 
     func testEachKindNamesItselfOnTheCard() {

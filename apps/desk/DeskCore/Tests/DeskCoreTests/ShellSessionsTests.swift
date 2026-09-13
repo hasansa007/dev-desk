@@ -221,20 +221,25 @@ final class ShellSessionsTests: XCTestCase {
         XCTAssertEqual(runner.calls, [])
     }
 
+    /// One registry per window since ADR 0026: the same session plans as a shell or as an agent depending on
+    /// what is starting, and the refusal a sample gives names whichever was asked for.
     func testTheWindowModelGivesALocalProjectItsFolderAndASampleNone() async {
         let local = ProjectWindowModel(ref: .local(path: "/work/My App"), source: FailingSource(message: "not loaded"))
         let unbranched = ShellSessionState.idle(.root(Self.root, note: "No branch for this task yet. The shell opens at the project root."))
-        await local.shellSessions.refreshPlan(taskID: "14", branch: nil, taskNumber: nil, worktreeLocation: "~/.devdesk/wt")
-        XCTAssertEqual(local.shellSessions.state(for: "14"), unbranched)
-        await local.agentSessions.refreshPlan(taskID: "14", branch: nil, taskNumber: nil, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
-        XCTAssertEqual(local.agentSessions.state(for: "14"), .idle(.root(Self.root, note: "No branch for this task yet. The agent opens at the project root.")),
-                       "the agents' sessions plan in the same project, and their notes speak of the agent")
-        XCTAssertEqual(local.shellSessions.purpose, .shell)
-        XCTAssertEqual(local.agentSessions.purpose, .agent)
-        XCTAssertFalse(local.shellSessions === local.agentSessions)
+        await local.sessions.refreshPlan(taskID: "14", branch: nil, taskNumber: nil, worktreeLocation: "~/.devdesk/wt")
+        XCTAssertEqual(local.sessions.state(for: "14"), unbranched)
+
+        let agentPlan = ProjectWindowModel(ref: .local(path: "/work/My App"), source: FailingSource(message: "not loaded"))
+        await agentPlan.sessions.refreshPlan(taskID: "14", purpose: .agent, branch: nil, taskNumber: nil,
+                                             worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
+        XCTAssertEqual(agentPlan.sessions.state(for: "14"),
+                       .idle(.root(Self.root, note: "No branch for this task yet. The agent opens at the project root.")),
+                       "planning as an agent speaks of the agent, in the same project and the same registry")
+
         let sample = ProjectWindowModel(ref: .sample(.studyHub), source: SampleDataSource(project: .studyHub))
-        XCTAssertEqual(sample.shellSessions.state(for: "42"), .failed(Self.noFolder))
-        XCTAssertEqual(sample.agentSessions.state(for: "42"), .failed(Self.noFolderForAgent))
+        XCTAssertEqual(sample.sessions.state(for: "42"), .failed(Self.noFolder))
+        XCTAssertEqual(sample.sessions.startRefusal(for: .agent), Self.noFolderForAgent)
+        XCTAssertEqual(sample.sessions.startRefusal(for: .shell), Self.noFolder)
     }
 
     // MARK: - Agent sessions
@@ -247,7 +252,7 @@ final class ShellSessionsTests: XCTestCase {
     func testAnAgentSessionPlansADetachedWorktreeWhereAShellPlansTheRoot() async throws {
         let location = try TempGitRepo()
         let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly)])
-        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        let agents = ShellSessions(projectRoot: Self.root, runner: runner)
         let shells = ShellSessions(projectRoot: Self.root, runner: runner)
         await agents.refreshPlan(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
         await shells.refreshPlan(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
@@ -263,7 +268,7 @@ final class ShellSessionsTests: XCTestCase {
         let location = try TempGitRepo()
         let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
         let fake = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .ok()])
-        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: fake)
+        let agents = ShellSessions(projectRoot: Self.root, runner: fake)
         await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
         let created = TaskFolder(url: path, note: nil, created: true)
         XCTAssertEqual(agents.state(for: "7"), .running(created))
@@ -282,7 +287,7 @@ final class ShellSessionsTests: XCTestCase {
 
     func testASampleAgentSessionFailsWithItsReasonAndNeverRunsACommand() async {
         let runner = FakeRunner()
-        let agents = ShellSessions(projectRoot: nil, purpose: .agent, runner: runner)
+        let agents = ShellSessions(projectRoot: nil, runner: runner)
         await agents.refreshPlan(taskID: "42", branch: nil, taskNumber: 42, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
         await agents.start(taskID: "42", branch: nil, taskNumber: 42, worktreeLocation: "~/.devdesk/wt", baseRef: Self.base)
         XCTAssertEqual(agents.state(for: "42"), .failed(Self.noFolderForAgent))
@@ -297,7 +302,7 @@ final class ShellSessionsTests: XCTestCase {
     func testAStartThatRefusesTheRootFailsWithThePlansNoteAndLaunchesNothing() async throws {
         let location = try TempGitRepo()
         let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly)])
-        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        let agents = ShellSessions(projectRoot: Self.root, runner: runner)
         await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, refusingRoot: true)
         XCTAssertEqual(agents.state(for: "7"), .failed(Self.noBase))
         XCTAssertEqual(agents.generation(for: "7"), 0, "nothing moved to running, so there is no process to launch")
@@ -314,7 +319,7 @@ final class ShellSessionsTests: XCTestCase {
         let location = try TempGitRepo()
         let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
         let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .failed(128, stderr: "fatal: invalid reference: \(Self.base)\n")])
-        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        let agents = ShellSessions(projectRoot: Self.root, runner: runner)
         await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base, refusingRoot: true)
         XCTAssertEqual(agents.state(for: "7"), .failed("Couldn't create a worktree for \(Self.base), so the agent opens at the project root: "
                                                       + "fatal: invalid reference: \(Self.base)"))
@@ -328,7 +333,7 @@ final class ShellSessionsTests: XCTestCase {
         let location = try TempGitRepo()
         let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
         let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .ok()])
-        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        let agents = ShellSessions(projectRoot: Self.root, runner: runner)
         await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base, refusingRoot: true)
         XCTAssertEqual(agents.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: true)))
         XCTAssertEqual(agents.generation(for: "7"), 1)
@@ -339,7 +344,7 @@ final class ShellSessionsTests: XCTestCase {
         let path = location.url.appendingPathComponent("my-app-7", isDirectory: true)
         let fake = FakeRunner([Self.listKey: .ok(Self.mainOnly), detachKey(path): .ok()])
         let runner = HeldRunner(fake)
-        let agents = ShellSessions(projectRoot: Self.root, purpose: .agent, runner: runner)
+        let agents = ShellSessions(projectRoot: Self.root, runner: runner)
         XCTAssertEqual(agents.activeTaskIDs, [])
 
         let start = Task { await agents.start(taskID: "7", branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base) }

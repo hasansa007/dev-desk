@@ -160,7 +160,8 @@ enum SurveyScope: String, CaseIterable, Hashable {
     }
 }
 
-private struct FocusChip: View {
+/// Also used by Terminals to pick how many are up: one chip style for "one of these, on or off".
+struct FocusChip: View {
     let title: String
     let isOn: Bool
     let action: () -> Void

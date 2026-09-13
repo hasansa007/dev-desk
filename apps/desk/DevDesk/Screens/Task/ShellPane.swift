@@ -14,7 +14,7 @@ struct ShellPane: View {
     var command: String?
     var startTitle = "Start shell"
 
-    @Environment(\.shellTerminals) private var terminals
+    @Environment(\.terminals) private var terminals
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
 
     static let trustNote = "Starting a shell runs your login shell and git in this repository, as Terminal would. Only start one in a repository you trust."

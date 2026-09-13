@@ -8,8 +8,7 @@ import SwiftUI
 /// board's own header counted it. A run you cannot see is a run you cannot stop.
 struct RunsPanel: View {
     @Bindable var model: ProjectWindowModel
-    @Environment(\.shellTerminals) private var terminals
-    @Environment(\.agentTerminals) private var agents
+    @Environment(\.terminals) private var terminals
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @State private var answers: [String: String] = [:]
 
@@ -36,7 +35,7 @@ struct RunsPanel: View {
                            kind: kind, state: sessions.state(for: taskID))
             }
         }
-        return rows(model.agentSessions, kind: .agent) + rows(model.shellSessions, kind: .shell)
+        return rows(model.sessions, kind: .agent) + rows(model.sessions, kind: .shell)
     }
 
     private var isEmpty: Bool { model.runs.runs.isEmpty && sessionRows.isEmpty && (jobs?.jobs.isEmpty ?? true) }
@@ -63,7 +62,7 @@ struct RunsPanel: View {
     /// A finished run has written whatever it was going to write, so the project is read again.
     private var endedRuns: Int {
         model.runs.runs.filter {
-            if case .ended = model.shellSessions.state(for: $0.id) { return true }
+            if case .ended = model.sessions.state(for: $0.id) { return true }
             return false
         }.count
     }
@@ -189,7 +188,7 @@ struct RunsPanel: View {
                     .foregroundStyle(DeskColor.mutedInk)
             }
             Spacer(minLength: 4)
-            Button("Open") { model.present(.run(row.taskID)) }
+            Button("Open") { model.selectedSessionID = row.taskID; model.go(.terminals) }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             Button("Stop") { stop(row) }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
@@ -205,13 +204,13 @@ struct RunsPanel: View {
     /// SIGHUP then SIGKILL, through the registry that owns the session — the same path the pane's own Stop takes.
     private func stop(_ row: SessionRow) {
         switch row.kind {
-        case .agent: agents?.end(taskID: row.taskID)
+        case .agent: terminals?.end(taskID: row.taskID)
         case .shell, .run: terminals?.end(taskID: row.taskID)
         }
     }
 
     private func runRow(_ run: DoorRun) -> some View {
-        let state = Self.label(for: model.shellSessions.state(for: run.id))
+        let state = Self.label(for: model.sessions.state(for: run.id))
         let isSelected = run.id == selected?.id
         return Button { model.runs.selectedID = run.id } label: {
             HStack(spacing: 8) {
@@ -225,7 +224,7 @@ struct RunsPanel: View {
                         .foregroundStyle(DeskColor.mutedInk)
                 }
                 Spacer(minLength: 4)
-                Button("Open") { model.present(.run(run.id)) }
+                Button("Open") { model.selectedSessionID = run.id; model.go(.terminals) }
                     .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
                 if state.isLive {
                     Button("Stop") { terminals?.end(taskID: run.id) }

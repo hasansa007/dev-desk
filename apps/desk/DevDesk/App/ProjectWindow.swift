@@ -4,9 +4,8 @@ import SwiftUI
 struct ProjectWindow: View {
     let ref: ProjectRef
     @State private var model: ProjectWindowModel
-    /// This window's shells and agents; closing the window or quitting ends them.
+    /// This window's sessions — one per task, shell or agent (ADR 0026); closing the window or quitting ends them.
     @State private var terminals: ShellTerminalRegistry
-    @State private var agents: ShellTerminalRegistry
     @State private var auto: AutoAgents
     @State private var layoutRestored = false
     @State private var columns: NavigationSplitViewVisibility = .all
@@ -20,10 +19,9 @@ struct ProjectWindow: View {
         self.ref = ref
         let model = ProjectWindowModel(ref: ref, source: DataSources.make(for: ref))
         _model = State(initialValue: model)
-        _terminals = State(initialValue: ShellTerminalRegistry(sessions: model.shellSessions))
-        let agents = ShellTerminalRegistry(sessions: model.agentSessions)
-        _agents = State(initialValue: agents)
-        _auto = State(initialValue: AutoAgents(model: model, agents: agents))
+        let terminals = ShellTerminalRegistry(sessions: model.sessions)
+        _terminals = State(initialValue: terminals)
+        _auto = State(initialValue: AutoAgents(model: model, agents: terminals))
     }
 
     var body: some View {
@@ -40,8 +38,7 @@ struct ProjectWindow: View {
             SheetHost(model: model, kind: kind)
         }
         .modifier(DeskLinkRouting(model: model))
-        .environment(\.shellTerminals, terminals)
-        .environment(\.agentTerminals, agents)
+        .environment(\.terminals, terminals)
         .focusedSceneValue(\.projectModel, model)
         .preferredColorScheme(SnapshotMode.shared.colorScheme ?? appearance.colorScheme)
         .frame(minWidth: 1100, minHeight: 720)
@@ -58,10 +55,10 @@ struct ProjectWindow: View {
         .onChange(of: model.tab) { _, value in if layoutRestored { storedTab = value } }
     }
 
-    /// Snapshot mode's capture, ending the window's shells and agents when it closes, and its Auto loop.
+    /// Snapshot mode's capture, ending the window's sessions when it closes, and its Auto loop.
     @ViewBuilder private var windowHooks: some View {
         SnapshotWindowHook(ref: ref, model: model)
-        ShellLifetimeHook(registries: [terminals, agents])
+        ShellLifetimeHook(registries: [terminals])
         AutoAgentsHook(auto: auto, ref: ref)
     }
 

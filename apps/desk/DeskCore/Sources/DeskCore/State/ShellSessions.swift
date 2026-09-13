@@ -23,8 +23,12 @@ public enum ShellSessionState: Equatable {
 /// What a window's sessions run: the user's shell, or the task's agent, whose plan can also be a detached worktree for a task with no branch.
 public enum SessionPurpose: Equatable { case shell, agent }
 
-/// Each task's shell, or each task's agent, in one window, keyed by task id. Nothing runs in the repository until `start`, which only the
-/// user's click, or Auto for an agent, calls.
+/// Each task's ONE session in this window, keyed by task id — a login shell, or that shell running the task's
+/// agent. Nothing runs in the repository until `start`, which only the user's click, or Auto, calls.
+///
+/// The purpose belongs to the session, not to the registry (ADR 0026): it decides how the folder is
+/// materialised, so a task cannot hold a shell and an agent at once — which nobody wanted in one worktree, and
+/// which the board could not have shown anyway.
 @MainActor
 @Observable
 public final class ShellSessions {
@@ -36,27 +40,36 @@ public final class ShellSessions {
     /// Called when a session ends, so what a run wrote is read back without waiting for a manual reload.
     public var onSessionEnded: ((String) -> Void)?
 
-    @ObservationIgnored let purpose: SessionPurpose
+    /// What each live session is. Set at `start`, read by everything that distinguishes an agent from a shell.
+    private var purposes: [String: SessionPurpose] = [:]
     @ObservationIgnored private let projectRoot: URL?
     @ObservationIgnored private let runner: CommandRunner
 
     /// A nil root, as a sample has, leaves every session failed and runs nothing.
-    public init(projectRoot: URL?, purpose: SessionPurpose = .shell, runner: CommandRunner = ProcessRunner()) {
+    public init(projectRoot: URL?, runner: CommandRunner = ProcessRunner()) {
         self.projectRoot = projectRoot
-        self.purpose = purpose
         self.runner = runner
     }
 
+    /// What this task's session is, or nil when it has never started one.
+    public func purpose(for taskID: String) -> SessionPurpose? { purposes[taskID] }
+
     public func state(for taskID: String) -> ShellSessionState {
-        guard projectRoot != nil else { return .failed(purpose == .agent ? Self.noFolderForAgentReason : Self.noFolderReason) }
+        guard projectRoot != nil else { return .failed(Self.noFolderReason) }
         return states[taskID] ?? .idle(nil)
     }
 
+    /// The refusal an agent start would get on a sample, which names the agent rather than a shell.
+    public func startRefusal(for purpose: SessionPurpose) -> String? {
+        projectRoot == nil ? (purpose == .agent ? Self.noFolderForAgentReason : Self.noFolderReason) : nil
+    }
+
     /// Reads the folder a start would use, for the note under the trust text. A started or ended session keeps its state.
-    public func refreshPlan(taskID: String, branch: String?, taskNumber: Int?, noBranchNote: String? = nil, worktreeLocation: String,
-                            baseRef: String? = nil) async {
+    public func refreshPlan(taskID: String, purpose: SessionPurpose = .shell, branch: String?, taskNumber: Int?,
+                            noBranchNote: String? = nil, worktreeLocation: String, baseRef: String? = nil) async {
         guard let resolver = resolver(worktreeLocation), case .idle = state(for: taskID) else { return }
-        let plan = await readPlan(resolver, branch: branch, taskNumber: taskNumber, noBranchNote: noBranchNote, baseRef: baseRef)
+        let plan = await readPlan(resolver, purpose: purpose, branch: branch, taskNumber: taskNumber,
+                                  noBranchNote: noBranchNote, baseRef: baseRef)
         // A refresh cancelled by a task switch may have read a stale list, and a start may have begun meanwhile.
         guard !Task.isCancelled, case .idle = state(for: taskID) else { return }
         states[taskID] = .idle(plan)
@@ -65,7 +78,8 @@ public final class ShellSessions {
     /// Plans again with the location the user has now, creates the worktree when the plan needs one, and leaves the session running there.
     /// `refusingRoot`, which Auto passes, fails the session with the note instead when the folder falls back to the project root, whether
     /// the plan said so or git refused the worktree, so nothing is launched there.
-    public func start(taskID: String, branch: String?, taskNumber: Int?, noBranchNote: String? = nil, worktreeLocation: String,
+    public func start(taskID: String, purpose: SessionPurpose = .shell, branch: String?, taskNumber: Int?,
+                      noBranchNote: String? = nil, worktreeLocation: String,
                       baseRef: String? = nil, refusingRoot: Bool = false) async {
         guard let resolver = resolver(worktreeLocation) else { return }
         switch state(for: taskID) {
@@ -73,7 +87,9 @@ public final class ShellSessions {
         default: break
         }
         states[taskID] = .preparing
-        let plan = await readPlan(resolver, branch: branch, taskNumber: taskNumber, noBranchNote: noBranchNote, baseRef: baseRef)
+        purposes[taskID] = purpose
+        let plan = await readPlan(resolver, purpose: purpose, branch: branch, taskNumber: taskNumber,
+                                  noBranchNote: noBranchNote, baseRef: baseRef)
         let folder = await resolver.materialise(plan, for: purpose)
         // A folder with a note is the project root, where the task's own checkout should have been.
         if refusingRoot, let note = folder.note {
@@ -102,6 +118,11 @@ public final class ShellSessions {
         }.sorted()
     }
 
+    /// Tasks running an agent, which is what Auto's limit counts — a shell you opened is not one of its slots.
+    public var activeAgentTaskIDs: [String] {
+        activeTaskIDs.filter { purposes[$0] == .agent }
+    }
+
     /// Tasks whose session is preparing or running: a start still waiting on git already holds one of Auto's slots.
     public var activeTaskIDs: [String] {
         states.compactMap { id, state in
@@ -113,7 +134,8 @@ public final class ShellSessions {
     }
 
     /// A shell ignores the base ref; an agent plans with it, so a numbered task with no branch can get a detached worktree.
-    private func readPlan(_ resolver: TaskFolderResolver, branch: String?, taskNumber: Int?, noBranchNote: String?, baseRef: String?) async -> TaskFolderPlan {
+    private func readPlan(_ resolver: TaskFolderResolver, purpose: SessionPurpose, branch: String?, taskNumber: Int?,
+                          noBranchNote: String?, baseRef: String?) async -> TaskFolderPlan {
         switch purpose {
         case .shell: return await resolver.plan(branch: branch, taskNumber: taskNumber, noBranchNote: noBranchNote)
         case .agent: return await resolver.planAgent(branch: branch, taskNumber: taskNumber, noBranchNote: noBranchNote, baseRef: baseRef)

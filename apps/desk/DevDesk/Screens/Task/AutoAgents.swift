@@ -12,16 +12,16 @@ final class AutoAgents {
     private static var refusedAtRoot: Set<String> = []
 
     private let model: ProjectWindowModel
-    private let agents: ShellTerminalRegistry
+    private let terminals: ShellTerminalRegistry
     private var isWatching = false
     /// Set while a pass's starts are preparing their folders; a pass asked for meanwhile runs once they are done.
     private var inFlight = false
     private var needsAnotherPass = false
     private var locationSettling: Task<Void, Never>?
 
-    init(model: ProjectWindowModel, agents: ShellTerminalRegistry) {
+    init(model: ProjectWindowModel, agents terminals: ShellTerminalRegistry) {
         self.model = model
-        self.agents = agents
+        self.terminals = terminals
     }
 
     /// The warning under the setting, and the confirmation before it turns on.
@@ -47,7 +47,7 @@ final class AutoAgents {
             _ = LiveShells.shared.agentCount
         } onChange: { [weak self] in
             Task { @MainActor in
-                guard let self, !self.agents.isClosed else { return }
+                guard let self, !self.terminals.isClosed else { return }
                 self.observe()
                 self.evaluate()
             }
@@ -55,7 +55,7 @@ final class AutoAgents {
     }
 
     func evaluate() {
-        guard case .local = model.ref, !agents.isClosed, !SnapshotMode.shared.isActive, isOn else { return }
+        guard case .local = model.ref, !terminals.isClosed, !SnapshotMode.shared.isActive, isOn else { return }
         guard !inFlight else {
             needsAnotherPass = true
             return
@@ -64,7 +64,7 @@ final class AutoAgents {
         let board = model.tasks
         let started = Set(board.map(\.id).filter { Self.alreadyStarted.contains(key($0)) })
         // Active takes in a start still preparing its folder, so a task is never started twice.
-        let picked = AutoScheduler.tasksToStart(board: board, runningAgentTaskIDs: Set(model.agentSessions.activeTaskIDs),
+        let picked = AutoScheduler.tasksToStart(board: board, runningAgentTaskIDs: Set(model.sessions.activeTaskIDs),
                                                 alreadyStarted: started, runningAgentsAcrossApp: LiveShells.shared.agentCount,
                                                 limit: AgentLimit.current).compactMap(model.task)
         guard !picked.isEmpty else { return }
@@ -73,7 +73,7 @@ final class AutoAgents {
         // Auto's starts refuse the project root, and launch nothing if Auto is turned off before the folder is ready.
         let starts = picked.map { task in
             Self.alreadyStarted.insert(key(task.id))
-            return (key(task.id), agents.startAgent(for: task, agent: agent, worktreeLocation: location, refusingRoot: true,
+            return (key(task.id), terminals.startAgent(for: task, agent: agent, worktreeLocation: location, refusingRoot: true,
                                                     stillWanted: { [weak self] in self?.isOn ?? false }))
         }
         Task {

@@ -58,6 +58,8 @@ struct ContentRouter: View {
 
     @ViewBuilder private var destination: some View {
         switch model.destination {
+        case .terminals:
+            TerminalsScreen(model: model)
         case .board:
             if model.mode == .parallel {
                 ParallelScreen(model: model)

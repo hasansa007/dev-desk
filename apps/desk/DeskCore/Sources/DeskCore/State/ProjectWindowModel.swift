@@ -2,12 +2,14 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, roadmap, survey, ideation, insights
+    case board, terminals, roadmap, survey, ideation, insights
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
 
 public enum TaskTab: String, CaseIterable, Codable, Hashable {
-    case activity, requirements, changes, evidence, shell, agent
+    /// A task is an issue, a diff and evidence. Its session lives in Terminals (ADR 0026), so the dialog has
+    /// no pane of its own — two hosts for one terminal is what made a dialog open on an empty frame.
+    case activity, requirements, changes, evidence
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
 
@@ -62,9 +64,6 @@ public enum SheetKind: Hashable, Identifiable {
     case task(String)
     case cancelTask(String)
     case runFocus(String)
-    /// A run's own terminal, at dialog size. The panel is a strip along the bottom edge; a run that stops to
-    /// ask "1. Accept · 5. Chat about this" needs somewhere you can actually answer it.
-    case run(String)
     case deleteBranch(String)
     case settings
 
@@ -80,7 +79,6 @@ public enum SheetKind: Hashable, Identifiable {
         case .task(let taskID): return "task:\(taskID)"
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
         case .runFocus(let door): return "runFocus:\(door)"
-        case .run(let id): return "run:\(id)"
         case .deleteBranch(let branch): return "deleteBranch:\(branch)"
         case .settings: return "settings"
         }
@@ -98,12 +96,11 @@ public enum LoadState {
 public final class ProjectWindowModel {
     public let ref: ProjectRef
     public let insights: InsightsConversation
-    /// The doors this window has started; their shells live in `shellSessions` under the same ids.
+    /// The doors this window has started; their shells live in `sessions` under the same ids.
     public let runs = DoorRuns()
     /// Each task's shell in this window. A sample has no folder, so none of its sessions can start.
-    public let shellSessions: ShellSessions
+    public let sessions: ShellSessions
     /// Each task's agent in this window, in the same folders as the shells; a sample's can't start either.
-    public let agentSessions: ShellSessions
     public private(set) var loadState: LoadState = .loading
     public private(set) var reloadError: String?
     /// When the last load succeeded; nil until one has.
@@ -114,6 +111,8 @@ public final class ProjectWindowModel {
     public var selectedTaskID: String?
     public private(set) var lastOpenedTaskID: String?
     public var tab: TaskTab = .activity
+    /// Which session the Terminals destination has in front, when more than one is live.
+    public var selectedSessionID: String?
     public var mode: ViewMode = .focus
     public var showBacklog = false
     public var searchText = ""
@@ -152,10 +151,9 @@ public final class ProjectWindowModel {
         self.insights = InsightsConversation(delay: insightsDelay)
         var root: URL?
         if case .local(let path) = ref { root = URL(fileURLWithPath: path, isDirectory: true) }
-        shellSessions = ShellSessions(projectRoot: root)
-        agentSessions = ShellSessions(projectRoot: root, purpose: .agent)
+        sessions = ShellSessions(projectRoot: root)
         // A finished run has written whatever it was going to write: read the project again rather than wait to be asked.
-        shellSessions.onSessionEnded = { [weak self] _ in
+        sessions.onSessionEnded = { [weak self] _ in
             Task { await self?.load() }
         }
     }
@@ -301,7 +299,7 @@ public final class ProjectWindowModel {
     /// A session for `id` is preparing or running. A card says so from this, never by moving column: the
     /// columns are git's (ADR 0011), and a run that has written nothing yet has not changed them.
     public func isRunLive(_ id: String) -> Bool {
-        switch shellSessions.state(for: id) {
+        switch sessions.state(for: id) {
         case .preparing, .running: return true
         default: return false
         }
@@ -313,17 +311,16 @@ public final class ProjectWindowModel {
     /// What this task has live right now, whichever screen started it — a door run, its own shell, or its agent.
     public func activity(of task: DeskTask) -> TaskActivity? {
         Self.activity(doorRun: task.taskNumber.map { isRunLive(DoorRuns.id(task: $0)) } ?? false,
-                      agent: agentSessions.state(for: task.id),
-                      shell: shellSessions.state(for: task.id))
+                      session: sessions.state(for: task.id),
+                      purpose: sessions.purpose(for: task.id))
     }
 
-    /// The precedence, apart from the sessions that hold it: a door run speaks for the whole task, an agent for
-    /// the work, a shell only for a window someone opened. The first that is live is what the card says.
-    static func activity(doorRun: Bool, agent: ShellSessionState, shell: ShellSessionState) -> TaskActivity? {
+    /// A door run speaks for the whole task; otherwise the task's own session speaks, and says which kind it is.
+    /// One session per task (ADR 0026), so there is nothing left to rank.
+    static func activity(doorRun: Bool, session: ShellSessionState, purpose: SessionPurpose?) -> TaskActivity? {
         if doorRun { return .run }
-        if isLive(agent) { return .agent }
-        if isLive(shell) { return .shell }
-        return nil
+        guard session.isLive else { return nil }
+        return purpose == .agent ? .agent : .shell
     }
 
     public func isTaskRunning(_ task: DeskTask) -> Bool { activity(of: task) != nil }

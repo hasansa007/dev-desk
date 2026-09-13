@@ -34,3 +34,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0023](0023-the-gate-ran-late-and-took-the-fold-with-it.md) | The gate ran late, and took the fold with it | Accepted, amended by 0024 |
 | [0024](0024-a-board-card-is-one-block-and-its-chrome-is-one-modifier.md) | A board card is one block, and its chrome is one modifier | Accepted |
 | [0025](0025-a-background-run-belongs-to-the-app-not-the-window.md) | A background run belongs to the app, not the window | Accepted |
+| [0026](0026-a-task-has-one-session-and-terminals-is-where-it-lives.md) | A task has one session, and Terminals is where it lives | Accepted |

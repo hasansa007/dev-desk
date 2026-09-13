@@ -149,15 +149,8 @@ final class SnapshotMode {
         Capture(name: "14-task-dialog", isSheet: true) { model in
             if let id = firstUnstartedTaskID(model) { model.openTask(id) }
         },
-        // Idle too: the agent note and the planned folder. Auto never runs in snapshot mode.
-        Capture(name: "15-first-task-agent", isSheet: true) { model in
-            if let id = firstTaskID(model) { model.openTask(id) }
-            model.tab = .agent
-        },
-        Capture(name: "16-first-task-shell", isSheet: true) { model in
-            if let id = firstTaskID(model) { model.openTask(id) }
-            model.tab = .shell
-        },
+        // A task's session lives in Terminals now (ADR 0026), so that is where it is captured.
+        Capture(name: "15-terminals") { model in model.go(.terminals) },
     ]
 
     /// The first card nobody has started, so the sheet capture shows Start task against a real folder.

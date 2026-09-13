@@ -119,6 +119,8 @@ enum DeskMetric {
     /// A board card is one block whatever it holds, so a column reads as a column and not as a ragged list.
     /// Two lines of title, meta, ratings, then one bottom band shared by the note and the action.
     static let cardContentHeight: CGFloat = 117
+    /// Room the title leaves for the ⋮ overlay, which takes no layout space of its own.
+    static let cardMenuInset: CGFloat = 26
     static let cardTitleHeight: CGFloat = 34
     /// One height for a column's header, so a long title truncates instead of dropping its own column a row.
     static let columnHeaderHeight: CGFloat = 18
@@ -128,7 +130,7 @@ enum DeskMetric {
     /// choose its own: `SheetChrome` takes neither a width nor a height, and its body scrolls instead.
     static let dialogWidth: CGFloat = 900
     static let dialogHeight: CGFloat = 660
-    /// A run's terminal inside that dialog. Explicit, because the dialog's body scrolls and a representable
-    /// asked to fill a ScrollView collapses to nothing.
-    static let runDialogTerminalHeight: CGFloat = 470
+    /// A tile in Terminals: two or four up gets a working height, one up gets the room a single session wants.
+    static let terminalTileHeight: CGFloat = 360
+    static let terminalTileTallHeight: CGFloat = 620
 }
