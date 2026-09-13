@@ -179,6 +179,21 @@ final class JobRegistryTests: XCTestCase {
         XCTAssertTrue(resumed.contains("--dangerously-skip-permissions"), "the grant must survive the answer")
     }
 
+    /// The mode is the run's, not the preference's: a delegate run answered after the preference changed must
+    /// still resume with its worker, or it has nothing to hand the step to. Claude's `--agents` needs no file,
+    /// so it is the one that shows the stored mode travelled with the answer.
+    func testAnsweringADelegateRunCarriesTheDelegateFlags() throws {
+        let (jobs, spawner) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .writeInRepo, directory: "/repo", mode: .delegate))
+        XCTAssertTrue(try XCTUnwrap(spawner.launched.first).launch.arguments.contains("--agents"),
+                      "a delegate run starts with its worker")
+        spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
+        jobs.answer("go", to: id)
+        let resumed = try XCTUnwrap(spawner.launched.last).launch.arguments
+        XCTAssertTrue(resumed.contains("--agents"), "the mode must survive the answer, not follow the preference")
+    }
+
     /// Re-spawning under the same id without stopping the old process lets its termination handler fire against
     /// the new one — marking a live run finished, and leaving it unstoppable.
     func testAnsweringStopsThePreviousProcessFirst() throws {
@@ -198,6 +213,62 @@ final class JobRegistryTests: XCTestCase {
         XCTAssertFalse(jobs.hasLiveJob(door: "ideation", in: "/repo"))
         XCTAssertFalse(jobs.hasLiveJob(door: "survey", in: "/other"),
                        "one run per door is per project — another repo's window is not running this")
+    }
+
+    /// Survey is blocked by the half of the report it writes, not by its door: the two halves are written by
+    /// different runs and belong side by side.
+    func testTwoSurveyScopesRunSideBySideAndTheSameScopeDoesNot() throws {
+        let (jobs, _) = registry()
+        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey · Defects", agent: "Claude",
+                                     permission: .writeInRepo, directory: "/repo", scope: .defects))
+        XCTAssertTrue(jobs.hasLiveSurvey(scope: .defects, in: "/repo"), "the same half twice would overwrite itself")
+        XCTAssertFalse(jobs.hasLiveSurvey(scope: .architecture, in: "/repo"),
+                       "the other half writes somewhere else and may start")
+        XCTAssertFalse(jobs.hasLiveSurvey(scope: .defects, in: "/other"), "still per project")
+    }
+
+    /// `both` occupies the whole report, so it conflicts with everything — in either direction.
+    func testBothConflictsWithEveryScope() throws {
+        let (jobs, _) = registry()
+        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                     permission: .writeInRepo, directory: "/repo", scope: .both))
+        XCTAssertTrue(jobs.hasLiveSurvey(scope: .defects, in: "/repo"))
+        XCTAssertTrue(jobs.hasLiveSurvey(scope: .architecture, in: "/repo"))
+        XCTAssertTrue(jobs.hasLiveSurvey(scope: .both, in: "/repo"))
+    }
+
+    func testAHalfEachBlocksAWholeSurvey() throws {
+        let (jobs, _) = registry()
+        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey · Defects", agent: "Claude",
+                                     permission: .writeInRepo, directory: "/repo", scope: .defects))
+        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey · Architecture", agent: "Claude",
+                                     permission: .writeInRepo, directory: "/repo", scope: .architecture))
+        XCTAssertEqual(jobs.liveCount, 2, "the two halves run together")
+        XCTAssertTrue(jobs.hasLiveSurvey(scope: .both, in: "/repo"), "a whole survey would write over both of them")
+    }
+
+    /// A finished run blocks nothing, and a run recorded without a scope is read as the whole report rather
+    /// than as something a second survey may quietly write over.
+    func testAScopeIsOnlyBlockedWhileItsRunIsLive() throws {
+        let (jobs, _) = registry()
+        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+                                          permission: .writeInRepo, directory: "/repo"))
+        XCTAssertTrue(jobs.hasLiveSurvey(scope: .architecture, in: "/repo"), "no scope recorded means both halves")
+        jobs.stop(id)
+        XCTAssertFalse(jobs.hasLiveSurvey(scope: .both, in: "/repo"))
+    }
+
+    /// Roadmap and create-issue have no halves: their rule is the door-wide one, and the scope of a survey
+    /// beside them changes nothing about it.
+    func testOtherDoorsStillBlockByDoorAlone() throws {
+        let (jobs, _) = registry()
+        _ = try XCTUnwrap(jobs.start(door: "roadmap", title: "Roadmap", agent: "Claude",
+                                     permission: .writeInRepo, directory: "/repo"))
+        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey · Defects", agent: "Claude",
+                                     permission: .writeInRepo, directory: "/repo", scope: .defects))
+        XCTAssertTrue(jobs.hasLiveJob(door: "roadmap", in: "/repo"))
+        XCTAssertFalse(jobs.hasLiveSurvey(scope: .architecture, in: "/repo"),
+                       "another door's run is not a survey of any scope")
     }
 
     func testAnsweringAJobThatIsNotAskingDoesNothing() throws {

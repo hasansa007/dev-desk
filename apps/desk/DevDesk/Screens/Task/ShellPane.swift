@@ -45,14 +45,21 @@ struct ShellPane: View {
         case .running(let folder):
             VStack(spacing: 0) {
                 if showsStop {
-                    TaskRunningBar(note: folder.note, stopTitle: "End shell") { terminals?.end(taskID: id) }
-                } else if let note = folder.note {
-                    DockMessage(text: note) { EmptyView() }
+                    TaskRunningBar(note: folder.note, usage: usage, stopTitle: "End shell") { terminals?.end(taskID: id) }
+                } else {
+                    if let note = folder.note {
+                        DockMessage(text: note) { EmptyView() }
+                    }
+                    // Terminals keeps Stop in the row's own header, so the bar here carries the meter alone —
+                    // and appears only when there is a reading, since an agent that has said nothing yet has
+                    // nothing to show.
+                    if usage != nil { TaskRunningBar(note: nil, usage: usage) }
                 }
                 if let terminals {
                     ShellTerminalView(terminals: terminals, taskID: id)
                 }
             }
+            .task(id: id) { await trackUsage() }
         case .ended(_, let status):
             DockMessage(text: status.map { "Shell ended (status \($0))." } ?? "Shell ended.") {
                 if showsStart {
@@ -89,6 +96,23 @@ struct ShellPane: View {
             try? await Task.sleep(for: .milliseconds(700))
             terminals.send(command + "\n", to: id)
         }
+    }
+
+    /// The newest reading for this session, taken from the agent's own log; nil until there is one.
+    private var usage: ContextUsage? { sessions.usage(for: id) }
+
+    /// Which CLI this session is running, from the executable the registry launched into it. A login shell is
+    /// not an agent and has none, and a Debug build's stand-in executable is not one either — both mean no
+    /// meter, which is right: neither writes the session log the meter is read from.
+    private var agent: AgentKind? {
+        terminals.flatMap { AgentKind(rawValue: $0.executables[id] ?? "") }
+    }
+
+    /// An interactive agent writes its JSON to its own session log rather than to the app, so the meter is
+    /// polled from that file while the session runs. Leaving the pane cancels this task, and the polling with it.
+    private func trackUsage() async {
+        guard let agent else { return }
+        await sessions.trackUsage(taskID: id, agent: agent)
     }
 
     /// Asking git for its worktrees is read-only; a session past idle keeps the folder it already has.
@@ -129,11 +153,17 @@ enum TaskFolderText {
     }
 }
 
-/// Above a running terminal: the folder's note, when it has one, and the button that ends the process.
+/// Above a running terminal: the folder's note, when it has one, how much context the agent is holding, when
+/// it has reported any, and the button that ends the process.
 struct TaskRunningBar: View {
     let note: String?
-    let stopTitle: String
-    let stop: () -> Void
+    /// The agent's own reading, read from its session log. Nil shows nothing: an agent that has reported
+    /// nothing, and a plain shell that never will, both leave the bar as it was.
+    var usage: ContextUsage?
+    /// Terminals keeps Stop in the row's own header, so the bar is also built without a button — then it is
+    /// only what the session is saying about itself.
+    var stopTitle: String?
+    var stop: (() -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -146,10 +176,19 @@ struct TaskRunningBar: View {
                         .truncationMode(.tail)
                         .help(note)
                 }
+                if let usage {
+                    Text(usage.label)
+                        .font(.system(size: 11))
+                        .foregroundStyle(DeskColor.terminalDim2)
+                        .lineLimit(1)
+                        .help("How much of its context this agent is holding, as its own CLI reports it")
+                }
                 Spacer(minLength: 0)
-                Button(stopTitle, action: stop)
-                    .buttonStyle(TaskDockControlStyle())
-                    .fixedSize()
+                if let stopTitle, let stop {
+                    Button(stopTitle, action: stop)
+                        .buttonStyle(TaskDockControlStyle())
+                        .fixedSize()
+                }
             }
             .padding(.horizontal, 10)
             .frame(height: 30)

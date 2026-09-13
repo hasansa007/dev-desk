@@ -30,7 +30,8 @@ extension ProjectWindowModel {
         let runID = id ?? DoorRuns.id(door: door)
         // One run per door, and per task: a second start would give the same id two shells and the panel one row.
         guard canRunDoors, !isRunLive(runID),
-              let command = DoorCommand.build(door: door, agent: agent, arguments: arguments, home: NSHomeDirectory())
+              let command = DoorCommand.build(door: door, agent: agent, arguments: arguments, home: NSHomeDirectory(),
+                                              mode: RunModeChoice.current(for: ref))
         else {
             if isRunLive(runID) {
                 selectedSessionID = runID
@@ -102,7 +103,8 @@ extension ProjectWindowModel {
             }
         }
         return jobs.start(door: "create-issue", title: "File \(draft.key)", agent: agent, arguments: [draft.description],
-                          permission: .everything, directory: path, subject: draft.key)
+                          permission: .everything, directory: path, subject: draft.key,
+                          mode: RunModeChoice.current(for: ref))
     }
 
     /// Promotes a local entry to a GitHub issue — only ever on request, never because a remote appeared. The
@@ -116,7 +118,8 @@ extension ProjectWindowModel {
         let file = "\(LocalBacklog.folder)/\(item.id).md"
         return jobs.start(door: "create-issue", title: "File \(item.title)", agent: agent,
                           arguments: ["\(item.title). The full description is in \(file); file it as written, and report the issue URL."],
-                          permission: .everything, directory: path, subject: task.id)
+                          permission: .everything, directory: path, subject: task.id,
+                          mode: RunModeChoice.current(for: ref))
     }
 
     /// Runs a connection's own sign-in or sign-out in a terminal. Dev Desk holds no credential and implements

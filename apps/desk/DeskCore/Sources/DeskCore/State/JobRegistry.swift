@@ -31,6 +31,9 @@ public struct BackgroundJob: Identifiable, Equatable {
     public let title: String
     public let agent: String
     public let door: String
+    /// Which half of its report a survey run writes, as `SurveyRunScope`'s raw value. Nil for every other
+    /// door: they have no halves, and one run of them at a time is the whole rule.
+    public let scope: String?
     public let directory: String
     /// What this run is about, in the caller's own terms — a finding's id, an opportunity's. It lets the card
     /// that started a run find it again and say what it is doing, rather than the run being invisible.
@@ -41,9 +44,16 @@ public struct BackgroundJob: Identifiable, Equatable {
     public var sessionID: String?
     /// Kept so answering resumes under the same grant the run was started with.
     public let permission: RunPermission
+    /// Kept for the same reason: the preference may change while a run is waiting, and its answer must not
+    /// switch the run to a mode it was not started in.
+    public let mode: RunMode
     public var state: JobState = .starting
     /// The last lines the run wrote, newest last. Capped: a run can talk for a long time and this is a row.
     public var log: [String] = []
+    /// How much context the run is holding, from the newest reading its agent reported. It is replaced, never
+    /// added to: the numbers a CLI reports are the state of one turn, so a sum would grow without meaning.
+    /// Nil until the agent reports one, and a run whose agent never reports gets no meter rather than a zero.
+    public var usage: ContextUsage?
 
     static let logLimit = 200
 }
@@ -73,6 +83,11 @@ public final class JobRegistry {
     /// The registry does not know what a notification is — that belongs to the app, which owns the permission
     /// and the preferences. Only real transitions are reported, so a redraw never re-announces anything.
     public var onSettled: ((BackgroundJob) -> Void)?
+    /// Where a run in this directory is written down, so a crash leaves a trace of it (ADR 0030). A closure
+    /// rather than a stored journal because this registry is the app's and spans projects, while a journal is
+    /// one project's folder — and because nil is then the honest answer for a sample, which has no folder to
+    /// write in, and for every test that is not about journalling.
+    public var journalFor: ((String) -> RunJournal?)?
     private let spawner: JobSpawner
     private let home: String
 
@@ -103,15 +118,29 @@ public final class JobRegistry {
         jobs.contains { $0.door == door && $0.directory == directory && $0.state.isLive }
     }
 
+    /// Survey is the one door where "already running" is not a door-wide answer: a defects run and an
+    /// architecture run write different halves of the report, so they belong side by side, while the same
+    /// half twice would overwrite itself. `both` occupies both halves, so it conflicts with any live survey
+    /// and blocks either half from starting beside it.
+    public func hasLiveSurvey(scope: SurveyRunScope, in directory: String) -> Bool {
+        jobs.contains {
+            $0.door == "survey" && $0.directory == directory && $0.state.isLive
+                && SurveyRunScope(recorded: $0.scope).conflicts(with: scope)
+        }
+    }
+
     /// Returns nil when the family has no verified invocation for that agent, rather than guessing one.
     @discardableResult
     public func start(door: String, title: String, agent: String, arguments: [String] = [],
-                      permission: RunPermission, directory: String, subject: String? = nil) -> String? {
+                      permission: RunPermission, directory: String, subject: String? = nil,
+                      mode: RunMode = .standard, scope: SurveyRunScope? = nil) -> String? {
         guard let launch = JobCommand.launch(door: door, agent: agent, arguments: arguments,
-                                             permission: permission, directory: directory, home: home) else { return nil }
+                                             permission: permission, directory: directory, home: home,
+                                             mode: mode) else { return nil }
         let id = "job:\(door):\(UUID().uuidString.prefix(8))"
-        jobs.insert(BackgroundJob(id: id, title: title, agent: agent, door: door, directory: directory,
-                                  subject: subject, sessionID: launch.sessionID, permission: permission), at: 0)
+        jobs.insert(BackgroundJob(id: id, title: title, agent: agent, door: door, scope: scope?.rawValue,
+                                  directory: directory, subject: subject, sessionID: launch.sessionID,
+                                  permission: permission, mode: mode), at: 0)
         run(id: id, launch: launch, directory: directory)
         return id
     }
@@ -120,7 +149,8 @@ public final class JobRegistry {
     public func answer(_ text: String, to id: String) {
         guard let index = jobs.firstIndex(where: { $0.id == id }), case .asking = jobs[index].state else { return }
         guard let launch = JobCommand.resume(agent: jobs[index].agent, sessionID: jobs[index].sessionID,
-                                            answer: text, permission: jobs[index].permission) else { return }
+                                            answer: text, permission: jobs[index].permission,
+                                            home: home, mode: jobs[index].mode) else { return }
         // The previous process may have written its result and not yet exited; re-spawning under the same id
         // would let its termination handler fire against the new one and mark a live run finished.
         spawner.stop(id: id)
@@ -159,6 +189,9 @@ public final class JobRegistry {
     func receive(_ line: String, id: String) {
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
         if case .starting = jobs[index].state { setState(.running, at: index) }
+        // Read before the event, and apart from it: an assistant message carrying both a line and a reading
+        // returns the line, so the reading has to be taken from the same text separately or be lost.
+        if let usage = JobStream.usage(from: line) { jobs[index].usage = usage }
         guard let event = JobStream.event(from: line) else { return }
         switch event {
         case .session(let sessionID):
@@ -168,6 +201,10 @@ public final class JobRegistry {
         case .ended(let text, let question):
             append(text, to: index)
             setState(question.map { JobState.asking($0) } ?? .ended(text: text, failed: false), at: index)
+        case .usage:
+            // Already applied above, where every line's reading is taken. The case is spelled out so a
+            // reading-only line is understood here rather than read as something unrecognised.
+            break
         }
     }
 

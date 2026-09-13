@@ -41,6 +41,13 @@ final class SurveyReportParserTests: XCTestCase {
         ])
     }
 
+    /// Everything outside ARCHITECTURE is a defect, whichever verdict section it sits under. The kind is read
+    /// from where the report put the bullet, and nowhere else says it.
+    func testFindingsOutsideTheArchitectureSectionAreDefects() {
+        let findings = SurveyReportParser.parse(report, runID: "2026-09-10")
+        XCTAssertEqual(findings.map(\.kind), [.defect, .defect, .defect, .defect])
+    }
+
     func testSummaryKeepsTheNonLocationPartsAndEveryFindingCarriesTheLimit() {
         let findings = SurveyReportParser.parse(report, runID: "2026-09-10")
         XCTAssertEqual(findings.map(\.summary), [
@@ -160,12 +167,32 @@ final class SurveyReportParserTests: XCTestCase {
         let findings = SurveyReportParser.parse(report, runID: "r")
         XCTAssertEqual(findings.map(\.id), ["r-C1", "r-C2", "r-P1"])
         XCTAssertEqual(findings.map(\.categories), [[.new], [.new], [.needsDecision]])
+        XCTAssertEqual(findings.map(\.kind), [.architecture, .architecture, .architecture],
+                       "a drift is not a defect: the section it was read under is what says so")
         XCTAssertTrue(findings[0].title.hasPrefix("arch-1:"), findings[0].title)
         XCTAssertEqual(findings[0].locations, ["ContactDetailView.swift:104-115"])
         XCTAssertFalse(findings.contains { $0.title.contains("MockGenerator") },
                        "a note about what the surveyor missed is not itself a finding")
         XCTAssertFalse(findings.contains { $0.title.contains("Actual") || $0.title.contains("Recommend") },
                        "the section's own prose bullets are not findings")
+    }
+
+    /// One report holds both halves, and the heading that ends ARCHITECTURE ends its kind with it: what comes
+    /// after is a defect again, not a drift inherited from the section above.
+    func testTheKindGoesBackToDefectWhenTheArchitectureSectionEnds() {
+        let report = """
+        ## ARCHITECTURE
+
+        **Drift — CONFIRMED (both checkers)**
+        - arch-1: dead copy at `View.swift:104-115` → delete it.
+
+        ## CONFIRMED (1)
+
+        - Sync drops the last page · `Pager.swift:88` · mechanism: the loop exits before appending
+        """
+        let findings = SurveyReportParser.parse(report, runID: "r")
+        XCTAssertEqual(findings.map { $0.title.hasPrefix("arch-1:") }, [true, false])
+        XCTAssertEqual(findings.map(\.kind), [.architecture, .defect])
     }
 
     /// A location on the continuation line is still where the finding is, and used to be lost entirely.

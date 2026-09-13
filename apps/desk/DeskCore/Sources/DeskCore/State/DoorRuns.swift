@@ -44,6 +44,10 @@ public final class DoorRuns {
 
     /// One id shape the whole app agrees on, so a card, a run row and a shell all mean the same session.
     public static func id(door: String) -> String { "door:\(door)" }
+    /// A survey is identified by the half of the report it writes, not by its door: a defects run and an
+    /// architecture run are two runs, two rows and two shells, while the same half twice is one run asked
+    /// for twice — which `prepareRun` then refuses on the id alone.
+    public static func id(door: String, scope: SurveyRunScope) -> String { "door:\(door):\(scope.rawValue)" }
     public static func id(task number: Int) -> String { "task:\(number)" }
     /// A run for work that exists only in `docs/backlog/`, which has no number to name it by.
     public static func id(local entry: String) -> String { "local:\(entry)" }
@@ -68,17 +72,31 @@ public enum DoorCommand {
     }
 
     /// The prompt itself, shared by the command typed into a terminal and the argv a background run is spawned with.
-    public static func prompt(door: String, agent name: String, arguments: [String] = [], home: String) -> String? {
+    /// Standard mode is the prompt `scripts/dev.py` builds, byte for byte; Delegate appends to it rather than
+    /// rewording it, so the door is still read and followed exactly as written, and only the way its steps are
+    /// carried out changes.
+    public static func prompt(door: String, agent name: String, arguments: [String] = [], home: String,
+                              mode: RunMode = .standard) -> String? {
         guard let agent = agent(named: name) else { return nil }
         let extra = arguments.isEmpty ? "" : " Arguments: \(arguments.joined(separator: " "))"
+        let delegation = mode == .delegate ? " \(delegationInstruction)" : ""
         return "Read \(doorPath(door, root: agent.root, home: home)) and execute it exactly as written, "
-            + "following every phase and gate it defines.\(extra)"
+            + "following every phase and gate it defines.\(extra)\(delegation)"
     }
 
+    /// What Delegate asks of the agent, in the terms the doors already use. The gates stay the agent's own to
+    /// hold: a worker finishes a brief, and the orchestrator decides whether that brief passed. Small edits are
+    /// exempt because a brief for a one-line change costs more than the change.
+    public static let delegationInstruction =
+        "Run this door as an orchestrator: delegate each self-contained implementation step to a worker subagent "
+        + "with a brief it can finish alone, review what comes back against the door's own gates before accepting "
+        + "it, and edit directly only where delegating would cost more than the change."
+
     /// nil for a CLI the family has no verified invocation for. `arguments` are the door's own, such as `--perf`.
-    public static func build(door: String, agent name: String, arguments: [String] = [], home: String) -> String? {
+    public static func build(door: String, agent name: String, arguments: [String] = [], home: String,
+                             mode: RunMode = .standard) -> String? {
         guard let agent = agent(named: name),
-              let prompt = prompt(door: door, agent: name, arguments: arguments, home: home) else { return nil }
+              let prompt = prompt(door: door, agent: name, arguments: arguments, home: home, mode: mode) else { return nil }
         return "\(agent.executable) \(quoted(prompt))"
     }
 

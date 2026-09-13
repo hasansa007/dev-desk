@@ -13,11 +13,14 @@ public enum AgentLaunch {
     }
 
     /// `build_prompt` in scripts/dev.py, byte for byte. ` Arguments: #N` names the task only while it has no branch, since nothing else does then.
-    public static func prompt(skillRoot: String, taskNumber: Int?, hasBranch: Bool) -> String {
+    /// Delegate appends `DoorCommand.delegationInstruction` after the arguments clause — the same paragraph a door agent gets — so a task
+    /// agent and a door agent are asked for the same thing in the same words; Standard stays the byte-for-byte prompt.
+    public static func prompt(skillRoot: String, taskNumber: Int?, hasBranch: Bool, mode: RunMode = .standard) -> String {
         // os.path.join adds a separator only when the root doesn't already end in one.
         let door = skillRoot.isEmpty || skillRoot.hasSuffix("/") ? skillRoot + "SKILL.md" : skillRoot + "/SKILL.md"
         let extra = hasBranch ? "" : taskNumber.map { " Arguments: #\($0)" } ?? ""
-        return "Read \(door) and execute it exactly as written, following every phase and gate it defines.\(extra)"
+        let delegation = mode == .delegate ? " \(DoorCommand.delegationInstruction)" : ""
+        return "Read \(door) and execute it exactly as written, following every phase and gate it defines.\(extra)\(delegation)"
     }
 
     /// Always interactive: the agent's name and the prompt, never -p, exec, a model, or a flag that skips approvals.

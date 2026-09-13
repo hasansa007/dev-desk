@@ -50,37 +50,70 @@ public enum JobCommand {
     /// Codex has no such flag, so its id is read from its JSONL, and `--last` is the fallback.
     public static func launch(door: String, agent name: String, arguments: [String] = [], permission: RunPermission,
                               directory: String, home: String,
-                              sessionID: String = UUID().uuidString.lowercased()) -> JobLaunch? {
+                              sessionID: String = UUID().uuidString.lowercased(),
+                              mode: RunMode = .standard) -> JobLaunch? {
         guard let agent = DoorCommand.agent(named: name),
-              let prompt = DoorCommand.prompt(door: door, agent: name, arguments: arguments, home: home) else { return nil }
+              let prompt = DoorCommand.prompt(door: door, agent: name, arguments: arguments, home: home, mode: mode)
+        else { return nil }
         if agent.executable == "claude" {
             return JobLaunch(executable: "claude",
                              arguments: ["-p", "--output-format", "stream-json", "--verbose", "--session-id", sessionID]
-                                 + permission.flags(for: "claude") + [prompt],
+                                 + permission.flags(for: "claude") + modeFlags(for: "claude", mode: mode, home: home)
+                                 + [prompt],
                              sessionID: sessionID)
         }
         return JobLaunch(executable: agent.executable,
-                         arguments: ["exec", "--json", "-C", directory] + permission.flags(for: agent.executable) + [prompt],
+                         arguments: ["exec", "--json", "-C", directory] + permission.flags(for: agent.executable)
+                             + modeFlags(for: agent.executable, mode: mode, home: home) + [prompt],
                          sessionID: nil)
     }
 
     /// Answering a run's question continues that same session rather than starting a new one — under the grant
     /// it was started with. Resuming without it drops a headless run back to prompting, and a run with no
-    /// terminal to prompt in stalls on its first tool call and asks again: a loop with no way out.
+    /// terminal to prompt in stalls on its first tool call and asks again: a loop with no way out. The mode
+    /// travels with it for the same reason: a delegate run resumed without its worker has nothing to hand to.
     public static func resume(agent name: String, sessionID: String?, answer: String,
-                              permission: RunPermission) -> JobLaunch? {
+                              permission: RunPermission, home: String, mode: RunMode = .standard) -> JobLaunch? {
         guard let agent = DoorCommand.agent(named: name) else { return nil }
         if agent.executable == "claude" {
             guard let sessionID else { return nil }
             return JobLaunch(executable: "claude",
                              arguments: ["-p", "--output-format", "stream-json", "--verbose", "--resume", sessionID]
-                                 + permission.flags(for: "claude") + [answer],
+                                 + permission.flags(for: "claude") + modeFlags(for: "claude", mode: mode, home: home)
+                                 + [answer],
                              sessionID: sessionID)
         }
         return JobLaunch(executable: agent.executable,
                          arguments: ["exec", "resume", sessionID ?? "--last", "--json"]
-                             + permission.flags(for: agent.executable) + [answer],
+                             + permission.flags(for: agent.executable)
+                             + modeFlags(for: agent.executable, mode: mode, home: home) + [answer],
                          sessionID: sessionID)
+    }
+
+    /// The one worker Delegate gives claude, in the shape `--agents` documents: a name, what it is for, and its
+    /// prompt. Serialised rather than typed out so a future edit to the wording cannot leave the JSON unclosed.
+    /// Verified: `--agents <json>` and its `{"name": {"description", "prompt"}}` shape, from claude 2.1.270's `--help`.
+    static let delegateAgentsJSON: String = {
+        let agents = ["worker": ["description": "Implements one self-contained brief from the orchestrator",
+                                 "prompt": "Implement one self-contained brief and report what changed."]]
+        let data = try? JSONSerialization.data(withJSONObject: agents, options: [.sortedKeys])
+        return data.flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+    }()
+
+    /// Where codex reads a Delegate profile from. `--profile` names a config file under `$CODEX_HOME`, and
+    /// naming one that is not there fails the run before the prompt is read, so the flag is added only when the
+    /// developer has written that file. Without it the prompt alone carries the mode.
+    /// Verified: `-p, --profile <CONFIG_PROFILE_V2>` layers `$CODEX_HOME/<name>.config.toml`, from codex-cli 0.154.0's `exec --help`.
+    static func codexDelegateProfilePath(home: String) -> String { "\(home)/.codex/delegate.config.toml" }
+
+    static func modeFlags(for executable: String, mode: RunMode, home: String) -> [String] {
+        guard mode == .delegate else { return [] }
+        switch executable {
+        case "claude": return ["--agents", delegateAgentsJSON]
+        case "codex":
+            return FileManager.default.fileExists(atPath: codexDelegateProfilePath(home: home)) ? ["--profile", "delegate"] : []
+        default: return []
+        }
     }
 }
 

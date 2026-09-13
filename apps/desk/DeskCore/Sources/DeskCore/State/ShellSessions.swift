@@ -42,6 +42,11 @@ public final class ShellSessions {
 
     /// What each live session is. Set at `start`, read by everything that distinguishes an agent from a shell.
     private var purposes: [String: SessionPurpose] = [:]
+    /// The newest context reading for each session. It lives here rather than in the pane because a pane is
+    /// rebuilt constantly, and a meter that starts from nothing on every redraw is a flicker, not a reading.
+    private var usages: [String: ContextUsage] = [:]
+    /// When each session's log was last read, so a redraw cannot turn a poll into a loop.
+    @ObservationIgnored private var usageReads: [String: Date] = [:]
     @ObservationIgnored private let projectRoot: URL?
     @ObservationIgnored private let runner: CommandRunner
 
@@ -97,7 +102,48 @@ public final class ShellSessions {
             return
         }
         generations[taskID, default: 0] += 1
+        // The previous run's reading is not this one's, and keeping it would open a fresh agent at 80%.
+        usages[taskID] = nil
+        usageReads[taskID] = nil
         states[taskID] = .running(folder)
+    }
+
+    /// How much context this task's agent is holding, or nil when nothing has been read for it.
+    public func usage(for taskID: String) -> ContextUsage? { usages[taskID] }
+
+    /// The gap between reads. The CLI appends to its transcript as it works, so a meter that lags a few seconds
+    /// is still a meter, while anything faster re-reads a 256 KB tail for a number that has barely moved.
+    public static let usageInterval: Duration = .seconds(4)
+    /// The floor a caller cannot go under, whatever it asks for.
+    static let usageGap: TimeInterval = 3
+
+    /// Keeps `usage(for:)` current while the task's session runs, and returns as soon as it stops. The pane
+    /// drives this from a `.task`, so closing the pane cancels it and no session nobody is watching is polled.
+    public func trackUsage(taskID: String, agent: AgentKind, home: String = NSHomeDirectory()) async {
+        while !Task.isCancelled {
+            guard case .running = state(for: taskID) else { return }
+            await refreshUsage(taskID: taskID, agent: agent, home: home)
+            try? await Task.sleep(for: Self.usageInterval)
+        }
+    }
+
+    /// One reading, taken off the main actor because it opens and reads a file. Three cases return without
+    /// touching the disk: a sample project, which runs nothing and so has no session to read; a session that is
+    /// not running, whose log will not change again; and a read taken seconds ago, which is still the answer.
+    public func refreshUsage(taskID: String, agent: AgentKind, home: String = NSHomeDirectory()) async {
+        guard projectRoot != nil, case .running(let folder) = state(for: taskID) else { return }
+        let now = Date()
+        if let last = usageReads[taskID], now.timeIntervalSince(last) < Self.usageGap { return }
+        usageReads[taskID] = now
+        let directory = folder.url.path
+        let generation = generations[taskID, default: 0]
+        let usage = await Task.detached(priority: .utility) {
+            SessionUsageReader.usage(agent: agent, directory: directory, home: home)
+        }.value
+        // The session may have ended, or been restarted in another folder, while the file was read: a reading
+        // belongs to the run it was taken for and to no other.
+        guard let usage, generation == generations[taskID, default: 0], case .running = state(for: taskID) else { return }
+        usages[taskID] = usage
     }
 
     /// Counts the task's moves into `.running`. The app keeps the value its process started under and hands it back to `markEnded`.

@@ -214,7 +214,8 @@ struct TaskDialog: View {
         }()
         return ("Start agent", blocked, {
             if case .ready(let kind) = choice {
-                _ = terminals?.startAgent(for: task, agent: kind, worktreeLocation: worktreeLocation)
+                _ = terminals?.startAgent(for: task, agent: kind, worktreeLocation: worktreeLocation,
+                                          mode: RunModeChoice.current(for: model.ref))
             }
             model.dismissSheet()
             model.selectedSessionID = task.id

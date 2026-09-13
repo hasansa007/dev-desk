@@ -172,6 +172,7 @@ struct AppearancePane: View {
 struct AgentsAndDefaultsPane: View {
     @Bindable var model: ProjectWindowModel
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    @AppStorage(PreferenceKey.runMode) private var runMode = AgentDefaults.runMode
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -196,6 +197,34 @@ struct AgentsAndDefaultsPane: View {
             }
             .padding(.top, 12)
 
+            SettingsRow("App default mode") {
+                Picker("", selection: $runMode) {
+                    ForEach(RunMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                }
+                .labelsHidden()
+                .frame(width: 200)
+            }
+            .padding(.top, 12)
+
+            SettingsRow("\(projectName) mode override") {
+                Picker("", selection: modeOverrideBinding) {
+                    Text("Use app default").tag("")
+                    ForEach(RunMode.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
+                }
+                .labelsHidden()
+                .frame(width: 200)
+            }
+            .padding(.top, 12)
+
+            // Says what the two rows above actually resolve to for this project, so a mode is never a name
+            // with no meaning: the override wins unless it is "Use app default", and then the app default does.
+            Text(RunModeChoice.current(for: model.ref).detail)
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(4)
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(.top, 10)
+
             SectionLabel("Capabilities of the selected connection").padding(.top, 18)
             capabilitiesTable.padding(.top, 8)
             // The models sentence used to be a section of its own, whose whole content was that it had none.
@@ -219,6 +248,12 @@ struct AgentsAndDefaultsPane: View {
 
     private var overrideBinding: Binding<String> {
         let key = PreferenceKey.connectionOverride(model.ref)
+        return Binding(get: { UserDefaults.standard.string(forKey: key) ?? "" },
+                        set: { UserDefaults.standard.set($0, forKey: key) })
+    }
+
+    private var modeOverrideBinding: Binding<String> {
+        let key = PreferenceKey.runModeOverride(model.ref)
         return Binding(get: { UserDefaults.standard.string(forKey: key) ?? "" },
                         set: { UserDefaults.standard.set($0, forKey: key) })
     }

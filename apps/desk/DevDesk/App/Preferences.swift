@@ -7,6 +7,7 @@ enum PreferenceKey {
     static let terminalFontSize = "desk.terminalFontSize"
     static let showSamples = "desk.showSamples"
     static let defaultConnection = "desk.defaultConnection"
+    static let runMode = "desk.runMode"
     static let notifyDecisions = "desk.notifyDecisions"
     static let notifyCompletion = "desk.notifyCompletion"
     static let notifyFailures = "desk.notifyFailures"
@@ -16,6 +17,7 @@ enum PreferenceKey {
     static let sidebarRail = "desk.sidebarRail"
 
     static func connectionOverride(_ ref: ProjectRef) -> String { "desk.connectionOverride.\(ref.id)" }
+    static func runModeOverride(_ ref: ProjectRef) -> String { "desk.runModeOverride.\(ref.id)" }
     static func autoMode(_ ref: ProjectRef) -> String { "desk.autoMode.\(ref.id)" }
 }
 
@@ -23,6 +25,7 @@ enum PreferenceKey {
 /// preference — the dialog, the Settings pane, the resolver — so a change of default meant finding all three.
 enum AgentDefaults {
     static let connection = "Codex"
+    static let runMode: RunMode = .standard
 }
 
 /// How many agents may run at once, across every window.
@@ -64,6 +67,23 @@ enum AgentChoice: Equatable {
         return resolve(override: defaults.string(forKey: PreferenceKey.connectionOverride(ref)) ?? "",
                        defaultConnection: defaults.string(forKey: PreferenceKey.defaultConnection) ?? AgentDefaults.connection,
                        connections: connections)
+    }
+}
+
+/// Which run mode a project gets, resolved the same way a connection is: the project's override unless it is
+/// empty ("Use app default"), else the app default. DeskCore stays free of `UserDefaults` — it takes the mode
+/// as a parameter — so this reading of the preference lives in the app layer beside the connection's.
+enum RunModeChoice {
+    /// An empty override string means "use app default"; so does any value that is not a mode we know.
+    static func resolve(override: String, appDefault: RunMode) -> RunMode {
+        RunMode(rawValue: override) ?? appDefault
+    }
+
+    /// What the saved preferences choose for `ref` now.
+    static func current(for ref: ProjectRef) -> RunMode {
+        let defaults = UserDefaults.standard
+        return resolve(override: defaults.string(forKey: PreferenceKey.runModeOverride(ref)) ?? "",
+                       appDefault: defaults.string(forKey: PreferenceKey.runMode).flatMap(RunMode.init(rawValue:)) ?? AgentDefaults.runMode)
     }
 }
 

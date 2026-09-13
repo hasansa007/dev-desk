@@ -283,7 +283,29 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(snapshot.capabilities.rows.map(\.name), ["Interactive terminal", "Resume an ended session", "Attach to an external session"])
         XCTAssertTrue(snapshot.capabilities.rows.allSatisfy { $0.values == [.notValidated, .notValidated, .notValidated] })
         XCTAssertEqual(snapshot.capabilities.note, "No agent integration has been validated. Capabilities will be read from a connection once one exists.")
-        XCTAssertEqual(snapshot.insights, .unavailable("Insights needs a validated agent connection. None is set up, so this panel can't answer yet."))
+        // Insights runs one of these CLIs (ADR 0030), so a signed-out one is why it can't answer, not a fixed sentence.
+        XCTAssertEqual(snapshot.insights, .unavailable("Claude is installed but not signed in; a run would stop at its own prompt."))
+    }
+
+    func testASignedInAgentMakesInsightsLiveOnTheRepository() async throws {
+        let (_, snapshot) = try await githubConnection {
+            $0.script("claude auth status", .ok("{\"loggedIn\": true, \"email\": \"me@example.com\"}"))
+        }
+        XCTAssertEqual(snapshot.insights, .live(InsightsAgentPlan(agent: .claude,
+                                                                 repositoryRoot: try XCTUnwrap(snapshot.repositoryRoot))))
+    }
+
+    func testAFolderThatIsNotARepositoryHasNoInsightsToRun() async throws {
+        let folder = URL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: folder) }
+        let runner = FakeRunner([
+            FakeRunner.gitRead("rev-parse --show-toplevel"): .failed(128, stderr: "fatal: not a git repository"),
+            "which claude": .ok("/usr/local/bin/claude\n"),
+            "claude auth status": .ok("{\"loggedIn\": true, \"email\": \"me@example.com\"}"),
+        ])
+        let snapshot = try await LocalGitDataSource(root: folder, runner: runner).load()
+        XCTAssertEqual(snapshot.insights, .unavailable(InsightsAgent.noRepositoryReason))
     }
 
     func testFindingsListTheNewestReportFirst() async throws {

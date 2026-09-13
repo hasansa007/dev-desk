@@ -8,6 +8,9 @@ public enum JobEvent: Equatable {
     case line(String)
     /// The run finished. `question` is set when it stopped needing an answer rather than being done.
     case ended(text: String, question: String?)
+    /// How much context the run is holding, for the lines whose only news is that reading — Codex's
+    /// `token_count`, and an assistant message that reported usage without saying anything.
+    case usage(ContextUsage)
 }
 
 /// Reads what `claude -p --output-format stream-json` and `codex exec --json` write, one line at a time.
@@ -29,16 +32,33 @@ public enum JobStream {
         }
         switch object["type"] as? String {
         case "assistant", "user":
-            return text(in: object).map { .line($0) }
+            // The line wins whenever there is one. An assistant message can carry both its text and a fresh
+            // usage reading, and one return can only say one of them: dropping the text to gain a number would
+            // take log output away, so the reading is left to `usage(from:)`, which callers read beside the
+            // event. Only a message with nothing to show reports its usage as the event itself.
+            if let text = text(in: object) { return .line(text) }
+            return ContextUsage.claude(event: object).map { .usage($0) }
         case "result":
             let text = (object["result"] as? String) ?? (object["error"] as? String) ?? "Ended"
             return .ended(text: text, question: question(in: object, text: text))
         case "item.completed", "turn.completed":
             // Codex's shapes. Its final turn carries no result string, so the last text stands in.
             return text(in: object).map { .line($0) }
+        case "token_count", "event_msg":
+            // Codex's reading, which says nothing else, so it is the whole event. `event_msg` is the envelope
+            // the same payload arrives in inside a session rollout file.
+            return ContextUsage.codex(event: object).map { .usage($0) }
         default:
             return nil
         }
+    }
+
+    /// The context reading a line carries, whatever else that line is. It is read apart from `event(from:)`
+    /// precisely because one line can be two pieces of news at once — a tool call to log AND a fresh reading —
+    /// and a single returned event would have to lose one of them.
+    public static func usage(from line: String) -> ContextUsage? {
+        guard let object = ContextUsage.object(line) else { return nil }
+        return ContextUsage.claude(event: object) ?? ContextUsage.codex(event: object)
     }
 
     /// A run given `RunPermission` it turned out to need more than stops rather than prompting — there is no

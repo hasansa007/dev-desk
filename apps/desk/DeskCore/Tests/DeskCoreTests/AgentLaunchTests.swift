@@ -18,6 +18,23 @@ final class AgentLaunchTests: XCTestCase {
         XCTAssertEqual(Array(branched.utf8), Array(Self.read.utf8))
     }
 
+    /// Delegate appends the same paragraph a door agent gets, after the ` Arguments: #N` clause, so a task agent and a
+    /// door agent are asked for the same thing in the same words. Standard is unchanged, asserted byte for byte above.
+    func testDelegateAppendsTheDoorsDelegationInstructionAfterTheArguments() {
+        let delegate = AgentLaunch.prompt(skillRoot: Self.root, taskNumber: 42, hasBranch: false, mode: .delegate)
+        let standard = Self.read + " Arguments: #42"
+        XCTAssertEqual(Array(delegate.utf8), Array((standard + " " + DoorCommand.delegationInstruction).utf8),
+                       "the arguments clause is still carried, then the shared instruction")
+        XCTAssertTrue(delegate.contains(DoorCommand.delegationInstruction))
+        XCTAssertTrue(delegate.contains(" Arguments: #42"))
+    }
+
+    func testStandardModeIsUnchangedByteForByte() {
+        let numbered = AgentLaunch.prompt(skillRoot: Self.root, taskNumber: 42, hasBranch: false, mode: .standard)
+        XCTAssertEqual(Array(numbered.utf8), Array((Self.read + " Arguments: #42").utf8))
+        XCTAssertFalse(numbered.contains(DoorCommand.delegationInstruction), "standard mode adds nothing")
+    }
+
     func testABranchOrNoNumberDropsTheArguments() {
         XCTAssertEqual(AgentLaunch.prompt(skillRoot: Self.root, taskNumber: 42, hasBranch: true), Self.read, "the branch already names the task")
         XCTAssertEqual(AgentLaunch.prompt(skillRoot: Self.root, taskNumber: nil, hasBranch: false), Self.read)

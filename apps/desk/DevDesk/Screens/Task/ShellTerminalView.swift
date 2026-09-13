@@ -121,12 +121,12 @@ final class ShellTerminalRegistry {
     /// holds while the folder is prepared. Auto passes `refusingRoot`, so a folder that would fall back to the project root fails instead,
     /// and `stillWanted`, read again just before the launch, so turning Auto off meanwhile launches nothing.
     @discardableResult
-    func startAgent(for task: DeskTask, agent: AgentKind, worktreeLocation: String, refusingRoot: Bool = false,
-                    stillWanted: (() -> Bool)? = nil) -> Task<AgentStart, Never> {
+    func startAgent(for task: DeskTask, agent: AgentKind, worktreeLocation: String, mode: RunMode = .standard,
+                    refusingRoot: Bool = false, stillWanted: (() -> Bool)? = nil) -> Task<AgentStart, Never> {
         let live = LiveShells.shared
         live.track(agentSessions: sessions)
         live.agentStartPending()
-        let command = Self.command(agent, for: task)
+        let command = Self.command(agent, for: task, mode: mode)
         return Task {
             // Nothing suspends between this and the session's move to preparing, which then holds the place in the count.
             live.agentStartBegan()
@@ -150,8 +150,8 @@ final class ShellTerminalRegistry {
     }
 
     /// `claude <prompt>` or `codex <prompt>`; a Debug build's `-DevDeskAgentExecutable` stands in for the CLI.
-    static func command(_ agent: AgentKind, for task: DeskTask) -> [String] {
-        let prompt = AgentLaunch.prompt(skillRoot: AgentLaunch.skillRoot, taskNumber: task.taskNumber, hasBranch: !(task.branch ?? "").isEmpty)
+    static func command(_ agent: AgentKind, for task: DeskTask, mode: RunMode = .standard) -> [String] {
+        let prompt = AgentLaunch.prompt(skillRoot: AgentLaunch.skillRoot, taskNumber: task.taskNumber, hasBranch: !(task.branch ?? "").isEmpty, mode: mode)
         var arguments = AgentLaunch.arguments(agent: agent, prompt: prompt)
         if let executable = DebugLaunch.agentExecutable, !arguments.isEmpty { arguments[0] = executable }
         return arguments

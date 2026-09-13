@@ -73,7 +73,8 @@ final class AutoAgents {
         // Auto's starts refuse the project root, and launch nothing if Auto is turned off before the folder is ready.
         let starts = picked.map { task in
             Self.alreadyStarted.insert(key(task.id))
-            return (key(task.id), terminals.startAgent(for: task, agent: agent, worktreeLocation: location, refusingRoot: true,
+            return (key(task.id), terminals.startAgent(for: task, agent: agent, worktreeLocation: location,
+                                                    mode: RunModeChoice.current(for: model.ref), refusingRoot: true,
                                                     stillWanted: { [weak self] in self?.isOn ?? false }))
         }
         Task {

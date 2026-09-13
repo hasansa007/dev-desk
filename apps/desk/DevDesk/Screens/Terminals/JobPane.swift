@@ -12,6 +12,7 @@ struct JobPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             log
+            if let usage = job.usage { meter(usage) }
             if case .asking(let question) = job.state {
                 asking(question)
             } else if case .ended(let text, let failed) = job.state, failed {
@@ -47,6 +48,18 @@ struct JobPane: View {
                 withAnimation { proxy.scrollTo(count - 1, anchor: .bottom) }
             }
         }
+    }
+
+    /// How much of its context the run is holding, from the agent's own numbers. It sits under the log, where
+    /// the run's state is read, and it is deliberately quiet: this is a status line, not a dashboard. A run
+    /// whose agent has reported nothing shows nothing at all, rather than a zero it has not measured.
+    private func meter(_ usage: ContextUsage) -> some View {
+        Text(usage.label)
+            .font(DeskFont.mono(11))
+            .foregroundStyle(DeskColor.faintInk)
+            .lineLimit(1)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(EdgeInsets(top: 0, leading: 11, bottom: 9, trailing: 11))
     }
 
     /// A headless run cannot prompt, so it stops and asks here; answering resumes the same session (ADR 0025).
