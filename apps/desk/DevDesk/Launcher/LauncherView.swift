@@ -27,8 +27,15 @@ struct LauncherView: View {
                 launcherBody
             }
         case .window:
+            // The content scrolls and Open is pinned below it. When the window was a fixed size this could be
+            // one column with the button at the end of it; once it could be resized, shrinking the window
+            // pushed Open off the bottom edge — a launcher you cannot launch from.
             VStack(alignment: .leading, spacing: 0) {
-                launcherBody
+                ScrollView {
+                    launcherBody
+                        .padding(20)
+                }
+                Rectangle().fill(DeskColor.divider).frame(height: 1)
                 HStack {
                     Spacer()
                     Button("Open") { openSelected() }
@@ -36,13 +43,13 @@ struct LauncherView: View {
                         .keyboardShortcut(.defaultAction)
                         .disabled(selectedRef == nil)
                 }
-                .padding(.top, 14)
+                .padding(.horizontal, 20)
+                .padding(.vertical, 14)
             }
-            .padding(20)
             // Was a fixed 1000x540 window, which could not open at all on a 1024-wide display once its
             // chrome was counted. It is a starting size now, not a rule.
-            .frame(minWidth: 720, idealWidth: 1000, maxWidth: .infinity,
-                   minHeight: 460, idealHeight: 540, maxHeight: .infinity)
+            .frame(minWidth: 640, idealWidth: 1000, maxWidth: .infinity,
+                   minHeight: 360, idealHeight: 540, maxHeight: .infinity)
         }
     }
 
