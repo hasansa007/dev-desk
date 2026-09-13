@@ -38,7 +38,7 @@ Five destinations, and two panels on the window's edges ([ADR 0021](../adr/0021-
 
 The [container spec](../superpowers/specs/2026-09-11-container-design.md) describes these. None of them exists:
 
-- the shared runner and its jobs. The app starts and stops agents only as terminal processes, so it can't tell a working agent from a waiting one, resume an ended session, or answer a door from its own UI;
+- the shared runner and its jobs, for **sessions in a terminal**. A background run already reports its own state and is answered in the app ([ADR 0025](../adr/0025-a-background-run-belongs-to-the-app-not-the-window.md)); a session in a terminal is still bytes, so the app cannot tell a working agent from one waiting at a gate, or resume an ended session. The direction agreed for closing this is an event sidecar the doors write, in [the next-level record](../superpowers/specs/2026-09-13-next-level-direction-design.md);
 - `dev snapshot` and `dev events` (container spec §3);
 - agent provider integrations.
 

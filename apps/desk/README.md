@@ -57,21 +57,19 @@ open "/tmp/devdesk-dd/Build/Products/Debug/Dev Desk.app"
 
 - **Open a project** with **Open Project…** (⌘O). You can open a sample (StudyHub or dev-skill, with labelled demo data), a local folder, a clone, or a new project.
   - For a real folder, Dev Desk reads git and GitHub directly ([ADR 0013](../../docs/adr/0013-the-app-reads-git-and-github-directly.md)): the board, branches, diffs, PR checks, `.dev/` state, `docs/survey/` and `docs/ideation/`.
-- **The Shell tab.** Open a card — every card opens the same dialog ([ADR 0021](../../docs/adr/0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md)) — then click **Start shell**. The shell opens in the task's own folder ([ADR 0017](../../docs/adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)). That folder is one of three:
-  - the worktree where the task's branch is already checked out;
-  - a new worktree under `~/.devdesk/wt` (the location is set in Settings → Execution);
-  - the project root, when the task has no branch yet.
-
-  Nothing runs until you click.
-- **The Agent tab.** **Start agent** runs Claude Code or Codex interactively in the task's folder, with the same prompt `dev run` uses ([ADR 0018](../../docs/adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).
-  - The agent comes from Settings → Agents and defaults, or from a project's override.
-  - It stops at the pipeline's approval gates and asks you in its terminal.
-  - A task with no branch yet gets its own detached worktree, and the pipeline creates the branch there.
+- **Starting a task.** A card's **Start** button, its menu, or ⌘↩ on the card you last opened; a card's dialog offers the same thing ([ADR 0021](../../docs/adr/0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md)). Nothing runs until you ask.
+  - It runs Claude Code or Codex with the same prompt `dev run` uses ([ADR 0018](../../docs/adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)), from Settings → Agents and defaults or a project's override, and it stops at the pipeline's approval gates and asks you in its terminal.
+- **Terminals** is where every session lives — a task has one, agent or shell ([ADR 0026](../../docs/adr/0026-a-task-has-one-session-and-terminals-is-where-it-lives.md)). A start lands there on its own row; **New terminal** (⌘T) opens one at the project root.
+  - A session opens in the task's own folder ([ADR 0017](../../docs/adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)): the worktree where its branch is checked out, a new one under `~/.devdesk/wt` (Settings → Execution), or the project root when the task has no branch — a task with no branch gets a detached worktree, and the pipeline creates the branch there.
+- **Background runs** — filing an issue, a door started from Survey or Ideation — have no terminal: they report their state, ask their questions in the app, and survive the window that started them ([ADR 0025](../../docs/adr/0025-a-background-run-belongs-to-the-app-not-the-window.md)). Notifications for *needs an answer*, *finished* and *failed* are in Settings → Notifications.
+- **Accounts.** Settings → Accounts shows what is installed and who it is signed in as, and runs each tool's own sign-in (`gh auth login`, `claude auth login`, `codex login`) in a terminal. Dev Desk never stores a credential.
 - **Auto.** Turn it on in Settings → Project overrides.
   - It starts agents for the board's Queued tasks (the active GitHub milestone), in board order.
   - At most 3 run at once across all windows. You can set the limit from 1 to 6 in Settings → Execution.
   - Turning Auto on shows a token warning first: every agent spends tokens on your Claude or Codex plan, and Dev Desk can't see your usage.
 - **Worktrees Dev Desk creates are kept** until you remove them with `git worktree remove <path>`.
+- **The window** fits 920 × 620 and up, and the sidebar becomes an icon rail below 1100 pt or on ⇧⌘S ([ADR 0028](../../docs/adr/0028-the-window-fits-an-ipad-and-a-dialog-clamps-to-it.md)) — an 11" iPad as a display, or half a MacBook screen, works.
+- **Quitting asks** while a session or a background run is live; the question is in Settings → Execution.
 
 ## Development
 
