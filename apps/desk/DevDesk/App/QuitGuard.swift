@@ -24,6 +24,21 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
         UserDefaults.standard.object(forKey: PreferenceKey.confirmQuit) as? Bool ?? true
     }
 
+    /// Held for the app's lifetime: dropping it would stop the app-icon appearance observation.
+    private var appearanceObservation: NSKeyValueObservation?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        // Re-assert the chosen icon on every launch: a reinstall dittos a fresh bundle over this one
+        // and wipes any custom icon, so a launch is the only moment the preference can restore it.
+        AppIconStyle.apply()
+        // When the icon choice is System, a live OS light/dark switch has to re-resolve it. Observe
+        // the app's effective appearance rather than a notification, so the value is read after AppKit
+        // has already flipped it.
+        appearanceObservation = NSApp.observe(\.effectiveAppearance) { _, _ in
+            Task { @MainActor in AppIconStyle.apply() }
+        }
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard Self.confirmsQuit, let work = Self.liveWork else { return .terminateNow }
         let alert = NSAlert()

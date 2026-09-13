@@ -3,6 +3,7 @@ import SwiftUI
 
 enum PreferenceKey {
     static let appearance = "desk.appearance"
+    static let appIcon = "desk.appIcon"
     static let terminalFontSize = "desk.terminalFontSize"
     static let showSamples = "desk.showSamples"
     static let defaultConnection = "desk.defaultConnection"
@@ -82,6 +83,22 @@ enum AppearanceChoice: String, CaseIterable {
         case .system: return nil
         case .light: return .light
         case .dark: return .dark
+        }
+    }
+}
+
+/// Which artwork the app icon wears. `light` is the bundle's shipped icon; `dark` is the near-black
+/// variant in `AppIconDark.imageset`, applied over the bundle at runtime (see `AppIconStyle`).
+/// `system` follows whatever appearance the app is showing, resolved by `AppIconStyle` against the
+/// appearance preference first and the OS appearance only when that is itself `system`.
+enum AppIconChoice: String, CaseIterable {
+    case system, light, dark
+
+    var title: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
         }
     }
 }

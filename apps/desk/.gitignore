@@ -1,5 +1,6 @@
 DevDesk.xcodeproj/
 .build/
 DerivedData/
+.dd/
 *.xcuserstate
 .swiftpm/

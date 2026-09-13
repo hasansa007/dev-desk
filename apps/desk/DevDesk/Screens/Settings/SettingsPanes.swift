@@ -116,6 +116,7 @@ struct GeneralPane: View {
 
 struct AppearancePane: View {
     @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
+    @AppStorage(PreferenceKey.appIcon) private var appIcon = AppIconChoice.system
     @AppStorage(PreferenceKey.terminalFontSize) private var terminalFontSize = 12.0
 
     var body: some View {
@@ -130,6 +131,30 @@ struct AppearancePane: View {
                 .frame(width: 220)
             }
             .padding(.top, 16)
+            SettingsRow("App icon") {
+                HStack(spacing: 12) {
+                    Picker("", selection: $appIcon) {
+                        ForEach(AppIconChoice.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                    .frame(width: 220)
+                    // The artwork the choice resolves to, so both icons are visible while choosing.
+                    // Keyed on both preferences so a System choice repaints when Appearance changes.
+                    if let preview = AppIconStyle.resolvedImage() {
+                        Image(nsImage: preview)
+                            .resizable()
+                            .interpolation(.high)
+                            .frame(width: 64, height: 64)
+                            .id("\(appIcon.rawValue)-\(appearance.rawValue)")
+                    }
+                }
+            }
+            .padding(.top, 12)
+            // Both preferences feed the resolution, so either changing re-applies the icon. System's
+            // OS-driven case is re-applied by the effectiveAppearance observer in QuitGuard.
+            .onChange(of: appIcon) { AppIconStyle.apply() }
+            .onChange(of: appearance) { AppIconStyle.apply() }
             SettingsRow("Terminal text size") {
                 Picker("", selection: $terminalFontSize) {
                     ForEach(Array(stride(from: 11.0, through: 14.0, by: 1.0)), id: \.self) { size in
