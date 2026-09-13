@@ -263,7 +263,8 @@ private struct BoardColumnView: View {
                          action: { model.openTask(task.id) }, moves: moves(for: task),
                          activity: model.activity(of: task), start: start(for: task),
                          branchActions: branchActions(for: task),
-                         runControls: runControls(for: task))
+                         runControls: runControls(for: task),
+                         isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch)
             }
         }
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)

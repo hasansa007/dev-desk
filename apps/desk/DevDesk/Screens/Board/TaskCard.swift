@@ -52,6 +52,10 @@ struct TaskCard: View {
     var branchActions: BranchActions?
     /// Stop and Continue, on every card that could be running something.
     var runControls: CardRunControls?
+    /// The branch this project has checked out. It is on the board like any other — a branch with unmerged
+    /// commits is In Progress by git's rule (ADR 0011) — but git will not let it be deleted, so it says so
+    /// rather than offering an action that can only fail.
+    var isCheckedOut = false
     @State private var startWidth: CGFloat = 0
 
     var body: some View {
@@ -189,6 +193,9 @@ struct TaskCard: View {
                 StatusPill(badge: StatusBadge(.running, activity.label, pulses: true))
             } else if isPaused {
                 StatusPill(badge: StatusBadge(.waiting, "Paused"))
+            }
+            if isCheckedOut {
+                StatusPill(badge: StatusBadge(.info, "Checked out"))
             }
             if !metaText.isEmpty {
                 Text(metaText)

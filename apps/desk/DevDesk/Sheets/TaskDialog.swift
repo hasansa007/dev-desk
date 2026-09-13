@@ -64,6 +64,10 @@ struct TaskDialog: View {
                     .background(DeskColor.canvas, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
                     .overlay(RoundedRectangle(cornerRadius: DeskMetric.pillRadius).strokeBorder(DeskColor.border))
                 StatusPill(badge: statusBadge, showsDot: false, verticalPadding: 4, horizontalPadding: 10)
+                if isCheckedOut {
+                    StatusPill(badge: StatusBadge(.info, "Checked out here"), showsDot: false,
+                               verticalPadding: 4, horizontalPadding: 10)
+                }
                 Spacer(minLength: 0)
             }
         }
@@ -75,6 +79,8 @@ struct TaskDialog: View {
 
     /// Where this task is edited: GitHub. The app does not edit an issue body, so the pencil goes to the place
     /// that does rather than pretending to be a field.
+    private var isCheckedOut: Bool { task.branch != nil && task.branch == model.snapshot?.project.branch }
+
     private var issueURL: URL? {
         guard let number = task.issueNumber, let slug = model.snapshot?.slug else { return nil }
         return URL(string: "https://github.com/\(slug)/issues/\(number)")
