@@ -70,6 +70,7 @@ open "/tmp/devdesk-dd/Build/Products/Debug/Dev Desk.app"
 - **Worktrees Dev Desk creates are kept** until you remove them with `git worktree remove <path>`.
 - **The window** fits 920 × 620 and up, and the sidebar becomes an icon rail below 1100 pt or on ⇧⌘S ([ADR 0028](../../docs/adr/0028-the-window-fits-an-ipad-and-a-dialog-clamps-to-it.md)) — an 11" iPad as a display, or half a MacBook screen, works.
 - **Quitting asks** while a session or a background run is live; the question is in Settings → Execution.
+- **Reset survey** — the Survey header's menu, or Settings → Project overrides → Cleanup — brings back ignored findings, resets the screen, and moves older reports to the Trash, keeping the newest ([ADR 0029](../../docs/adr/0029-a-survey-reset-trashes-older-reports.md)). It can end by starting a new run.
 
 ## Development
 
@@ -80,3 +81,4 @@ swift test --package-path apps/desk/DeskCore   # models, the git reader, folder 
 - CI (`.github/workflows/desk.yml`) runs these tests and builds the app on every change under `apps/desk/`.
 - A Debug build launched with `-DevDeskAgentExecutable <absolute path>` runs that program instead of `claude` or `codex`, so a manual check never spends tokens.
 - The board rules and the agent prompt mirror `scripts/dev.py`, so a change to one needs the other ([ADR 0013](../../docs/adr/0013-the-app-reads-git-and-github-directly.md), [ADR 0018](../../docs/adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).
+- The app icon set is generated from `apps/desk/icon/source-1254.png` by `apps/desk/icon/make-appicon.py`, which keys out the preview checkerboard baked into the source and produces ten PNG sizes for the asset catalog.

@@ -425,6 +425,16 @@ struct ExecutionPane: View {
 struct ProjectOverridesPane: View {
     @Bindable var model: ProjectWindowModel
 
+    /// What a reset would actually find here, so the button is not a mystery until it is pressed.
+    private var resetSummary: String {
+        let ignored = model.ignoredFindingsCount
+        let older = model.olderSurveyReports.count
+        if ignored == 0 && older == 0 { return "Nothing has built up yet: no set-aside findings, no older reports." }
+        let parts = [ignored > 0 ? "\(ignored) finding\(ignored == 1 ? "" : "s") set aside" : nil,
+                     older > 0 ? "\(older) older report\(older == 1 ? "" : "s")" : nil].compactMap { $0 }
+        return parts.joined(separator: " · ") + ". The newest report is always kept."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PaneTitle("Project overrides", scope: .thisProject)
@@ -447,6 +457,22 @@ struct ProjectOverridesPane: View {
                     .padding(.top, 6)
                 AutoModeSetting(ref: model.ref)
                     .padding(.top, 12)
+
+                SectionLabel("Cleanup").padding(.top, 20)
+                HStack(spacing: 10) {
+                    Button("Reset survey…") {
+                        model.dismissSheet()
+                        model.present(.resetSurvey)
+                    }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    Text(resetSummary)
+                        .font(DeskFont.secondary)
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .lineSpacing(4)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(.top, 10)
             }
         }
     }

@@ -30,10 +30,11 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0019](0019-deep-features-cant-skip-the-architecture-gate.md) | Deep features can't skip the architecture gate; dev:audit checks it | Accepted |
 | [0020](0020-impact-and-complexity-are-labels-the-doors-propose.md) | Impact and complexity are labels the doors propose and the developer corrects | Accepted |
 | [0021](0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md) | A card opens one dialog, and the panels are the window's edges | Accepted, amended by 0028 |
-| [0022](0022-dev-desk-deletes-a-local-branch-and-nothing-else.md) | Dev Desk deletes a local branch, and nothing else | Accepted, amended by 0023 |
+| [0022](0022-dev-desk-deletes-a-local-branch-and-nothing-else.md) | Dev Desk deletes a local branch, and nothing else | Accepted, amended by 0023, 0029 |
 | [0023](0023-the-gate-ran-late-and-took-the-fold-with-it.md) | The gate ran late, and took the fold with it | Accepted, amended by 0024 |
 | [0024](0024-a-board-card-is-one-block-and-its-chrome-is-one-modifier.md) | A board card is one block, and its chrome is one modifier | Accepted |
 | [0025](0025-a-background-run-belongs-to-the-app-not-the-window.md) | A background run belongs to the app, not the window | Accepted |
 | [0026](0026-a-task-has-one-session-and-terminals-is-where-it-lives.md) | A task has one session, and Terminals is where it lives | Accepted |
 | [0027](0027-work-without-a-tracker-is-recorded-locally-and-promoted-on-request.md) | Work without a tracker is recorded locally, and promoted on request | Accepted |
 | [0028](0028-the-window-fits-an-ipad-and-a-dialog-clamps-to-it.md) | The window fits an iPad, and a dialog clamps to it | Accepted |
+| [0029](0029-a-survey-reset-trashes-older-reports.md) | A survey reset trashes older reports | Accepted |

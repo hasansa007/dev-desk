@@ -80,6 +80,19 @@ private struct FindingsBoard: View {
             runControl
             if report.searchNote != nil { noteButton }
             Spacer(minLength: 0)
+            // What builds up between runs — set-aside findings, and every report ever written — is cleared
+            // from here, beside the button that adds to it.
+            Menu {
+                Button("Reset survey…") { model.present(.resetSurvey) }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .imageScale(.medium)
+                    .foregroundStyle(DeskColor.mutedInk)
+            }
+            .menuStyle(.borderlessButton)
+            .menuIndicator(.hidden)
+            .fixedSize()
+            .accessibilityLabel("Survey actions")
             RunSurveyButton(model: model, size: .small)
         }
         .screenHeaderBar()

@@ -120,6 +120,37 @@ if bad.sum() > 0:
         f"first at ({xs[0]}, {ys[0]}) rgba={tuple(master[ys[0], xs[0]])}"
     )
 
+# The checkerboard survives keying in two ways, and the light-pixel test above only catches one of
+# them. The other is the checker written into the ALPHA channel over black pixels: invisible in an
+# RGB preview, invisible in the corners if the corners were snapped to zero, and a grey grid the
+# moment the Dock composites it. So the far field must be empty, and the background must be smooth.
+frame = np.zeros_like(alpha, dtype=bool)
+frame[:40, :] = True
+frame[-40:, :] = True
+frame[:, :40] = True
+frame[:, -40:] = True
+if alpha[frame].max() > 3:
+    fail(
+        f"master: the outer 40px frame is not empty (max alpha {alpha[frame].max()}, "
+        f"{(alpha[frame] > 3).sum()} pixels above 3) — the background was not keyed out"
+    )
+
+# A drop shadow is low frequency; a checkerboard is not. Compare the background's alpha against its
+# own local median: a shadow tracks it, a periodic grid does not.
+from PIL import ImageFilter  # noqa: E402
+
+smooth = np.array(
+    Image.fromarray(alpha.astype(np.uint8)).filter(ImageFilter.MedianFilter(size=15))
+).astype(int)
+rough = outside & (np.abs(alpha - smooth) > 8)
+if rough.sum() > outside.sum() * 0.002:
+    ys, xs = np.where(rough)
+    fail(
+        f"master: {rough.sum()} background pixels deviate from their local median "
+        f"({rough.sum() / outside.sum():.1%} of the background) — that is a periodic pattern, not "
+        f"a shadow; first at ({xs[0]}, {ys[0]}) alpha={alpha[ys[0], xs[0]]}"
+    )
+
 # A hard binary cutout has almost no partial coverage; real antialiasing has thousands of pixels.
 partial = ((alpha > 8) & (alpha < 247)).sum()
 if partial < 1200:

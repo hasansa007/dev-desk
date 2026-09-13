@@ -82,6 +82,8 @@ struct SheetHost: View {
             CloneRepositorySheet(onDismiss: model.dismissSheet)
         case .createProject:
             CreateProjectSheet(onDismiss: model.dismissSheet)
+        case .resetSurvey:
+            ResetSurveySheet(model: model)
         }
     }
 

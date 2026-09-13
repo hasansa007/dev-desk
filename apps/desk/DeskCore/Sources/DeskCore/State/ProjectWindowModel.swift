@@ -62,6 +62,7 @@ public enum SettingsSection: String, CaseIterable, Codable, Hashable {
 
 public enum SheetKind: Hashable, Identifiable {
     case openProject, compareOutputs, followUp, handoff, reconcileFinding(String), cloneRepository, createProject
+    case resetSurvey
     case task(String)
     case finding(String)
     case cancelTask(String)
@@ -78,6 +79,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .reconcileFinding(let findingID): return "reconcileFinding:\(findingID)"
         case .cloneRepository: return "cloneRepository"
         case .createProject: return "createProject"
+        case .resetSurvey: return "resetSurvey"
         case .task(let taskID): return "task:\(taskID)"
         case .finding(let findingID): return "finding:\(findingID)"
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
@@ -351,6 +353,47 @@ public final class ProjectWindowModel {
             await load()
         } catch {
             writeFailure = .backlog(Markdown.escape(error.localizedDescription))
+        }
+    }
+
+    // MARK: - Survey reset
+
+    /// How many findings this project has set aside, for the sheet that offers to bring them back.
+    public var ignoredFindingsCount: Int { ignoredFindings.count }
+
+    /// Reports a cleanup would move to the Trash: every one but the newest.
+    public var olderSurveyReports: [String] {
+        guard case .local(let path) = ref else { return [] }
+        return SurveyCleanup.olderReports(in: path)
+    }
+
+    /// Starts this project's survey reading over. Each part is separately owned — the app's ignored list, the
+    /// window's own selection, the repository's older reports — so each is separately asked for.
+    public func resetSurvey(_ options: SurveyResetOptions) async {
+        guard !options.isEmpty else { return }
+        if options.ignoredFindings {
+            ignoredFindings = []
+            showsIgnoredFindings = false
+        }
+        if options.viewState {
+            selectedFindingID = nil
+            selectedRunID = nil
+            findingFilter = nil
+        }
+        if options.olderReports, case .local(let path) = ref {
+            do {
+                try SurveyCleanup.trashOlderReports(in: path)
+                writeFailure = nil
+            } catch {
+                writeFailure = WriteFailure(title: "The reports were not moved to the Trash",
+                                            message: Markdown.escape(error.localizedDescription))
+            }
+        }
+        await load()
+        // A reset leaves the newest run selected, the way opening the project does.
+        if options.viewState {
+            selectedRunID = snapshot?.findings.value?.runs.first?.id
+            selectedFindingID = snapshot?.findings.value?.findings.first?.id
         }
     }
 
