@@ -1,22 +1,24 @@
 import DeskCore
 import SwiftUI
 
-/// The only thing Dev Desk destroys. What the board knew when the sheet opened is what it asks about: a reload
-/// while it is open must not be able to lower the gate under the developer's hands.
+/// The only thing Dev Desk destroys. One confirmation, not a typed name: the sheet says what would be lost and
+/// the button says what it does, which is the whole of the gate (amends ADR 0022's typed-name step).
+///
+/// What the board knew when the sheet opened is still what it asks about — a reload while it is open must not
+/// change what the confirmation is about — and `git branch -d` still runs before `-D`, so a branch git thinks
+/// is merged is never force-deleted.
 struct DeleteBranchSheet: View {
     let model: ProjectWindowModel
     let branch: String
     @State private var unmerged: Int?
     @State private var counted = false
-    @State private var typed = ""
 
-    private var needsTyping: Bool { BranchWrite.requiresTypedName(unmerged: unmerged) }
-    private var confirmed: Bool { !needsTyping || typed.trimmingCharacters(in: .whitespacesAndNewlines) == branch }
+    /// Still true for an uncounted branch — it decides whether git is forced, not whether a name is typed.
+    private var losesCommits: Bool { BranchWrite.requiresTypedName(unmerged: unmerged) }
     private var task: DeskTask? { model.tasks.first { $0.branch == branch } }
 
     var body: some View {
         SheetChrome(title: "Delete \(branch)", confirmTitle: "Delete branch",
-                    confirmDisabled: !confirmed,
                     onCancel: model.dismissSheet, onConfirm: confirm) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(BranchWrite.confirmation(branch: branch, unmerged: unmerged))
@@ -28,15 +30,8 @@ struct DeleteBranchSheet: View {
                         .font(DeskFont.secondary)
                         .foregroundStyle(DeskColor.mutedInk)
                 }
-                if needsTyping {
+                if losesCommits {
                     NoticeBanner(tone: .failed, title: warningTitle, message: warning, style: .compact)
-                    SectionLabel("Type the branch name to confirm").padding(.top, 2)
-                    TextField(branch, text: $typed)
-                        .textFieldStyle(.plain)
-                        .font(DeskFont.mono(12))
-                        .padding(8)
-                        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
                 } else {
                     Text("Its commits are in the base branch already, so nothing is lost.")
                         .font(.system(size: 11))
@@ -66,8 +61,7 @@ struct DeleteBranchSheet: View {
     }
 
     private func confirm() {
-        guard confirmed else { return }
         model.dismissSheet()
-        Task { await model.deleteBranch(branch, force: needsTyping) }
+        Task { await model.deleteBranch(branch, force: losesCommits) }
     }
 }

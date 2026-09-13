@@ -221,8 +221,10 @@ private struct BoardColumnView: View {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(branch, forType: .string)
             },
-            // Only a plain local branch. An open pull request points at its head, so that branch is not abandoned.
-            delete: task.isBranchCard ? { model.present(.deleteBranch(branch)) } : nil)
+            // Only a plain local branch, and never the one checked out here: git refuses that, so offering it
+            // could only ever produce "cannot delete branch … used by worktree at …".
+            delete: task.isBranchCard && branch != model.snapshot?.project.branch
+                ? { model.present(.deleteBranch(branch)) } : nil)
     }
 
     /// A card offers Start only when pressing it would actually run something; the dialog still explains why not.

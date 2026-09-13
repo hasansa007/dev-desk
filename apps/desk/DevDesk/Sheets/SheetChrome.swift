@@ -1,7 +1,11 @@
 import DeskCore
 import SwiftUI
 
-/// The shared chrome for every modal sheet: a headerFill title bar with Cancel/confirm, and a scrolling body.
+/// The shared chrome for every modal sheet: a title and a close glyph at the top, the body in the middle, and
+/// the actions along the bottom — the shape a Mac dialog has, and the one the task dialog now uses.
+///
+/// The actions used to sit in the header beside the title, where a window's own controls live, which put
+/// "Delete branch" a few pixels from the traffic lights and left a destructive action no place of its own.
 struct SheetChrome<Content: View>: View {
     let title: String
     let confirmTitle: String
@@ -50,29 +54,51 @@ struct SheetChrome<Content: View>: View {
                     .padding(.vertical, 16)
                     .padding(.horizontal, 18)
             }
+            footer
         }
         .frame(width: DeskMetric.dialogWidth, height: DeskMetric.dialogHeight)
         .background(DeskColor.surface)
     }
 
     private var header: some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .top, spacing: 10) {
             Text(title)
-                .font(.system(size: 13, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(DeskColor.ink)
+                .lineLimit(2)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 8)
+            Button(action: onCancel) {
+                Image(systemName: "xmark")
+                    .imageScale(.medium)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .help(cancelHelp ?? "Close")
+            .accessibilityLabel("Close")
+        }
+        .padding(.horizontal, 18)
+        .padding(.top, 16)
+        .padding(.bottom, 14)
+        .background(DeskColor.headerFill)
+    }
+
+    private var footer: some View {
+        HStack(spacing: 10) {
             Spacer(minLength: 8)
             Button(cancelTitle, action: onCancel)
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .sheetHeader))
-                .keyboardShortcut(.cancelAction)
-                .help(cancelHelp ?? "")
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .regular))
             Button(confirmTitle, action: onConfirm)
-                .buttonStyle(DeskButtonStyle(kind: .primary, size: .sheetHeader))
+                .buttonStyle(DeskButtonStyle(kind: .primary, size: .regular))
                 .keyboardShortcut(.defaultAction)
                 .disabled(confirmDisabled)
         }
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 18)
         .padding(.vertical, 13)
         .background(DeskColor.headerFill)
-        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+        .overlay(alignment: .top) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 }

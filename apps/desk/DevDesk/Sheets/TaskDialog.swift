@@ -42,32 +42,28 @@ struct TaskDialog: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .top, spacing: 10) {
                 Text(task.title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 26, weight: .semibold))
                     .foregroundStyle(DeskColor.ink)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer(minLength: 8)
-                Button { model.dismissSheet() } label: {
-                    Image(systemName: "xmark")
-                        .imageScale(.medium)
-                        .foregroundStyle(DeskColor.mutedInk)
-                        .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
-                        .contentShape(Rectangle())
+                if let url = issueURL {
+                    glyph("pencil", label: "Edit on GitHub") { NSWorkspace.shared.open(url) }
                 }
-                .buttonStyle(.plain)
-                .keyboardShortcut(.cancelAction)
-                .accessibilityLabel("Close")
+                glyph("xmark", label: "Close") { model.dismissSheet() }
+                    .keyboardShortcut(.cancelAction)
             }
-            HStack(spacing: 6) {
+            HStack(spacing: 8) {
                 Text(identifier)
-                    .font(DeskFont.mono(11.5))
+                    .font(DeskFont.mono(12))
                     .foregroundStyle(DeskColor.mutedInk)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 3)
-                    .background(DeskColor.canvas, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-                StatusPill(badge: statusBadge, showsDot: false, verticalPadding: 2, horizontalPadding: 8)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 5)
+                    .background(DeskColor.canvas, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
+                    .overlay(RoundedRectangle(cornerRadius: DeskMetric.pillRadius).strokeBorder(DeskColor.border))
+                StatusPill(badge: statusBadge, showsDot: false, verticalPadding: 4, horizontalPadding: 10)
                 Spacer(minLength: 0)
             }
         }
@@ -75,6 +71,26 @@ struct TaskDialog: View {
         .padding(.top, 16)
         .padding(.bottom, 12)
         .background(DeskColor.headerFill)
+    }
+
+    /// Where this task is edited: GitHub. The app does not edit an issue body, so the pencil goes to the place
+    /// that does rather than pretending to be a field.
+    private var issueURL: URL? {
+        guard let number = task.issueNumber, let slug = model.snapshot?.slug else { return nil }
+        return URL(string: "https://github.com/\(slug)/issues/\(number)")
+    }
+
+    private func glyph(_ symbol: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .imageScale(.medium)
+                .foregroundStyle(DeskColor.mutedInk)
+                .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(label)
+        .accessibilityLabel(label)
     }
 
     private var identifier: String {
@@ -182,8 +198,11 @@ struct TaskDialog: View {
         .overlay(alignment: .top) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
+    /// Never the branch this project has checked out: git refuses to delete it, so the action could only ever
+    /// produce "cannot delete branch … used by worktree at …". The board knows which branch that is.
     private var deleteBranch: (() -> Void)? {
-        guard task.isBranchCard, let branch = task.branch else { return nil }
+        guard task.isBranchCard, let branch = task.branch,
+              branch != model.snapshot?.project.branch else { return nil }
         return { model.present(.deleteBranch(branch)) }
     }
 
