@@ -50,7 +50,7 @@ struct SettingsScreen: View {
 
     @ViewBuilder private var pane: some View {
         switch model.settingsSection {
-        case .general: GeneralPane()
+        case .general: GeneralPane(model: model)
         case .appearance: AppearancePane()
         case .agentsAndDefaults: AgentsAndDefaultsPane(model: model)
         case .accountsAndConnections: AccountsPane(model: model)

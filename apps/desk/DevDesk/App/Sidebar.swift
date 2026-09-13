@@ -3,15 +3,17 @@ import SwiftUI
 
 struct Sidebar: View {
     let model: ProjectWindowModel
+    /// Icons only. A narrow window takes this by itself; above the breakpoint it is the developer's choice.
+    var isRail = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
+            if !isRail { header } else { railHeader }
             if let snapshot = model.snapshot {
                 destinations
                 Spacer(minLength: 12)
                 settingsRow
-                connections(snapshot)
+                if !isRail { connections(snapshot) } else { railConnections(snapshot) }
             } else {
                 Spacer(minLength: 0)
             }
@@ -44,6 +46,39 @@ struct Sidebar: View {
         .padding(.bottom, 10)
     }
 
+    /// The project's initial, so the rail still says which window this is.
+    private var railHeader: some View {
+        Text(String((model.snapshot?.project.name ?? model.ref.displayName).prefix(1)).uppercased())
+            .font(.system(size: 15, weight: .bold))
+            .foregroundStyle(DeskColor.ink)
+            .frame(maxWidth: .infinity)
+            .padding(.top, 16)
+            .padding(.bottom, 12)
+            .help(model.snapshot?.project.name ?? model.ref.displayName)
+    }
+
+    /// Dots only: which connections are unhappy is the part that has to survive the width.
+    private func railConnections(_ snapshot: ProjectSnapshot) -> some View {
+        VStack(spacing: 8) {
+            ForEach(snapshot.connections) { connection in
+                Button {
+                    model.settingsSection = .accountsAndConnections
+                    model.present(.settings)
+                } label: {
+                    StatusDot(tone: style(for: connection.state).tone)
+                        .frame(maxWidth: .infinity)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("\(connection.name): \(connection.label)")
+                .accessibilityLabel("\(connection.name), \(connection.label)")
+            }
+        }
+        .padding(.vertical, 12)
+        .frame(maxWidth: .infinity)
+        .overlay(alignment: .top) { Rectangle().fill(DeskColor.border).frame(height: 1) }
+    }
+
     private var destinations: some View {
         VStack(spacing: 2) {
             ForEach(Destination.allCases, id: \.self) { destination in
@@ -59,16 +94,20 @@ struct Sidebar: View {
         Button { model.present(.settings) } label: {
             HStack(spacing: 9) {
                 Image(systemName: "gearshape").frame(width: 16)
-                Text("Settings")
-                Spacer(minLength: 4)
+                if !isRail {
+                    Text("Settings")
+                    Spacer(minLength: 4)
+                }
             }
             .font(DeskFont.body)
             .foregroundStyle(DeskColor.navInk)
             .padding(.vertical, 7)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, isRail ? 0 : 10)
+            .frame(maxWidth: .infinity)
             .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
         }
         .buttonStyle(.plain)
+        .help(isRail ? "Settings" : "")
         .padding(.horizontal, 8)
         .padding(.bottom, 8)
     }
@@ -80,23 +119,36 @@ struct Sidebar: View {
             HStack(spacing: 9) {
                 Image(systemName: symbol(for: destination))
                     .frame(width: 16)
-                Text(destination.title)
-                Spacer(minLength: 4)
-                if let badge {
-                    Text("\(badge.count)")
-                        .font(.system(size: 11, weight: badge.isPending ? .bold : .regular))
-                        .foregroundStyle(badgeColor(isPending: badge.isPending, isSelected: isSelected))
-                        .opacity(badge.isPending ? 1 : 0.75)
+                    // A rail still has to show that something needs you: the count becomes a dot on the icon.
+                    .overlay(alignment: .topTrailing) {
+                        if isRail, let badge, badge.isPending {
+                            Circle()
+                                .fill(DeskColor.tone(.waiting).dot)
+                                .frame(width: 6, height: 6)
+                                .offset(x: 5, y: -3)
+                        }
+                    }
+                if !isRail {
+                    Text(destination.title)
+                    Spacer(minLength: 4)
+                    if let badge {
+                        Text("\(badge.count)")
+                            .font(.system(size: 11, weight: badge.isPending ? .bold : .regular))
+                            .foregroundStyle(badgeColor(isPending: badge.isPending, isSelected: isSelected))
+                            .opacity(badge.isPending ? 1 : 0.75)
+                    }
                 }
             }
             .font(DeskFont.body)
             .foregroundStyle(isSelected ? Color.white : DeskColor.navInk)
             .padding(.vertical, 7)
-            .padding(.horizontal, 10)
+            .padding(.horizontal, isRail ? 0 : 10)
+            .frame(maxWidth: .infinity)
             .background(isSelected ? DeskColor.accent : Color.clear, in: RoundedRectangle(cornerRadius: 6))
             .contentShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
+        .help(isRail ? (badge.map { "\(destination.title) · \($0.count)" } ?? destination.title) : "")
         .accessibilityLabel(badge.map { "\(destination.title), \($0.count)" } ?? destination.title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
@@ -158,25 +210,41 @@ struct Sidebar: View {
         }
     }
 
+    /// A row is what the app knows, and a way to the one place that can change it: the rows themselves are
+    /// display, and Accounts holds the actions (decision 14).
     private func connectionRow(_ connection: Connection) -> some View {
         let style = style(for: connection.state)
-        return HStack(spacing: 8) {
-            StatusDot(tone: style.tone)
-            Text(connection.name)
-            Spacer(minLength: 4)
-            Text(connection.label)
-                .font(.system(size: 11))
-                .foregroundStyle(style.label)
-                // One line. A gh failure is a paragraph with a repository path in it, and rendering it whole
-                // turned this row into a red wall of text nobody could read; the rest is in the tooltip.
-                .lineLimit(1)
-                .truncationMode(.tail)
+        return Button {
+            model.settingsSection = .accountsAndConnections
+            model.present(.settings)
+        } label: {
+            HStack(spacing: 8) {
+                StatusDot(tone: style.tone)
+                Text(connection.name)
+                Spacer(minLength: 4)
+                Text(connection.label)
+                    .font(.system(size: 11))
+                    .foregroundStyle(style.label)
+                    // One line. A gh failure is a paragraph with a repository path in it, and rendering it whole
+                    // turned this row into a red wall of text nobody could read; the rest is in the tooltip.
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .font(DeskFont.secondary)
+            .foregroundStyle(style.text)
+            .contentShape(Rectangle())
         }
-        .font(DeskFont.secondary)
-        .foregroundStyle(style.text)
-        .help(connection.detail ?? connection.label)
+        .buttonStyle(.plain)
+        .help(helpText(connection))
         .accessibilityElement(children: .combine)
         .accessibilityValue(connection.detail ?? connection.label)
+    }
+
+    /// The tooltip says what to do when there is something to do, rather than only what is wrong.
+    private func helpText(_ connection: Connection) -> String {
+        let base = connection.detail ?? connection.label
+        guard let auth = connection.auth else { return base }
+        return connection.isSignedOut ? "\(base) — Settings → Accounts runs `\(auth.signIn)`." : base
     }
 
     private func style(for state: ConnectionState) -> (tone: StatusTone, text: Color, label: Color) {

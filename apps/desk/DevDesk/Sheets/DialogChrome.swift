@@ -190,10 +190,34 @@ struct DialogFooter<Leading: View>: View {
     }
 }
 
-extension View {
-    /// Every card's dialog is the same size, whatever opened it (ADR 0021).
-    func deskDialogFrame() -> some View {
-        frame(width: DeskMetric.dialogWidth, height: DeskMetric.dialogHeight)
+/// Every card's dialog is the same size, whatever opened it (ADR 0021) — and that size is a **maximum**:
+/// on a window narrower than 900 pt it clamps instead of being clipped, which is what let the floor drop
+/// from 1100 pt to 920.
+private struct DeskDialogFrame: ViewModifier {
+    @Environment(\.deskWindowSize) private var window
+
+    func body(content: Content) -> some View {
+        let size = window.clamped(to: CGSize(width: DeskMetric.dialogWidth, height: DeskMetric.dialogHeight))
+        content
+            .frame(width: size.width, height: size.height)
             .background(DeskColor.surface)
+    }
+}
+
+extension View {
+    func deskDialogFrame() -> some View { modifier(DeskDialogFrame()) }
+
+    /// The same rule for a sheet that sets its own width: never wider than the window it covers.
+    func deskSheetWidth(_ ideal: CGFloat) -> some View {
+        modifier(DeskSheetWidth(ideal: ideal))
+    }
+}
+
+private struct DeskSheetWidth: ViewModifier {
+    let ideal: CGFloat
+    @Environment(\.deskWindowSize) private var window
+
+    func body(content: Content) -> some View {
+        content.frame(width: window.clamped(to: CGSize(width: ideal, height: ideal)).width)
     }
 }

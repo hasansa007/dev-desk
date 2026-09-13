@@ -5,6 +5,8 @@ struct DeskCommands: Commands {
     @FocusedValue(\.projectModel) private var model: ProjectWindowModel?
     @Environment(\.openWindow) private var openWindow
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    /// A narrow window takes the rail whatever this says; this is the choice at widths that have room.
+    @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
 
     var body: some Commands {
         CommandGroup(replacing: .newItem) {
@@ -25,6 +27,8 @@ struct DeskCommands: Commands {
                     .disabled(startableTask == nil)
                 Button("New Terminal") { newTerminal() }
                     .keyboardShortcut("t")
+                Toggle("Compact Sidebar", isOn: $railMode)
+                    .keyboardShortcut("s", modifiers: [.command, .shift])
                 Divider()
                 Button("Reload") { reload() }
                     .keyboardShortcut("r")

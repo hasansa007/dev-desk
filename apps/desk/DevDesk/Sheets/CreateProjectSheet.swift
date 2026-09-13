@@ -101,6 +101,6 @@ struct CreateProjectSheet: View {
 struct CreateProjectSheet_Previews: PreviewProvider {
     static var previews: some View {
         CreateProjectSheet(onDismiss: {})
-            .frame(width: 720)
+            .deskSheetWidth(720)
     }
 }

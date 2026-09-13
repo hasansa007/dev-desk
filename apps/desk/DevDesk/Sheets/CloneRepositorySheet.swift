@@ -102,6 +102,6 @@ struct CloneRepositorySheet: View {
 struct CloneRepositorySheet_Previews: PreviewProvider {
     static var previews: some View {
         CloneRepositorySheet(onDismiss: {})
-            .frame(width: 720)
+            .deskSheetWidth(720)
     }
 }

@@ -104,6 +104,14 @@ enum GitHubState: Equatable {
         return reason.count > 40 ? "unavailable" : reason
     }
 
+    /// Whether the failure is an authentication one. "Could not resolve to a Repository" and "no GitHub
+    /// remote" are not: a sign-in screen answers neither, and offering it misnames the problem.
+    var isAuthFailure: Bool {
+        guard let reason = unavailableReason else { return false }
+        if reason.contains("Could not resolve to a Repository") { return false }
+        return reason.lowercased().contains("auth") || reason.contains("not logged") || reason.contains("not signed in")
+    }
+
     /// What to do about it, when the reason says something actionable. A GraphQL error pasted at the developer
     /// names a failure without naming a fix, and the commonest cause here is a remote pointing at a repository
     /// this account can no longer see — a deleted fork, a take-home repo, an org you left.

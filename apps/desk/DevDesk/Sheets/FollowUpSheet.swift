@@ -54,6 +54,6 @@ struct FollowUpSheet_Previews: PreviewProvider {
     static var previews: some View {
         let task = SampleData.studyHub().board.value!.first { $0.id == "42" }!
         FollowUpSheet(draft: task.followUp!, onCancel: {}, onConfirm: {})
-            .frame(width: 720)
+            .deskSheetWidth(720)
     }
 }

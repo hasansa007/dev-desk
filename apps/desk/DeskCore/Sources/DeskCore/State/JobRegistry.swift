@@ -69,6 +69,10 @@ public protocol JobSpawner: AnyObject {
 @Observable
 public final class JobRegistry {
     public private(set) var jobs: [BackgroundJob] = []
+    /// Told when a run reaches a state worth leaving the app for: waiting for an answer, finished, failed.
+    /// The registry does not know what a notification is — that belongs to the app, which owns the permission
+    /// and the preferences. Only real transitions are reported, so a redraw never re-announces anything.
+    public var onSettled: ((BackgroundJob) -> Void)?
     private let spawner: JobSpawner
     private let home: String
 
@@ -120,7 +124,7 @@ public final class JobRegistry {
         // The previous process may have written its result and not yet exited; re-spawning under the same id
         // would let its termination handler fire against the new one and mark a live run finished.
         spawner.stop(id: id)
-        jobs[index].state = .starting
+        setState(.starting, at: index)
         append("› \(text)", to: index)
         run(id: id, launch: launch, directory: jobs[index].directory)
     }
@@ -128,12 +132,22 @@ public final class JobRegistry {
     public func stop(_ id: String) {
         spawner.stop(id: id)
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
-        jobs[index].state = .ended(text: "Stopped", failed: false)
+        setState(.ended(text: "Stopped", failed: false), at: index)
     }
 
     public func remove(_ id: String) {
         guard let index = jobs.firstIndex(where: { $0.id == id }), !jobs[index].state.isLive else { return }
         jobs.remove(at: index)
+    }
+
+    /// Every state change goes through here, so "it changed" is decided in one place rather than at each site.
+    private func setState(_ state: JobState, at index: Int) {
+        guard jobs[index].state != state else { return }
+        jobs[index].state = state
+        switch state {
+        case .asking, .ended: onSettled?(jobs[index])
+        case .starting, .running: break
+        }
     }
 
     private func run(id: String, launch: JobLaunch, directory: String) {
@@ -144,7 +158,7 @@ public final class JobRegistry {
 
     func receive(_ line: String, id: String) {
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
-        if case .starting = jobs[index].state { jobs[index].state = .running }
+        if case .starting = jobs[index].state { setState(.running, at: index) }
         guard let event = JobStream.event(from: line) else { return }
         switch event {
         case .session(let sessionID):
@@ -153,7 +167,7 @@ public final class JobRegistry {
             append(text, to: index)
         case .ended(let text, let question):
             append(text, to: index)
-            jobs[index].state = question.map { JobState.asking($0) } ?? .ended(text: text, failed: false)
+            setState(question.map { JobState.asking($0) } ?? .ended(text: text, failed: false), at: index)
         }
     }
 
@@ -162,7 +176,7 @@ public final class JobRegistry {
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
         if case .asking = jobs[index].state { return }
         guard jobs[index].state.isLive else { return }
-        jobs[index].state = .ended(text: status == 0 ? "Finished" : "Exited with status \(status)", failed: status != 0)
+        setState(.ended(text: status == 0 ? "Finished" : "Exited with status \(status)", failed: status != 0), at: index)
     }
 
     private func append(_ text: String, to index: Int) {

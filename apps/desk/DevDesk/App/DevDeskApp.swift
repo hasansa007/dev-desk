@@ -15,7 +15,9 @@ struct DevDeskApp: App {
                 .environment(registry)
                 .modifier(SnapshotBootstrap())
         }
-        .windowResizability(.contentSize)
+        // .contentSize pinned the launcher to its ideal size, so it could not be made smaller than
+        // the display it had to fit on.
+        .windowResizability(.contentMinSize)
         .defaultPosition(.center)
 
         WindowGroup(for: ProjectRef.self) { $ref in
@@ -29,7 +31,10 @@ struct DevDeskApp: App {
             .environment(registry)
             .environment(jobs)
             // AppKit makes the delegate before any scene exists, so it is told where the app's runs live.
-            .task { QuitGuard.jobs = jobs }
+            .task {
+                QuitGuard.jobs = jobs
+                RunNotifications.attach(to: jobs)
+            }
         }
         .defaultSize(width: 1440, height: 900)
         .windowToolbarStyle(.unified(showsTitle: true))

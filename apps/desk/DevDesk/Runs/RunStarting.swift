@@ -119,6 +119,39 @@ extension ProjectWindowModel {
                           permission: .everything, directory: path, subject: task.id)
     }
 
+    /// Runs a connection's own sign-in or sign-out in a terminal. Dev Desk holds no credential and implements
+    /// no OAuth: each CLI owns its keychain and its browser dance, and this is the one surface the app has for
+    /// letting you watch it happen (decision 14). A scratch session, because auth belongs to no task.
+    func runAuthCommand(_ command: String, connection: String) {
+        guard canRunDoors else { return }
+        let id = "auth:\(connection.lowercased())"
+        guard !isRunLive(id) else {
+            selectedSessionID = id
+            go(.terminals)
+            return
+        }
+        runs.add(DoorRun(id: id, title: "\(connection) · \(command)", agent: connection, command: command,
+                         folderNote: "signing in is the tool's own command, so it runs at the project root."))
+        selectedSessionID = id
+        go(.terminals)
+    }
+
+    /// Runs the CLI's own check in a terminal at the project root: `dev doctor` already reports what is
+    /// installed, linked and reachable, so the app asks it rather than growing a second opinion of its own.
+    func runDoctor() {
+        guard canRunDoors else { return }
+        let id = DoorRuns.id(door: "doctor")
+        guard !isRunLive(id) else {
+            selectedSessionID = id
+            go(.terminals)
+            return
+        }
+        runs.add(DoorRun(id: id, title: "dev doctor", agent: "dev", command: "dev doctor",
+                         folderNote: "doctor checks this machine and this repository, so it runs at the project root."))
+        selectedSessionID = id
+        go(.terminals)
+    }
+
     // MARK: - Starting
 
     /// Starts `/dev` for a task. The card and the dialog both call this, so they cannot disagree about what

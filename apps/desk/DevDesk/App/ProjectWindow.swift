@@ -11,6 +11,9 @@ struct ProjectWindow: View {
     @State private var columns: NavigationSplitViewVisibility = .all
     @Environment(OpenProjectRegistry.self) private var registry
     @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
+    /// Asked for by hand. A window narrower than the breakpoint takes the rail anyway — an open sidebar there
+    /// leaves the board no room — and gets the choice back when it widens.
+    @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
     @SceneStorage("desk.destination") private var storedDestination: Destination?
     @SceneStorage("desk.taskID") private var storedTaskID: String?
     @SceneStorage("desk.tab") private var storedTab: TaskTab?
@@ -25,9 +28,19 @@ struct ProjectWindow: View {
     }
 
     var body: some View {
-        NavigationSplitView(columnVisibility: $columns) {
-            Sidebar(model: model)
-                .navigationSplitViewColumnWidth(DeskMetric.sidebarWidth)
+        GeometryReader { proxy in
+            window(size: proxy.size)
+                // Measured once and handed down, because a sheet cannot measure the window it covers.
+                .environment(\.deskWindowSize, proxy.size)
+        }
+        .frame(minWidth: DeskMetric.windowMinWidth, minHeight: DeskMetric.windowMinHeight)
+    }
+
+    private func window(size: CGSize) -> some View {
+        let isRail = railMode || size.width < DeskMetric.railBreakpoint
+        return NavigationSplitView(columnVisibility: $columns) {
+            Sidebar(model: model, isRail: isRail)
+                .navigationSplitViewColumnWidth(isRail ? DeskMetric.sidebarRailWidth : DeskMetric.sidebarWidth)
         } detail: {
             ContentRouter(model: model)
         }
@@ -41,7 +54,6 @@ struct ProjectWindow: View {
         .environment(\.terminals, terminals)
         .focusedSceneValue(\.projectModel, model)
         .preferredColorScheme(SnapshotMode.shared.colorScheme ?? appearance.colorScheme)
-        .frame(minWidth: 1100, minHeight: 720)
         .background { windowHooks }
         .task { await model.load() }
         .task { if !SnapshotMode.shared.isActive { await model.refresh(every: .seconds(ProjectWindowModel.refreshSeconds)) } }

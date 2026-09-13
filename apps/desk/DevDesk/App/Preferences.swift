@@ -12,6 +12,7 @@ enum PreferenceKey {
     static let worktreeLocation = "desk.worktreeLocation"
     static let agentLimit = "desk.agentLimit"
     static let confirmQuit = "desk.confirmQuit"
+    static let sidebarRail = "desk.sidebarRail"
 
     static func connectionOverride(_ ref: ProjectRef) -> String { "desk.connectionOverride.\(ref.id)" }
     static func autoMode(_ ref: ProjectRef) -> String { "desk.autoMode.\(ref.id)" }

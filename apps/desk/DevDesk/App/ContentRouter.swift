@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ContentRouter: View {
     @Bindable var model: ProjectWindowModel
+    @Environment(\.deskWindowSize) private var window
 
     var body: some View {
         VStack(spacing: 0) {
@@ -29,7 +30,8 @@ struct ContentRouter: View {
                 if model.filesOpen {
                     EdgeResizer(edge: .trailing, size: $model.filesWidth, range: DeskMetric.filesWidthRange)
                     FilesPanel(model: model)
-                        .frame(width: model.filesWidth)
+                        // A 420 pt panel on a 920 pt window leaves the board a strip: the edge yields first.
+                        .frame(width: min(model.filesWidth, max(window.width * 0.45, DeskMetric.filesWidthRange.lowerBound)))
                 }
             }
         }

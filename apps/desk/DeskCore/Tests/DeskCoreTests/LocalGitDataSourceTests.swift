@@ -154,7 +154,12 @@ final class LocalGitDataSourceTests: XCTestCase {
         let runner = githubReadyRunner(root: folder.url)
 
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
-        XCTAssertEqual(snapshot.connections.first { $0.id == "github" }, Connection(id: "github", name: "GitHub", state: .connected, label: "connected"))
+        let github = snapshot.connections.first { $0.id == "github" }
+        XCTAssertEqual(github?.state, .connected)
+        XCTAssertEqual(github?.label, "connected")
+        // A connected row still carries its sign-out, which is the only way to change accounts from the app.
+        XCTAssertEqual(github?.auth?.signOut, "gh auth logout")
+        XCTAssertFalse(github?.isSignedOut ?? true)
         XCTAssertEqual(snapshot.board, .available([]))
         XCTAssertEqual(snapshot.findings, .available(FindingsReport(runs: [], findings: [])))
         XCTAssertEqual(snapshot.roadmap.value?.themes, [])
@@ -264,13 +269,16 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     func testToolsAreDetectedAndNothingClaimsAnAgentConnection() async throws {
         let (_, snapshot) = try await githubConnection { _ in }
-        XCTAssertEqual(snapshot.connections, [
-            Connection(id: "codex", name: "Codex", state: .missing, label: "not found"),
-            Connection(id: "claude", name: "Claude", state: .detected, label: "CLI found"),
-            Connection(id: "gemini", name: "Gemini", state: .missing, label: "not found"),
-            Connection(id: "github", name: "GitHub", state: .connected, label: "connected"),
-        ])
-        XCTAssertEqual(snapshot.connectionsNote, "Detected on this Mac. Dev Desk runs Claude Code and Codex in a task's terminal; it doesn't sign in to them.")
+        XCTAssertEqual(snapshot.connections.map(\.id), ["codex", "claude", "gemini", "github"])
+        XCTAssertEqual(snapshot.connections.map(\.state), [.missing, .detected, .missing, .connected])
+        // Installed but with no account on it is not the same as installed: a run would stop at its own prompt.
+        let claude = snapshot.connections.first { $0.id == "claude" }
+        XCTAssertEqual(claude?.label, "not signed in")
+        XCTAssertTrue(claude?.isSignedOut ?? false)
+        XCTAssertEqual(claude?.auth?.signIn, "claude auth login")
+        // A CLI that is not installed has nothing to sign into.
+        XCTAssertNil(snapshot.connections.first { $0.id == "codex" }?.auth)
+        XCTAssertEqual(snapshot.connectionsNote, "Detected on this Mac. Dev Desk never stores credentials: signing in runs the tool's own command in a terminal you can watch.")
         XCTAssertEqual(snapshot.capabilities.providers, ["Codex", "Claude", "Gemini"])
         XCTAssertEqual(snapshot.capabilities.rows.map(\.name), ["Interactive terminal", "Resume an ended session", "Attach to an external session"])
         XCTAssertTrue(snapshot.capabilities.rows.allSatisfy { $0.values == [.notValidated, .notValidated, .notValidated] })

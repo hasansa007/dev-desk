@@ -39,29 +39,25 @@ struct LauncherView: View {
                 .padding(.top, 14)
             }
             .padding(20)
-            .frame(width: 1000, height: 540)
+            // Was a fixed 1000x540 window, which could not open at all on a 1024-wide display once its
+            // chrome was counted. It is a starting size now, not a rule.
+            .frame(minWidth: 720, idealWidth: 1000, maxWidth: .infinity,
+                   minHeight: 460, idealHeight: 540, maxHeight: .infinity)
         }
     }
 
     private var launcherBody: some View {
-        HStack(alignment: .top, spacing: 18) {
-            VStack(alignment: .leading, spacing: 9) {
-                SectionLabel("Recent projects")
-                recentList
-                Text("Opening a project opens its own window and restores its last selected task and pane layout. Opening a project that is already open focuses that window instead of starting anything.")
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineSpacing(4)
+        // Side by side while there is room for both columns, stacked when there is not: ViewThatFits picks,
+        // so the same two lists work at 1000 pt and at 720.
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .top, spacing: 18) {
+                recentsColumn
+                startColumn.frame(width: 320, alignment: .leading)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            VStack(alignment: .leading, spacing: 10) {
-                SectionLabel("Start something")
-                startCard(title: "Open local folder…", detail: "Opens read-only. No agent is launched.", action: openLocalFolder)
-                startCard(title: "Clone repository…", detail: "Choose a destination folder and branch.") { activeSubSheet = .clone }
-                startCard(title: "Create new project…", detail: "Initialises a folder and PROJECT_MAP.md.") { activeSubSheet = .create }
+            VStack(alignment: .leading, spacing: 16) {
+                recentsColumn
+                startColumn
             }
-            .frame(width: 320, alignment: .leading)
         }
         .sheet(item: $activeSubSheet) { sub in
             switch sub {
@@ -73,6 +69,28 @@ struct LauncherView: View {
             if selectedID == nil { selectedID = rows.first { !$0.isMissing }?.id }
             listFocused = true
         }
+    }
+
+    private var recentsColumn: some View {
+        VStack(alignment: .leading, spacing: 9) {
+            SectionLabel("Recent projects")
+            recentList
+            Text("Opening a project opens its own window and restores its last selected task and pane layout. Opening a project that is already open focuses that window instead of starting anything.")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(4)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var startColumn: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionLabel("Start something")
+            startCard(title: "Open local folder…", detail: "Opens read-only. No agent is launched.", action: openLocalFolder)
+            startCard(title: "Clone repository…", detail: "Choose a destination folder and branch.") { activeSubSheet = .clone }
+            startCard(title: "Create new project…", detail: "Initialises a folder and PROJECT_MAP.md.") { activeSubSheet = .create }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     /// Arrow keys move the selection, Return opens it; the list draws its own focus ring around the card.

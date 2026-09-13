@@ -85,6 +85,6 @@ struct HandoffSheet_Previews: PreviewProvider {
     static var previews: some View {
         let task = SampleData.studyHub().board.value!.first { $0.id == "63" }!
         HandoffSheet(title: "Start with handoff · #63", plan: task.handoff!, onCancel: {}, onConfirm: { _ in })
-            .frame(width: DeskMetric.dialogWidth)
+            .deskSheetWidth(DeskMetric.dialogWidth)
     }
 }

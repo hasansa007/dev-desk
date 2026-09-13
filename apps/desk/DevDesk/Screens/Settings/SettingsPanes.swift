@@ -79,6 +79,7 @@ private struct GitHubUnavailableNotice: View {
 }
 
 struct GeneralPane: View {
+    @Bindable var model: ProjectWindowModel
     @AppStorage(PreferenceKey.showSamples) private var showSamples = true
 
     var body: some View {
@@ -90,6 +91,25 @@ struct GeneralPane: View {
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .padding(.top, 10)
+
+            SectionLabel("Diagnostics").padding(.top, 22)
+            HStack(spacing: 10) {
+                Button("Run dev doctor") {
+                    model.dismissSheet()
+                    model.runDoctor()
+                }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                .disabled(!model.canRunDoors)
+                Text(model.canRunDoors
+                     ? "Opens a terminal at the project root and runs the CLI's own check of this machine and this repository."
+                     : "A sample project has no folder, so there is nothing to check.")
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: 700, alignment: .leading)
+            .padding(.top, 10)
         }
     }
 }
@@ -223,6 +243,7 @@ struct AgentsAndDefaultsPane: View {
 
 struct AccountsPane: View {
     @Bindable var model: ProjectWindowModel
+    @State private var signingOut: Connection?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -230,15 +251,17 @@ struct AccountsPane: View {
 
             VStack(alignment: .leading, spacing: 10) {
                 ForEach(model.snapshot?.connections ?? []) { connection in
-                    HStack(spacing: 8) {
-                        StatusDot(tone: tone(for: connection.state))
-                        Text(connection.name)
-                        Spacer(minLength: 8)
-                        Text(connection.label).foregroundStyle(DeskColor.mutedInk)
-                    }
+                    row(connection)
                 }
             }
             .padding(.top, 16)
+
+            Text(model.snapshot?.connectionsNote ?? "")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(4)
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(.top, 12)
 
             if let account = model.snapshot?.projectFacts.first(where: { $0.key == "GitHub account" }) {
                 KeyValueTable(rows: [account]).padding(.top, 16)
@@ -248,6 +271,49 @@ struct AccountsPane: View {
                 GitHubUnavailableNotice().padding(.top, 16)
             }
         }
+        .confirmationDialog("Sign out of \(signingOut?.name ?? "")?",
+                            isPresented: Binding(get: { signingOut != nil }, set: { if !$0 { signingOut = nil } }),
+                            titleVisibility: .visible) {
+            Button("Sign out", role: .destructive) { if let signingOut { run(signingOut.auth?.signOut, for: signingOut) } }
+            Button("Cancel", role: .cancel) { signingOut = nil }
+        } message: {
+            Text("Anything running on this connection stops working. The command runs in a terminal you can watch.")
+        }
+    }
+
+    /// One connection: what it is, who it is, and the one action it has. The app never sees a credential —
+    /// it types the tool's own command into a terminal at the project root (decision 14).
+    private func row(_ connection: Connection) -> some View {
+        HStack(spacing: 8) {
+            StatusDot(tone: tone(for: connection.state))
+            Text(connection.name)
+            Spacer(minLength: 8)
+            Text(connection.label)
+                .foregroundStyle(connection.isSignedOut ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(connection.detail ?? connection.label)
+            if let auth = connection.auth {
+                if connection.isSignedOut {
+                    Button("Sign in…") { run(auth.signIn, for: connection) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .disabled(!model.canRunDoors)
+                        .help(model.canRunDoors ? "Runs `\(auth.signIn)` in a terminal" : "A sample project has no folder to run in.")
+                } else {
+                    Button("Sign out…") { signingOut = connection }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .disabled(!model.canRunDoors)
+                        .help("Runs `\(auth.signOut)` in a terminal")
+                }
+            }
+        }
+    }
+
+    private func run(_ command: String?, for connection: Connection) {
+        guard let command else { return }
+        signingOut = nil
+        model.dismissSheet()
+        model.runAuthCommand(command, connection: connection.name)
     }
 
     private func tone(for state: ConnectionState) -> StatusTone {

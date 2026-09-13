@@ -63,6 +63,6 @@ struct CompareOutputsSheet_Previews: PreviewProvider {
     static var previews: some View {
         let task = SampleData.studyHub().board.value!.first { $0.id == "42" }!
         CompareOutputsSheet(title: "Compare agent outputs · #42", comparison: task.comparison!, onCancel: {}, onConfirm: {})
-            .frame(width: DeskMetric.dialogWidth)
+            .deskSheetWidth(DeskMetric.dialogWidth)
     }
 }

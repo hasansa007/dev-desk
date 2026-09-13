@@ -103,6 +103,14 @@ enum DeskFont {
 
 enum DeskMetric {
     static let sidebarWidth: CGFloat = 236
+    /// Icons only, tooltips carrying the titles. The window's floor was 1100 pt, which an 11" iPad as a
+    /// display fits with no margin and a half-screen MacBook does not fit at all.
+    static let sidebarRailWidth: CGFloat = 64
+    /// Below this the sidebar becomes the rail by itself; above it, the choice is the developer's again.
+    static let railBreakpoint: CGFloat = 1100
+    /// Everything as designed at or above this; the board scrolls its columns below it.
+    static let windowMinWidth: CGFloat = 920
+    static let windowMinHeight: CGFloat = 620
     static let inspectorWidth: CGFloat = 262
     /// Runs is the bottom edge of the window: deep enough for a terminal, shallow enough to leave the work visible.
     static let runsPanelHeight: CGFloat = 300
@@ -133,6 +141,9 @@ enum DeskMetric {
     /// choose its own: `SheetChrome` takes neither a width nor a height, and its body scrolls instead.
     static let dialogWidth: CGFloat = 900
     static let dialogHeight: CGFloat = 660
+    /// A dialog is a maximum, not a size (ADR 0021, amended): it clamps to the window rather than being
+    /// clipped by it. The inset is what keeps it reading as a dialog over the board at every width.
+    static let dialogWindowInset: CGFloat = 40
     /// A tile in Terminals: two or four up gets a working height, one up gets the room a single session wants.
     static let terminalTileHeight: CGFloat = 360
     static let terminalTileTallHeight: CGFloat = 620

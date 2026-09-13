@@ -56,8 +56,7 @@ struct SheetChrome<Content: View>: View {
             }
             footer
         }
-        .frame(width: DeskMetric.dialogWidth, height: DeskMetric.dialogHeight)
-        .background(DeskColor.surface)
+        .deskDialogFrame()
     }
 
     private var header: some View {
