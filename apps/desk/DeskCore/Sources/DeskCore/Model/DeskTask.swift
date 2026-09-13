@@ -378,6 +378,9 @@ public struct DeskTask: Identifiable, Hashable {
     /// A local branch with no issue and no pull request behind it — the only card whose branch this app may delete.
     public var isBranchCard: Bool { id.hasPrefix("branch:") }
 
+    /// A merged pull request card, or a done card the tracker marked merged — history, never startable.
+    public var isMerged: Bool { id.hasPrefix("merged:") || (column == .done && cardMeta == "merged") }
+
     public static let localPrefix = "local:"
     /// Work recorded in `docs/backlog/` rather than in a tracker (ADR 0027).
     public var isLocalBacklog: Bool { id.hasPrefix(Self.localPrefix) }

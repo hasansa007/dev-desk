@@ -9,6 +9,7 @@ struct TaskDialog: View {
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
     @Environment(\.terminals) private var terminals
+    @Environment(\.openURL) private var openURL
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @State private var confirmsRemoval = false
 
@@ -192,6 +193,13 @@ struct TaskDialog: View {
                 model.selectedSessionID = task.id
                 model.go(.terminals)
             })
+        }
+        // A merged card is history — never "Start task". Surface its PR link when it carries one.
+        if task.isMerged {
+            if case .openURL(let url, let title) = task.nextAction {
+                return (title, nil, { openURL(url) })
+            }
+            return ("Merged", "This work is merged.", {})
         }
         if task.taskNumber != nil {
             return ("Start task", model.startBlockedReason(for: task, agent: defaultConnection), {

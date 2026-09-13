@@ -157,6 +157,7 @@ extension ProjectWindowModel {
     /// Starts `/dev` for a task. The card and the dialog both call this, so they cannot disagree about what
     /// starting means, and the one-run-per-task rule in `prepareRun` still holds across both.
     func startTask(_ task: DeskTask, agent: String) {
+        if task.isMerged { return }
         if let entry = task.localBacklogID {
             // No issue to name. `/dev` takes a description as readily as a number, and the file is the description.
             prepareRun(door: "dev", title: task.title, agent: agent,
@@ -173,6 +174,7 @@ extension ProjectWindowModel {
 
     /// Why this task cannot be started, or nil when it can.
     func startBlockedReason(for task: DeskTask, agent: String) -> String? {
+        if task.isMerged { return "This work is merged; open the pull request to see it." }
         if task.isLocalBacklog { return runBlockedReason(agent: agent) }
         guard task.taskNumber != nil else { return "This card has no issue number, so `/dev` has nothing to open." }
         return runBlockedReason(agent: agent)
