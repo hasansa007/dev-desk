@@ -71,6 +71,24 @@ final class ProjectWindowRefreshTests: XCTestCase {
     }
 }
 
+/// Which ended run is worth moving the window for. A finished diagram nobody is shown is a file on disk,
+/// and every other door's ending has no screen it belongs on.
+@MainActor
+final class EndedRunNavigationTests: XCTestCase {
+    func testTheArchDoorSendsYouToDiagrams() {
+        XCTAssertTrue(ProjectWindowModel.endedRunShowsDiagrams(sessionID: DoorRuns.id(door: "arch")))
+    }
+
+    func testNoOtherDoorMovesTheWindow() {
+        XCTAssertFalse(ProjectWindowModel.endedRunShowsDiagrams(sessionID: DoorRuns.id(door: "survey")))
+        XCTAssertFalse(ProjectWindowModel.endedRunShowsDiagrams(sessionID: DoorRuns.id(door: "dev")))
+    }
+
+    func testATaskSessionMovesNothing() {
+        XCTAssertFalse(ProjectWindowModel.endedRunShowsDiagrams(sessionID: DoorRuns.id(task: 42)))
+    }
+}
+
 /// The board's own liveness. It asked only about door runs until a started shell and a started agent both
 /// proved invisible on it; since ADR 0026 a task has ONE session, so what is left to decide is which kind.
 @MainActor

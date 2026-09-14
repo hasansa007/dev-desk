@@ -313,6 +313,9 @@ So close by naming the decision (`entry.md` → *Never end silently*):
 Say the commit, and say what is **not** proven: an architecture diagram carries evidence, the other
 four types carry only your word.
 
+**Never open the delivered HTML** — no `open <file>`, no `--open`. Dev Desk moves to its Diagrams tab
+and renders the file inline the moment this run ends; a browser window on top of that is noise.
+
 ## Undated, therefore unproven
 
 Exercised once, on 2026-08-31: `architecture`, `standard`, evidence with `--repo-root`, the

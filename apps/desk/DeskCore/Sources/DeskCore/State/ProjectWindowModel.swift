@@ -3,15 +3,29 @@ import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
     case board, terminals, roadmap, survey, ideation, insights
-    public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
+
+    /// What the sidebar calls each place. The raw values are what a window restores its place from, so a
+    /// rename is made here and never on the case: `terminals` reads "Sessions" because a chat is one too,
+    /// and `insights` reads "Diagrams" because drawing the project is all that is left of it.
+    public var title: String {
+        switch self {
+        case .terminals: return "Sessions"
+        case .insights: return "Diagrams"
+        case .board, .roadmap, .survey, .ideation: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
+        }
+    }
 }
 
 public enum TaskTab: String, CaseIterable, Codable, Hashable {
-    /// A task is an issue, a diff and evidence. Its session lives in Terminals (ADR 0026), so the dialog has
+    /// A task is an issue, a diff and evidence. Its session lives in Sessions (ADR 0026), so the dialog has
     /// no pane of its own — two hosts for one terminal is what made a dialog open on an empty frame.
     case activity, requirements, changes, evidence
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
+
+/// What a session opened for its own sake is: a live login shell, or a chat that runs the CLI once per message
+/// (`ChatSession`) and hosts no terminal at all. Chosen when the session is created, and never changed after.
+public enum SessionMode: String, Codable, Hashable { case terminal, chat }
 
 public enum ViewMode: String, Codable, Hashable { case focus, parallel }
 
@@ -24,6 +38,7 @@ public struct WriteFailure: Equatable {
     static func tracker(_ message: String) -> WriteFailure { WriteFailure(title: "The tracker was not changed", message: message) }
     static func branch(_ message: String) -> WriteFailure { WriteFailure(title: "The branch was not deleted", message: message) }
     static func backlog(_ message: String) -> WriteFailure { WriteFailure(title: "docs/backlog/ was not changed", message: message) }
+    static func openFailed(_ message: String) -> WriteFailure { WriteFailure(title: "The file was not opened", message: message) }
 }
 
 /// The kinds of live work a card can carry. They are the app's own process state, never a claim about git's columns.
@@ -138,9 +153,15 @@ public final class ProjectWindowModel {
 
     static func ignoredKey(_ ref: ProjectRef) -> String { "desk.ignoredFindings.\(ref.id)" }
 
-    /// Terminals opened for their own sake — not a door's, not a task's. They open at the project root, which
+    /// Sessions opened for their own sake — not a door's, not a task's. They open at the project root, which
     /// is where you would have opened Terminal yourself.
     public private(set) var scratchTerminals: [String] = []
+    /// What each of them is. A terminal is the default and needs no entry; a chat is recorded, since it is the
+    /// one that must not be given a shell.
+    public private(set) var scratchModes: [String: SessionMode] = [:]
+    /// A chat session's turns, kept here rather than in the row that shows them: a collapsed row, or a visit
+    /// to the board, must not lose what was said.
+    public private(set) var scratchChats: [String: ChatSession] = [:]
 
     /// Never reused, because the count is not an identity: open two, close the first, open another, and
     /// "count + 1" hands out term:2 a second time — two rows with one id, colliding in the list and in the
@@ -148,19 +169,30 @@ public final class ProjectWindowModel {
     @ObservationIgnored private var terminalsOpened = 0
 
     @discardableResult
-    public func newTerminal() -> String {
+    public func newTerminal(mode: SessionMode = .terminal) -> String {
         terminalsOpened += 1
         let id = "term:\(terminalsOpened)"
         scratchTerminals.append(id)
+        scratchModes[id] = mode
+        if mode == .chat { scratchChats[id] = ChatSession() }
         selectedSessionID = id
         return id
     }
 
-    /// Only when nothing of it is live: closing a row must never orphan the process behind it.
+    /// Only when nothing of it is live: closing a row must never orphan the process behind it. A chat has no
+    /// process between messages, so its row closes whenever it is asked to.
     public func closeTerminal(_ id: String) {
         guard !sessions.state(for: id).isLive else { return }
         scratchTerminals.removeAll { $0 == id }
+        scratchModes[id] = nil
+        scratchChats[id] = nil
     }
+
+    /// Terminal for anything not recorded as a chat — including every row that is not a scratch session at all.
+    public func scratchMode(for id: String) -> SessionMode { scratchModes[id] ?? .terminal }
+
+    /// The chat behind a chat-mode row; nil for a terminal.
+    public func scratchChat(for id: String) -> ChatSession? { scratchChats[id] }
     public var mode: ViewMode = .focus
     public var showBacklog = false
     public var searchText = ""
@@ -168,6 +200,10 @@ public final class ProjectWindowModel {
     /// once for every project and every screen size.
     public var runsHeight: Double = 300
     public var filesWidth: Double = 420
+    /// The width Files opens at: the narrowest its resizer allows, so the tree earns room by being dragged
+    /// wider rather than taking it. `DeskMetric.filesWidthRange`'s lower bound is this same number — that
+    /// table lives in the app target, which DeskCore cannot see.
+    public static let filesWidthMin: Double = 260
 
     /// Both panels are edges of the window, never floating windows over it: Runs along the bottom, Files down
     /// the right. Open is all there is to say about one.
@@ -204,8 +240,11 @@ public final class ProjectWindowModel {
         if case .local(let path) = ref { root = URL(fileURLWithPath: path, isDirectory: true) }
         sessions = ShellSessions(projectRoot: root)
         // A finished run has written whatever it was going to write: read the project again rather than wait to be asked.
-        sessions.onSessionEnded = { [weak self] _ in
-            Task { await self?.load() }
+        sessions.onSessionEnded = { [weak self] id in
+            Task {
+                await self?.load()
+                if Self.endedRunShowsDiagrams(sessionID: id) { self?.go(.insights) }
+            }
         }
     }
 
@@ -267,6 +306,12 @@ public final class ProjectWindowModel {
         if seconds < 5 { return "Updated just now" }
         if seconds < 60 { return "Updated \(seconds) s ago" }
         return "Updated \(seconds / 60) min ago"
+    }
+
+    /// True when the ended session was the dev:arch door run, so a finished diagram should be shown. Only that
+    /// door earns the move: every other ended session leaves you on the screen you were already reading.
+    public static func endedRunShowsDiagrams(sessionID: String) -> Bool {
+        sessionID == DoorRuns.id(door: "arch")
     }
 
     public func go(_ destination: Destination) {
@@ -551,11 +596,80 @@ public final class ProjectWindowModel {
 
     public func toggleRuns() { runsOpen.toggle() }
 
-    public func toggleFiles() { filesOpen.toggle() }
+    /// Opening Files starts it at its floor; a width you dragged belongs to that opening, not to every later one.
+    public func toggleFiles() {
+        filesOpen.toggle()
+        if filesOpen { filesWidth = Self.filesWidthMin }
+    }
 
     public func showRuns() { runsOpen = true }
 
-    public func showFiles() { filesOpen = true }
+    /// Asking for a panel that is already open leaves the width you gave it alone.
+    public func showFiles() {
+        guard !filesOpen else { return }
+        filesOpen = true
+        filesWidth = Self.filesWidthMin
+    }
+
+    // MARK: - The selected file
+
+    /// The project's folder on disk; a sample has none, so nothing of it can be read or opened.
+    public var projectRoot: URL? {
+        if case .local(let path) = ref { return URL(fileURLWithPath: path, isDirectory: true) }
+        return nil
+    }
+
+    /// The absolute `file://` URL a tree path names under `root`, or nil when it is not a path inside it.
+    /// Standardized before the check, because `root/../x` names a real file outside the project and `root/./x`
+    /// names one LaunchServices declines; and an id that is already absolute is not a relative path at all —
+    /// appending one built `root` + that whole path, which names nothing and opened nothing.
+    public static func fileURL(root: URL, relativePath: String) -> URL? {
+        let trimmed = relativePath.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !trimmed.hasPrefix("/") else { return nil }
+        let url = root.appendingPathComponent(trimmed).standardizedFileURL
+        guard url.isFileURL, SafeFile.isInside(url, root) else { return nil }
+        return url
+    }
+
+    /// The selected file's URL: nil when nothing is selected, the project has no folder, or the path escapes it.
+    public var selectedFileURL: URL? {
+        guard let root = projectRoot, let path = selectedFilePath else { return nil }
+        return Self.fileURL(root: root, relativePath: path)
+    }
+
+    /// Dismisses the viewer. The tree it was opened from stays where it is.
+    public func closeFile() { selectedFilePath = nil }
+
+    /// How a file is handed to the system's own editor. `NSWorkspace` is AppKit, so the app target installs the
+    /// call and this model only decides when to make it; a message back is the system's refusal, nil is success.
+    @ObservationIgnored public var editorOpen: ((URL) async -> String?)?
+
+    /// Opens a file and says so when the system would not: the Bool the old `NSWorkspace.open(_:)` returned was
+    /// thrown away, which made a refused open indistinguishable from a dead button.
+    public func openFile(_ url: URL) {
+        guard let editorOpen else {
+            writeFailure = .openFailed("This window cannot open files.")
+            return
+        }
+        Task { [weak self] in
+            let refusal = await editorOpen(url)
+            guard let self else { return }
+            if let refusal {
+                self.writeFailure = .openFailed(Markdown.escape(refusal))
+            } else {
+                self.writeFailure = nil
+            }
+        }
+    }
+
+    /// The selected file, opened. A path that escapes the project is reported rather than silently doing nothing.
+    public func openSelectedFile() {
+        guard let url = selectedFileURL else {
+            writeFailure = .openFailed("This file is not inside the project, so it was not opened.")
+            return
+        }
+        openFile(url)
+    }
 
     private func markReconciled(_ findingID: String) {
         mutateDemoSnapshot { snapshot in
