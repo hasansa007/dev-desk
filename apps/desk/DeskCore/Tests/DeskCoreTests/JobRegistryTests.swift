@@ -331,7 +331,7 @@ final class JobRegistryTests: XCTestCase {
     }
 
     /// The crash case, end to end: a live run is on disk and unclean from its first moment, every change it
-    /// makes rewrites it, and only its end takes it away (ADR 0030).
+    /// makes rewrites it, and only its end takes it away (ADR 0031).
     func testALiveRunIsWrittenDownAndItsEndClearsIt() throws {
         let (jobs, spawner, journal, root) = try journalled()
         defer { try? FileManager.default.removeItem(at: root) }

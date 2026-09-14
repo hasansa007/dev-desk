@@ -34,6 +34,11 @@ struct DevDeskApp: App {
             .task {
                 QuitGuard.jobs = jobs
                 RunNotifications.attach(to: jobs)
+                // The registry spans projects; a journal is one project's folder. The app is the only place
+                // that can map one to the other, so it hands the registry the mapping (ADR 0031).
+                jobs.journalFor = { directory in
+                    directory.isEmpty ? nil : RunJournal(projectRoot: URL(fileURLWithPath: directory, isDirectory: true))
+                }
             }
         }
         .defaultSize(width: 1440, height: 900)

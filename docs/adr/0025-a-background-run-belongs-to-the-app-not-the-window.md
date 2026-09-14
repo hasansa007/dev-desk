@@ -1,6 +1,6 @@
 # 0025 — A background run belongs to the app, not the window
 
-Status:  Accepted
+Status:  Accepted — amended by [0031](0031-a-killed-run-leaves-a-record-and-the-next-launch-offers-to-continue-it.md): the lifetime rule stands, and a durable record of a run now outlives the app that ran it
 Date:    2026-09-12
 Commit:  (this branch)  ·  `feat/desk-install-script-and-one-card`
 Closes:  [#67](https://github.com/hasansa007/dev-skill/issues/67), the last child of [#59](https://github.com/hasansa007/dev-skill/issues/59)

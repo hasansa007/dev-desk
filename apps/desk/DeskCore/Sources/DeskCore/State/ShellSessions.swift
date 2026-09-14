@@ -50,7 +50,7 @@ public final class ShellSessions {
     @ObservationIgnored private let projectRoot: URL?
     @ObservationIgnored private let runner: CommandRunner
     /// Where this project's live sessions are written down, so the app being killed leaves a trace of them
-    /// (ADR 0030). Nil for a sample, which has no folder to write in and nothing to record.
+    /// (ADR 0031). Nil for a sample, which has no folder to write in and nothing to record.
     @ObservationIgnored public let journal: RunJournal?
     /// What each live session would be called in a recovered row, since nothing else on disk knows the task's title.
     @ObservationIgnored private var titles: [String: String] = [:]
@@ -89,8 +89,9 @@ public final class ShellSessions {
     /// Plans again with the location the user has now, creates the worktree when the plan needs one, and leaves the session running there.
     /// `refusingRoot`, which Auto passes, fails the session with the note instead when the folder falls back to the project root, whether
     /// the plan said so or git refused the worktree, so nothing is launched there.
+    /// `title` is carried only so a recovered row reads as the work it was rather than as a task id.
     public func start(taskID: String, purpose: SessionPurpose = .shell, branch: String?, taskNumber: Int?,
-                      noBranchNote: String? = nil, worktreeLocation: String,
+                      noBranchNote: String? = nil, worktreeLocation: String, title: String? = nil,
                       baseRef: String? = nil, refusingRoot: Bool = false) async {
         guard let resolver = resolver(worktreeLocation) else { return }
         switch state(for: taskID) {
@@ -112,6 +113,19 @@ public final class ShellSessions {
         usages[taskID] = nil
         usageReads[taskID] = nil
         states[taskID] = .running(folder)
+        if let title { titles[taskID] = title }
+        record(taskID: taskID, branch: branch, folder: folder)
+    }
+
+    /// A session is written down the moment it is really running (ADR 0031). The process still dies with the
+    /// app; what survives is that it was there, what it was, and where it was working.
+    private func record(taskID: String, branch: String?, folder: TaskFolder) {
+        guard let journal, let root = projectRoot else { return }
+        let isAgent = purposes[taskID] == .agent
+        journal.write(JournalRecord(id: taskID, kind: .terminalSession, title: titles[taskID] ?? taskID,
+                                    agent: isAgent ? "Agent" : "Terminal", directory: root.path,
+                                    stateLabel: "Running", purpose: isAgent ? "agent" : "shell",
+                                    branch: branch, folderPath: folder.url.path))
     }
 
     /// How much context this task's agent is holding, or nil when nothing has been read for it.
@@ -160,7 +174,15 @@ public final class ShellSessions {
     public func markEnded(taskID: String, status: Int32?, generation: Int) {
         guard generation == generations[taskID, default: 0], case .running(let folder) = states[taskID] else { return }
         states[taskID] = .ended(folder, status: status)
+        // The session is over, so its record is history: recovery offers only what was interrupted.
+        journal?.clear(id: taskID)
         onSessionEnded?(taskID)
+    }
+
+    /// Quit's path for sessions (ADR 0031): the shells die either way, but a record marked clean is not
+    /// offered back as a crash at the next launch. A force-kill runs none of this, which is the signal.
+    public func markAllClean() {
+        for taskID in runningTaskIDs { journal?.markClean(id: taskID) }
     }
 
     public var runningTaskIDs: [String] {

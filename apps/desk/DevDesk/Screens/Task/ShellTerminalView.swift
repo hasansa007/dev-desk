@@ -133,7 +133,8 @@ final class ShellTerminalRegistry {
             guard !isClosed else { return .skipped }
             let previous = sessions.generation(for: task.id)
             await sessions.start(taskID: task.id, branch: task.branch, taskNumber: task.taskNumber, noBranchNote: task.noBranchNote,
-                                 worktreeLocation: worktreeLocation, baseRef: task.baseRef, refusingRoot: refusingRoot)
+                                 worktreeLocation: worktreeLocation, title: task.title, baseRef: task.baseRef,
+                                 refusingRoot: refusingRoot)
             // An unchanged generation means this start ran nothing: another start had the session, or the root was refused.
             guard sessions.generation(for: task.id) != previous, case .running(let folder) = sessions.state(for: task.id) else {
                 if refusingRoot, case .failed = sessions.state(for: task.id) { return .refusedAtRoot }
@@ -238,6 +239,9 @@ final class LiveShells {
     /// Quit leaves no time for a timer and holds the main queue, so no exit monitor fires: SIGHUP every shell and its job,
     /// reap for at most 2 s in all, then SIGKILL whatever is left.
     func endAllBeforeQuit() {
+        // Quitting is the app's own ending, so what was live is marked clean before it goes: only a kill or a
+        // crash leaves the records unclean, and that is what the next launch offers to recover (ADR 0031).
+        agentSessions.compactMap(\.sessions).forEach { $0.markAllClean() }
         let all = Array(shells.values)
         all.forEach { $0.send(SIGHUP) }
         var waiting = all

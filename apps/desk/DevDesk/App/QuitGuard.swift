@@ -39,6 +39,13 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
         }
     }
 
+    /// The background runs' half of the graceful-quit mark (ADR 0031); `LiveShells.endAllBeforeQuit` does the
+    /// sessions'. A quit is the app ending on its own terms, so nothing here should come back next launch as a
+    /// crash to recover from — and a force-kill, which runs none of this, should.
+    func applicationWillTerminate(_ notification: Notification) {
+        Self.jobs?.markAllClean()
+    }
+
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         guard Self.confirmsQuit, let work = Self.liveWork else { return .terminateNow }
         let alert = NSAlert()

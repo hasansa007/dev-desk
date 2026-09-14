@@ -11,14 +11,18 @@ struct TerminalsScreen: View {
     @Bindable var model: ProjectWindowModel
     @State private var expandedID: String?
     @State private var hasChosen = false
+    /// What was live when the app was last killed (ADR 0031). Records, not sessions: nothing here is running.
+    @State private var recovered: [JournalRecord] = []
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var rows: [SessionRow] { SessionRow.all(in: model, jobs: jobs) }
+    /// Nil for a sample, which has no folder to have written anything in.
+    private var journal: RunJournal? { model.sessions.journal }
 
     var body: some View {
         VStack(spacing: 0) {
             header
-            if rows.isEmpty {
+            if rows.isEmpty, recovered.isEmpty {
                 EmptyStateView(title: "Nothing running",
                                message: "Start a task from the board, or run a door from Survey, Ideation or Roadmap. Whether it takes a terminal or runs in the background, it appears here.") {
                     Button("Go to the board") { model.go(.board) }
@@ -31,6 +35,7 @@ struct TerminalsScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
         .onAppear(perform: syncExpansion)
+        .onAppear(perform: loadRecovered)
         .onChange(of: model.selectedSessionID) { _, id in
             guard let id else { return }
             hasChosen = true
@@ -64,6 +69,7 @@ struct TerminalsScreen: View {
     private var list: some View {
         ScrollView {
             VStack(spacing: 8) {
+                if !recovered.isEmpty { recoveredSection }
                 ForEach(rows) { row in
                     TerminalTile(model: model, row: row, isExpanded: expandedID == row.id) {
                         hasChosen = true
@@ -83,6 +89,163 @@ struct TerminalsScreen: View {
     private func syncExpansion() {
         guard !hasChosen else { return }
         expandedID = model.selectedSessionID ?? rows.first(where: \.isLive)?.id ?? rows.first?.id
+    }
+
+    /// Above the live rows, because it is what happened while the app was gone and the live ones are now.
+    private var recoveredSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Recovered")
+                    .font(DeskFont.body.weight(.semibold))
+                    .foregroundStyle(DeskColor.ink)
+                Text("These were running when Dev Desk last closed unexpectedly. Nothing was restarted — continuing one is your call.")
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            ForEach(recovered) { record in
+                RecoveredTile(record: record, resume: resumeAction(for: record), handoff: handoff(for: record)) {
+                    dismiss(record)
+                }
+            }
+        }
+    }
+
+    /// Reading the journal is the whole of the launch behaviour: nothing is restarted, and ADR 0025 stands. A
+    /// record whose run is live in this app is not a recovery — it is the row right below.
+    private func loadRecovered() {
+        guard let journal, recovered.isEmpty else { return }
+        recovered = journal.recover().filter {
+            jobs?.job($0.id) == nil && !model.sessions.runningTaskIDs.contains($0.id)
+        }
+        // The offer has now been made, so the graceful history goes. The unclean records stay until the user
+        // acts on them: dismissing one for them is answering for them.
+        journal.purgeClean()
+    }
+
+    /// Offered only where it is real: a background run that reported a session id before the app died. Anything
+    /// else gets a handoff, which says what it actually does.
+    private func resumeAction(for record: JournalRecord) -> (() -> Void)? {
+        guard record.kind == .backgroundRun, record.sessionID != nil, let jobs else { return nil }
+        return {
+            guard jobs.resumeFromRecord(record) != nil else { return }
+            recovered.removeAll { $0.id == record.id }
+        }
+    }
+
+    /// The honest second best. It never claims the old conversation is back: a session is re-opened for the
+    /// task, or the door is run again from its start.
+    private func handoff(for record: JournalRecord) -> RecoveredTile.Handoff? {
+        switch record.kind {
+        case .terminalSession:
+            guard model.task(record.id) != nil else { return nil }
+            return RecoveredTile.Handoff(title: "Open the task",
+                                         help: "Opens the task so you can start a session again. It starts fresh — the agent's own conversation is not restored.") {
+                model.openTask(record.id)
+            }
+        case .backgroundRun:
+            guard record.sessionID == nil, let door = record.door, !door.isEmpty, let jobs else { return nil }
+            return RecoveredTile.Handoff(title: "Run the door again",
+                                         help: "Starts a new \(door) run from the beginning. The interrupted one reported no session, so there is nothing to continue.") {
+                jobs.start(door: door, title: record.title, agent: record.agent,
+                           permission: record.permission.flatMap(RunPermission.init(rawValue:)) ?? .readOnly,
+                           directory: record.directory, subject: record.subject,
+                           mode: record.mode.flatMap(RunMode.init(rawValue:)) ?? .standard)
+                dismiss(record)
+            }
+        }
+    }
+
+    private func dismiss(_ record: JournalRecord) {
+        journal?.clear(id: record.id)
+        recovered.removeAll { $0.id == record.id }
+    }
+}
+
+/// A run the app died under: what it was, how far it got, and what can honestly be done about it now. It looks
+/// like a session row and behaves like none — there is no terminal to host, because the process is long gone
+/// (ADR 0025). Every button here is the user's own decision (ADR 0031).
+private struct RecoveredTile: View {
+    struct Handoff {
+        let title: String
+        let help: String
+        let action: () -> Void
+    }
+
+    let record: JournalRecord
+    let resume: (() -> Void)?
+    let handoff: Handoff?
+    let dismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                StatusDot(tone: .ended, pulses: false)
+                Text(record.title)
+                    .font(DeskFont.body.weight(.semibold))
+                    .foregroundStyle(DeskColor.ink)
+                    .lineLimit(1)
+                Text(subtitle)
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .lineLimit(1)
+                // Relative and ticking: "two days ago" is the difference between a run worth continuing and one
+                // whose repository has moved on without it.
+                Text(record.lastSeenAt, style: .relative)
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.faintInk)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                if let resume {
+                    Button("Resume", action: resume)
+                        .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
+                        .help("Continues the same agent session this run reported before it was lost.")
+                }
+                if let handoff {
+                    Button(handoff.title, action: handoff.action)
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help(handoff.help)
+                }
+                Button("Dismiss", action: dismiss)
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    .help("Forgets this record. Nothing else changes.")
+            }
+            .padding(.horizontal, 11)
+            .padding(.vertical, 9)
+            .background(DeskColor.headerFill)
+            if !record.logTail.isEmpty {
+                Rectangle().fill(DeskColor.divider).frame(height: 1)
+                log
+            }
+        }
+        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
+    }
+
+    /// What it was, and the last state the app saw it in — the two things a row answers before any button.
+    private var subtitle: String {
+        let what: String
+        switch record.kind {
+        case .backgroundRun: what = [record.agent, record.door].compactMap { $0 }.joined(separator: " · ")
+        case .terminalSession: what = record.purpose == "agent" ? "Agent" : "Terminal"
+        }
+        return "\(what) · \(record.stateLabel)"
+    }
+
+    /// The end of what it wrote, not all of it: this is a row, and the run it belonged to cannot add to it.
+    private var log: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            ForEach(Array(record.logTail.suffix(6).enumerated()), id: \.offset) { _, line in
+                Text(line)
+                    .font(DeskFont.mono(11))
+                    .foregroundStyle(DeskColor.secondaryInk)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(11)
     }
 }
 
@@ -197,9 +360,10 @@ private struct TerminalTile: View {
         case .job: return
         }
         let location = worktreeLocation
+        let title = row.title
         Task {
             await model.sessions.start(taskID: id, branch: branch, taskNumber: number,
-                                       noBranchNote: note, worktreeLocation: location)
+                                       noBranchNote: note, worktreeLocation: location, title: title)
             guard case .running(let folder) = model.sessions.state(for: id) else { return }
             terminals.start(taskID: id, folder: folder.url)
             if let command { terminals.send(command + "\n", to: id) }

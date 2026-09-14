@@ -14,3 +14,6 @@
 # Machine-local; git is authoritative. The CLI also writes .dev/.gitignore, so repos without
 # this line stay clean too.
 .dev/
+
+# Dev Desk's record of what was running in this repo, kept so a killed app can be recovered from (ADR 0031).
+.devdesk/

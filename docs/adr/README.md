@@ -26,15 +26,17 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0015](0015-files-live-with-the-flow-that-reads-them.md) | Files live with the flow that reads them; the root holds only entry points and folders with a reader | Accepted |
 | [0016](0016-dev-desk-embeds-a-terminal-with-swiftterm.md) | Dev Desk embeds a terminal with SwiftTerm, its first dependency; DeskCore stays dependency-free | Accepted |
 | [0017](0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md) | A task's shell opens in that task's own worktree, and only when asked | Accepted |
-| [0018](0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md) | Dev Desk starts the task's agent, by hand or in Auto for queued tasks | Accepted |
+| [0018](0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md) | Dev Desk starts the task's agent, by hand or in Auto for queued tasks | Accepted, amended by 0030 |
 | [0019](0019-deep-features-cant-skip-the-architecture-gate.md) | Deep features can't skip the architecture gate; dev:audit checks it | Accepted |
 | [0020](0020-impact-and-complexity-are-labels-the-doors-propose.md) | Impact and complexity are labels the doors propose and the developer corrects | Accepted |
 | [0021](0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md) | A card opens one dialog, and the panels are the window's edges | Accepted, amended by 0028 |
 | [0022](0022-dev-desk-deletes-a-local-branch-and-nothing-else.md) | Dev Desk deletes a local branch, and nothing else | Accepted, amended by 0023, 0029 |
 | [0023](0023-the-gate-ran-late-and-took-the-fold-with-it.md) | The gate ran late, and took the fold with it | Accepted, amended by 0024 |
 | [0024](0024-a-board-card-is-one-block-and-its-chrome-is-one-modifier.md) | A board card is one block, and its chrome is one modifier | Accepted |
-| [0025](0025-a-background-run-belongs-to-the-app-not-the-window.md) | A background run belongs to the app, not the window | Accepted |
+| [0025](0025-a-background-run-belongs-to-the-app-not-the-window.md) | A background run belongs to the app, not the window | Accepted, amended by 0031 |
 | [0026](0026-a-task-has-one-session-and-terminals-is-where-it-lives.md) | A task has one session, and Terminals is where it lives | Accepted |
 | [0027](0027-work-without-a-tracker-is-recorded-locally-and-promoted-on-request.md) | Work without a tracker is recorded locally, and promoted on request | Accepted |
 | [0028](0028-the-window-fits-an-ipad-and-a-dialog-clamps-to-it.md) | The window fits an iPad, and a dialog clamps to it | Accepted |
 | [0029](0029-a-survey-reset-trashes-older-reports.md) | A survey reset trashes older reports | Accepted |
+| [0030](0030-insights-runs-its-agent-headlessly.md) | Insights runs its agent headlessly (`claude -p` / `codex exec`) | Accepted |
+| [0031](0031-a-killed-run-leaves-a-record-and-the-next-launch-offers-to-continue-it.md) | A killed run leaves a record, and the next launch offers to continue it | Accepted |

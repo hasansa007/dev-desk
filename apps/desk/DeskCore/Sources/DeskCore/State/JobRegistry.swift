@@ -83,7 +83,7 @@ public final class JobRegistry {
     /// The registry does not know what a notification is — that belongs to the app, which owns the permission
     /// and the preferences. Only real transitions are reported, so a redraw never re-announces anything.
     public var onSettled: ((BackgroundJob) -> Void)?
-    /// Where a run in this directory is written down, so a crash leaves a trace of it (ADR 0030). A closure
+    /// Where a run in this directory is written down, so a crash leaves a trace of it (ADR 0031). A closure
     /// rather than a stored journal because this registry is the app's and spans projects, while a journal is
     /// one project's folder — and because nil is then the honest answer for a sample, which has no folder to
     /// write in, and for every test that is not about journalling.
@@ -172,7 +172,7 @@ public final class JobRegistry {
     /// merely paused — what to redo is the agent's call, and it can only make it if it is told.
     static let resumePrompt = "Dev Desk was closed while this run was going. Continue from where you stopped."
 
-    /// The graceful-quit path (ADR 0030). The processes die with the app either way; a record marked clean is
+    /// The graceful-quit path (ADR 0031). The processes die with the app either way; a record marked clean is
     /// one the next launch will not offer to recover. Nothing marks them when the app is killed — which is the
     /// whole signal.
     public func markAllClean() {
@@ -218,7 +218,7 @@ public final class JobRegistry {
         writeRecord(for: jobs[index])
     }
 
-    /// The run's durable trace, rewritten wherever it materially changed (ADR 0030). A run that has ended is
+    /// The run's durable trace, rewritten wherever it materially changed (ADR 0031). A run that has ended is
     /// deleted instead: recovery offers to continue what was interrupted, and a finished run resurfaced as
     /// "in progress" is a lie the user would act on.
     private func writeRecord(for job: BackgroundJob) {
