@@ -13,13 +13,14 @@ struct MarkdownText: View {
     }
 
     var body: some View {
-        Text(attributed)
+        Text(Self.attributed(markdown, font: font))
             .font(font)
             .foregroundStyle(color)
             .tint(DeskColor.accent)
     }
 
-    private var attributed: AttributedString {
+    /// The one inline pass in the app: `MarkdownBody` renders each of its blocks through it.
+    static func attributed(_ markdown: String, font: Font) -> AttributedString {
         let options = AttributedString.MarkdownParsingOptions(interpretedSyntax: .inlineOnlyPreservingWhitespace)
         guard var text = try? AttributedString(markdown: markdown, options: options) else {
             return AttributedString(markdown)
