@@ -71,24 +71,28 @@ struct InsightsScreen: View {
                     .foregroundStyle(DeskColor.mutedInk)
                     .padding(14)
             } else {
-                ForEach(diagrams) { diagram in
-                    Button { selectedDiagramID = diagram.id } label: {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text(diagram.title)
-                                .font(DeskFont.secondary)
-                                .foregroundStyle(DeskColor.ink)
-                                .lineLimit(2)
-                            Text(diagram.url.lastPathComponent)
-                                .font(DeskFont.mono(11))
-                                .foregroundStyle(DeskColor.faintInk)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        ForEach(diagrams) { diagram in
+                            Button { selectedDiagramID = diagram.id } label: {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(diagram.title)
+                                        .font(DeskFont.secondary)
+                                        .foregroundStyle(DeskColor.ink)
+                                        .lineLimit(2)
+                                    Text(diagram.url.lastPathComponent)
+                                        .font(DeskFont.mono(11))
+                                        .foregroundStyle(DeskColor.faintInk)
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 12))
+                                .background(selectedDiagram?.id == diagram.id ? DeskColor.tone(.info).fill : Color.clear)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityAddTraits(selectedDiagram?.id == diagram.id ? .isSelected : [])
                         }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 12))
-                        .background(selectedDiagram?.id == diagram.id ? DeskColor.tone(.info).fill : Color.clear)
-                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityAddTraits(selectedDiagram?.id == diagram.id ? .isSelected : [])
                 }
             }
             Spacer(minLength: 0)
