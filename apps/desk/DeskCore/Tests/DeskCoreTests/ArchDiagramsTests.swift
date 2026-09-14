@@ -17,16 +17,37 @@ final class ArchDiagramsTests: XCTestCase {
     func testDiagramsAreListedWithTheirSidecarTitles() throws {
         let root = try makeFolder()
         try write(root, "dev-family.html", "<html></html>")
-        try write(root, "dev-family.architecture.json", "{\"meta\": {\"title\": \"The dev skill family\"}}")
+        try write(root, "dev-family.architecture.json", "{\"diagram_type\": \"architecture\", \"meta\": {\"title\": \"The dev skill family\"}}")
         try write(root, "dev-journey.html", "<html></html>")
         // A sidecar of another kind names its diagram too; a file that is not a diagram is not one.
-        try write(root, "dev-journey.workflow.json", "{\"meta\": {\"title\": \"A task's journey\"}}")
+        try write(root, "dev-journey.workflow.json", "{\"diagram_type\": \"workflow\", \"meta\": {\"title\": \"A task's journey\"}}")
         try write(root, "notes.md", "not a diagram")
 
         let diagrams = ArchDiagrams.list(repositoryRoot: root.path)
         XCTAssertEqual(diagrams.map(\.id), ["dev-family", "dev-journey"])
         XCTAssertEqual(diagrams.map(\.title), ["The dev skill family", "A task's journey"])
         XCTAssertEqual(diagrams.first?.url.lastPathComponent, "dev-family.html")
+    }
+
+    /// The type a diagram was drawn as comes from the sidecar's `diagram_type`, so Regenerate can redraw it as itself.
+    func testDiagramCarriesItsKindFromTheSidecar() throws {
+        let root = try makeFolder()
+        try write(root, "dev-family.html", "<html></html>")
+        try write(root, "dev-family.architecture.json", "{\"diagram_type\": \"architecture\", \"meta\": {\"title\": \"X\"}}")
+        try write(root, "flows.html", "<html></html>")
+        try write(root, "flows.dataflow.json", "{\"diagram_type\": \"dataflow\", \"meta\": {\"title\": \"Y\"}}")
+
+        let byID = Dictionary(uniqueKeysWithValues: ArchDiagrams.list(repositoryRoot: root.path).map { ($0.id, $0.kind) })
+        XCTAssertEqual(byID["dev-family"], "architecture")
+        XCTAssertEqual(byID["flows"], "dataflow")
+    }
+
+    /// A sidecar that names no type leaves kind nil; the screen falls back to a whole-project architecture run.
+    func testADiagramWithoutADiagramTypeHasNoKind() throws {
+        let root = try makeFolder()
+        try write(root, "dev-system.html", "<html></html>")
+        try write(root, "dev-system.architecture.json", "{\"meta\": {\"title\": \"Dev system\"}}")
+        XCTAssertNil(ArchDiagrams.list(repositoryRoot: root.path).first?.kind)
     }
 
     func testAnUntitledDiagramFallsBackToItsFileName() throws {

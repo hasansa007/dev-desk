@@ -11,6 +11,9 @@ struct InsightsScreen: View {
     @State private var selectedDiagramID: String?
     @State private var archType = "architecture"
     @State private var archTarget = ""
+    /// Whether the type/target chooser is showing while diagrams already exist. The empty state shows it
+    /// always; a populated pane shows it only when "New diagram" was pressed, so adding one more is possible.
+    @State private var isAddingDiagram = false
 
     private var repositoryRoot: String? { model.snapshot?.repositoryRoot }
     private var selectedDiagram: ArchDiagram? {
@@ -99,13 +102,19 @@ struct InsightsScreen: View {
                     .foregroundStyle(DeskColor.mutedInk)
             }
             Spacer(minLength: 8)
-            // One explicit button, once there is something to draw again. Nothing watches the folder and
-            // nothing runs by itself: the door starts when you press this, and lands in Sessions like any run.
+            // A repo holds more than one diagram, so once any exist the header does two things: draw another
+            // (the chooser, which the empty state shows on its own), and redraw the one on screen as its own type.
             if !diagrams.isEmpty {
-                Button("Regenerate", action: startArch)
+                Button("New diagram") { isAddingDiagram = true }
                     .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                    .disabled(runBlockedReason != nil)
-                    .help(runBlockedReason ?? "Runs dev:arch again at the project root; the diagrams are rewritten when it finishes")
+                    .disabled(runBlockedReason != nil || isAddingDiagram)
+                    .help(runBlockedReason ?? "Choose a type and target, then run dev:arch to add another diagram")
+                // Regenerates the SELECTED diagram as its own type and target — not always a whole-project
+                // architecture run. A diagram with no readable sidecar falls back to a whole-project architecture.
+                Button("Regenerate") { regenerateSelected() }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    .disabled(runBlockedReason != nil || selectedDiagram == nil)
+                    .help(runBlockedReason ?? regenerateHelp)
             }
         }
         .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
@@ -114,7 +123,11 @@ struct InsightsScreen: View {
     }
 
     @ViewBuilder private var architecture: some View {
-        if let diagram = selectedDiagram {
+        if isAddingDiagram, !diagrams.isEmpty {
+            // Adding one more to a repo that already has some: the same chooser the empty state uses, over the
+            // diagram list rather than replacing it, with a Cancel back to the drawing on screen.
+            archStarter
+        } else if let diagram = selectedDiagram {
             WebView(file: diagram.url)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
@@ -125,15 +138,20 @@ struct InsightsScreen: View {
     /// Why no run can start here — a sample, or a door already going — or nil when one can.
     private var runBlockedReason: String? { model.runBlockedReason(agent: defaultConnection) }
 
-    /// Nothing drawn yet, so the pane asks what to draw and starts the door that draws it. The answers here are
+    /// The chooser: nothing drawn yet, or "New diagram" on a repo that already has some. The answers here are
     /// only `dev:arch`'s own arguments — the app still draws nothing itself.
     private var archStarter: some View {
         let blocked = runBlockedReason
         return VStack {
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 12) {
-                NoticeBanner(tone: .neutral, title: "No diagrams yet",
-                             message: "dev:arch draws this project and writes each diagram to docs/arch/ as a standalone HTML file. Run it, and they appear here.")
+                if isAddingDiagram {
+                    NoticeBanner(tone: .neutral, title: "New diagram",
+                                 message: "Pick a type and what to draw, then run dev:arch. It writes another standalone HTML file to docs/arch/ beside the ones already here.")
+                } else {
+                    NoticeBanner(tone: .neutral, title: "No diagrams yet",
+                                 message: "dev:arch draws this project and writes each diagram to docs/arch/ as a standalone HTML file. Run it, and they appear here.")
+                }
                 if let blocked {
                     NoticeBanner(tone: .neutral, title: "Nothing to run here", message: blocked, style: .compact)
                 }
@@ -154,7 +172,12 @@ struct InsightsScreen: View {
                 }
                 HStack(spacing: 8) {
                     Spacer(minLength: 0)
-                    Button("Start dev:arch", action: startArch)
+                    // Cancel only exists while adding to an existing set — the empty state has nothing to go back to.
+                    if isAddingDiagram {
+                        Button("Cancel") { isAddingDiagram = false }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    }
+                    Button(isAddingDiagram ? "Draw diagram" : "Start dev:arch") { startArch() }
                         .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
                         .disabled(blocked != nil)
                 }
@@ -166,14 +189,34 @@ struct InsightsScreen: View {
         .padding(24)
     }
 
-    /// The same run whether it is the first or a regeneration: `dev:arch` with what the starter chose, which
-    /// for Regenerate is the starter's defaults — the whole project, as an architecture diagram.
+    /// The `help` on Regenerate, naming the type it will redraw the selected diagram as.
+    private var regenerateHelp: String {
+        guard let diagram = selectedDiagram else { return "Redraws the selected diagram" }
+        let type = ArchDiagramType.all.first { $0.token == diagram.kind }?.title
+            ?? diagram.kind?.capitalized ?? "Architecture"
+        return "Runs dev:arch again to redraw “\(diagram.title)” as a \(type) diagram"
+    }
+
+    /// Draw what the chooser holds: the picked type, with the target if one was typed. Used for the first
+    /// diagram and for "New diagram"; closing the chooser afterwards returns a populated pane to its drawing.
     private func startArch() {
+        run(type: archType, target: archTarget.trimmingCharacters(in: .whitespacesAndNewlines))
+        isAddingDiagram = false
+    }
+
+    /// Redraw the SELECTED diagram as its own recorded type — not a fresh whole-project architecture run. A
+    /// diagram whose sidecar could not be read (no `kind`) falls back to a whole-project architecture diagram.
+    private func regenerateSelected() {
+        guard let diagram = selectedDiagram else { return }
+        run(type: diagram.kind ?? "architecture", target: "")
+    }
+
+    /// Start one `dev:arch` run. The door reads what to draw first and a bare type token after it, so a target
+    /// leads and the type follows; an empty target means the whole project.
+    private func run(type: String, target: String) {
         var arguments: [String] = []
-        let target = archTarget.trimmingCharacters(in: .whitespacesAndNewlines)
-        // The door reads what to draw first and a bare type token after it, so the target leads and the type follows.
         if !target.isEmpty { arguments.append(target) }
-        arguments.append(archType)
+        arguments.append(type)
         model.prepareRun(door: "arch", title: "Architecture diagram", agent: defaultConnection, arguments: arguments,
                          folderNote: "dev:arch reads the whole project, so it runs at the project root.")
     }

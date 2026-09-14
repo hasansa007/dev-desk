@@ -5,11 +5,15 @@ public struct ArchDiagram: Identifiable, Hashable {
     public var id: String
     public var title: String
     public var url: URL
+    /// The `dev:arch` type this was drawn as — `architecture`, `workflow`, `dataflow`, `sequence`, `lifecycle` —
+    /// read from the sidecar's `diagram_type`. nil when there is no readable sidecar, so a caller falls back.
+    public var kind: String?
 
-    public init(id: String, title: String, url: URL) {
+    public init(id: String, title: String, url: URL, kind: String? = nil) {
         self.id = id
         self.title = title
         self.url = url
+        self.kind = kind
     }
 }
 
@@ -24,21 +28,28 @@ public enum ArchDiagrams {
         let names = ((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []).sorted()
         return names.filter { $0.hasSuffix(".html") }.map { name in
             let stem = String(name.dropLast(5))
+            let sidecar = readSidecar(stem: stem, in: directory, siblings: names)
             return ArchDiagram(id: stem,
-                               title: title(stem: stem, in: directory, siblings: names) ?? readableName(stem),
-                               url: directory.appendingPathComponent(name))
+                               title: sidecar.title ?? readableName(stem),
+                               url: directory.appendingPathComponent(name),
+                               kind: sidecar.kind)
         }
     }
 
-    /// `meta.title` from the sidecar `<stem>.<kind>.json`; nil when there is none, or it says nothing useful.
-    private static func title(stem: String, in directory: URL, siblings: [String]) -> String? {
+    /// What the sidecar `<stem>.<kind>.json` says about a diagram: its `meta.title` and its `diagram_type`. Both
+    /// are optional — a diagram may have no sidecar, or one that says nothing useful — so each caller falls back.
+    private static func readSidecar(stem: String, in directory: URL, siblings: [String]) -> (title: String?, kind: String?) {
         guard let sidecar = siblings.first(where: { $0.hasPrefix("\(stem).") && $0.hasSuffix(".json") }),
               case .text(let text) = SafeFile.read(directory.appendingPathComponent(sidecar),
                                                    maxBytes: maxSidecarBytes, within: directory),
-              let object = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any],
-              let meta = object["meta"] as? [String: Any],
-              let title = meta["title"] as? String, !title.isEmpty else { return nil }
-        return title
+              let object = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]
+        else { return (nil, nil) }
+        let meta = object["meta"] as? [String: Any]
+        let rawTitle = meta?["title"] as? String
+        let title = (rawTitle?.isEmpty == false) ? rawTitle : nil
+        let rawKind = object["diagram_type"] as? String
+        let kind = (rawKind?.isEmpty == false) ? rawKind : nil
+        return (title, kind)
     }
 
     /// "dev-family" reads as "Dev family": the file name is the fallback label, tidied rather than shown raw.

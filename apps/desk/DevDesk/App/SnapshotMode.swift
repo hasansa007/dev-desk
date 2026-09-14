@@ -125,6 +125,8 @@ final class SnapshotMode {
 
     private static let localStates: [Capture] = [
         Capture(name: "01-board") { $0.go(.board) },
+        // A real repo's own docs/arch/, so the Diagrams header shows its populated controls, not the empty state.
+        Capture(name: "01b-insights") { $0.go(.insights) },
         Capture(name: "02-first-task-changes") { model in
             if let id = firstTaskID(model) { model.openTask(id) }
             model.tab = .changes
