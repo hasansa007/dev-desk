@@ -29,7 +29,7 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0018](0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md) | Dev Desk starts the task's agent, by hand or in Auto for queued tasks | Accepted, amended by 0030 |
 | [0019](0019-deep-features-cant-skip-the-architecture-gate.md) | Deep features can't skip the architecture gate; dev:audit checks it | Accepted |
 | [0020](0020-impact-and-complexity-are-labels-the-doors-propose.md) | Impact and complexity are labels the doors propose and the developer corrects | Accepted |
-| [0021](0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md) | A card opens one dialog, and the panels are the window's edges | Accepted, amended by 0028 |
+| [0021](0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md) | A card opens one dialog, and the panels are the window's edges | Accepted, amended by 0028, 0032 |
 | [0022](0022-dev-desk-deletes-a-local-branch-and-nothing-else.md) | Dev Desk deletes a local branch, and nothing else | Accepted, amended by 0023, 0029 |
 | [0023](0023-the-gate-ran-late-and-took-the-fold-with-it.md) | The gate ran late, and took the fold with it | Accepted, amended by 0024 |
 | [0024](0024-a-board-card-is-one-block-and-its-chrome-is-one-modifier.md) | A board card is one block, and its chrome is one modifier | Accepted |
@@ -40,3 +40,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0029](0029-a-survey-reset-trashes-older-reports.md) | A survey reset trashes older reports | Accepted |
 | [0030](0030-insights-runs-its-agent-headlessly.md) | Insights runs its agent headlessly (`claude -p` / `codex exec`) | Accepted |
 | [0031](0031-a-killed-run-leaves-a-record-and-the-next-launch-offers-to-continue-it.md) | A killed run leaves a record, and the next launch offers to continue it | Accepted |
+| [0032](0032-a-tapped-file-opens-beside-the-work-or-floats-over-it.md) | A tapped file opens beside the work, or floats over it | Accepted |

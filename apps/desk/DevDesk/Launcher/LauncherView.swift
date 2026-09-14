@@ -49,7 +49,7 @@ struct LauncherView: View {
             }
             // Was a fixed 1000x540 window, which could not open at all on a 1024-wide display once its
             // chrome was counted. It is a starting size now, not a rule.
-            .frame(minWidth: 640, idealWidth: 1000, maxWidth: .infinity,
+            .frame(minWidth: 360, idealWidth: 1000, maxWidth: .infinity,
                    minHeight: 360, idealHeight: 540, maxHeight: .infinity)
         }
     }

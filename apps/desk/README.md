@@ -6,12 +6,13 @@ It's a first build of the container described in the [container spec](../../docs
 
 ## Download
 
-A prebuilt release is quicker than building. Releases are ad-hoc signed zips, published to GitHub Releases when a `desk-v*` tag is pushed:
+A prebuilt release is quicker than building. Releases are ad-hoc signed DMGs, published to GitHub Releases when a `desk-v*` tag is pushed:
 
 ```bash
-gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.zip'
-unzip -o "Dev-Desk-"*.zip -d /Applications
+gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.dmg'
 ```
+
+Open the DMG and drag **Dev Desk.app** onto the `/Applications` symlink inside it.
 
 The first launch needs one extra step, because the app isn't notarized: right-click **Dev Desk.app** and choose **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Dev Desk.app"`. It needs macOS 14 or later.
 

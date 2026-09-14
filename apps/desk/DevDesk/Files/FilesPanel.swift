@@ -1,9 +1,9 @@
-import AppKit
 import DeskCore
 import SwiftUI
 
 /// The project's own files, down the right of whatever you are looking at. Listed one directory at a time,
-/// so a repository carrying node_modules opens as fast as an empty one.
+/// so a repository carrying node_modules opens as fast as an empty one. Tapping one selects it; reading it
+/// is `FileViewerPane`'s job, which `ContentRouter` places beside the work rather than under the tree.
 struct FilesPanel: View {
     @Bindable var model: ProjectWindowModel
     @State private var expanded: Set<String> = []
@@ -19,8 +19,6 @@ struct FilesPanel: View {
             header
             if let root {
                 tree(root)
-                Rectangle().fill(DeskColor.divider).frame(height: 1)
-                viewer(root)
             } else {
                 UnavailableView(reason: "Sample projects have no folder on disk, so there is nothing to browse.")
                     .padding(12)
@@ -64,18 +62,6 @@ struct FilesPanel: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    @ViewBuilder private func viewer(_ root: URL) -> some View {
-        if let path = model.selectedFilePath {
-            FileViewer(url: root.appendingPathComponent(path), path: path, root: root)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        } else {
-            Text("Pick a file to read it here.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
     }
 
     /// The visible rows: the root's entries, with an expanded directory's children spliced in beneath it.
@@ -164,57 +150,5 @@ private struct FileRow: View {
         if bytes < 1024 { return "\(bytes) B" }
         if bytes < 1024 * 1024 { return "\(bytes / 1024) KB" }
         return String(format: "%.1f MB", Double(bytes) / 1024 / 1024)
-    }
-}
-
-private struct FileViewer: View {
-    let url: URL
-    let path: String
-    let root: URL
-
-    var body: some View {
-        let preview = FileReader.read(url, within: root)
-        VStack(alignment: .leading, spacing: 0) {
-            header
-            Group {
-                if case .text(let contents) = preview {
-                    ScrollView([.horizontal, .vertical]) {
-                        Text(contents.isEmpty ? "This file is empty." : contents)
-                            .font(DeskFont.mono(11.5))
-                            .foregroundStyle(contents.isEmpty ? DeskColor.mutedInk : DeskColor.ink)
-                            .textSelection(.enabled)
-                            .padding(12)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                } else {
-                    UnavailableView(reason: preview.message ?? "")
-                        .padding(12)
-                        .frame(maxWidth: .infinity, alignment: .top)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-    }
-
-    private var header: some View {
-        HStack(spacing: 6) {
-            Text(path)
-                .font(DeskFont.mono(11))
-                .foregroundStyle(DeskColor.ink)
-                .lineLimit(1)
-                .truncationMode(.head)
-                .textSelection(.enabled)
-            Spacer(minLength: 6)
-            Button("Reveal") { NSWorkspace.shared.activateFileViewerSelecting([url]) }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                .help("Reveal in Finder")
-            Button("Open") { NSWorkspace.shared.open(url) }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                .help("Open in the default editor")
-        }
-        .padding(.vertical, 8)
-        .padding(.horizontal, 12)
-        .background(DeskColor.headerFill)
-        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 }

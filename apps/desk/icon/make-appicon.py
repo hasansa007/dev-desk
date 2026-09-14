@@ -209,6 +209,49 @@ def clear_outside_body(rgba: np.ndarray, padding: int = 3) -> np.ndarray:
     return out
 
 
+def center_on_grid(rgba: np.ndarray, tile_size: int = 824, canvas: int = 1024) -> np.ndarray:
+    """Put the tile on Apple's icon grid: an 824 px squircle centred on 1024, ~100 px clear all round.
+
+    `clear_outside_body` bounds the tile but does not place it: the art is exported edge-to-edge, so
+    the master came out 880 px wide with uneven margins. macOS does not rescale an app icon — it draws
+    the pixels it is given — so that tile sat oversized in the Dock, and its baked corner radius read
+    as the wrong curve next to neighbours whose radius is cut for 824.
+
+    Scaling by the longest side, not by width and height separately, keeps the tile's aspect ratio;
+    the resize runs on premultiplied alpha for the same reason `resize_to_size` does, or the
+    transparent surround bleeds into the edge as a halo.
+    """
+    opaque = rgba[:, :, 3] > 40
+    if not opaque.any():
+        raise SystemExit("nothing opaque to centre on the icon grid")
+    ys, xs = np.where(opaque)
+    top, bottom = int(ys.min()), int(ys.max()) + 1
+    left, right = int(xs.min()), int(xs.max()) + 1
+    cropped = rgba[top:bottom, left:right]
+
+    height, width = cropped.shape[:2]
+    scale = tile_size / max(height, width)
+    new_width, new_height = max(round(width * scale), 1), max(round(height * scale), 1)
+
+    alpha = cropped[:, :, 3].astype(np.float32) / 255.0
+    premultiplied = np.concatenate([cropped[:, :, :3].astype(np.float32) * alpha[:, :, None],
+                                    alpha[:, :, None] * 255], axis=2).astype(np.uint8)
+    resized = np.array(Image.fromarray(premultiplied)
+                       .resize((new_width, new_height), Image.Resampling.LANCZOS)).astype(np.float32)
+    alpha_resized = resized[:, :, 3] / 255.0
+    with np.errstate(divide="ignore", invalid="ignore"):
+        rgb = resized[:, :, :3] / (alpha_resized[:, :, None] + 1e-10)
+    rgb = np.clip(rgb, 0, 255)
+    rgb[alpha_resized < 0.02] = 0
+    tile = np.concatenate([rgb.astype(np.uint8),
+                           (alpha_resized * 255).astype(np.uint8)[:, :, None]], axis=2)
+
+    out = np.zeros((canvas, canvas, 4), dtype=np.uint8)
+    offset_y, offset_x = (canvas - new_height) // 2, (canvas - new_width) // 2
+    out[offset_y:offset_y + new_height, offset_x:offset_x + new_width] = tile
+    return out
+
+
 def write_appiconset(master: np.ndarray) -> None:
     """The ten PNGs the app icon set names, every one cut from the single 1024 master."""
     for name, size in EXPECTED.items():
@@ -284,7 +327,7 @@ def main() -> None:
     rgba[~background, 3] = 255
     rgba[background, 3] = alpha_from_shadow(gray, background, period)[background]
 
-    master = clear_outside_body(resize_to_size(rgba, 1024))
+    master = center_on_grid(clear_outside_body(resize_to_size(rgba, 1024)))
     Image.fromarray(master).save(variant.master, "PNG")
     print(f"Wrote {variant.master.relative_to(ROOT)}")
 

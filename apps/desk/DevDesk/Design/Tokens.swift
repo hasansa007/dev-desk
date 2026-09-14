@@ -108,8 +108,9 @@ enum DeskMetric {
     static let sidebarRailWidth: CGFloat = 64
     /// Below this the sidebar becomes the rail by itself; above it, the choice is the developer's again.
     static let railBreakpoint: CGFloat = 1100
-    /// Everything as designed at or above this; the board scrolls its columns below it.
-    static let windowMinWidth: CGFloat = 920
+    /// The floor the window can be dragged or tiled to, so a quarter of a common display still opens it;
+    /// the board scrolls its columns long before here.
+    static let windowMinWidth: CGFloat = 360
     static let windowMinHeight: CGFloat = 620
     static let inspectorWidth: CGFloat = 262
     /// Runs is the bottom edge of the window: deep enough for a terminal, shallow enough to leave the work visible.

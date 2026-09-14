@@ -247,6 +247,16 @@ private struct BoardColumnView: View {
         return { model.startTask(task, agent: defaultConnection) }
     }
 
+    /// Every column ends in the same row, so where a task would be added is on screen before it works. It stays
+    /// disabled until there is something to wire it to: a control that lands nowhere is worse than one that waits.
+    private var addTaskButton: some View {
+        Button("+ Add a new task") {}
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+            .disabled(true)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .help("Adding tasks from the board is coming soon")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
@@ -281,8 +291,12 @@ private struct BoardColumnView: View {
                          runControls: runControls(for: task),
                          isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch)
             }
+            addTaskButton
         }
+        .padding(12)
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
+        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
+        .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
         .confirmationDialog(pending.map { TrackerWrite.confirmation(issue: $0.issue, slug: model.snapshot?.slug ?? "", action: $0.action) } ?? "",
                             isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
                             titleVisibility: .visible) {

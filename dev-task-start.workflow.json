@@ -1,0 +1,56 @@
+{
+  "schema_version": 2,
+  "diagram_type": "workflow",
+  "meta": {
+    "title": "Dev — Starting a Task: Where the Branch Is Cut",
+    "quality_profile": "showcase",
+    "views": [
+      { "id": "entry-and-context", "label": "Route the input, fetch the brief", "focus": ["input", "route", "context", "classify"], "note": "How the request becomes a classified bug or feature before any pipeline phase runs." },
+      { "id": "bug-branch", "label": "Bug: branch cut at Phase 4", "focus": ["classify", "invest_bug", "cut_bug", "reproduce"], "note": "A bug is reproduced first; the branch is cut at the first write, the failing test." },
+      { "id": "feature-branch", "label": "Feature: branch cut at Phase 9", "focus": ["classify", "invest_feat", "discuss", "cut_feat"], "note": "A feature must pass the 'should this exist' gate before a branch is ever named." }
+    ]
+  },
+  "lanes": [
+    { "id": "entry", "label": "Entry (pre-pipeline)" },
+    { "id": "shared", "label": "Pipeline Phases 1-3" },
+    { "id": "feature", "label": "Feature Flow" },
+    { "id": "bug", "label": "Bug Flow", "variant": "exception" }
+  ],
+  "phases": [
+    { "id": "ph_entry", "label": "Entry 1-2", "fromCol": 0, "toCol": 1 },
+    { "id": "ph_prep", "label": "Phases 1-3", "fromCol": 2, "toCol": 2, "variant": "emphasis" },
+    { "id": "ph_work", "label": "Phases 4-9", "fromCol": 3, "toCol": 5, "variant": "dashed" }
+  ],
+  "groups": [
+    { "id": "branch_feat", "label": "Branch cut late, from resolved pre-prod (--no-track)", "lane": "feature", "fromCol": 4, "toCol": 5, "variant": "security" }
+  ],
+  "mainPath": ["input", "route", "context", "classify", "invest_feat", "discuss", "cut_feat"],
+  "nodes": [
+    { "id": "input", "lane": "entry", "col": 0, "type": "external", "label": "Input", "sublabel": "issue # / URL / text", "tag": "Entry 1", "width": 150 },
+    { "id": "route", "lane": "entry", "col": 1, "type": "security", "label": "Route + Guard", "sublabel": "bare /dev = read-only orient", "tag": "no branch", "width": 150 },
+    { "id": "context", "lane": "entry", "col": 2, "type": "backend", "label": "Fetch Context", "sublabel": "gh issue view / local docs", "tag": "Entry 2", "width": 150 },
+    { "id": "classify", "lane": "shared", "col": 3, "type": "security", "label": "Classify + Name", "sublabel": "bug vs feature; Phase 1-3", "tag": "name is free", "width": 150 },
+    { "id": "invest_feat", "lane": "feature", "col": 3, "type": "backend", "label": "Phase 4 Understand", "sublabel": "affected area", "width": 150 },
+    { "id": "discuss", "lane": "feature", "col": 4, "type": "security", "label": "Phase 5 Gate", "sublabel": "should this exist?", "tag": "go-ahead", "width": 150 },
+    { "id": "cut_feat", "lane": "feature", "col": 5, "type": "cloud", "label": "Cut Branch + Implement", "sublabel": "feature/slug at Phase 9", "tag": "first write", "width": 150 },
+    { "id": "invest_bug", "lane": "bug", "col": 3, "type": "backend", "label": "Phase 4 Investigate", "sublabel": "reproduce BEFORE theorizing", "width": 150 },
+    { "id": "cut_bug", "lane": "bug", "col": 4, "type": "cloud", "label": "Cut Branch", "sublabel": "gh-N-slug", "tag": "first write", "width": 150 },
+    { "id": "reproduce", "lane": "bug", "col": 5, "type": "database", "label": "Failing Test", "sublabel": "becomes Phase 9 RED", "width": 150 }
+  ],
+  "edges": [
+    { "id": "e_in_route", "from": "input", "to": "route", "label": "detect", "variant": "emphasis" },
+    { "id": "e_route_ctx", "from": "route", "to": "context", "label": "bug or feature", "variant": "emphasis" },
+    { "id": "e_ctx_classify", "from": "context", "to": "classify", "variant": "emphasis" },
+    { "id": "e_classify_feat", "from": "classify", "to": "invest_feat", "label": "feature", "variant": "emphasis", "role": "main" },
+    { "id": "e_feat_discuss", "from": "invest_feat", "to": "discuss", "variant": "emphasis" },
+    { "id": "e_discuss_cut", "from": "discuss", "to": "cut_feat", "label": "approved", "variant": "security", "role": "branch" },
+    { "id": "e_classify_bug", "from": "classify", "to": "invest_bug", "label": "bug", "variant": "dashed", "role": "branch" },
+    { "id": "e_bug_cut", "from": "invest_bug", "to": "cut_bug", "variant": "emphasis" },
+    { "id": "e_cut_repro", "from": "cut_bug", "to": "reproduce", "variant": "emphasis" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "There Is No 'New-Branch Brief'", "items": ["What to tackle/fix comes from Entry 2: the issue body or your description", "It is refined by Phase 4 investigation, not delivered with the branch", "The branch carries no separate instructions of its own"] },
+    { "dot": "amber", "title": "Branch Is Cut Late, Not Up Front", "items": ["Bug: cut at Phase 4, right before the failing test", "Feature: cut at Phase 9, only after Phase 5's go-ahead", "Naming a feature branch early pre-frames the answer as yes"] },
+    { "dot": "emerald", "title": "How It Is Cut", "items": ["From the resolved pre-prod branch, never whatever is checked out", "git switch -c <name> --no-track origin/<pre-prod>", "--no-track keeps your commits off the pre-prod line"] }
+  ]
+}

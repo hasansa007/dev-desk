@@ -30,6 +30,8 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Re-assert the chosen icon on every launch: a reinstall dittos a fresh bundle over this one
         // and wipes any custom icon, so a launch is the only moment the preference can restore it.
+        // This is the earliest the preference can speak, not the last word on it — see
+        // applicationDidBecomeActive, which repaints the tile once AppKit can no longer overwrite it.
         AppIconStyle.apply()
         // When the icon choice is System, a live OS light/dark switch has to re-resolve it. Observe
         // the app's effective appearance rather than a notification, so the value is read after AppKit
@@ -37,6 +39,20 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
         appearanceObservation = NSApp.observe(\.effectiveAppearance) { _, _ in
             Task { @MainActor in AppIconStyle.apply() }
         }
+    }
+
+    /// Repaint the Dock tile once the app is active, where AppKit will not paint over the choice again.
+    ///
+    /// A Force Quit destroys `NSApp.applicationIconImage`, and the on-disk custom icon it should have
+    /// fallen back on has been found torn empty by the same kill — so after a hard kill the next launch
+    /// is the only thing that can put the chosen artwork back, and it has to do it by repainting the
+    /// live tile. `applicationDidFinishLaunching` is too early to be trusted with that alone: AppKit can
+    /// still paint the tile from the bundle after it returns and leave the shipped light icon up. This
+    /// fires after that paint. It also fires on every later activation, which costs a resolve and
+    /// assigns the same image — `AppIconStyle.apply` is idempotent, so no flag is kept here that could
+    /// fall out of step with the appearance observer calling the very same method.
+    func applicationDidBecomeActive(_ notification: Notification) {
+        AppIconStyle.apply()
     }
 
     /// The background runs' half of the graceful-quit mark (ADR 0031); `LiveShells.endAllBeforeQuit` does the

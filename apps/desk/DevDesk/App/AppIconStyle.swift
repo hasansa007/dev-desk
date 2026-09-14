@@ -10,9 +10,20 @@ import SwiftUI
 /// Applying it has two halves because they refresh at different speeds. `NSApp.applicationIconImage`
 /// changes the running Dock tile this instant but dies with the process. `NSWorkspace.setIcon`
 /// writes a custom icon onto the bundle so Finder and the next launch see it too — but a reinstall
-/// `ditto`s a fresh bundle over this one (see install.sh) and wipes that custom icon. So neither half
-/// is enough alone, and `apply` is called again at every launch from `QuitGuard`: the on-disk icon is
-/// re-asserted after an install wiped it, and the session icon is set for the run either way.
+/// `ditto`s a fresh bundle over this one (see install.sh) and wipes that custom icon, and the write
+/// is not durable against a Force Quit either: a killed app has been found leaving a zero-byte `Icon\r`
+/// and an empty custom-icon flag behind, which shows the shipped light tile whatever the preference
+/// says. So neither half is enough alone, and neither is trusted to persist: `apply` runs again at
+/// every launch *and* every activation from `QuitGuard`, re-asserting the on-disk icon after an
+/// install or a kill tore it, and repainting the running tile for the session either way.
+///
+/// The launch call alone does not cover the relaunch after a hard kill. A kill destroys the live
+/// tile — the one half that always works — and can leave nothing usable on disk, so the next launch
+/// has to repaint the tile itself; but AppKit may paint the tile from the bundle *after*
+/// `applicationDidFinishLaunching` returns and clobber an assignment made that early. The re-assert
+/// once the app is active lands after that paint. It needs no state to stay in sync with the
+/// appearance observer, which calls this same method: `apply` re-reads the preferences every time and
+/// assigns the image they resolve to, so running it twice costs a resolve and changes nothing.
 ///
 /// The running tile is always set to a concrete image, never `nil`. Assigning `nil` for the light
 /// case looks right — it should mean "fall back to the bundle icon" — but AppKit does not repaint a
@@ -70,7 +81,8 @@ enum AppIconStyle {
         NSImage(named: "AppIcon") ?? NSImage(named: NSImage.applicationIconName)
     }
 
-    /// Apply the resolved icon to both the running app and the bundle on disk.
+    /// Apply the resolved icon to both the running app and the bundle on disk; idempotent, so launch,
+    /// activation and an appearance flip can each call it without coordinating.
     static func apply() {
         switch resolve() {
         case .light:

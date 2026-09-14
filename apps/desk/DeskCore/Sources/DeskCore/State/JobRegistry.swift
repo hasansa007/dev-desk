@@ -61,9 +61,12 @@ public struct BackgroundJob: Identifiable, Equatable {
 /// Spawns a headless run and reports its lines back. A protocol so the registry can be tested without
 /// starting an agent — the thing that would otherwise make these paths untestable and therefore untested.
 ///
-/// The callbacks are `@MainActor`: a pipe delivers on a background queue, and the hop belongs to the spawner
-/// that owns the pipe. Hopping inside the registry instead made every state change land a turn later, which is
-/// invisible in the app and untestable everywhere.
+/// The whole protocol is `@MainActor`, callbacks included: a pipe delivers on a background queue, and the hop
+/// belongs to the spawner that owns the pipe. Hopping inside the registry instead made every state change land
+/// a turn later, which is invisible in the app and untestable everywhere. Isolating the requirements too is
+/// what lets the one real spawner — a `@MainActor` class holding main-actor state — actually conform: a
+/// whole-module build rejects a main-actor method satisfying a nonisolated requirement.
+@MainActor
 public protocol JobSpawner: AnyObject {
     func spawn(id: String, launch: JobLaunch, directory: String,
                onLine: @escaping @MainActor (String) -> Void,

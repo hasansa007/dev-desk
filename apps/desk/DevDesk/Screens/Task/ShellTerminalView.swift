@@ -429,6 +429,43 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
 final class FocusingTerminalView: LocalProcessTerminalView {
     var focusOnAttach = false
 
+    /// What the arrows and delete report, whatever modifier is held: their characters are the private-use
+    /// ones AppKit gives function keys, so the key itself is read from the code.
+    private enum KeyCode {
+        static let left: UInt16 = 123
+        static let right: UInt16 = 124
+        static let delete: UInt16 = 51
+    }
+
+    /// Word and line motion, which macOS puts on ⌥/⌘ with the arrows and delete, and which SwiftTerm sends
+    /// nothing for: Option types characters here rather than acting as Meta (`optionAsMetaKey` stays false, as
+    /// Terminal has it by default), so ⌥← used to insert a stray character and ⌘← to do nothing at all. Each
+    /// combination is sent as the sequence readline and zsh already answer — typed into the shell, exactly as
+    /// the user would. Anything else is the terminal's own business.
+    ///
+    /// It is answered here rather than in `keyDown`, which SwiftTerm declares public but not open and so cannot
+    /// be overridden from this module: the window offers every key-down to its view hierarchy as a possible key
+    /// equivalent first, which is early enough, and the guard keeps a terminal that is not being typed into from
+    /// answering for one that is.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard event.type == .keyDown, window?.firstResponder === self else {
+            return super.performKeyEquivalent(with: event)
+        }
+        let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
+        let option = modifiers.contains(.option)
+        let command = modifiers.contains(.command)
+        switch (event.keyCode, option, command) {
+        case (KeyCode.left, true, false): send(txt: "\u{1b}b")    // ⌥← one word back
+        case (KeyCode.right, true, false): send(txt: "\u{1b}f")   // ⌥→ one word on
+        case (KeyCode.left, false, true): send(txt: "\u{01}")     // ⌘← Ctrl-A, the start of the line
+        case (KeyCode.right, false, true): send(txt: "\u{05}")    // ⌘→ Ctrl-E, the end of the line
+        case (KeyCode.delete, true, false): send(txt: "\u{17}")   // ⌥⌫ Ctrl-W, the word behind the caret
+        case (KeyCode.delete, false, true): send(txt: "\u{15}")   // ⌘⌫ Ctrl-U, back to the start of the line
+        default: return super.performKeyEquivalent(with: event)
+        }
+        return true
+    }
+
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         takeFocusIfAsked()

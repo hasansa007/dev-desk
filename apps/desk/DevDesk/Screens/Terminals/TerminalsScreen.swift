@@ -1,97 +1,294 @@
 import DeskCore
 import SwiftUI
 
-/// Every session this window is running, side by side. The **only** host of a live terminal (ADR 0026): a
-/// terminal is an NSView and can live in exactly one view hierarchy, so a second surface showing the same one
-/// draws an empty frame while the first keeps it.
+/// Every session this window is running, as tabs across the top with the chosen one open below. The **only**
+/// host of a live terminal (ADR 0026): a terminal is an NSView and can live in exactly one view hierarchy, so a
+/// second surface showing the same one draws an empty frame while the first keeps it.
 ///
-/// One, two or four up, because parallel work is the app's own premise — Auto runs up to three agents — and
-/// that is the thing an edge panel and a modal both cannot do.
+/// Tabs rather than the accordion that was here: sessions are switched between far more often than they are
+/// compared, and a tab bar spends one row on the whole list instead of one row each. What that buys is the
+/// pane below — full height, its transcript scrolling, and its composer along the bottom where every other
+/// input in the app is. Only the tab in front is built, so the one-host rule is the layout's doing rather than
+/// something the next surface has to remember.
 struct TerminalsScreen: View {
     @Bindable var model: ProjectWindowModel
-    @State private var expandedID: String?
+    /// Which tab is in front. It is real state, not `selection ?? firstLive`: a derived selection re-opened
+    /// whatever it fell back to the moment the chosen one was closed, and the click did nothing, every time.
+    @State private var selection: Selection = .starter
     @State private var hasChosen = false
     /// What was live when the app was last killed (ADR 0031). Records, not sessions: nothing here is running.
     @State private var recovered: [JournalRecord] = []
+    /// What is being typed into the starter's composer, which becomes a chat session's first message.
+    @State private var starterDraft = ""
+    @State private var starterModel = ""
+    /// Read here so a pick in the starter's own chip re-resolves the agent it would start.
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    /// Where a new terminal's worktree would go, read here because opening one starts its shell at once.
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
+    @Environment(\.terminals) private var terminals
+
+    /// What is in front: one of the sessions, or the starter — the pane a session is typed into being in,
+    /// which is what a window with no sessions opens on. The starter has no tab of its own: the "+" at the
+    /// end of the row is a menu that opens a session outright, and the starter is where the screen lands
+    /// when there is no session to show.
+    private enum Selection: Hashable {
+        case starter
+        case session(String)
+    }
 
     private var rows: [SessionRow] { SessionRow.all(in: model, jobs: jobs) }
     /// Nil for a sample, which has no folder to have written anything in.
     private var journal: RunJournal? { model.sessions.journal }
 
+    /// The session the tab in front names, or nil for the starter — and nil too for a tab whose session has
+    /// just gone, until the change below moves the selection off it.
+    private var selectedRow: SessionRow? {
+        guard case .session(let id) = selection else { return nil }
+        return rows.first { $0.id == id }
+    }
+
     var body: some View {
         VStack(spacing: 0) {
-            header
-            if rows.isEmpty, recovered.isEmpty {
-                EmptyStateView(title: "Nothing running",
-                               message: "Start a task from the board, or run a door from Survey, Ideation or Roadmap. Whether it takes a terminal or runs in the background, it appears here.") {
-                    Button("Go to the board") { model.go(.board) }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary))
-                }
-            } else {
-                list
-            }
+            // The tabs are the top of the screen: a title row above them said "Sessions" over a bar that already
+            // listed them, and its two buttons are now the "+" at the end of that bar.
+            tabBar
+            // Above the open session, because it is what happened while the app was gone and the open one is now.
+            if !recovered.isEmpty { recoveredSection }
+            pane
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
-        .onAppear(perform: syncExpansion)
+        .onAppear(perform: syncSelection)
         .onAppear(perform: loadRecovered)
         .onChange(of: model.selectedSessionID) { _, id in
             guard let id else { return }
             hasChosen = true
-            expandedID = id
+            selection = .session(id)
+        }
+        // A session can leave the list without being closed from here — a door run cleared, a job removed in
+        // another screen. The tab in front cannot point at nothing, so it falls to whatever is left.
+        .onChange(of: rows.map(\.id)) { _, ids in
+            guard case .session(let id) = selection, !ids.contains(id) else { return }
+            selection = ids.first.map(Selection.session) ?? .starter
         }
     }
 
-    private var header: some View {
-        HStack(spacing: 10) {
-            Text("Terminals")
-                .font(DeskFont.section)
-                .foregroundStyle(DeskColor.ink)
-            Text(rows.isEmpty ? "nothing running" : "\(rows.count) running")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-            Spacer(minLength: 0)
-            Button("New terminal") {
-                hasChosen = true
-                expandedID = model.newTerminal()
-            }
-            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-            .disabled(model.sessions.startRefusal(for: .shell) != nil)
-            .help(model.sessions.startRefusal(for: .shell) ?? "A login shell at the project root")
-        }
-        .screenHeaderBar()
+    /// A new scratch session of the given mode, in front. The mode is chosen once and fixed for the row's life:
+    /// a terminal is a live shell, a chat runs the CLI once per message and hosts no shell at all. A terminal's
+    /// shell is started here, not by a button in its pane: opening one and being told "Not started" made every
+    /// new terminal a two-click session whose second click was never a choice.
+    private func open(_ mode: SessionMode) {
+        hasChosen = true
+        let id = model.newTerminal(mode: mode)
+        selection = .session(id)
+        if mode == .terminal { startTerminal(id) }
     }
 
-    /// An accordion, not a grid. Two terminals at half height are two terminals you cannot read, and only the
-    /// expanded one hosts its view — which is the one-host rule (ADR 0026) enforced by the layout rather than
-    /// remembered by whoever adds the next surface.
-    private var list: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                if !recovered.isEmpty { recoveredSection }
+    /// The same start the pane's Start button made for a scratch row — the registry resolves the folder, the
+    /// project root for a scratch session, and the shell opens in it. The menu item is disabled under a
+    /// refusal, but the guard stays: a menu built a moment before the registry changed its mind still lands here.
+    private func startTerminal(_ id: String) {
+        guard model.sessions.startRefusal(for: .shell) == nil, let terminals else { return }
+        let location = worktreeLocation
+        let title = "Terminal \(id.replacingOccurrences(of: "term:", with: ""))"
+        Task {
+            await model.sessions.start(taskID: id, branch: nil, taskNumber: nil,
+                                       noBranchNote: nil, worktreeLocation: location, title: title)
+            guard case .running(let folder) = model.sessions.state(for: id) else { return }
+            terminals.start(taskID: id, folder: folder.url)
+        }
+    }
+
+    // MARK: - The tabs
+
+    /// The sessions across the top, in the order the list has always had them, and the "+" that opens a new
+    /// one after them. It scrolls sideways rather than shrinking: a tab narrow enough to fit twelve of them
+    /// names none of them.
+    private var tabBar: some View {
+        ScrollView(.horizontal) {
+            HStack(spacing: 2) {
                 ForEach(rows) { row in
-                    TerminalTile(model: model, row: row, isExpanded: expandedID == row.id) {
+                    SessionTab(row: row, chat: model.scratchChat(for: row.id),
+                               isSelected: selection == .session(row.id), close: tabClose(for: row)) {
                         hasChosen = true
-                        expandedID = expandedID == row.id ? nil : row.id
+                        selection = .session(row.id)
                     }
                 }
+                newSessionMenu
+                Spacer(minLength: 0)
             }
-            .padding(12)
+            .padding(.horizontal, 8)
+        }
+        .scrollIndicators(.hidden)
+        // One row, stated: the bar is the list of sessions and never a second pane, however many there are.
+        .frame(height: 32)
+        .background(DeskColor.surface)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+    }
+
+    /// The "+" at the end of the row: a menu of the two kinds of session, not a tab. It is never in front — it
+    /// opens a session and that session's tab is — so it carries no underline and no selected state, only the
+    /// height of its neighbours so the row stays one line. Each kind is offered under the same guard the
+    /// header's button had: a shell only where the registry would start one, a chat only where there is a
+    /// folder to ask about, since a sample has none.
+    private var newSessionMenu: some View {
+        Menu {
+            Button("Terminal") { open(.terminal) }
+                .disabled(model.sessions.startRefusal(for: .shell) != nil)
+                .help(model.sessions.startRefusal(for: .shell) ?? "A login shell at the project root")
+            Button("Chat") { open(.chat) }
+                .disabled(model.projectRoot == nil)
+                .help(model.projectRoot == nil
+                      ? "A sample has no folder to ask about."
+                      : "Ask the agent one question at a time, at the project root")
+        } label: {
+            VStack(spacing: 0) {
+                Image(systemName: "plus")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .frame(width: 30, height: 30)
+                // The same two points a tab's underline takes, kept clear: the "+" is level with its neighbours
+                // without ever reading as the one in front.
+                Rectangle()
+                    .fill(Color.clear)
+                    .frame(height: 2)
+            }
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Start a terminal or a chat")
+        .accessibilityLabel("New session")
+    }
+
+    /// What the × on a tab does: the same action that row's header carried before the tabs, under a smaller
+    /// glyph. Nothing here means anything new — a live run is stopped, a finished background run is taken off
+    /// the list, a scratch session is closed — and a row with none of those, a door or a task that is not
+    /// running, gets no × at all rather than one that would have to invent a meaning.
+    private func tabClose(for row: SessionRow) -> TabClose? {
+        func closing(_ help: String, isEnabled: Bool = true, _ run: @escaping () -> Void) -> TabClose {
+            TabClose(help: help, isEnabled: isEnabled) {
+                let fallback = neighbour(of: row.id)
+                run()
+                // Stop leaves the row listed and ended; only a close or a remove takes it away, and only then
+                // does the tab in front have to move.
+                guard selection == .session(row.id), !rows.contains(where: { $0.id == row.id }) else { return }
+                selection = fallback
+            }
+        }
+        if case .job(let job) = row.kind {
+            return job.state.isLive
+                ? closing("Stops this run") { jobs?.stop(job.id) }
+                : closing("Takes the finished run off this list") { jobs?.remove(job.id) }
+        }
+        if row.isLive { return closing("Stops this session") { terminals?.end(taskID: row.id) } }
+        guard case .scratch = row.kind else { return nil }
+        let chat = model.scratchChat(for: row.id)
+        // Not while an answer is on its way: closing the session would drop the reply it asked for.
+        return closing(chat == nil ? "Remove this terminal from the list" : "Remove this chat from the list",
+                       isEnabled: chat?.isSending != true) { model.closeTerminal(row.id) }
+    }
+
+    /// Which tab takes the front when this one goes: the one after it, else the one before it, else the starter.
+    private func neighbour(of id: String) -> Selection {
+        guard let index = rows.firstIndex(where: { $0.id == id }) else { return .starter }
+        let next = rows[(index + 1)...].first ?? rows[..<index].last
+        return next.map { Selection.session($0.id) } ?? .starter
+    }
+
+    // MARK: - The one open session
+
+    /// The body: the session in front, and nothing of any other. A pane per session is exactly what made a
+    /// second terminal draw an empty frame, so there is one here — given the session's own identity, so a
+    /// draft and a poll belong to the session shown and not to the place in the layout.
+    @ViewBuilder private var pane: some View {
+        if let row = selectedRow {
+            SessionPane(model: model, row: row)
+                .id(row.id)
+        } else {
+            starter
         }
     }
 
-    /// Which row is open. Arriving from a card or a door start lands on that session; after that it is whatever
-    /// you last clicked, including nothing.
-    ///
-    /// It has to be real state. Deriving it as `selection ?? firstLive` meant collapsing a row set the selection
-    /// to nil and the fallback immediately re-opened the same row — the chevron did nothing, every time.
-    private func syncExpansion() {
-        guard !hasChosen else { return }
-        expandedID = model.selectedSessionID ?? rows.first(where: \.isLive)?.id ?? rows.first?.id
+    // MARK: - Starting by typing
+
+    /// The same resolution a chat's body makes, so what the starter sends is what the row would have sent.
+    private var starterChoice: AgentChoice {
+        _ = defaultConnection
+        return AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? [])
     }
 
-    /// Above the live rows, because it is what happened while the app was gone and the live ones are now.
+    private var starterBlockedReason: String? {
+        if model.projectRoot == nil { return "A sample has no folder to ask about." }
+        if case .unavailable(let reason) = starterChoice { return reason }
+        return nil
+    }
+
+    /// The starter: the pane a window with no sessions opens on, saying what a session here is, with the
+    /// composer along the bottom where every other session in this screen keeps its input. What is typed is
+    /// always a chat, since a message is a question and a terminal has no first message; the "+" in the tab
+    /// bar still opens an empty one of either kind.
+    private var starter: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    SectionLabel("Start a session")
+                    Text("Start a task from the board, run a door from Survey, Ideation or Roadmap, or open a terminal or a chat here. Whether it takes a terminal, runs in the background or answers one question at a time, it is a session here.")
+                        .font(DeskFont.body)
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .lineSpacing(3)
+                        .fixedSize(horizontal: false, vertical: true)
+                    // Only while there is nothing to switch to: with sessions listed above, the board is one
+                    // click away in the sidebar and this would be a second door to it.
+                    if rows.isEmpty {
+                        Button("Go to the board") { model.go(.board) }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            ChatComposer(model: model, draft: $starterDraft, modelName: $starterModel,
+                         blockedReason: starterBlockedReason, placeholder: "Ask the agent about this project to start a chat…",
+                         onSend: startChat)
+            Text(starterBlockedReason ?? "Sending opens a new chat tab with this as its first message. Each message runs the CLI once through your login shell.")
+                .font(.system(size: 11))
+                .foregroundStyle(DeskColor.faintInk)
+                .lineSpacing(3)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(DeskColor.canvas)
+    }
+
+    /// A new chat tab, in front, with the typed text already sent to it: its own transcript shows the question
+    /// and, when it comes, the answer. The model name is read now and applies to this first message; the chat's
+    /// own composer names its own for the next.
+    private func startChat(_ text: String) {
+        guard let folder = model.projectRoot, case .ready = starterChoice,
+              let agent = AgentLaunch.agent(forConnectionName: defaultConnection) else { return }
+        let id = model.newTerminal(mode: .chat)
+        hasChosen = true
+        selection = .session(id)
+        guard let chat = model.scratchChat(for: id) else { return }
+        let name = starterModel.trimmingCharacters(in: .whitespaces)
+        Task { await chat.send(text, agent: agent, model: name.isEmpty ? nil : name, folder: folder) }
+    }
+
+    /// Which tab is in front on arriving. A card or a door start lands on that session; otherwise the first
+    /// live one, then the first there is, and the starter when there is no session to land on at all.
+    private func syncSelection() {
+        guard !hasChosen else { return }
+        let landing = model.selectedSessionID.flatMap { id in rows.contains { $0.id == id } ? id : nil }
+            ?? rows.first(where: \.isLive)?.id ?? rows.first?.id
+        selection = landing.map(Selection.session) ?? .starter
+    }
+
+    /// A section rather than tabs of its own: these are records of runs the app died under, and a tab would
+    /// offer to open something that is not there. It sits above the open session — it is what happened while
+    /// the app was gone, and the session below is now — and goes as each record is answered.
     private var recoveredSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
@@ -110,6 +307,9 @@ struct TerminalsScreen: View {
                 }
             }
         }
+        .padding(12)
+        .background(DeskColor.canvas)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
     /// Reading the journal is the whole of the launch behaviour: nothing is restarted, and ADR 0025 stands. A
@@ -249,99 +449,170 @@ private struct RecoveredTile: View {
     }
 }
 
-/// One session in the grid: what it is, what it is doing, and its terminal.
-private struct TerminalTile: View {
+/// What the × on a tab does, and what it says it does. The screen builds one per session out of that
+/// session's own action, so the glyph never means more than the button it stands in for.
+private struct TabClose {
+    let help: String
+    var isEnabled = true
+    let run: () -> Void
+}
+
+/// One session across the top: how it is doing, what it is called, and the × that stops or closes it. The ×
+/// appears on hover and stays on the tab in front — a row of crosses reads as a list of things to delete
+/// rather than as the sessions themselves — and it holds its place either way, so no tab resizes under the
+/// pointer.
+private struct SessionTab: View {
+    let row: SessionRow
+    /// The chat behind a chat-mode session, which has something running only while an answer is on its way.
+    let chat: ChatSession?
+    let isSelected: Bool
+    /// Nil where the session has nothing to stop or close; the tab is then a name and a light, which is what
+    /// a door or a task that is not running has always been here.
+    let close: TabClose?
+    let select: () -> Void
+    @State private var isHovered = false
+
+    /// A chat is "live" while an answer is on its way; between messages nothing of it runs.
+    private var dotTone: StatusTone {
+        if let chat { return chat.isSending ? .info : .ended }
+        return row.isLive ? .running : .ended
+    }
+
+    private var showsClose: Bool { close != nil && (isSelected || isHovered) }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // Selecting is its own button and the × is its sibling. One button wrapping the other swallows the
+            // inner one's clicks — the same way the card's outer Button ate its own Start, and it was reported
+            // the same way: "stop is not working".
+            HStack(spacing: 6) {
+                Button(action: select) {
+                    HStack(spacing: 7) {
+                        StatusDot(tone: dotTone, pulses: row.isLive || chat?.isSending == true)
+                        Text(row.title)
+                            .font(DeskFont.body.weight(isSelected ? .semibold : .regular))
+                            .foregroundStyle(isSelected ? DeskColor.ink : DeskColor.mutedInk)
+                            .lineLimit(1)
+                            .truncationMode(.tail)
+                            .frame(maxWidth: 170, alignment: .leading)
+                    }
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(row.title), \(row.subtitle)")
+                .accessibilityAddTraits(isSelected ? .isSelected : [])
+                if let close {
+                    Button(action: close.run) {
+                        Image(systemName: "xmark")
+                            .font(.system(size: 9, weight: .bold))
+                            .foregroundStyle(DeskColor.mutedInk)
+                            .frame(width: 16, height: 16)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(!close.isEnabled)
+                    .opacity(showsClose ? (close.isEnabled ? 1 : 0.4) : 0)
+                    .allowsHitTesting(showsClose)
+                    .help(close.help)
+                    .accessibilityLabel("Close \(row.title)")
+                }
+            }
+            .padding(.leading, 10)
+            .padding(.trailing, close == nil ? 10 : 4)
+            .frame(height: 30)
+            // The same underline a dialog's tabs carry, over the same fill a hovered secondary button takes.
+            Rectangle()
+                .fill(isSelected ? DeskColor.accent : Color.clear)
+                .frame(height: 2)
+        }
+        .background(isSelected || isHovered ? DeskColor.headerFill : Color.clear)
+        .onHover { isHovered = $0 }
+    }
+}
+
+/// The session in front: what it is doing and its body — the terminal as it is, a chat that hosts no
+/// terminal at all, or a background run's log. Its name and its × belong to the tab above, and are not said
+/// twice here.
+private struct SessionPane: View {
     let model: ProjectWindowModel
     let row: SessionRow
-    let isExpanded: Bool
-    let toggle: () -> Void
     @Environment(\.terminals) private var terminals
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
     @State private var answer = ""
 
+    /// The chat behind this row, when it is a scratch session in chat mode. Every other row — a door, a task,
+    /// a terminal-mode scratch session, a background run — has none, and hosts what it always did.
+    private var chat: ChatSession? {
+        guard case .scratch = row.kind else { return nil }
+        return model.scratchChat(for: row.id)
+    }
+
+    /// A scratch session is its body alone. Its terminal started the moment it was opened and its chat has
+    /// nothing to start, so a header would carry a subtitle the tab already says and no button at all.
+    private var showsHeader: Bool {
+        if case .scratch = row.kind { return false }
+        return true
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                // The expander is its own button and Stop is its sibling. A tap gesture on the whole row
-                // swallows the clicks of the buttons inside it — the same way the card's outer Button ate its
-                // own Start, and reported the same way: "stop is not working".
-                Button(action: toggle) {
-                    HStack(spacing: 8) {
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .imageScale(.small)
-                            .foregroundStyle(DeskColor.mutedInk)
-                            .frame(width: 12)
-                        StatusDot(tone: row.isLive ? .running : .ended, pulses: row.isLive)
-                        Text(row.title)
-                            .font(DeskFont.body.weight(.semibold))
-                            .foregroundStyle(DeskColor.ink)
-                            .lineLimit(1)
-                        Text(row.subtitle)
-                            .font(.system(size: 11))
-                            .foregroundStyle(DeskColor.mutedInk)
-                            .lineLimit(1)
-                        // A background run has no clock of its own. This one ticks by itself, so a run that
-                        // has been "running" for twenty minutes reads as one.
-                        if case .job(let job) = row.kind, job.state.isLive {
-                            Text(job.startedAt, style: .relative)
-                                .font(.system(size: 11))
-                                .foregroundStyle(DeskColor.faintInk)
-                                .lineLimit(1)
-                        }
-                        Spacer(minLength: 4)
-                    }
-                    .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("\(isExpanded ? "Collapse" : "Expand") \(row.title)")
-                // The row's action, where a row's action belongs: top right, and primary when it is the thing
-                // to do. It was a small button buried under the trust note in the body.
-                if case .job(let job) = row.kind {
-                    if job.state.isLive {
-                        Button("Stop") { jobs?.stop(job.id) }
-                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                    } else {
-                        Button("Remove") { jobs?.remove(job.id) }
-                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                            .help("Takes the finished run off this list")
-                    }
-                } else if row.isLive {
-                    Button("Stop") { terminals?.end(taskID: row.id) }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                } else {
-                    if case .scratch = row.kind {
-                        Button("Close") { model.closeTerminal(row.id) }
-                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                            .help("Remove this terminal from the list")
-                    }
-                    Button(startTitle) { start() }
-                        .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
-                        .disabled(terminals == nil)
-                }
-            }
-            .padding(.horizontal, 11)
-            .padding(.vertical, 9)
-            .background(DeskColor.headerFill)
-            if isExpanded {
+        VStack(spacing: 0) {
+            if showsHeader {
+                header
                 Rectangle().fill(DeskColor.divider).frame(height: 1)
-                pane
-                    .frame(maxWidth: .infinity, minHeight: DeskMetric.terminalTileTallHeight,
-                           maxHeight: DeskMetric.terminalTileTallHeight)
+            }
+            // The session takes everything left of the screen, which is what pins its input: the transcript
+            // inside it scrolls, and the composer under that sits on the bottom edge instead of being scrolled
+            // away with the answer it is replying to.
+            pane
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    /// What a tab cannot carry: what the session is doing, and Start — a door or a task is a prepared run,
+    /// and starting one stays the user's own act. Stop, Close and Remove are the tab's × — the same actions
+    /// this header used to hold — so they are not offered a second time here.
+    private var header: some View {
+        HStack(spacing: 8) {
+            Text(row.subtitle)
+                .font(.system(size: 11))
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineLimit(1)
+            // A background run has no clock of its own. This one ticks by itself, so a run that has been
+            // "running" for twenty minutes reads as one.
+            if case .job(let job) = row.kind, job.state.isLive {
+                Text(job.startedAt, style: .relative)
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.faintInk)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 4)
+            if startsHere {
+                Button(startTitle) { start() }
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
+                    .disabled(terminals == nil)
             }
         }
-        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
+        .padding(.horizontal, 11)
+        .padding(.vertical, 7)
+        .background(DeskColor.headerFill)
+    }
+
+    /// A live session has nothing to start and a background run has no shell at all: Start is for a door or
+    /// a task that is not running. A scratch session never shows this header, so it is never asked.
+    private var startsHere: Bool {
+        if case .job = row.kind { return false }
+        return !row.isLive
     }
 
     private var startTitle: String {
         if case .ended = model.sessions.state(for: row.id) { return "Start again" }
         switch row.kind {
         case .door: return "Start run"
-        case .task: return "Start"
-        case .scratch: return "Start terminal"
-        // A background run has no shell to start; its row offers Stop or Remove instead.
-        case .job: return "Start"
+        // A scratch session started as it opened, and a background run has no shell to start; neither shows
+        // this header, so neither reads this title.
+        case .task, .scratch, .job: return "Start"
         }
     }
 
@@ -356,8 +627,7 @@ private struct TerminalTile: View {
         switch row.kind {
         case .door(let run): branch = nil; number = nil; note = run.folderNote; command = run.command
         case .task(let task): branch = task.branch; number = task.taskNumber; note = task.noBranchNote; command = nil
-        case .scratch: branch = nil; number = nil; note = nil; command = nil
-        case .job: return
+        case .scratch, .job: return
         }
         let location = worktreeLocation
         let title = row.title
@@ -382,7 +652,19 @@ private struct TerminalTile: View {
                       taskNumber: task.taskNumber, folderNote: task.noBranchNote, startTitle: "Start shell",
                       showsStop: false, showsStart: false)
         case .scratch:
-            ShellPane(sessions: model.sessions, id: row.id, startTitle: "Start terminal", showsStop: false, showsStart: false)
+            // A chat-mode session hosts no terminal, so the one-host rule (ADR 0026) has nothing to say
+            // about it: the row's body is the transcript and the composer, and each message is a run of
+            // its own.
+            if let chat {
+                ChatTab(model: model, session: chat, folder: model.projectRoot)
+                    .padding(12)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                    .background(DeskColor.canvas)
+            } else {
+                // The shell started as the session was opened, so this pane hosts it running. No Start
+                // either way: a session that somehow is not says so through the pane's own message.
+                ShellPane(sessions: model.sessions, id: row.id, showsStop: false, showsStart: false)
+            }
         }
     }
 }
@@ -413,10 +695,18 @@ struct SessionRow: Identifiable {
                               subtitle: model.sessions.purpose(for: id) == .agent ? "Agent" : "Terminal",
                               isLive: model.sessions.state(for: id).isLive, kind: .task(task))
         }
-        let scratch = model.scratchTerminals.map { id in
-            SessionRow(id: id, title: "Terminal \(id.replacingOccurrences(of: "term:", with: ""))",
-                       subtitle: RunLabel.label(for: model.sessions.state(for: id)).label,
-                       isLive: model.sessions.state(for: id).isLive, kind: .scratch)
+        // A scratch row says which mode it was opened in: a chat is never live in the registry's sense, since
+        // nothing of it runs between messages, and its subtitle says so instead of a shell state.
+        let scratch = model.scratchTerminals.map { id -> SessionRow in
+            let number = id.replacingOccurrences(of: "term:", with: "")
+            switch model.scratchMode(for: id) {
+            case .chat:
+                return SessionRow(id: id, title: "Chat \(number)", subtitle: "Chat", isLive: false, kind: .scratch)
+            case .terminal:
+                return SessionRow(id: id, title: "Terminal \(number)",
+                                  subtitle: "Terminal · \(RunLabel.label(for: model.sessions.state(for: id)).label)",
+                                  isLive: model.sessions.state(for: id).isLive, kind: .scratch)
+            }
         }
         var background: [SessionRow] = []
         if let jobs, case .local(let path) = model.ref {

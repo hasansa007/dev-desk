@@ -15,7 +15,10 @@ enum PreferenceKey {
     static let agentLimit = "desk.agentLimit"
     static let confirmQuit = "desk.confirmQuit"
     static let sidebarRail = "desk.sidebarRail"
+    static let chatStyle = "desk.chatStyle"
 
+    /// The two override keys are no longer read — the connection and the mode are the app's, for every project —
+    /// but a key function is how a stored value is found, and one already written stays findable.
     static func connectionOverride(_ ref: ProjectRef) -> String { "desk.connectionOverride.\(ref.id)" }
     static func runModeOverride(_ ref: ProjectRef) -> String { "desk.runModeOverride.\(ref.id)" }
     static func autoMode(_ ref: ProjectRef) -> String { "desk.autoMode.\(ref.id)" }
@@ -39,7 +42,9 @@ enum AgentLimit {
     }
 }
 
-/// The agent a project's Agents tab and Auto run: the project's override unless it's empty ("Use app default"), else the app default.
+/// The agent a project's Agents tab and Auto run: the app default, for every project. A per-project override
+/// was one more place to look when a run started the wrong agent, and never the place anyone looked first —
+/// `resolve` still takes one so its rule stays written down and testable, but nothing reads a stored override.
 /// Only Claude and Codex, only when installed, and only through a login shell Dev Desk can drive.
 enum AgentChoice: Equatable {
     case ready(AgentKind)
@@ -61,29 +66,55 @@ enum AgentChoice: Equatable {
         return .ready(agent)
     }
 
-    /// What the saved preferences choose for `ref` now.
+    /// What the saved preferences choose for `ref` now: the app default, which every project shares.
     static func current(for ref: ProjectRef, connections: [Connection]) -> AgentChoice {
         let defaults = UserDefaults.standard
-        return resolve(override: defaults.string(forKey: PreferenceKey.connectionOverride(ref)) ?? "",
+        return resolve(override: "",
                        defaultConnection: defaults.string(forKey: PreferenceKey.defaultConnection) ?? AgentDefaults.connection,
                        connections: connections)
     }
 }
 
-/// Which run mode a project gets, resolved the same way a connection is: the project's override unless it is
-/// empty ("Use app default"), else the app default. DeskCore stays free of `UserDefaults` — it takes the mode
-/// as a parameter — so this reading of the preference lives in the app layer beside the connection's.
+/// Which run mode a project gets, resolved the same way a connection is: the app default, for every project.
+/// DeskCore stays free of `UserDefaults` — it takes the mode as a parameter — so this reading of the preference
+/// lives in the app layer beside the connection's.
 enum RunModeChoice {
     /// An empty override string means "use app default"; so does any value that is not a mode we know.
     static func resolve(override: String, appDefault: RunMode) -> RunMode {
         RunMode(rawValue: override) ?? appDefault
     }
 
-    /// What the saved preferences choose for `ref` now.
+    /// What the saved preferences choose for `ref` now: the app default, since no override is read any more.
     static func current(for ref: ProjectRef) -> RunMode {
         let defaults = UserDefaults.standard
-        return resolve(override: defaults.string(forKey: PreferenceKey.runModeOverride(ref)) ?? "",
+        return resolve(override: "",
                        appDefault: defaults.string(forKey: PreferenceKey.runMode).flatMap(RunMode.init(rawValue:)) ?? AgentDefaults.runMode)
+    }
+}
+
+/// The model names the composer offers per agent. These are a curated convenience list, not fetched: the CLIs
+/// (`claude`, `codex`) only accept `--model <name>` and have no way to list what they support, so Dev Desk
+/// carries a small hand-kept set. Custom in the composer covers anything else the tool understands.
+enum ModelCatalog {
+    static func models(for agent: AgentKind) -> [String] {
+        switch agent {
+        case .claude: return ["claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"]
+        case .codex: return ["gpt-5-codex", "o3", "o4-mini"]
+        }
+    }
+}
+
+/// How a task's Chat draws its turns. Bubbles is a conversation; Transcript is the same turns as lines you
+/// could read straight down, which is how a terminal's output is read everywhere else in the app. The choice
+/// is made in the chat composer's chip row, and this preference is what it writes and the transcript reads.
+enum ChatStyle: String, CaseIterable {
+    case bubbles, transcript
+
+    var title: String {
+        switch self {
+        case .bubbles: return "Bubbles"
+        case .transcript: return "Transcript"
+        }
     }
 }
 

@@ -22,12 +22,13 @@ This private repository requires GitHub access.
 
 Dev Desk shows each project's board, a workspace for every task, findings, the roadmap and decisions. Each task also gets a real shell and its agent, Claude Code or Codex, which run in the task's own worktree. You start an agent yourself, or turn on Auto for a project so it works through the queue. Auto runs at most 3 agents at once and asks you to confirm a token warning first.
 
-**Download it.** The repository is private, so fetch the latest build with the GitHub CLI and unzip it into `/Applications`:
+**Download it.** The repository is private, so fetch the latest build with the GitHub CLI:
 
 ```bash
-gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.zip'
-unzip -o "Dev-Desk-"*.zip -d /Applications
+gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.dmg'
 ```
+
+Open the DMG and drag **Dev Desk.app** onto the `/Applications` symlink inside it.
 
 It's ad-hoc signed rather than notarized, so the first time you open it, right-click **Dev Desk.app** and choose **Open**. To build it yourself instead, as above, you need macOS 14 or later, Xcode and `xcodegen` (`brew install xcodegen`). For details, see [apps/desk/README.md](apps/desk/README.md).
 
@@ -42,6 +43,15 @@ The installer links the checkout into existing skill directories for **Claude Co
 **Installing is required, not optional.** Every path inside the family resolves through the install root (`~/.claude/skills/dev/…`), which is what lets it run on any machine regardless of where you cloned it. A clone that has never been installed has no root to resolve against.
 
 Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check the loaded skill list.
+
+**Or install it as a Claude Code plugin.** The repo is also a Claude Code plugin — `.claude-plugin/plugin.json` defines the `dev` plugin, and `.claude-plugin/marketplace.json` makes the repo its own marketplace. In Claude Code:
+
+```text
+/plugin marketplace add hasansa007/dev-skill
+/plugin install dev@dev-skill
+```
+
+The plugin route is Claude Code only; for Codex and Antigravity, use `install.sh` as above.
 
 **New here?** [Getting started](docs/guide/GETTING-STARTED.md) walks through the first run and the four situations you can be in — a fresh project, one you know, one you inherited, and picking work up again.
 

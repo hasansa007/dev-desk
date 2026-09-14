@@ -34,6 +34,7 @@ Job 3 is the reason it exists. Without it every answer is re-derived from scratc
 | Token | Meaning |
 |---|---|
 | a question | answer it |
+| a greeting / small talk | greet back and invite a question; skip the rest |
 | (nothing) | print the seeds below and wait |
 | `map` | skip to Phase 5 — audit `PROJECT_MAP.md` against the repo and report drift |
 
@@ -46,6 +47,17 @@ Suggest improvements for code quality           → dev:ideation
 Are there any security concerns?                → dev:ideation --security
 What features could I add next?                 → dev:roadmap
 ```
+
+### Greeting or small talk — stop here
+
+**Check this before Phase 2.** If the argument is a greeting or small talk — *"hello"*, *"hi"*,
+*"hey"*, *"thanks"* — and not a question or command about the codebase and not `map`, reply with one
+friendly line plus an invitation to ask about the codebase. **Nothing else.**
+
+**Do not resolve the repo, do not read `PROJECT_MAP.md`, and run no later phase.** No *"resolved
+owner/repo"*, no *"nothing worth adding to the map"*, no *"no files changed"* — a greeting answered
+with a status report is noise. This is not the **(nothing)** case, which still prints the four seeds
+above.
 
 ## Phase 2 — Resolve the repo
 

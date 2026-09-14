@@ -187,16 +187,6 @@ struct AgentsAndDefaultsPane: View {
             }
             .padding(.top, 16)
 
-            SettingsRow("\(projectName) override") {
-                Picker("", selection: overrideBinding) {
-                    Text("Use app default").tag("")
-                    ForEach(providers, id: \.self) { Text($0).tag($0) }
-                }
-                .labelsHidden()
-                .frame(width: 200)
-            }
-            .padding(.top, 12)
-
             SettingsRow("App default mode") {
                 Picker("", selection: $runMode) {
                     ForEach(RunMode.allCases, id: \.self) { Text($0.title).tag($0) }
@@ -206,18 +196,10 @@ struct AgentsAndDefaultsPane: View {
             }
             .padding(.top, 12)
 
-            SettingsRow("\(projectName) mode override") {
-                Picker("", selection: modeOverrideBinding) {
-                    Text("Use app default").tag("")
-                    ForEach(RunMode.allCases, id: \.self) { Text($0.title).tag($0.rawValue) }
-                }
-                .labelsHidden()
-                .frame(width: 200)
-            }
-            .padding(.top, 12)
-
-            // Says what the two rows above actually resolve to for this project, so a mode is never a name
-            // with no meaning: the override wins unless it is "Use app default", and then the app default does.
+            // Says what the mode above actually means, so it is never a name with no meaning. Both settings are
+            // the app's now — a per-project override was a second place to look for what a run would start, and
+            // the answer was never found there first. Either picker is free to change while work runs; a new
+            // value applies to the next start, never to one already going.
             Text(RunModeChoice.current(for: model.ref).detail)
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
@@ -244,19 +226,6 @@ struct AgentsAndDefaultsPane: View {
     }
 
     private var providers: [String] { model.snapshot?.capabilities.providers ?? [] }
-    private var projectName: String { model.snapshot?.project.name ?? model.ref.displayName }
-
-    private var overrideBinding: Binding<String> {
-        let key = PreferenceKey.connectionOverride(model.ref)
-        return Binding(get: { UserDefaults.standard.string(forKey: key) ?? "" },
-                        set: { UserDefaults.standard.set($0, forKey: key) })
-    }
-
-    private var modeOverrideBinding: Binding<String> {
-        let key = PreferenceKey.runModeOverride(model.ref)
-        return Binding(get: { UserDefaults.standard.string(forKey: key) ?? "" },
-                        set: { UserDefaults.standard.set($0, forKey: key) })
-    }
 
     private var capabilitiesTable: some View {
         let matrix = model.snapshot?.capabilities

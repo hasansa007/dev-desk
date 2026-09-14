@@ -1,0 +1,11 @@
+{
+  "name": "dev-skill",
+  "owner": { "name": "Hasan", "email": "hasansa007@gmail.com" },
+  "plugins": [
+    {
+      "name": "dev",
+      "source": "./",
+      "description": "Personal development workflow: a GitHub issue or a plain description taken from \"what should this do?\" to production, through gates that do not get skipped."
+    }
+  ]
+}

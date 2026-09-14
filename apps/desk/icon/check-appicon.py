@@ -115,11 +115,14 @@ def check_master(tag, master, body):
     if alpha[512, 512] < 250:
         fail(f"{tag} master: centre pixel is not opaque (alpha {alpha[512, 512]})")
 
-    # The rounded tile: the light art keys to a cream body of 483_965 px in bbox (71,68)-(950,943),
-    # the dark art to a near-black body of 541_059 px in bbox (67,79)-(962,963). It replaced a blue
+    # The rounded tile: the light art keys to a cream body of 491_425 px in bbox (100,102)-(922,921),
+    # the dark art to a near-black body of 515_000 px in bbox (104,102)-(919,922). It replaced a blue
     # tile, so "is it blue" was the check that had to change; the light cream also catches the code
     # lines inside the dark bars, and vice versa, which is why both counts run high. Each floor stays
     # well under its own measurement so it fails on a body keyed away, not on the next art nudge.
+    # Both boxes sit ~100px in from every edge: make-appicon.py's center_on_grid scales the tile's
+    # longest side to Apple's 824-on-1024 squircle grid and centres it, so this geometry is also what
+    # proves the icon is not the old edge-to-edge 880px tile the Dock drew oversized.
     tile = body.mask(R, G, B, alpha)
     if tile.sum() < body.floor:
         fail(f"{tag} master: too little {body.name} body found ({tile.sum()} px, expected ~{body.expect})")
@@ -131,15 +134,16 @@ def check_master(tag, master, body):
 
     # The tile's own corners must survive the keying: a fixed corner-clearing block once cut them off,
     # which is invisible at 1024 and obvious in the Dock. Each probe sits 70px along the diagonal from
-    # a corner of that variant's bbox, only ~14px inside the rounded edge — near enough that a corner
+    # a corner of that variant's bbox, only ~17px inside the rounded edge — near enough that a corner
     # the key clipped, or a block that squared it off, still fails here.
     for label, (y, x) in body.corners.items():
         if alpha[y, x] < 250:
             fail(f"{tag} master: the tile's {label} corner is missing (alpha {alpha[y, x]} at {(x, y)})")
 
-    # Measured coral: 50_626 px on light, 39_073 px on dark (the darker surround the LANCZOS master
+    # Measured coral: 29_317 px on light, 26_694 px on dark (the darker surround the LANCZOS master
     # keeps cleaner leaves the dark bar a touch smaller). The cream code lines drawn inside the bar
-    # already take their bite out of both.
+    # already take their bite out of both. Both counts fell by roughly a quarter when the tile came
+    # down to 824 px on the icon grid — the bar is the same fraction of a smaller tile.
     coral = coral_mask(R, G, B, alpha)
     if coral.sum() < body.coral_floor:
         fail(f"{tag} master: coral list bar missing or too small "
@@ -199,7 +203,8 @@ class Body:
     """One variant's tile: how to recognise its paint, where it sits, and the counts it measures at.
 
     A tile 70px in from each bbox corner gives the four corner probes; `light` and `dark` key to
-    slightly different boxes (dark ~4px wider), so each carries its own.
+    slightly different boxes (the dark tile keys a few px taller and narrower), so each carries its
+    own. Both boxes are ~824px on the 1024 canvas, which is the grid centring, not the art.
     """
 
     def __init__(self, name, mask, floor, expect, bbox, coral_floor, coral_expect):
@@ -222,14 +227,14 @@ class Body:
 LIGHT_BODY = Body(
     name="cream",
     mask=lambda R, G, B, A: (R > 200) & (G > 200) & (B > 180) & (A > 200),
-    floor=200_000, expect=484_000, bbox=(71, 68, 950, 943),
-    coral_floor=25_000, coral_expect=50_600,
+    floor=320_000, expect=491_400, bbox=(100, 102, 922, 921),
+    coral_floor=18_000, coral_expect=29_300,
 )
 DARK_BODY = Body(
     name="near-black",
     mask=lambda R, G, B, A: (R < 70) & (G < 70) & (B < 70) & (A > 200),
-    floor=350_000, expect=541_000, bbox=(67, 79, 962, 963),
-    coral_floor=20_000, coral_expect=39_000,
+    floor=350_000, expect=515_000, bbox=(104, 102, 919, 922),
+    coral_floor=16_000, coral_expect=26_700,
 )
 
 # 3. The 1024 master of each variant carries the contract. The light master is one of the shipped
@@ -268,9 +273,10 @@ for name, px in EXPECTED.items():
     if px >= 128:
         # The same coral test as the master, deliberately: this ran on the older art's *orange*
         # range (b < 100) and kept "passing" on 2 stray pixels once the bar turned coral (b ≈ 114),
-        # which is a check that no longer checks anything. Measured on the current set: 798 px at
-        # 128, 3209 at 256, 12934 at 512, 50626 at 1024 — a floor of 250 clears the smallest size
-        # threefold and still fails the moment the bar is washed out by the downscale.
+        # which is a check that no longer checks anything. Measured on the current set: 491 px at
+        # 128, 1803 at 256, 7279 at 512, 29317 at 1024 — the 824-on-1024 grid tile costs each size
+        # about a quarter of its coral, so a floor of 250 still clears the smallest size twofold and
+        # still fails the moment the bar is washed out by the downscale.
         r, g, b = im[:, :, 0], im[:, :, 1], im[:, :, 2]
         o = coral_mask(r, g, b, a).sum()
         if o < 250:

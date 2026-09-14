@@ -192,7 +192,7 @@ struct Sidebar: View {
         case .roadmap: return "map"
         case .survey: return "scope"
         case .ideation: return "lightbulb"
-        case .insights: return "sparkles"
+        case .insights: return "rectangle.3.group"
         }
     }
 

@@ -21,6 +21,8 @@ struct ProjectWindow: View {
     init(ref: ProjectRef) {
         self.ref = ref
         let model = ProjectWindowModel(ref: ref, source: DataSources.make(for: ref))
+        // The model decides when a file is opened; `NSWorkspace` is AppKit's, so the app target says how.
+        model.editorOpen = { await FileOpen.inEditor($0) }
         _model = State(initialValue: model)
         let terminals = ShellTerminalRegistry(sessions: model.sessions)
         _terminals = State(initialValue: terminals)

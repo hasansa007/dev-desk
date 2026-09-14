@@ -1,6 +1,6 @@
 name: desk-release
 
-# Publishes Dev Desk as a downloadable GitHub Release: an ad-hoc signed zip, no notarization
+# Publishes Dev Desk as a downloadable GitHub Release: an ad-hoc signed DMG, no notarization
 # (there is no Apple Developer ID). Push a tag like `desk-v0.2.0` to publish it; re-run via
 # workflow_dispatch to re-publish an existing tag (for example after a failed upload).
 
@@ -48,10 +48,13 @@ jobs:
         id: package
         run: |
           VERSION="${{ steps.version.outputs.version }}"
-          ZIP="Dev-Desk-$VERSION.zip"
-          ditto -c -k --sequesterRsrc --keepParent "build/Build/Products/Release/Dev Desk.app" "$ZIP"
-          shasum -a 256 "$ZIP" > "$ZIP.sha256"
-          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+          DMG="Dev-Desk-$VERSION.dmg"
+          STAGE="$(mktemp -d)"
+          ditto "build/Build/Products/Release/Dev Desk.app" "$STAGE/Dev Desk.app"
+          ln -s /Applications "$STAGE/Applications"
+          hdiutil create -volname "Dev Desk" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+          shasum -a 256 "$DMG" > "$DMG.sha256"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
 
       - name: Write release notes
         run: |
@@ -60,7 +63,7 @@ jobs:
             echo
             echo "Requires macOS 14 or later."
             echo
-            echo "This repo is private, so downloading the release needs GitHub access, for example: \`gh release download ${{ steps.version.outputs.tag }} -R hasansa007/dev-skill -p 'Dev-Desk-*.zip'\`."
+            echo "This repo is private, so downloading the release needs GitHub access, for example: \`gh release download ${{ steps.version.outputs.tag }} -R hasansa007/dev-skill -p 'Dev-Desk-*.dmg'\`."
           } > notes.md
 
       - name: Create or update the release
@@ -68,10 +71,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TAG="${{ steps.version.outputs.tag }}"
-          ZIP="${{ steps.package.outputs.zip }}"
+          DMG="${{ steps.package.outputs.dmg }}"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            gh release upload "$TAG" "$ZIP" "$ZIP.sha256" --clobber
+            gh release upload "$TAG" "$DMG" "$DMG.sha256" --clobber
           else
-            gh release create "$TAG" "$ZIP" "$ZIP.sha256" \
+            gh release create "$TAG" "$DMG" "$DMG.sha256" \
               --title "Dev Desk ${{ steps.version.outputs.version }}" --notes-file notes.md
           fi

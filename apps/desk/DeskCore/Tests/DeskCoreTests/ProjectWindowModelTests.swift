@@ -9,6 +9,13 @@ final class ProjectWindowModelTests: XCTestCase {
         return model
     }
 
+    /// A real folder, so the containment check resolves the same symlinks for the root and the file under it.
+    private func temporaryDirectory() throws -> URL {
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("window-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        return url
+    }
+
     func testLoadAppliesStudyHubLaunchState() async {
         let model = await makeStudyHubModel()
         XCTAssertEqual(model.selectedTaskID, "42")
@@ -45,6 +52,25 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertNotEqual(third, first)
         XCTAssertEqual(model.scratchTerminals, [second, third])
         XCTAssertEqual(Set(model.scratchTerminals).count, model.scratchTerminals.count)
+    }
+
+    /// A chat is chosen when the session is created, keeps its turns in the model, and is forgotten with its row.
+    func testAScratchSessionKeepsTheModeItWasCreatedWith() async {
+        let model = await makeStudyHubModel()
+        let terminal = model.newTerminal()
+        let chat = model.newTerminal(mode: .chat)
+
+        XCTAssertEqual(model.scratchMode(for: terminal), .terminal)
+        XCTAssertEqual(model.scratchMode(for: chat), .chat)
+        XCTAssertEqual(model.scratchMode(for: "42"), .terminal, "a row that is not a scratch session is a terminal")
+        XCTAssertNil(model.scratchChat(for: terminal))
+        XCTAssertNotNil(model.scratchChat(for: chat))
+        XCTAssertEqual(model.selectedSessionID, chat)
+
+        model.closeTerminal(chat)
+        XCTAssertEqual(model.scratchTerminals, [terminal])
+        XCTAssertNil(model.scratchModes[chat])
+        XCTAssertNil(model.scratchChat(for: chat))
     }
 
     func testIgnoredFindingsAreKeptPerProject() async {
@@ -241,6 +267,63 @@ final class ProjectWindowModelTests: XCTestCase {
         model.toggleRuns()
         XCTAssertFalse(model.runsOpen)
         XCTAssertTrue(model.filesOpen, "closing one panel never closes the other")
+    }
+
+    func testOpeningFilesStartsItAtTheMinimumWidth() async {
+        let model = await makeStudyHubModel()
+        model.filesWidth = 640
+
+        model.showFiles()
+        XCTAssertTrue(model.filesOpen)
+        XCTAssertEqual(model.filesWidth, ProjectWindowModel.filesWidthMin)
+
+        model.filesWidth = 700
+        model.showFiles()
+        XCTAssertEqual(model.filesWidth, 700, "asking for a panel already open leaves the width you gave it")
+
+        model.toggleFiles()
+        XCTAssertFalse(model.filesOpen)
+        model.toggleFiles()
+        XCTAssertTrue(model.filesOpen)
+        XCTAssertEqual(model.filesWidth, ProjectWindowModel.filesWidthMin, "reopening starts at the floor again")
+    }
+
+    func testSelectedFileURLIsTheAbsolutePathUnderTheRoot() throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = ProjectWindowModel(ref: .local(path: root.path), source: FixedSource(snapshot: trackerSnapshot()),
+                                       insightsDelay: .zero)
+        model.selectedFilePath = "docs/adr/0001-decision.md"
+
+        let url = try XCTUnwrap(model.selectedFileURL)
+        XCTAssertTrue(url.isFileURL)
+        XCTAssertEqual(url.path, root.appendingPathComponent("docs/adr/0001-decision.md").standardizedFileURL.path)
+        XCTAssertTrue(url.absoluteString.hasPrefix("file:///"), "a relative URL is not something the system can open")
+    }
+
+    func testAPathThatEscapesTheRootHasNoURLAndIsReportedNotIgnored() throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        XCTAssertNil(ProjectWindowModel.fileURL(root: root, relativePath: "../outside.md"))
+        XCTAssertNil(ProjectWindowModel.fileURL(root: root, relativePath: "/etc/hosts"), "an absolute id is not a relative path")
+        XCTAssertNil(ProjectWindowModel.fileURL(root: root, relativePath: "  "))
+
+        let model = ProjectWindowModel(ref: .local(path: root.path), source: FixedSource(snapshot: trackerSnapshot()),
+                                       insightsDelay: .zero)
+        model.selectedFilePath = "../outside.md"
+        XCTAssertNil(model.selectedFileURL)
+        model.openSelectedFile()
+        XCTAssertEqual(model.writeFailure?.title, "The file was not opened")
+    }
+
+    func testClosingTheFileClearsTheSelectionOnly() async {
+        let model = await makeStudyHubModel()
+        model.showFiles()
+        model.selectedFilePath = "README.md"
+
+        model.closeFile()
+        XCTAssertNil(model.selectedFilePath)
+        XCTAssertTrue(model.filesOpen, "dismissing the viewer never closes the tree it was opened from")
     }
 
     func testLinkRoutesToFinding() async {
