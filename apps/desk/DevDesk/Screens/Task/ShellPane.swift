@@ -47,8 +47,14 @@ struct ShellPane: View {
                 if showsStop {
                     TaskRunningBar(note: folder.note, usage: usage, stopTitle: "End shell") { terminals?.end(taskID: id) }
                 } else {
+                    // The note is a one-line header over the terminal, so it must take only its own height. It
+                    // used to be a DockMessage, whose body is a ScrollView — and a ScrollView claims all the
+                    // vertical space it is offered, so it grew to fill the pane and squeezed the terminal into a
+                    // short strip at the bottom. That strip, drawn top-anchored, put the prompt partway down with
+                    // a band of empty ground above and below it. TaskRunningBar is a fixed-height row, so the
+                    // terminal below now gets the rest of the pane.
                     if let note = folder.note {
-                        DockMessage(text: note) { EmptyView() }
+                        TaskRunningBar(note: note, usage: nil)
                     }
                     // Terminals keeps Stop in the row's own header, so the bar here carries the meter alone —
                     // and appears only when there is a reading, since an agent that has said nothing yet has
