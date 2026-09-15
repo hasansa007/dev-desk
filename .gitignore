@@ -16,4 +16,10 @@
 .dev/
 
 # Dev Desk's record of what was running in this repo, kept so a killed app can be recovered from (ADR 0031).
-.devdesk/
+# run.json is the exception: it is the project's own Run configuration, committed so every clone and worktree runs the same way.
+.devdesk/*
+!.devdesk/run.json
+
+# SwiftPM and xcodebuild output under the Mac app. Build artifacts, never source.
+apps/desk/build/
+apps/desk/DeskCore/build/
