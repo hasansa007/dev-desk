@@ -1,0 +1,628 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dev Desk — A vs B: the substrate question</title>
+<style>
+:root{
+  --accent:#2F6FEB;--surface:#FFFFFF;--canvas:#FBFBFC;--sidebar:#F1F2F5;--inspector:#F7F8F9;--header:#F4F5F7;
+  --border:#DCDFE4;--cborder:#C9CDD4;--divider:#E3E6EA;--rowdiv:#EEF0F3;--ink:#16181D;--nav:#3C4149;--ink2:#4B5563;
+  --muted:#6B7280;--faint:#8A9099;--chip:#EEF0F3;--titlebar:#EDEFF2;
+  --run-fg:#1F6B41;--run-fill:#E4F4EA;--run-b:#BFE3CD;--run-dot:#1F8B4C;
+  --wait-fg:#8A6114;--wait-fill:#FBF2DE;--wait-b:#EBDAAE;--wait-dot:#B7791F;
+  --fail-fg:#8A1F1F;--fail-fill:#FDF6F6;--fail-b:#F0CFCF;--fail-dot:#C0392B;
+  --info-fg:#1F4FB0;--info-fill:#E7EFFD;--info-b:#C3D7F8;
+  --add-fill:#E7F6EC;--add-ink:#1F5C36;--del-fill:#FDEAEA;--del-ink:#8A1F1F;
+}
+html.dark{
+  --accent:#3B7BF0;--surface:#1E2025;--canvas:#17191D;--sidebar:#202329;--inspector:#1B1D22;--header:#23262C;
+  --border:#34383F;--cborder:#454A53;--divider:#2C3036;--rowdiv:#282B31;--ink:#E6E8EC;--nav:#C9CDD4;--ink2:#AEB4BD;
+  --muted:#969CA6;--faint:#7D838D;--chip:#2A2D33;--titlebar:#2A2D33;
+  --run-fg:#7FD19B;--run-fill:#16301F;--run-b:#245C38;--run-dot:#3E9E63;
+  --wait-fg:#E7C067;--wait-fill:#33280F;--wait-b:#5C4718;--wait-dot:#B7791F;
+  --fail-fg:#F19A9A;--fail-fill:#331A1A;--fail-b:#5E2B2B;--fail-dot:#C0392B;
+  --info-fg:#9CC0FF;--info-fill:#1B2A45;--info-b:#2F4B7C;
+  --add-fill:#17301F;--add-ink:#9FDDB2;--del-fill:#3A1C1E;--del-ink:#F3A6A6;
+}
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;color:var(--ink);background:#8f96a3;padding:26px 22px 60px}
+html.dark body{background:#0d0f12}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+.wrap{max-width:1420px;margin:0 auto}
+.note{margin:0 auto 14px;color:#fff;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.note b{font-weight:600}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tabs button,.themebtn{font:inherit;font-size:12px;padding:5px 11px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;cursor:pointer}
+.tabs button.on{background:#fff;color:#16181D;border-color:#fff}
+.screen{display:none}.screen.on{display:block}
+
+/* two-up comparison */
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+.panel{background:var(--canvas);border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.28);overflow:hidden}
+.panel > h2{margin:0;font-size:12.5px;font-weight:700;letter-spacing:.4px;padding:10px 14px;background:var(--titlebar);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;color:var(--ink)}
+.panel > h2 .tag{font-size:10.5px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 7px;border-radius:9px}
+.tag.a{background:var(--chip);color:var(--ink2);border:1px solid var(--border)}
+.tag.b{background:var(--info-fill);color:var(--info-fg);border:1px solid var(--info-b)}
+.panel > h2 small{margin-left:auto;font-weight:500;color:var(--muted);font-size:11.5px}
+.body{padding:14px;background:var(--canvas)}
+.mini{background:var(--surface);border:1px solid var(--border);border-radius:9px;overflow:hidden}
+.mini .mh{padding:10px 13px 9px;border-bottom:1px solid var(--divider);display:flex;align-items:flex-start;gap:10px}
+.mini .mh h3{margin:0;font-size:13.5px;font-weight:600}
+.mini .mh .sub{color:var(--muted);font-size:11.5px;margin-top:2px}
+.mini .mb{display:grid;grid-template-columns:1fr 232px;min-height:0}
+.payload{padding:12px 13px;border-right:1px solid var(--divider)}
+.kv{display:grid;grid-template-columns:96px 1fr;gap:5px 10px;font-size:11.5px;align-items:baseline}
+.kv .k{color:var(--muted)}
+.kv .v{color:var(--ink)}
+.kv .v.mono{font-size:11px}
+.prompt{margin-top:10px;border:1px solid var(--border);border-radius:6px;background:var(--canvas);font-family:ui-monospace,Menlo,monospace;font-size:10.5px;color:var(--ink2);padding:8px 10px;max-height:108px;overflow:hidden;white-space:pre-wrap;line-height:1.5}
+.prompt .h{color:var(--ink);font-weight:600}
+.side{padding:12px 12px;background:var(--inspector)}
+.label{font-size:10px;font-weight:700;letter-spacing:.66px;text-transform:uppercase;color:var(--muted);display:block;margin:11px 0 6px}
+.side .label:first-child{margin-top:0}
+.opt{display:flex;align-items:center;gap:8px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;background:var(--surface);margin-bottom:5px;font-size:11.5px}
+.opt.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.opt .r{width:11px;height:11px;border-radius:50%;border:1.5px solid var(--cborder);flex:none}
+.opt.on .r{border-color:var(--accent);background:radial-gradient(var(--accent) 45%,transparent 50%)}
+.opt small{margin-left:auto;color:var(--muted);font-size:10.5px}
+.opt.dim{opacity:.5}
+.opt.bad{border-color:var(--fail-b);background:var(--fail-fill)}
+.opt.bad .r{border-color:var(--fail-dot)}
+.mf{padding:10px 13px;border-top:1px solid var(--divider);display:flex;align-items:center;gap:8px;background:var(--surface)}
+.mf .sp{flex:1}
+.mf small{color:var(--muted);font-size:11px}
+.btn{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:6px;border:1px solid var(--cborder);background:var(--surface);color:var(--ink);font-size:12px;font-weight:500;cursor:default;white-space:nowrap}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.mini{height:21px;padding:0 8px;font-size:11px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink2)}
+.chip{display:inline-flex;align-items:center;gap:5px;height:17px;padding:0 7px;border-radius:9px;font-size:10.5px;border:1px solid var(--border);background:var(--chip);color:var(--ink2);white-space:nowrap}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.chip.run{background:var(--run-fill);color:var(--run-fg);border-color:var(--run-b)}.chip.run .dot{background:var(--run-dot)}
+.chip.wait{background:var(--wait-fill);color:var(--wait-fg);border-color:var(--wait-b)}.chip.wait .dot{background:var(--wait-dot)}
+.chip.fail{background:var(--fail-fill);color:var(--fail-fg);border-color:var(--fail-b)}.chip.fail .dot{background:var(--fail-dot)}
+.chip.info{background:var(--info-fill);color:var(--info-fg);border-color:var(--info-b)}.chip.info .dot{background:var(--accent)}
+
+/* runs list */
+.runshead{display:flex;align-items:center;gap:9px;padding:9px 12px;border-bottom:1px solid var(--divider);background:var(--surface);font-size:12px}
+.runshead h3{margin:0 8px 0 0;font-size:14px}
+.slots{display:flex;align-items:center;gap:5px;color:var(--muted);font-size:11.5px}
+.slots i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--run-dot)}
+.slots i.free{background:var(--border)}
+.slots i.away{background:var(--info-fg);opacity:.7}
+.sec{padding:6px 12px 4px;background:var(--header);border-bottom:1px solid var(--rowdiv);font-size:10px;font-weight:700;letter-spacing:.66px;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px}
+.sec small{margin-left:auto;font-weight:500;letter-spacing:0;text-transform:none;font-size:10.5px;color:var(--faint)}
+.run{padding:8px 12px;border-bottom:1px solid var(--rowdiv)}
+.run .t{display:flex;align-items:center;gap:7px;font-weight:600;font-size:12px}
+.run .t .num{color:var(--muted);font-weight:500}
+.run .t .chip{margin-left:auto}
+.run .sub{color:var(--muted);font-size:11px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.run .sub .mono{font-size:10.5px}
+.run.on{background:var(--info-fill);box-shadow:inset 3px 0 0 var(--accent)}
+.gate{border:1px solid var(--wait-b);background:var(--wait-fill);border-radius:8px;padding:10px 12px;margin:12px 0 0}
+.gate .gh{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--wait-fg);font-size:12.5px}
+.gate .cmdbox{font-family:ui-monospace,Menlo,monospace;font-size:11px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 9px;color:var(--ink);margin:8px 0}
+.gate .acts{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.gate .acts small{color:var(--muted);font-size:10.5px;width:100%}
+
+/* callouts */
+.delta{margin-top:12px;border:1px solid var(--info-b);background:var(--info-fill);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--ink)}
+.delta b{color:var(--info-fg)}
+.warnbox{margin-top:12px;border:1px solid var(--fail-b);background:var(--fail-fill);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--ink)}
+.warnbox b{color:var(--fail-fg)}
+.okbox{margin-top:12px;border:1px solid var(--run-b);background:var(--run-fill);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--ink)}
+.okbox b{color:var(--run-fg)}
+ul.tight{margin:6px 0 0;padding-left:17px}
+ul.tight li{margin:3px 0}
+
+/* diagrams */
+.diagram{background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.28);overflow:hidden;margin-bottom:16px}
+.diagram h2{margin:0;font-size:12.5px;font-weight:700;padding:10px 14px;background:var(--titlebar);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.diagram h2 small{margin-left:auto;font-weight:500;color:var(--muted);font-size:11.5px}
+.diagram .svgwrap{padding:10px 14px 14px;background:var(--canvas)}
+svg{display:block;width:100%;height:auto}
+svg text{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;fill:var(--ink)}
+svg text.m{font-family:ui-monospace,Menlo,monospace}
+svg text.t{font-size:12.5px;font-weight:600}
+svg text.s{font-size:10.5px;fill:var(--muted)}
+svg text.col{font-size:10px;font-weight:700;letter-spacing:.7px;fill:var(--faint)}
+svg rect.box{fill:var(--surface);stroke:var(--cborder);stroke-width:1.2;rx:8}
+svg rect.acc{fill:var(--info-fill);stroke:var(--accent);stroke-width:1.6}
+svg rect.warn{fill:var(--fail-fill);stroke:var(--fail-b);stroke-width:1.4}
+svg rect.good{fill:var(--run-fill);stroke:var(--run-b);stroke-width:1.4}
+svg rect.gray{fill:var(--chip);stroke:var(--border);stroke-width:1.1}
+svg path.edge{fill:none;stroke:var(--cborder);stroke-width:1.5}
+svg path.edge.acc{stroke:var(--accent);stroke-width:1.8}
+svg path.edge.bad{stroke:var(--fail-dot);stroke-width:1.6;stroke-dasharray:5 4}
+svg path.edge.dash{stroke-dasharray:4 4}
+.lane{fill:var(--header);stroke:var(--divider)}
+
+/* tables */
+table{width:100%;border-collapse:collapse;background:var(--surface);font-size:12px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--rowdiv);vertical-align:top}
+th{background:var(--header);font-size:10.5px;letter-spacing:.6px;text-transform:uppercase;color:var(--muted);font-weight:700}
+td.k{font-weight:600;width:210px}
+tr:last-child td{border-bottom:none}
+.legend{margin:16px auto 0;color:#fff;font-size:12.5px;line-height:1.65;max-width:1420px}
+.legend b{font-weight:600}
+.legend code{background:rgba(255,255,255,.14);padding:1px 5px;border-radius:4px;font-family:ui-monospace,Menlo,monospace;font-size:11.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="note">
+  <div><b>Dev Desk · A vs B</b> — the same design, forked at one rule: what runs a task agent when ACP is not there.</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <div class="tabs">
+      <button class="on" data-s="s1">1 · Start sheet</button>
+      <button data-s="s2">2 · Runs &amp; the gate</button>
+      <button data-s="s3">3 · Core logic</button>
+      <button data-s="s4">4 · Dependencies</button>
+      <button data-s="s5">5 · The deltas</button>
+    </div>
+    <button class="themebtn" onclick="document.documentElement.classList.toggle('dark')">Dark</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════ 1 · START SHEET ══════════════════════════ -->
+<div class="screen on" id="s1">
+<div class="duo">
+
+  <!-- A -->
+  <div class="panel">
+    <h2><span class="tag a">A · yours</span> Start sheet, every start<small>§4.8 moment 1</small></h2>
+    <div class="body">
+      <div class="mini">
+        <div class="mh">
+          <div><h3>Start #212 — Resume upload fails over 20 MB</h3>
+          <div class="sub">Nothing runs until you press the button.</div></div>
+          <div class="btn ghost mini">✕</div>
+        </div>
+        <div class="mb">
+          <div class="payload">
+            <div class="kv">
+              <div class="k">Door</div><div class="v mono">dev:task-start</div>
+              <div class="k">Folder</div><div class="v">create worktree</div>
+              <div class="k">Branch</div><div class="v mono">fix/212-upload-cap</div>
+              <div class="k">Base</div><div class="v mono">origin/main@8c1f2a0</div>
+              <div class="k">Gates</div><div class="v">11 · 12 · 13 · 14</div>
+              <div class="k">Mode</div><div class="v">standard</div>
+            </div>
+            <div class="prompt"><span class="h">You are working issue #212.</span>
+Read shared/entry.md, then shared/pipeline.md.
+Phase 1 — restate the bug in one line…</div>
+          </div>
+          <div class="side">
+            <span class="label">Run it here</span>
+            <div class="opt on"><span class="r"></span>Claude Code<small>acp</small></div>
+            <div class="opt"><span class="r"></span>Codex<small>acp</small></div>
+            <div class="opt bad"><span class="r"></span>Claude Code<small>headless</small></div>
+            <span class="label">Or hand it to</span>
+            <div class="opt"><span class="r"></span>Terminal</div>
+            <div class="opt"><span class="r"></span>Cursor</div>
+            <span class="label">Permissions</span>
+            <div class="opt on"><span class="r"></span>Ask at gates</div>
+            <div class="opt"><span class="r"></span>Ask every tool</div>
+          </div>
+        </div>
+        <div class="mf"><small>2 slots free</small><div class="sp"></div><div class="btn mini">Cancel</div><div class="btn primary mini">Run with Claude Code</div></div>
+      </div>
+
+      <div class="warnbox"><b>The red row is the problem.</b> “Claude Code · headless” is offered in the
+      same list, with the same Permissions control above it — but headless cannot block on a tool.
+      Picking it silently changes what “Ask at gates” means, and the sheet does not say so.</div>
+      <div class="delta" style="border-color:var(--border);background:var(--chip)">
+      Also: this sheet appears on <b>every</b> manual start, including the fourth start of the same card
+      with the same answers.</div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="panel">
+    <h2><span class="tag b">B · mine</span> Full sheet first time, confirm after<small>split by run kind</small></h2>
+    <div class="body">
+      <div class="mini">
+        <div class="mh">
+          <div><h3>Start #212 — Resume upload fails over 20 MB</h3>
+          <div class="sub">Nothing runs until you press the button. <span class="chip info"><span class="dot"></span>first start</span></div></div>
+          <div class="btn ghost mini">✕</div>
+        </div>
+        <div class="mb">
+          <div class="payload">
+            <div class="kv">
+              <div class="k">Door</div><div class="v mono">dev:task-start</div>
+              <div class="k">Folder</div><div class="v">create worktree</div>
+              <div class="k">Branch</div><div class="v mono">fix/212-upload-cap</div>
+              <div class="k">Base</div><div class="v mono">origin/main@8c1f2a0</div>
+              <div class="k">Gates</div><div class="v">11 · 12 · 13 · 14</div>
+              <div class="k">Task file</div><div class="v mono">.devdesk/launch/212.json</div>
+            </div>
+            <div class="prompt"><span class="h">You are working issue #212.</span>
+Read shared/entry.md, then shared/pipeline.md.
+Phase 1 — restate the bug in one line…</div>
+            <div style="margin-top:9px;display:flex;gap:7px"><div class="btn mini">Copy task file</div><div class="btn mini">Reveal</div></div>
+          </div>
+          <div class="side">
+            <span class="label">Run it here <span style="text-transform:none;letter-spacing:0;font-weight:500;color:var(--faint)">· acp only</span></span>
+            <div class="opt on"><span class="r"></span>Claude Code<small>acp v1</small></div>
+            <div class="opt"><span class="r"></span>Codex<small>acp v1</small></div>
+            <div class="opt dim"><span class="r"></span>Gemini CLI<small>not installed</small></div>
+            <span class="label">Or hand it to</span>
+            <div class="opt"><span class="r"></span>Terminal<small>--from-file</small></div>
+            <div class="opt"><span class="r"></span>super.engineering</div>
+            <div class="opt"><span class="r"></span>Cursor</div>
+            <span class="label">Permissions</span>
+            <div class="opt on"><span class="r"></span>Ask at gates</div>
+            <div class="opt"><span class="r"></span>Ask every tool</div>
+          </div>
+        </div>
+        <div class="mf"><small>3 of 5 running · 2 elsewhere</small><div class="sp"></div><div class="btn mini">Cancel</div><div class="btn primary mini">Run with Claude Code</div></div>
+      </div>
+
+      <div class="okbox"><b>No headless row exists for a task.</b> Every entry under “Run it here” can block
+      on a permission, so the Permissions control means one thing. If no ACP adapter is found, that whole
+      section is empty with a reason — and hand-off is the honest path, not a quieter run.</div>
+      <div class="delta">On the <b>second</b> start of this card the sheet does not open: the Start menu shows
+      <span class="chip"><span class="dot"></span>Claude Code · ask at gates</span> and runs. <b>⌥Start</b> reopens the full sheet.
+      Auto never opens it either way.</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════ 2 · RUNS ══════════════════════════ -->
+<div class="screen" id="s2">
+<div class="duo">
+
+  <!-- A -->
+  <div class="panel">
+    <h2><span class="tag a">A · yours</span> Runs list + ask block<small>§4.8 moments 2–3</small></h2>
+    <div class="body">
+      <div class="mini">
+        <div class="runshead">
+          <h3>Runs</h3>
+          <div class="slots"><i></i><i></i><i></i><i class="free"></i><i class="free"></i> <span>3 of 5 running · 2 queued</span></div>
+        </div>
+        <div class="sec">Running</div>
+        <div class="run on"><div class="t"><span class="num">#212</span> Resume upload cap <span class="chip wait"><span class="dot"></span>waiting</span></div>
+          <div class="sub"><span class="chip">Claude Code</span><span class="mono">fix/212-upload-cap</span></div></div>
+        <div class="run"><div class="t"><span class="num">#204</span> Course key collision <span class="chip run"><span class="dot"></span>running</span></div>
+          <div class="sub"><span class="chip">Codex</span><span class="mono">fix/204-course-key</span></div></div>
+        <div class="run"><div class="t"><span class="num">#231</span> Exam export <span class="chip run"><span class="dot"></span>running</span></div>
+          <div class="sub"><span class="chip">Claude · headless</span><span class="mono">feat/231-export</span></div></div>
+        <div class="sec">Elsewhere</div>
+        <div class="run"><div class="t"><span class="num">#198</span> RTL PDF margins <span class="chip info"><span class="dot"></span>elsewhere</span></div>
+          <div class="sub"><span class="chip">Terminal</span><span class="mono">fix/198-rtl</span></div></div>
+        <div class="sec">Background</div>
+        <div class="run"><div class="t">Survey — web/app <span class="chip run"><span class="dot"></span>running</span></div>
+          <div class="sub"><span class="chip">headless</span></div></div>
+      </div>
+
+      <div class="gate">
+        <div class="gh">Phase 13 · the agent asks <span class="chip wait" style="margin-left:auto"><span class="dot"></span>waiting</span></div>
+        <div class="cmdbox">rm -rf web/.next &amp;&amp; pnpm build</div>
+        <div class="acts"><div class="btn primary mini">Allow once</div><div class="btn mini">Allow for this run</div><div class="btn mini">Reject</div>
+        <small>answered here, never in a terminal.</small></div>
+      </div>
+
+      <div class="warnbox"><b>Two rows, two meanings, one chrome.</b> #212 can be asked <i>before</i> the command
+      runs. #231 is headless — its “denial” arrives in <span class="mono">permission_denials</span> after the
+      fact. The list draws them identically.<br><br>
+      <b>And the answer leaves no trace.</b> Who allowed <span class="mono">rm -rf</span>, when, on which
+      branch — nothing records it, exactly as the terminal recorded nothing.</div>
+    </div>
+  </div>
+
+  <!-- B -->
+  <div class="panel">
+    <h2><span class="tag b">B · mine</span> Groups say the substrate; the answer is journalled<small>+ Bring back</small></h2>
+    <div class="body">
+      <div class="mini">
+        <div class="runshead">
+          <h3>Runs</h3>
+          <div class="slots"><i></i><i></i><i></i><i class="free"></i><i class="free"></i> <span>3 of 5 running · 2 elsewhere</span></div>
+        </div>
+        <div class="sec">Running <small>protocol sessions · gateable</small></div>
+        <div class="run on"><div class="t"><span class="num">#212</span> Resume upload cap <span class="chip wait"><span class="dot"></span>waiting</span></div>
+          <div class="sub"><span class="chip">Claude Code</span><span class="mono">fix/212-upload-cap</span></div></div>
+        <div class="run"><div class="t"><span class="num">#204</span> Course key collision <span class="chip run"><span class="dot"></span>running</span></div>
+          <div class="sub"><span class="chip">Codex</span><span class="mono">fix/204-course-key</span></div></div>
+        <div class="run"><div class="t"><span class="num">#231</span> Exam export <span class="chip run"><span class="dot"></span>running</span></div>
+          <div class="sub"><span class="chip">Claude Code</span><span class="mono">feat/231-export</span></div></div>
+        <div class="sec">Elsewhere <small>not in a slot · tokens we can't see</small></div>
+        <div class="run"><div class="t"><span class="num">#198</span> RTL PDF margins <span class="chip info"><span class="dot"></span>elsewhere</span></div>
+          <div class="sub"><span class="chip">Terminal</span><span class="mono">fix/198-rtl</span><div class="btn mini" style="margin-left:auto">Bring back</div></div></div>
+        <div class="sec">Doors <small>headless · one-shot · never gated</small></div>
+        <div class="run"><div class="t">Survey — web/app <span class="chip run"><span class="dot"></span>running</span></div>
+          <div class="sub"><span class="chip">headless</span></div></div>
+      </div>
+
+      <div class="gate">
+        <div class="gh">Phase 13 · the agent asks <span class="chip wait" style="margin-left:auto"><span class="dot"></span>waiting</span></div>
+        <div class="cmdbox">rm -rf web/.next &amp;&amp; pnpm build</div>
+        <div class="acts"><div class="btn primary mini">Allow once</div><div class="btn mini">Allow for this run</div><div class="btn mini">Reject</div>
+        <small>answered here · recorded to <span class="mono">.dev/events/fix-212-upload-cap.jsonl</span></small></div>
+      </div>
+
+      <div class="okbox"><b>Every row under Running can block.</b> Headless keeps its own group and its own
+      word — <i>Doors</i> — because it is a different kind of run, not a weaker version of the same one.
+      <br><br><b>The gate answer is a durable fact</b>, so it lands in the journal and the sidecar next to
+      the phase it gated. The gates are the product; the product keeps a record.</div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<!-- ══════════════════════════ 3 · CORE LOGIC ══════════════════════════ -->
+<div class="screen" id="s3">
+
+  <div class="diagram">
+    <h2><span class="tag a">A · yours</span> One protocol, two implementations, a capability fallback<small>§4.2–4.4, §4.9</small></h2>
+    <div class="svgwrap">
+    <svg viewBox="0 0 1380 430" role="img" aria-label="Design A core logic">
+      <text class="col" x="20" y="16">SOURCE</text>
+      <text class="col" x="220" y="16">PAYLOAD</text>
+      <text class="col" x="450" y="16">SUBSTRATE</text>
+      <text class="col" x="800" y="16">DISPLAY</text>
+      <text class="col" x="1120" y="16">STATE</text>
+
+      <!-- source -->
+      <rect class="box" x="20" y="60" width="150" height="46" rx="8"/>
+      <text class="t" x="36" y="82">Card · ⌘↩ · Auto</text><text class="s" x="36" y="97">a task start</text>
+      <rect class="box" x="20" y="130" width="150" height="46" rx="8"/>
+      <text class="t" x="36" y="152">Doors</text><text class="s" x="36" y="167">Survey · Ideation</text>
+
+      <!-- payload -->
+      <rect class="acc" x="220" y="82" width="212" height="60" rx="8"/>
+      <text class="t" x="236" y="106">TaskLaunch</text>
+      <text class="s" x="236" y="122">a value in memory</text>
+      <text class="s" x="236" y="135">folder · branch · prompt · gates</text>
+
+      <!-- substrate -->
+      <rect class="box" x="450" y="76" width="200" height="52" rx="8"/>
+      <text class="t" x="466" y="98">AgentSession</text><text class="s" x="466" y="114">protocol · Observable</text>
+
+      <rect class="box" x="700" y="40" width="180" height="50" rx="8"/>
+      <text class="t" x="716" y="62">ACPSession</text><text class="s" x="716" y="78">JSON-RPC · gateable</text>
+
+      <rect class="warn" x="700" y="130" width="180" height="50" rx="8"/>
+      <text class="t" x="716" y="152">HeadlessSession</text><text class="s" x="716" y="168">claude -p · NOT gateable</text>
+
+      <rect class="box" x="450" y="230" width="200" height="46" rx="8"/>
+      <text class="t" x="466" y="252">Handoff launchers</text><text class="s" x="466" y="267">Terminal · sc · editors</text>
+
+      <!-- display -->
+      <rect class="box" x="950" y="40" width="190" height="50" rx="8"/>
+      <text class="t" x="966" y="62">RunEvent[ ]</text><text class="s" x="966" y="78">mapper · fixtures</text>
+      <rect class="warn" x="950" y="130" width="190" height="62" rx="8"/>
+      <text class="t" x="966" y="152">RunPane · Ask block</text>
+      <text class="s" x="966" y="168">one chrome over</text><text class="s" x="966" y="181">two permission semantics</text>
+
+      <!-- state -->
+      <rect class="box" x="1200" y="40" width="160" height="62" rx="8"/>
+      <text class="t" x="1216" y="62">RunJournal</text><text class="s" x="1216" y="78">TaskLaunch +</text><text class="s" x="1216" y="91">session id</text>
+      <rect class="good" x="1200" y="130" width="160" height="62" rx="8"/>
+      <text class="t" x="1216" y="152">git + .dev</text><text class="s" x="1216" y="168">phase truth</text><text class="s" x="1216" y="181">outranks the stream</text>
+
+      <!-- edges -->
+      <path class="edge" d="M170 83 H196 Q206 83 206 93 V110 H220"/>
+      <path class="edge" d="M170 153 H196 Q206 153 206 143 V118 H220"/>
+      <path class="edge acc" d="M432 102 H450"/>
+      <path class="edge dash" d="M300 142 V230 H450"/>
+      <path class="edge acc" d="M650 95 Q676 95 676 75 H700"/>
+      <path class="edge" d="M650 108 Q676 108 676 155 H700"/>
+      <path class="edge bad" d="M790 90 V130"/>
+      <text class="s" x="782" y="114" text-anchor="end" style="fill:var(--fail-fg)">npx missing → fall back</text>
+      <path class="edge" d="M880 65 H950"/>
+      <path class="edge" d="M880 155 Q916 155 916 100 H950"/>
+      <path class="edge" d="M1045 90 V130"/>
+      <path class="edge dash" d="M1140 65 H1200"/>
+      <path class="edge dash" d="M1140 161 H1200"/>
+
+      <!-- verdict -->
+      <rect class="warn" x="20" y="330" width="1340" height="76" rx="8"/>
+      <text class="t" x="40" y="356" style="fill:var(--fail-fg)">The load-bearing edge is the dashed red one.</text>
+      <text class="s" x="40" y="376">It makes a run's permission semantics depend on the machine it starts on — not on the task, not on the door, not on anything the user chose.</text>
+      <text class="s" x="40" y="393">Test matrix: 2 substrates × N providers × gated/ungated. Risk 2 and risk 6 in §7 are both this one edge, counted twice.</text>
+    </svg>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <h2><span class="tag b">B · mine</span> One payload, three sibling executors, no fallback<small>split by run kind</small></h2>
+    <div class="svgwrap">
+    <svg viewBox="0 0 1380 470" role="img" aria-label="Design B core logic">
+      <text class="col" x="20" y="16">SOURCE</text>
+      <text class="col" x="220" y="16">PAYLOAD · THE PRODUCT</text>
+      <text class="col" x="560" y="16">EXECUTORS · commodity, swappable</text>
+      <text class="col" x="950" y="16">DISPLAY</text>
+      <text class="col" x="1200" y="16">TRUTH RANK</text>
+
+      <!-- source -->
+      <rect class="box" x="20" y="60" width="150" height="46" rx="8"/>
+      <text class="t" x="36" y="82">Card · ⌘↩ · Auto</text><text class="s" x="36" y="97">a task start</text>
+      <rect class="box" x="20" y="150" width="150" height="46" rx="8"/>
+      <text class="t" x="36" y="172">Doors</text><text class="s" x="36" y="187">Survey · Ideation</text>
+
+      <!-- payload -->
+      <rect class="acc" x="220" y="70" width="230" height="86" rx="8"/>
+      <text class="t" x="238" y="94">TaskLaunch</text>
+      <text class="s" x="238" y="110">Codable → a file on disk</text>
+      <text class="s m" x="238" y="126" style="fill:var(--info-fg)">.devdesk/launch/&lt;id&gt;.json</text>
+      <text class="s" x="238" y="144">folder · branch · base · prompt · gates</text>
+
+      <!-- executors -->
+      <rect class="good" x="560" y="40" width="210" height="56" rx="8"/>
+      <text class="t" x="576" y="62">ACPSession</text><text class="s" x="576" y="78">task agents · gateable</text><text class="s" x="576" y="91">the only task substrate</text>
+
+      <rect class="box" x="560" y="120" width="210" height="56" rx="8"/>
+      <text class="t" x="576" y="142">Handoff executors</text><text class="s" x="576" y="158">Terminal · codex · sc · editors</text><text class="s" x="576" y="171">all read the same file</text>
+
+      <rect class="box" x="560" y="200" width="210" height="56" rx="8"/>
+      <text class="t" x="576" y="222">HeadlessSession</text><text class="s" x="576" y="238">doors only · one-shot</text><text class="s" x="576" y="251">never gated, so never lies</text>
+
+      <!-- no-adapter branch -->
+      <rect class="gray" x="820" y="120" width="180" height="56" rx="8"/>
+      <text class="t" x="836" y="142" style="font-size:11.5px">no adapter found?</text>
+      <text class="s" x="836" y="158">“Run it here” is empty,</text><text class="s" x="836" y="171">with the reason. Hand off.</text>
+
+      <!-- display -->
+      <rect class="box" x="1040" y="40" width="190" height="62" rx="8"/>
+      <text class="t" x="1056" y="62">RunEvent[ ]</text>
+      <text class="s" x="1056" y="78">display only</text><text class="s" x="1056" y="91">rebuildable · session/load</text>
+
+      <!-- truth ladder -->
+      <rect class="good" x="1040" y="150" width="320" height="44" rx="8"/>
+      <text class="t" x="1056" y="170" style="font-size:11.5px">1 · git + .dev/&lt;branch&gt;.json</text><text class="s" x="1056" y="185">what happened. decides.</text>
+      <rect class="acc" x="1040" y="210" width="320" height="52" rx="8"/>
+      <text class="t" x="1056" y="230" style="font-size:11.5px">2 · RunJournal</text>
+      <text class="s" x="1056" y="245">launch · session id · gate answers · outcome</text><text class="s" x="1056" y="257">durable, append-only, survives a quit</text>
+      <rect class="gray" x="1040" y="278" width="320" height="40" rx="8"/>
+      <text class="t" x="1056" y="297" style="font-size:11.5px">3 · RunEvent[ ]</text><text class="s" x="1056" y="311">a rendering. never consulted for a decision.</text>
+
+      <!-- edges -->
+      <path class="edge" d="M170 83 H196 Q206 83 206 95 V105 H220"/>
+      <path class="edge" d="M170 173 H196 Q206 173 206 160 V125 H220"/>
+      <path class="edge acc" d="M450 100 Q510 100 510 68 H560"/>
+      <path class="edge acc" d="M450 113 H560"/>
+      <path class="edge acc" d="M450 126 Q510 126 510 228 H560"/>
+      <path class="edge dash" d="M770 148 H820"/>
+      <path class="edge" d="M770 68 H1040"/>
+      <path class="edge dash" d="M770 240 H1014 V88 H1040"/>
+      <path class="edge dash" d="M1135 102 V150"/>
+      <path class="edge" d="M1200 194 V210"/>
+      <path class="edge" d="M1200 262 V278"/>
+
+      <!-- verdict -->
+      <rect class="good" x="20" y="360" width="1340" height="96" rx="8"/>
+      <text class="t" x="40" y="386" style="fill:var(--run-fg)">Executors are siblings that never substitute for each other, so the semantics are decided by the kind of run — which Dev Desk knows before it starts.</text>
+      <text class="s" x="40" y="406">Test matrix: 1 task substrate × N providers, plus doors, which are already shipped and already tested.</text>
+      <text class="s" x="40" y="423">The file is the hedge: if ACP v2 breaks, if Codex's app-server churns, if npx is gone — the payload still exists and every hand-off still consumes it. Dev Desk degrades to a launcher, never to nothing.</text>
+      <text class="s" x="40" y="443">This is the structural answer to “they will do it better than me”: the executor is theirs, the task is yours.</text>
+    </svg>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════ 4 · DEPENDENCIES ══════════════════════════ -->
+<div class="screen" id="s4">
+  <div class="diagram">
+    <h2>What each design has to keep working<small>blast radius when the outside world moves</small></h2>
+    <div class="svgwrap">
+    <svg viewBox="0 0 1380 400" role="img" aria-label="Dependency comparison">
+      <!-- lane A -->
+      <rect class="lane" x="20" y="30" width="1340" height="160" rx="10"/>
+      <text class="t" x="40" y="54">A · yours</text>
+      <text class="s" x="40" y="70">6 outside things,</text><text class="s" x="40" y="84">2 of them on the</text><text class="s" x="40" y="98">hot path for one run</text>
+
+      <rect class="box" x="180" y="58" width="150" height="46" rx="8"/><text class="t" x="196" y="80" style="font-size:11.5px">DeskCore</text><text class="s" x="196" y="95">yours</text>
+      <rect class="box" x="180" y="120" width="150" height="46" rx="8"/><text class="t" x="196" y="142" style="font-size:11.5px">DevDesk UI</text><text class="s" x="196" y="157">yours</text>
+      <rect class="warn" x="380" y="58" width="170" height="46" rx="8"/><text class="t" x="396" y="80" style="font-size:11.5px">ACP v1 wire</text><text class="s" x="396" y="95">v2 is a breaking draft</text>
+      <rect class="warn" x="380" y="120" width="170" height="46" rx="8"/><text class="t" x="396" y="142" style="font-size:11.5px">npx + Node</text><text class="s" x="396" y="157">adapter is an npm pkg</text>
+      <rect class="warn" x="600" y="58" width="190" height="46" rx="8"/><text class="t" x="616" y="80" style="font-size:11.5px">claude-agent-acp</text><text class="s" x="616" y="95">3rd-party release cadence</text>
+      <rect class="warn" x="600" y="120" width="190" height="46" rx="8"/><text class="t" x="616" y="142" style="font-size:11.5px">codex-acp → app-server</text><text class="s" x="616" y="157">“may change without notice”</text>
+      <rect class="warn" x="840" y="58" width="200" height="46" rx="8"/><text class="t" x="856" y="80" style="font-size:11.5px">claude -p stream-json</text><text class="s" x="856" y="95">the fallback path, forever</text>
+      <rect class="box" x="840" y="120" width="200" height="46" rx="8"/><text class="t" x="856" y="142" style="font-size:11.5px">codex exec --json</text><text class="s" x="856" y="157">the other fallback</text>
+      <rect class="box" x="1090" y="88" width="250" height="46" rx="8"/><text class="t" x="1106" y="110" style="font-size:11.5px">Terminal · sc · editors</text><text class="s" x="1106" y="125">launchers, best effort</text>
+
+      <!-- lane B -->
+      <rect class="lane" x="20" y="215" width="1340" height="160" rx="10"/>
+      <text class="t" x="40" y="239">B · mine</text>
+      <text class="s" x="40" y="255">the same list,</text><text class="s" x="40" y="269">but two of them</text><text class="s" x="40" y="283">move off the hot path</text>
+
+      <rect class="box" x="180" y="243" width="150" height="46" rx="8"/><text class="t" x="196" y="265" style="font-size:11.5px">DeskCore</text><text class="s" x="196" y="280">yours + the codec</text>
+      <rect class="box" x="180" y="305" width="150" height="46" rx="8"/><text class="t" x="196" y="327" style="font-size:11.5px">DevDesk UI</text><text class="s" x="196" y="342">yours</text>
+      <rect class="acc" x="380" y="243" width="170" height="46" rx="8"/><text class="t" x="396" y="265" style="font-size:11.5px">ACP v1 wire</text><text class="s" x="396" y="280">version switch is yours</text>
+      <rect class="warn" x="380" y="305" width="170" height="46" rx="8"/><text class="t" x="396" y="327" style="font-size:11.5px">npx + Node</text><text class="s" x="396" y="342">absent → hand off, not degrade</text>
+      <rect class="warn" x="600" y="243" width="190" height="46" rx="8"/><text class="t" x="616" y="265" style="font-size:11.5px">claude-agent-acp</text><text class="s" x="616" y="280">tasks only</text>
+      <rect class="warn" x="600" y="305" width="190" height="46" rx="8"/><text class="t" x="616" y="327" style="font-size:11.5px">codex-acp → app-server</text><text class="s" x="616" y="342">tasks only</text>
+      <rect class="good" x="840" y="243" width="200" height="46" rx="8"/><text class="t" x="856" y="265" style="font-size:11.5px">claude -p stream-json</text><text class="s" x="856" y="280">doors only · already shipped</text>
+      <rect class="good" x="840" y="305" width="200" height="46" rx="8"/><text class="t" x="856" y="327" style="font-size:11.5px">codex exec --json</text><text class="s" x="856" y="342">doors only · already shipped</text>
+      <rect class="acc" x="1090" y="273" width="250" height="46" rx="8"/><text class="t" x="1106" y="295" style="font-size:11.5px">Terminal · sc · editors</text><text class="s" x="1106" y="310">first-class · reads the task file</text>
+    </svg>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <h2>Same question, four ways<small>what actually differs</small></h2>
+    <table>
+      <tr><th>Question</th><th>A · yours</th><th>B · mine</th></tr>
+      <tr><td class="k">A machine with no Node</td><td>the run starts anyway, on <span class="mono">claude -p</span>, and the gate silently becomes post-hoc</td><td>“Run it here” is empty with a reason; the sheet offers Terminal, which is what the developer would have done</td></tr>
+      <tr><td class="k">ACP v2 lands</td><td>version switch in <span class="mono">ACPSession</span>; headless keeps running, so pressure to fix is low and the two paths drift</td><td>version switch in <span class="mono">ACPSession</span>; if it breaks, every task hands off and the work still starts — the payload never depended on the wire</td></tr>
+      <tr><td class="k">What a fixture proves</td><td>the ACP mapper. The headless mapper is a second set of fixtures, a second ask semantics</td><td>one mapper, one set of fixtures. Doors keep the <span class="mono">JobStream</span> tests they already have</td></tr>
+      <tr><td class="k">Who is allowed to ask a question</td><td>anything in Running — whether or not it can wait for the answer</td><td>only a protocol session, which is a property of the group it is in</td></tr>
+      <tr><td class="k">What survives a quit</td><td>launch + session id in the journal; the resume path exists</td><td>same, plus gate answers — so a resumed run knows what was already allowed</td></tr>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════ 5 · DELTAS ══════════════════════════ -->
+<div class="screen" id="s5">
+  <div class="diagram">
+    <h2>Everything B changes, and what it costs<small>B is your design with five edits — not a different design</small></h2>
+    <table>
+      <tr><th>#</th><th>The edit</th><th>Why</th><th>Cost</th></tr>
+      <tr><td class="k">1</td><td><b>Headless is for doors, never a fallback for a task.</b> No adapter → hand off.</td>
+        <td>A gate that means two different things under one control is the one bug this whole redesign exists to remove.</td>
+        <td>A machine with no Node cannot run a task in-app. It could before — in a terminal.</td></tr>
+      <tr><td class="k">2</td><td><b><span class="mono">TaskLaunch</span> is a file, and every executor reads it.</b></td>
+        <td>The payload is the product; executors are commodities. This is what makes “don’t mimic them” structural instead of a promise.</td>
+        <td>One more on-disk format to keep stable. Worth it — <span class="mono">sc --from-file</span> already wants exactly this shape.</td></tr>
+      <tr><td class="k">3</td><td><b>Truth rank stated once:</b> git/.dev &gt; RunJournal &gt; RunEvent. Gate answers are journalled.</td>
+        <td>Three stores now touch a run. Without a stated rank, the stream becomes truth by accident — the exact failure ADR 0011 was written against.</td>
+        <td>An audit line per gate answer. Answers your §8 question 6 with a yes.</td></tr>
+      <tr><td class="k">4</td><td><b>Step 3 splits into 3a/3b/3c</b> — codec+mapper+fixtures, then the pane over fixtures, then wiring.</td>
+        <td>Step 3 as written is the entire risk of the project in one unlookable-at step, in a repo whose rule is <i>look at the result on screen</i>.</td>
+        <td>None. Same work, three commits, each one visible.</td></tr>
+      <tr><td class="k">5</td><td><b>One thing is called Runs.</b> The bottom panel folds into the screen. Elsewhere doesn’t take a slot but shows in the meter.</td>
+        <td>ProjectRuns, DoorRuns and a Runs panel already exist. Two Runs in one app is the problem, not the noun.</td>
+        <td>A rename that touches Sidebar, ContentRouter, README.</td></tr>
+    </table>
+  </div>
+
+  <div class="diagram">
+    <h2>Unchanged from your record<small>most of it</small></h2>
+    <div class="svgwrap" style="padding:14px">
+      <ul class="tight" style="font-size:12.5px;columns:2;column-gap:28px">
+        <li>The principle in §4.1, verbatim.</li>
+        <li>Both chats removed (step 1, lands today).</li>
+        <li>SwiftTerm leaves; ⌘T and sign-in leave the app.</li>
+        <li>ACP v1 + version switch; never <span class="mono">fs/*</span> or <span class="mono">terminal/*</span>.</li>
+        <li>Hand-roll the codec, don’t take the pre-1.0 SPM dependency.</li>
+        <li>Run project becomes a plain <span class="mono">Process</span> with a log row.</li>
+        <li>Slot limit, StartQueue, Auto defaults — untouched.</li>
+        <li>Events sidecar stays the phase truth.</li>
+        <li>Antigravity: hand-off only, after the ToS is read.</li>
+        <li>super.engineering: probe <span class="mono">sc status --json</span>, hide on failure.</li>
+        <li>No conversation view, no composer outside an ask.</li>
+        <li>Insights untouched (ADR 0030).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="diagram">
+    <h2>Two things neither record decided yet<small>open</small></h2>
+    <table>
+      <tr><td class="k">Quit policy</td><td>ACP sessions are children of Dev Desk — quit kills them, exactly as the pty was killed. But for the first time a session <i>id</i> exists, so quit could be survivable: journal it, resume with history next launch. <span class="mono">QuitGuard.swift</span> was written for a world where a killed run was lost. That assumption is now false and should be decided, not inherited.</td></tr>
+      <tr><td class="k">Elsewhere and the slot meter</td><td>A run handed to Terminal burns tokens Dev Desk can neither see nor stop. B shows it as <span class="mono">3 of 5 running · 2 elsewhere</span> — counted, not governed. The alternative is to let it take a slot, which is a lie in the other direction.</td></tr>
+    </table>
+  </div>
+</div>
+
+<div class="legend">
+  <b>Reading it:</b> A is your record of 2026-09-15 drawn as-is. B is the same design with five edits — the fork is one rule:
+  <code>headless is a different kind of run, not a weaker version of the same one</code>.
+  Red = a path where the app promises something the substrate cannot deliver. Green = a path that can only tell the truth. Blue = the payload, which is the part nobody else builds.
+</div>
+
+</div>
+<script>
+document.querySelectorAll('.tabs button[data-s]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button[data-s]').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===b.dataset.s));
+}));
+</script>
+</body>
+</html>

@@ -2,10 +2,16 @@
 
 **Date:** 2026-09-15
 
-**Status:** proposed, for architecture review. Nothing here is built. The mockup that goes with it is
+**Status:** **reviewed and accepted, 2026-09-16, with five amendments** — see §10, which is the part
+to read if you have read this record before. Implementation started at step 1. The mockup is
 [`docs/design/2026-09-15-runs-without-terminal.html`](../../design/2026-09-15-runs-without-terminal.html)
-(open it in a browser; four tabs, a Dark toggle). The decision, once taken, is
-[ADR 0036 (draft)](../../adr/0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md).
+(four tabs, a Dark toggle); the review's A-vs-B comparison is
+[`docs/design/2026-09-16-substrate-comparison.html`](../../design/2026-09-16-substrate-comparison.html)
+(five tabs: the two start sheets, the two Runs screens, both core-logic diagrams, the dependency
+lanes, the deltas). The decision is
+[ADR 0036](../../adr/0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md), accepted.
+
+**§3 is a day old and six of its claims have drifted.** Read §10.2 before relying on any of them.
 
 **Related:** [container](2026-09-11-container-design.md) ·
 [the next level](2026-09-13-next-level-direction-design.md) ·
@@ -480,3 +486,90 @@ against roughly 1,200 added for `ACPSession`, the mapper, the sheet and the pane
 - Not touching Insights' ask surface (ADR 0030) — it is a door launcher, not a chat, and it already
   runs headless.
 - Not changing how the board decides anything (ADR 0011). Runs shows; the board and git decide.
+
+---
+
+## 10. The review, 2026-09-16
+
+The record above is unchanged from the day it was written, apart from its Status line. This section
+is what the architecture review added. Where the two disagree, this section wins.
+
+### 10.1 Five amendments
+
+**1. `HeadlessSession` is for doors, never a fallback for a task.** §4.3 kept it "so a machine with
+no `npx` still works", and risks 2 and 6 are both that sentence. But the two substrates do not agree
+on the one thing the app exists to do: over ACP a gate is a blocking `session/request_permission`;
+headless reports `permission_denials` after the fact. Same ask block, same Permissions control, two
+meanings, chosen by the machine. The split is by **kind of run** — `ACPSession` for task agents,
+`HeadlessSession` permanently for doors — and where no adapter is found, *Run it here* is empty with
+the reason and hand-off is the answer. This removes an axis from the test matrix and both risks with
+it. It costs: a machine with neither Node nor opencode/Goose/Cursor cannot run a task in-app. It
+could before — in a terminal, which is where the hand-off puts it.
+
+**2. `TaskLaunch` serialises to a file, and every executor reads it.** §4.2 made it a value; the
+review makes it `.devdesk/launch/<id>.json`. The payload — branch, worktree plan, base SHA, the
+prompt the doors compose, the gates, the labels — is the part no other product builds; executors are
+commodities that will churn. One file means *Run it here* and *Hand it to* are one design with
+different executors, that `sc worktree create --from-file` consumes it literally, and that if ACP v2
+lands badly Dev Desk degrades to a launcher rather than to nothing. That is the structural form of
+the developer's *"they will do it better than me"*: the executor is theirs, the task is ours.
+
+**3. The truth rank is stated once.** §4.9 said the sidecar outranks the stream and then put
+`TaskLaunch` and the session id into `RunJournal`, so three stores touch a run. The rank:
+**git + `.dev/<branch>.json`** decide (ADR 0011) · **`RunJournal`** holds durable facts the app owns
+— launch, session id, gate answers, outcome · **`RunEvent[]`** is a rendering, rebuildable with
+`session/load`, never consulted for a decision. This answers §8 question 6 with a yes: a gate answer
+is a durable fact and is journaled to `.dev/events/<branch>.jsonl`.
+
+**4. Step 3 splits into 3a, 3b, 3c.** As written it is the entire risk of the project in one step
+with nothing to look at until the end — in a repo whose rule is *edit → build → look at the result
+on screen*. **3a**: the JSON-RPC line codec and the `session/update → RunEvent` mapper, with
+fixtures recorded from a real adapter, no UI, verified by `swift test`. **3b**: `RunPane` and the
+Runs list rendering `RunEvent` **from those fixtures** — the full UI on screen, no live agent, which
+is where the event log gets found to be too noisy or too quiet, cheaply. **3c**: wire them. Same
+work, three commits, each one lookable-at.
+
+**5. One thing is called Runs.** `ProjectRuns`, `DoorRuns` and a Runs bottom panel already exist;
+renaming the screen to Runs while that panel exists is the problem, not the noun. The panel folds
+into the screen. *Background* becomes **Doors**, because the group should carry its substrate.
+**Elsewhere** does not consume a slot — the app cannot see or stop those tokens — but is counted:
+`3 of 5 running · 2 elsewhere`, and comes back only on an explicit *Bring back*.
+
+### 10.2 What §3 got wrong, verified live 2026-09-16
+
+| § | Claimed | Actually |
+|---|---|---|
+| 3.1 | `session/update` carries the nine variants listed | **11.** Add `config_option_update`, `available_commands_update`, `user_message_chunk`. The 3a mapper is wider than §4.4 |
+| 3.1 | `session/set_mode` is capability-gated | Deprecated on arrival in v1 — *"will be removed in a future version"*. Do not build on it |
+| 3.1 | the registry's adapters are `@agentclientprotocol/*` npm packages | **Only two are.** Claude Code `@0.78.0` and Codex `@1.12.0`. Gemini CLI is `npx @google/gemini-cli --acp`; opencode, Goose and Cursor spawn their own binaries (`opencode acp`, `goose acp`, `cursor-agent acp`). A machine without Node still has ACP — which is why amendment 1 costs less than §7 risk 2 implies |
+| 3.1 | ACP v2 is a published breaking draft | Still **Draft**, published 2026-07-20, no stabilisation date, spec says do not ship it by default. v1 + version switch holds |
+| 3.2 | permission without a TTY: "an HTTP `PermissionRequest` hook (app listens on localhost)" | **Wrong.** It is the ordinary hook mechanism — callback or shell command — resolved through a `decision` object. No localhost listener |
+| 3.2 | `--permission-mode` values | Seven: `default`, `acceptEdits`, `plan`, `auto`, `dontAsk`, `bypassPermissions`, `manual` |
+| 3.2 / 3.3 | doc URLs | `docs.claude.com` now splits to code.claude.com and platform.claude.com; Codex's docs moved to learn.chatgpt.com |
+| 3.1 | community Swift SDKs | `wiedymi/swift-acp` — MIT, 32 stars, last push 2026-07-24, targets v1. `rebornix/acp-swift-sdk` — 7 stars, stale since 2026-02-07 |
+
+Unchanged and load-bearing: ACP v1 is the stable version; `session/request_permission` is exactly as
+described, with option kinds `allow_once` / `allow_always` / `reject_once` / `reject_always` and a
+`selected` / `cancelled` response. The gate mechanism this design rests on is real. Codex's
+app-server is still experimental. Antigravity's terms still name third-party access as a violation.
+
+### 10.3 §8 answered
+
+1. **Runs** — and the duplicate panel folds in (amendment 5).
+2. **Permanent, for doors only** (amendment 1).
+3. **First start of a task in full**, then a compact confirm; ⌥Start reopens the sheet; Auto never.
+4. **Yes, one way** — an Elsewhere run returns on an explicit *Bring back*. ACP has no locking, and
+   two hosts replaying one session concurrently render garbage, so return is a deliberate act.
+5. **Hand-rolled**, in DeskCore. SwiftTerm is being deleted to stop owing our surface to a
+   dependency; a pre-1.0 package, while the protocol has a published breaking draft, gives that
+   ownership back. The version switch must be ours; the mapper is the same work either way.
+6. **Yes** — gate answers are journaled (amendment 3).
+
+### 10.4 Still open
+
+- **The quit policy.** ACP sessions are children of Dev Desk, so quit kills them exactly as it
+  killed a pty. But a session id now exists, so quit could be survivable: journal it, resume with
+  history next launch. `QuitGuard.swift` was written for a world where a killed run was lost; that
+  assumption is false now and deserves its own decision.
+- **Elsewhere and the meter.** Counted, not governed, is the choice made here. The alternative —
+  letting a handed-off run hold a slot — is a lie in the other direction.

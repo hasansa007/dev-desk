@@ -1,8 +1,8 @@
 # 0036 — Agents run over a protocol, and the terminal leaves the app
 
-Status:  Proposed — for architecture review; nothing built
-Date:    2026-09-15
-Commit:  (none)  ·  design record
+Status:  Accepted — reviewed 2026-09-16; implementation started at step 1
+Date:    2026-09-15  ·  accepted 2026-09-16
+Commit:  (this branch)  ·  `main`  ·  design record
 [`docs/superpowers/specs/2026-09-15-runs-without-terminal-design.md`](../superpowers/specs/2026-09-15-runs-without-terminal-design.md)
 · mockup [`docs/design/2026-09-15-runs-without-terminal.html`](../design/2026-09-15-runs-without-terminal.html)
 
@@ -44,21 +44,43 @@ competitor for the part being removed) can still be launched with a folder and a
 **1. Dev Desk prepares and schedules; it does not host a screen and it does not converse.**
 The product is `TaskLaunch` — door, branch, worktree, base, prompt, gates, permission policy, mode,
 labels — built once as a value, shown before anything runs, stored, queued, and handed to a runner.
+It is `Codable` and it **serialises to a file**, `.devdesk/launch/<id>.json`, because every runner
+has to read it: `ACPSession` takes the prompt, `sc worktree create --from-file` takes the file
+literally, a Terminal hand-off writes it and pre-types the command. Run-it-here and hand-it-to stop
+being two designs and become one payload with different executors.
 
-**2. A task's session is a protocol session.** `AgentSession` is the one abstraction the app
-hosts; `ACPSession` is its first implementation (ACP v1, decoding behind a negotiated version
-switch, `fs/*` and `terminal/*` never adopted). Today's `claude -p`/`codex exec` path stays as
-`HeadlessSession` for background doors and as the fallback where the ACP adapter is absent.
+**2. A task's session is a protocol session, and the substrate is decided by the KIND of run, never
+by the machine.** `AgentSession` is the one abstraction the app hosts. `ACPSession` (ACP v1,
+decoding behind a negotiated version switch, `fs/*` and `terminal/*` never adopted) is the only
+substrate for a task agent. Today's `claude -p`/`codex exec` path stays as `HeadlessSession`
+permanently, for **background doors only** — Survey, Ideation, Insights, file-an-issue — which are
+one-shot and never gated. Where no ACP adapter is detected the app does **not** quietly run the task
+headlessly: *Run it here* is empty with the reason, and the hand-off list is the answer. A gate that
+means "the agent waits for you" on one machine and "you are told afterwards" on another is the one
+defect this whole decision exists to remove; a capability fallback reintroduces it behind identical
+chrome.
 
-**3. The pane is an event log, not a transcript.** What the app draws about a run is what the
-stream says — phase, text, tool, diff, plan, ask, usage, ended — with the `.dev/events` sidecar
-outranking the agent's words on phase and git outranking everyone on outcome (ADR 0011).
+**3. The pane is an event log, not a transcript — and it is not the record.** What the app draws
+about a run is what the stream says: phase, text, tool, diff, plan, ask, usage, ended. Three stores
+now touch a run, so the rank is stated once and does not move: **git and `.dev/<branch>.json` decide
+what happened** (ADR 0011); **`RunJournal` holds the durable facts the app owns** — the launch, the
+provider session id, every gate answer, the outcome; **`RunEvent[]` is a rendering**, rebuildable
+with `session/load` and never consulted for a decision. A gate answer is a durable fact, so it is
+journaled and written to `.dev/events/<branch>.jsonl` beside the phase it gated. The terminal kept
+no such record; that was a defect, not a baseline.
 
 **4. The human types into a run only when it asks.** A permission request renders as Allow once ·
 Allow for this run · Reject with the command shown; a question renders with its options and a free
 line. Answers go back over the same channel. There is no composer.
 
-**5. Terminals becomes Runs.** Rows grouped Running · Queued · Elsewhere · Background · Ended.
+**5. Terminals becomes Runs, and only one thing is called Runs.** Rows grouped Running · Queued ·
+Elsewhere · Doors · Ended — *Doors*, not *Background*, because the group carries the substrate:
+headless, one-shot, never gated. The existing Runs bottom panel folds into the screen; `ProjectRuns`
+and `DoorRuns` keep their names in DeskCore, but the app shows one place where everything executing
+appears, which is the "many at once" promise made visible. An **Elsewhere** run does not consume a
+slot — the app can neither see nor stop the tokens a handed-off run burns — but it is counted in the
+meter: `3 of 5 running · 2 elsewhere`. It returns only when the human clicks *Bring back*; ACP has
+no locking, and two hosts replaying one session concurrently render garbage.
 "A task has one session" (ADR 0026) stands; "Terminals is the only host of a live terminal" is void
 because there is none.
 
@@ -84,6 +106,21 @@ an editor; a handed-off task is watched by its branch, as any external work alre
   Not specified publicly; ACP gives the same thing specified.
 - **ACP `fs/*` and `terminal/*`.** Removed in the v2 draft; an agent that needs a file reads it
   itself in its worktree.
+- **A capability fallback: run the task headlessly where no ACP adapter is found.** This was in the
+  proposed version and the review removed it. It buys a run on a machine without Node at the price
+  of a permission control that means two different things, under one chrome, decided by the
+  machine. It is also worth less than it looked: of the seven adapters in the registry, only Claude
+  Code and Codex are npm packages — opencode, Goose and Cursor spawn their own binaries with an
+  `acp` subcommand, so a developer without Node still has ACP. The state the fallback rescued is
+  rarer than the defect it introduced.
+- **Letting the event stream be the record.** Persisting `RunEvent[]` as truth is the cheap way to
+  get history and the fast way to lose ADR 0011: the stream is what an agent *said*, and the board
+  already knows better. It is a rendering, rebuilt on demand.
+- **The community Swift ACP SDK** (`wiedymi/swift-acp`, MIT, 32 stars, last pushed 2026-07-24;
+  `rebornix/acp-swift-sdk` stale since February). SwiftTerm is being deleted to stop owing a
+  dependency our surface; taking a pre-1.0 package while the protocol itself has a published
+  breaking draft hands that ownership straight back. The version switch has to be ours. The mapper
+  to `RunEvent` is the same work either way. Read it, do not link it.
 
 ## Consequences
 
@@ -94,13 +131,26 @@ an editor; a handed-off task is watched by its branch, as any external work alre
 - Recovery gains history: `session/load` replays the log, so a recovered run (ADR 0031) comes back
   with what it did, which a pty never could.
 - Decision 14 is stronger: the app no longer hosts even the pty a credential flows through.
-- New runtime assumption: the Claude and Codex ACP adapters are npm packages, so a machine with the
-  CLI but no Node falls back to `HeadlessSession`. Detection must say which it found.
-- New maintenance edge: ACP v2 is a published breaking draft; Codex's app-server (which the Codex
-  adapter wraps) is labelled experimental. Both are pinned by what detection reports.
+- New runtime assumption, smaller than it first looked: only the Claude Code
+  (`@agentclientprotocol/claude-agent-acp`) and Codex (`@agentclientprotocol/codex-acp`) adapters
+  are npm packages. Gemini CLI, opencode, Goose, Copilot and Cursor spawn their own binary with an
+  `acp` flag or subcommand. Detection names the one it found and pins its version; a machine with no
+  Node loses two providers, not the feature.
+- New maintenance edge: ACP v2 is still a Draft (published 2026-07-20, no stabilisation date, and
+  the spec says not to ship it by default); Codex's app-server, which the Codex adapter wraps, is
+  still labelled experimental. Both are pinned by what detection reports.
+- The mapper is wider than the proposal assumed: `session/update` carries **11** variants, not the
+  eight listed — `config_option_update`, `available_commands_update` and `user_message_chunk` were
+  missing. `session/set_mode` is deprecated on arrival in v1 and must not be built on.
 - Removed: ~2,300 lines (pty and chat surfaces). Added: ~1,200 (`ACPSession`, the mapper and its
   fixtures, the start sheet, the pane).
-- Open for the review: the screen's name (Runs vs Sessions); whether `HeadlessSession` is permanent
-  or transitional; whether the start sheet shows on every start; whether a handed-off session can
-  come back into Runs; community Swift SDK vs. a hand-rolled ~8-message client; whether gate answers
-  are journaled to `.dev/events`.
+- Settled by the review of 2026-09-16: the screen is **Runs**, and the duplicate Runs panel folds
+  into it · `HeadlessSession` is **permanent, for doors only** · the start sheet shows in full on a
+  task's **first** start, then a compact confirm, with ⌥Start to reopen it, and never under Auto ·
+  a handed-off session **can** come back, one way, on an explicit *Bring back* · the client is
+  **hand-rolled** in DeskCore · gate answers **are** journaled to `.dev/events`.
+- Still open, and deliberately not decided here: the **quit policy**. ACP sessions are children of
+  Dev Desk, so quitting kills them exactly as it killed a pty — but a session id now exists, so
+  quit could be survivable (journal it, resume with history next launch). `QuitGuard.swift` was
+  written for a world where a killed run was lost. That assumption is now false and needs its own
+  decision rather than inheritance.
