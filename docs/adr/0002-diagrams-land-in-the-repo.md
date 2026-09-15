@@ -1,6 +1,6 @@
 # 0002 — Evidenced diagrams land in `docs/arch/`, with their IR beside them
 
-Status:  Accepted
+Status:  Accepted, amended by 0033
 Date:    2026-08-31
 Commit:  eee5597  ·  PR #19
 

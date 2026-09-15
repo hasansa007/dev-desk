@@ -112,10 +112,12 @@ ORPHANS).
 - **`dev snapshot`, `dev jobs` and `dev events`** (container spec §3) are not built. The app starts
   and stops agents as terminal processes (ADR 0018), but it can't tell a working agent from a
   waiting one, resume an ended session, or answer a door from its own UI.
-- **Auto needs a GitHub milestone.** It starts tasks from the Queued column, which is the active
-  milestone's issues, so a repo with no milestone gives Auto nothing to start (ADR 0018).
+- **Auto starts from Ready for dev**, which holds the active milestone's issues and every card moved
+  there by hand (ADR 0035); a repo with neither gives Auto nothing to start (ADR 0018).
 - **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
-  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both. Both measure a branch
+  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both, and the app's board has
+  since grown columns of its own (`Ready for dev` and the stored stages, ADR 0035) that `dev board`
+  deliberately does not show. Both measure a branch
   against `origin/<base>`, never a local copy that can lag. One rule is Dev Desk's alone: a branch
   still at a merged pull request's head goes to Done, which covers squash merges. `dev board` reads
   no merged pull requests, so it can't apply it.

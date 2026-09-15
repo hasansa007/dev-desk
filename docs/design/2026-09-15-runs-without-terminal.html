@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Dev Desk — Runs without a terminal (mockup)</title>
+<style>
+:root{
+  --accent:#2F6FEB;--surface:#FFFFFF;--canvas:#FBFBFC;--sidebar:#F1F2F5;--inspector:#F7F8F9;--header:#F4F5F7;
+  --border:#DCDFE4;--cborder:#C9CDD4;--divider:#E3E6EA;--rowdiv:#EEF0F3;--ink:#16181D;--nav:#3C4149;--ink2:#4B5563;
+  --muted:#6B7280;--faint:#8A9099;--chip:#EEF0F3;--titlebar:#EDEFF2;
+  --run-fg:#1F6B41;--run-fill:#E4F4EA;--run-b:#BFE3CD;--run-dot:#1F8B4C;
+  --wait-fg:#8A6114;--wait-fill:#FBF2DE;--wait-b:#EBDAAE;--wait-dot:#B7791F;
+  --fail-fg:#8A1F1F;--fail-fill:#FDF6F6;--fail-b:#F0CFCF;
+  --info-fg:#1F4FB0;--info-fill:#E7EFFD;--info-b:#C3D7F8;
+  --add-fill:#E7F6EC;--add-ink:#1F5C36;--del-fill:#FDEAEA;--del-ink:#8A1F1F;
+}
+html.dark{
+  --accent:#3B7BF0;--surface:#1E2025;--canvas:#17191D;--sidebar:#202329;--inspector:#1B1D22;--header:#23262C;
+  --border:#34383F;--cborder:#454A53;--divider:#2C3036;--rowdiv:#282B31;--ink:#E6E8EC;--nav:#C9CDD4;--ink2:#AEB4BD;
+  --muted:#969CA6;--faint:#7D838D;--chip:#2A2D33;--titlebar:#2A2D33;
+  --run-fg:#7FD19B;--run-fill:#16301F;--run-b:#245C38;--wait-fg:#E7C067;--wait-fill:#33280F;--wait-b:#5C4718;
+  --fail-fg:#F19A9A;--fail-fill:#331A1A;--fail-b:#5E2B2B;--info-fg:#9CC0FF;--info-fill:#1B2A45;--info-b:#2F4B7C;
+  --add-fill:#17301F;--add-ink:#9FDDB2;--del-fill:#3A1C1E;--del-ink:#F3A6A6;
+}
+*{box-sizing:border-box}
+body{margin:0;font:13px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Helvetica,Arial,sans-serif;color:var(--ink);background:#8f96a3;padding:28px}
+html.dark body{background:#0d0f12}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,monospace}
+.note{max-width:1180px;margin:0 auto 14px;color:#fff;font-size:12.5px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.note b{font-weight:600}
+.tabs{display:flex;gap:6px}
+.tabs button,.themebtn{font:inherit;font-size:12px;padding:5px 11px;border-radius:6px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:#fff;cursor:pointer}
+.tabs button.on{background:#fff;color:#16181D;border-color:#fff}
+.window{max-width:1180px;margin:0 auto;height:740px;background:var(--canvas);border-radius:12px;box-shadow:0 30px 70px rgba(0,0,0,.35);overflow:hidden;display:flex;flex-direction:column;border:1px solid var(--border)}
+.titlebar{height:38px;background:var(--titlebar);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:8px;flex:none}
+.dots span{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px;background:#d7dbe0}
+.dots span:nth-child(1){background:#ff5f57}.dots span:nth-child(2){background:#febc2e}.dots span:nth-child(3){background:#28c840}
+.title{flex:1;text-align:center;font-weight:600;font-size:12.5px;color:var(--ink2)}
+.tb-right{display:flex;gap:6px}
+.tb-btn{height:24px;padding:0 9px;border:1px solid var(--cborder);border-radius:6px;background:var(--surface);font-size:12px;color:var(--ink2);display:flex;align-items:center;gap:5px}
+.frame{flex:1;display:flex;min-height:0}
+.sidebar{width:236px;background:var(--sidebar);border-right:1px solid var(--border);padding:12px 10px;flex:none}
+.proj{font-weight:600;font-size:13px;padding:6px 8px 10px;color:var(--ink)}
+.proj small{display:block;font-weight:400;color:var(--muted);font-size:11.5px}
+.nav a{display:flex;align-items:center;gap:9px;padding:6px 8px;border-radius:6px;color:var(--nav);font-size:13px;text-decoration:none}
+.nav a.on{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--border)}
+.nav .badge{margin-left:auto;font-size:10.5px;background:var(--run-fill);color:var(--run-fg);border:1px solid var(--run-b);padding:0 6px;border-radius:9px}
+.nav .badge.wait{background:var(--wait-fill);color:var(--wait-fg);border-color:var(--wait-b)}
+.ico{width:14px;height:14px;border-radius:3px;background:currentColor;opacity:.55}
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.screen{display:none;flex:1;min-height:0;flex-direction:column}
+.screen.on{display:flex}
+.chip{display:inline-flex;align-items:center;gap:5px;height:18px;padding:0 7px;border-radius:9px;font-size:11px;border:1px solid var(--border);background:var(--chip);color:var(--ink2);white-space:nowrap}
+.chip .dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.chip.run{background:var(--run-fill);color:var(--run-fg);border-color:var(--run-b)}.chip.run .dot{background:var(--run-dot)}
+.chip.wait{background:var(--wait-fill);color:var(--wait-fg);border-color:var(--wait-b)}.chip.wait .dot{background:var(--wait-dot)}
+.chip.fail{background:var(--fail-fill);color:var(--fail-fg);border-color:var(--fail-b)}.chip.fail .dot{background:#C0392B}
+.chip.info{background:var(--info-fill);color:var(--info-fg);border-color:var(--info-b)}.chip.info .dot{background:var(--accent)}
+.btn{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 11px;border-radius:6px;border:1px solid var(--cborder);background:var(--surface);color:var(--ink);font-size:12.5px;font-weight:500;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.mini{height:22px;padding:0 9px;font-size:11.5px}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--ink2)}
+.caret::after{content:"⌄";font-size:12px;margin-left:2px;transform:translateY(-1px)}
+.label{font-size:11px;font-weight:700;letter-spacing:.66px;text-transform:uppercase;color:var(--muted)}
+
+/* ---------- Runs screen ---------- */
+.runs-head{height:52px;border-bottom:1px solid var(--divider);display:flex;align-items:center;padding:0 16px;gap:10px;background:var(--surface);flex:none}
+.runs-head h1{font-size:16px;font-weight:600;margin:0 14px 0 0}
+.slots{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px}
+.slots i{display:inline-block;width:8px;height:8px;border-radius:2px;background:var(--run-dot)}
+.slots i.free{background:var(--border)}
+.runs-body{flex:1;display:flex;min-height:0}
+.runlist{width:300px;flex:none;border-right:1px solid var(--divider);background:var(--surface);overflow:auto}
+.run{padding:10px 14px;border-bottom:1px solid var(--rowdiv);cursor:default}
+.run.on{background:var(--info-fill);box-shadow:inset 3px 0 0 var(--accent)}
+.run .t{display:flex;align-items:center;gap:8px;font-weight:600;font-size:12.5px}
+.run .t .num{color:var(--muted);font-weight:500}
+.run .sub{color:var(--muted);font-size:11.5px;margin-top:3px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.run .sub .mono{font-size:11px}
+.sec{padding:8px 14px 4px;background:var(--header);border-bottom:1px solid var(--rowdiv)}
+.pane{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--canvas)}
+.pane-head{padding:12px 16px;border-bottom:1px solid var(--divider);background:var(--surface);display:flex;align-items:center;gap:10px;flex:none}
+.pane-head .name{font-weight:600;font-size:14px}
+.pane-head .sp{flex:1}
+.timeline{flex:1;overflow:auto;padding:14px 18px}
+.ev{display:grid;grid-template-columns:76px 1fr;gap:12px;padding:7px 0;border-bottom:1px solid var(--rowdiv)}
+.ev:last-child{border-bottom:none}
+.ev .k{font-size:11px;color:var(--faint);padding-top:3px;font-family:ui-monospace,Menlo,monospace}
+.ev .b{min-width:0}
+.ev .b p{margin:0 0 4px;color:var(--ink)}
+.ev .b p.dim{color:var(--ink2)}
+.tool{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink2)}
+.tool .cmd{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--chip);border:1px solid var(--border);padding:1px 7px;border-radius:4px;color:var(--ink)}
+.tool .res{color:var(--muted)}
+.diff{margin-top:6px;border:1px solid var(--border);border-radius:6px;overflow:hidden;font-family:ui-monospace,Menlo,monospace;font-size:11px}
+.diff .fh{background:var(--header);padding:4px 9px;color:var(--ink2);display:flex;gap:10px}
+.diff .fh .pl{color:var(--add-ink)}.diff .fh .mi{color:var(--del-ink)}
+.diff .l{padding:1px 9px;white-space:pre}
+.diff .l.a{background:var(--add-fill);color:var(--add-ink)}.diff .l.d{background:var(--del-fill);color:var(--del-ink)}
+.plan{margin-top:4px;border:1px solid var(--border);border-radius:6px;background:var(--surface);padding:8px 10px;font-size:12px}
+.plan div{display:flex;gap:8px;align-items:center;padding:2px 0;color:var(--ink2)}
+.plan .ok::before{content:"✓";color:var(--run-dot);font-weight:700}
+.plan .cur::before{content:"●";color:var(--accent);font-size:9px}
+.plan .todo::before{content:"○";color:var(--faint)}
+.gate{margin:0 18px 14px;border:1px solid var(--wait-b);background:var(--wait-fill);border-radius:8px;padding:12px 14px;flex:none}
+.gate .gh{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--wait-fg);font-size:13px}
+.gate .gh .chip{margin-left:auto}
+.gate p{margin:6px 0 8px;color:var(--ink)}
+.gate .cmdbox{font-family:ui-monospace,Menlo,monospace;font-size:11.5px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--ink);margin-bottom:10px}
+.gate .acts{display:flex;gap:8px;align-items:center}
+.gate .acts .sp{flex:1}
+.gate .acts small{color:var(--muted);font-size:11px}
+.pane-foot{height:40px;border-top:1px solid var(--divider);background:var(--surface);display:flex;align-items:center;padding:0 16px;gap:12px;flex:none;font-size:11.5px;color:var(--muted)}
+.meter{width:120px;height:5px;background:var(--chip);border-radius:3px;overflow:hidden;border:1px solid var(--border)}
+.meter i{display:block;height:100%;width:38%;background:var(--accent)}
+.pane-foot .sp{flex:1}
+.empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:40px;line-height:1.6}
+
+/* ---------- Start sheet over the board ---------- */
+.board-bg{flex:1;padding:16px;display:flex;gap:12px;overflow:hidden;filter:blur(1.5px) saturate(.8);opacity:.55}
+.col{width:246px;flex:none}
+.col h3{font-size:11px;font-weight:700;letter-spacing:.66px;text-transform:uppercase;color:var(--muted);margin:0 0 8px;height:18px}
+.card{height:117px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;font-size:12px}
+.card b{display:block;font-weight:600;height:34px;overflow:hidden}
+.card .m{color:var(--muted);font-size:11px}
+.overlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+.sheet{width:900px;max-width:calc(100% - 80px);height:600px;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 24px 60px rgba(0,0,0,.28);display:flex;flex-direction:column;overflow:hidden}
+.sheet-h{padding:16px 20px 12px;border-bottom:1px solid var(--divider);display:flex;align-items:flex-start;gap:12px}
+.sheet-h h2{margin:0;font-size:16px;font-weight:600}
+.sheet-h .sub{color:var(--muted);font-size:12px;margin-top:2px}
+.sheet-h .x{margin-left:auto;color:var(--muted)}
+.sheet-b{flex:1;display:grid;grid-template-columns:1fr 300px;min-height:0}
+.payload{padding:16px 20px;overflow:auto;border-right:1px solid var(--divider)}
+.kv{display:grid;grid-template-columns:118px 1fr;gap:7px 14px;font-size:12.5px;align-items:baseline}
+.kv .k{color:var(--muted)}
+.kv .v{color:var(--ink)}
+.kv .v.mono{font-size:11.5px}
+.prompt{margin-top:14px;border:1px solid var(--border);border-radius:6px;background:var(--canvas);font-family:ui-monospace,Menlo,monospace;font-size:11px;color:var(--ink2);padding:10px 12px;max-height:190px;overflow:auto;white-space:pre-wrap;line-height:1.5}
+.prompt .h{color:var(--ink);font-weight:600}
+.side{padding:16px 18px;background:var(--inspector);overflow:auto}
+.side .label{display:block;margin:12px 0 7px}
+.side .label:first-child{margin-top:0}
+.opt{display:flex;align-items:center;gap:9px;padding:7px 9px;border:1px solid var(--border);border-radius:6px;background:var(--surface);margin-bottom:6px;font-size:12.5px}
+.opt.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent) inset}
+.opt .r{width:12px;height:12px;border-radius:50%;border:1.5px solid var(--cborder);flex:none}
+.opt.on .r{border-color:var(--accent);background:radial-gradient(var(--accent) 45%,transparent 50%)}
+.opt small{margin-left:auto;color:var(--muted);font-size:11px}
+.opt.dim{opacity:.55}
+.sheet-f{padding:12px 20px;border-top:1px solid var(--divider);display:flex;align-items:center;gap:10px;background:var(--surface)}
+.sheet-f .sp{flex:1}
+.sheet-f small{color:var(--muted);font-size:11.5px}
+.menu{position:absolute;right:32px;bottom:64px;width:290px;background:var(--surface);border:1px solid var(--border);border-radius:8px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:6px;font-size:12.5px}
+.menu .mi{padding:6px 9px;border-radius:5px;display:flex;align-items:center;gap:8px}
+.menu .mi small{margin-left:auto;color:var(--muted);font-size:11px}
+.menu .mi.h{background:var(--info-fill);color:var(--info-fg)}
+.menu .sep{height:1px;background:var(--divider);margin:5px 3px}
+.menu .lab{padding:4px 9px 2px;font-size:10.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--faint);font-weight:700}
+.legend{max-width:1180px;margin:16px auto 0;color:#fff;font-size:12.5px;line-height:1.6}
+.legend b{font-weight:600}
+</style>
+</head>
+<body>
+<div class="note">
+  <div><b>Dev Desk · mockup</b> — Terminals and both chats gone; agents run as protocol sessions, everything else hands off.</div>
+  <div style="display:flex;gap:8px;align-items:center">
+    <div class="tabs">
+      <button class="on" data-s="s1">1 · Start from a card</button>
+      <button data-s="s2">2 · Runs</button>
+      <button data-s="s3">3 · A gate</button>
+      <button data-s="s4">4 · Hand off</button>
+    </div>
+    <button class="themebtn" onclick="document.documentElement.classList.toggle('dark')">Dark</button>
+  </div>
+</div>
+
+<div class="window">
+  <div class="titlebar">
+    <div class="dots"><span></span><span></span><span></span></div>
+    <div class="title">StudyHub — Dev Desk</div>
+    <div class="tb-right"><div class="tb-btn">▶ Run project</div><div class="tb-btn">Files</div></div>
+  </div>
+  <div class="frame">
+    <div class="sidebar">
+      <div class="proj">StudyHub<small>main · 3 running · 2 queued</small></div>
+      <div class="nav">
+        <a id="nav-board"><i class="ico"></i>Board</a>
+        <a id="nav-runs"><i class="ico"></i>Runs <span class="badge">3</span><span class="badge wait">1</span></a>
+        <a><i class="ico"></i>Survey</a>
+        <a><i class="ico"></i>Ideation</a>
+        <a><i class="ico"></i>Roadmap</a>
+        <a><i class="ico"></i>Diagrams</a>
+      </div>
+    </div>
+
+    <div class="main" style="position:relative">
+
+      <!-- ============ 1 · START SHEET ============ -->
+      <section class="screen on" id="s1">
+        <div class="board-bg">
+          <div class="col"><h3>Backlog</h3><div class="card"><b>Export a course as a print PDF</b><div class="m">#151 · feature</div></div><div class="card"><b>Flashcard review misses the last card</b><div class="m">#149 · bug</div></div></div>
+          <div class="col"><h3>Ready for dev</h3><div class="card" style="border-color:var(--accent)"><b>Exam timer keeps running after submit</b><div class="m">#142 · bug · M</div></div><div class="card"><b>Lecture list: sort by week</b><div class="m">#138 · feature</div></div></div>
+          <div class="col"><h3>Queued</h3><div class="card"><b>Search across transcripts</b><div class="m">#131</div></div><div class="card"><b>RTL fixes in the exam sheet</b><div class="m">#127</div></div></div>
+          <div class="col"><h3>In progress</h3><div class="card"><b>Course import from a folder</b><div class="m">#120 · Claude</div></div><div class="card"><b>Weekly summary email</b><div class="m">#118 · Codex</div></div><div class="card"><b>Offline audio cache</b><div class="m">#115 · Claude</div></div></div>
+        </div>
+        <div class="overlay">
+          <div class="sheet">
+            <div class="sheet-h">
+              <div>
+                <h2>Start #142 — Exam timer keeps running after submit</h2>
+                <div class="sub">Everything the task needs is prepared here. Nothing runs until you choose where.</div>
+              </div>
+              <div class="x">✕</div>
+            </div>
+            <div class="sheet-b">
+              <div class="payload">
+                <div class="label" style="margin-bottom:10px">Prepared for this task</div>
+                <div class="kv">
+                  <div class="k">Door</div><div class="v">dev:task-start → fix pipeline, phases 1–17</div>
+                  <div class="k">Branch</div><div class="v mono">fix/142-exam-timer-after-submit <span class="chip" style="margin-left:6px">will be created</span></div>
+                  <div class="k">Worktree</div><div class="v mono">~/.devdesk/wt/studyhub/142</div>
+                  <div class="k">Base</div><div class="v mono">origin/main @ 8c1f2a0</div>
+                  <div class="k">Labels</div><div class="v">bug · impact: high · complexity: M <span style="color:var(--muted)">(proposed by the door)</span></div>
+                  <div class="k">Gates</div><div class="v">Stops at 11 verify · 12 docs · 13 code-review · 14 pre-prod, and asks you in Runs</div>
+                  <div class="k">Run mode</div><div class="v">Standard <span style="color:var(--muted)">· project override</span></div>
+                </div>
+                <div class="label" style="margin:16px 0 6px">Prompt the agent will receive</div>
+                <div class="prompt"><span class="h">You are running the dev:task-start door for StudyHub, issue #142.</span>
+
+Working tree: ~/.devdesk/wt/studyhub/142 (branch fix/142-exam-timer-after-submit, from origin/main).
+Read .dev/state.json and shared/pipeline.md before anything else.
+
+## Issue
+Exam timer keeps running after submit. Steps: start a mock exam, submit early, observe the
+timer badge in the header still counts down and fires the "time is up" sheet.
+
+## Phases
+1 reproduce · 2 locate · 3 write the failing test · … · 11 verify (gate) · 12 docs (gate) …
+
+## Rules
+Never push. Never open a PR. Stop at every gate and wait for an answer.</div>
+              </div>
+              <div class="side">
+                <span class="label">Run it here</span>
+                <div class="opt on"><i class="r"></i>Claude Code<small>ACP · signed in</small></div>
+                <div class="opt"><i class="r"></i>Codex<small>ACP · signed in</small></div>
+                <div class="opt"><i class="r"></i>Gemini CLI<small>ACP · not installed</small></div>
+                <div class="opt"><i class="r"></i>opencode<small>ACP · signed in</small></div>
+                <span class="label">Or hand it to</span>
+                <div class="opt dim"><i class="r"></i>Antigravity<small>agy · opens there</small></div>
+                <div class="opt dim"><i class="r"></i>super.engineering<small>sc · opens there</small></div>
+                <div class="opt dim"><i class="r"></i>Terminal<small>copies the command</small></div>
+                <span class="label">Permissions</span>
+                <div class="opt on"><i class="r"></i>Ask at gates, allow edits in the worktree</div>
+                <div class="opt"><i class="r"></i>Ask for every tool call</div>
+              </div>
+            </div>
+            <div class="sheet-f">
+              <small>2 of 3 slots free · a start past the limit is queued in board order</small>
+              <div class="sp"></div>
+              <div class="btn ghost">Cancel</div>
+              <div class="btn primary">▶ Start with Claude Code</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 2 · RUNS ============ -->
+      <section class="screen" id="s2">
+        <div class="runs-head">
+          <h1>Runs</h1>
+          <div class="slots"><i></i><i></i><i></i><i class="free"></i><i class="free"></i> 3 of 5 running · 2 queued</div>
+          <div style="flex:1"></div>
+          <div class="btn mini">Open project in Terminal</div>
+          <div class="btn mini caret">Start a door</div>
+        </div>
+        <div class="runs-body">
+          <div class="runlist">
+            <div class="sec label">Running</div>
+            <div class="run on">
+              <div class="t"><span class="num">#142</span>Exam timer keeps running after submit <span class="chip wait" style="margin-left:auto"><i class="dot"></i>Gate 11</span></div>
+              <div class="sub"><span class="chip"><i class="dot"></i>Claude Code</span><span class="mono">fix/142-exam-timer…</span></div>
+            </div>
+            <div class="run">
+              <div class="t"><span class="num">#120</span>Course import from a folder <span class="chip run" style="margin-left:auto"><i class="dot"></i>Phase 7</span></div>
+              <div class="sub"><span class="chip"><i class="dot"></i>Claude Code</span><span class="mono">feat/120-course-import</span></div>
+            </div>
+            <div class="run">
+              <div class="t"><span class="num">#118</span>Weekly summary email <span class="chip run" style="margin-left:auto"><i class="dot"></i>Phase 4</span></div>
+              <div class="sub"><span class="chip"><i class="dot"></i>Codex</span><span class="mono">feat/118-weekly-summary</span></div>
+            </div>
+            <div class="sec label">Queued</div>
+            <div class="run"><div class="t"><span class="num">#131</span>Search across transcripts <span class="chip" style="margin-left:auto">2nd</span></div><div class="sub">starts when a slot frees</div></div>
+            <div class="run"><div class="t"><span class="num">#127</span>RTL fixes in the exam sheet <span class="chip" style="margin-left:auto">3rd</span></div><div class="sub">starts when a slot frees</div></div>
+            <div class="sec label">Elsewhere</div>
+            <div class="run">
+              <div class="t"><span class="num">#115</span>Offline audio cache <span class="chip info" style="margin-left:auto"><i class="dot"></i>Antigravity</span></div>
+              <div class="sub">handed off 40 min ago · <span class="mono">conv 7f3a…</span></div>
+            </div>
+            <div class="sec label">Background</div>
+            <div class="run"><div class="t">Survey · full <span class="chip run" style="margin-left:auto"><i class="dot"></i>Reading</span></div><div class="sub">headless · no session to watch</div></div>
+            <div class="run"><div class="t">▶ Run project · web <span class="chip run" style="margin-left:auto"><i class="dot"></i>:5173</span></div><div class="sub">log only · Stop in the toolbar</div></div>
+            <div class="sec label">Ended today</div>
+            <div class="run"><div class="t"><span class="num">#112</span>Lecture player seek bug <span class="chip" style="margin-left:auto">PR #77</span></div><div class="sub">Claude Code · 1 h 12 m · resume ↺</div></div>
+          </div>
+
+          <div class="pane">
+            <div class="pane-head">
+              <span class="name">#142 · Exam timer keeps running after submit</span>
+              <span class="chip"><i class="dot"></i>Claude Code</span>
+              <span class="chip mono">fix/142-exam-timer-after-submit</span>
+              <span class="sp"></span>
+              <div class="btn mini">Files</div>
+              <div class="btn mini">Diff</div>
+              <div class="btn mini caret">Continue in</div>
+              <div class="btn mini">Stop</div>
+            </div>
+            <div class="timeline">
+              <div class="ev"><div class="k">14:02:10</div><div class="b"><p class="dim">Session started in <span class="mono">~/.devdesk/wt/studyhub/142</span> · claude-acp 0.78 · session <span class="mono">a91c-…</span></p></div></div>
+              <div class="ev"><div class="k">phase 1</div><div class="b"><p>Reproduced. The header timer subscribes to <span class="mono">ExamClock</span> and is never told the exam ended; submit only clears the questions view.</p>
+                <div class="tool"><span class="cmd">Read</span> Sources/Exam/ExamHeader.swift <span class="res">· 142 lines</span></div>
+                <div class="tool"><span class="cmd">Grep</span> ExamClock <span class="res">· 6 files</span></div></div></div>
+              <div class="ev"><div class="k">phase 3</div><div class="b"><p>Wrote the failing test.</p>
+                <div class="tool"><span class="cmd">Edit</span> Tests/ExamTests/ExamClockTests.swift</div>
+                <div class="diff"><div class="fh">Tests/ExamTests/ExamClockTests.swift <span class="pl">+14</span><span class="mi">−0</span></div>
+                  <div class="l a">+ func testSubmitStopsClock() async {</div><div class="l a">+     let exam = Exam.mock(); exam.start()</div><div class="l a">+     exam.submit()</div><div class="l a">+     XCTAssertFalse(exam.clock.isRunning)</div><div class="l a">+ }</div></div>
+                <div class="tool" style="margin-top:6px"><span class="cmd">Bash</span> swift test --filter ExamClockTests <span class="res">· 1 failed, as expected</span></div></div></div>
+              <div class="ev"><div class="k">phase 6</div><div class="b"><p>Fix in <span class="mono">Exam.submit()</span>: stop the clock and post <span class="mono">.examEnded</span> so the header drops its badge.</p>
+                <div class="tool"><span class="cmd">Edit</span> Sources/Exam/Exam.swift <span class="res">· +3 −1</span></div>
+                <div class="tool"><span class="cmd">Edit</span> Sources/Exam/ExamHeader.swift <span class="res">· +6 −2</span></div>
+                <div class="tool"><span class="cmd">Bash</span> swift test <span class="res">· 212 passed</span></div></div></div>
+              <div class="ev"><div class="k">plan</div><div class="b"><div class="plan">
+                <div class="ok">1–6 reproduce, locate, test, fix</div><div class="ok">7 self-review</div><div class="ok">8–10 lint, build, changelog line</div>
+                <div class="cur">11 verify — gate</div><div class="todo">12 docs — gate</div><div class="todo">13 code-review — gate</div><div class="todo">14 pre-prod — gate</div></div></div></div>
+            </div>
+            <div class="gate">
+              <div class="gh">⏸ Gate 11 · verify <span class="chip wait"><i class="dot"></i>waiting on you · 2 m</span></div>
+              <p>The door wants to run the project's verify step in the worktree. It writes nothing outside it.</p>
+              <div class="cmdbox">cd ~/.devdesk/wt/studyhub/142 && ./scripts/verify.sh --strict</div>
+              <div class="acts">
+                <div class="btn primary mini">Allow once</div>
+                <div class="btn mini">Allow for this run</div>
+                <div class="btn mini">Reject</div>
+                <div class="sp"></div>
+                <small>session/request_permission · answered here, never in a terminal</small>
+              </div>
+            </div>
+            <div class="pane-foot">
+              <span>Context</span><div class="meter"><i></i></div><span>38% · 76k of 200k</span>
+              <span class="sp"></span>
+              <span>Turn 9 · 14 tool calls · 2 files changed</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 3 · GATE WITH A QUESTION ============ -->
+      <section class="screen" id="s3">
+        <div class="runs-head"><h1>Runs</h1><div class="slots"><i></i><i></i><i></i><i class="free"></i><i class="free"></i> 3 of 5 running</div></div>
+        <div class="runs-body">
+          <div class="runlist">
+            <div class="sec label">Running</div>
+            <div class="run on"><div class="t"><span class="num">#118</span>Weekly summary email <span class="chip wait" style="margin-left:auto"><i class="dot"></i>Question</span></div><div class="sub"><span class="chip"><i class="dot"></i>Codex</span><span class="mono">feat/118-weekly-summary</span></div></div>
+            <div class="run"><div class="t"><span class="num">#142</span>Exam timer keeps running… <span class="chip run" style="margin-left:auto"><i class="dot"></i>Phase 12</span></div><div class="sub"><span class="chip"><i class="dot"></i>Claude Code</span></div></div>
+            <div class="run"><div class="t"><span class="num">#120</span>Course import from a folder <span class="chip run" style="margin-left:auto"><i class="dot"></i>Phase 8</span></div><div class="sub"><span class="chip"><i class="dot"></i>Claude Code</span></div></div>
+          </div>
+          <div class="pane">
+            <div class="pane-head"><span class="name">#118 · Weekly summary email</span><span class="chip"><i class="dot"></i>Codex</span><span class="sp"></span><div class="btn mini">Diff</div><div class="btn mini caret">Continue in</div><div class="btn mini">Stop</div></div>
+            <div class="timeline">
+              <div class="ev"><div class="k">phase 2</div><div class="b"><p>Two mailers exist: <span class="mono">Mailer/Resend.swift</span> (used by auth) and <span class="mono">Legacy/SMTP.swift</span> (used by nothing since May). The issue does not say which to build on.</p>
+                <div class="tool"><span class="cmd">Grep</span> Resend|SMTP <span class="res">· 11 files</span></div></div></div>
+              <div class="ev"><div class="k">plan</div><div class="b"><div class="plan"><div class="ok">1 read the issue and the state</div><div class="cur">2 locate — needs a decision</div><div class="todo">3 design note (deep feature → ADR 0019 gate)</div><div class="todo">4–10 implement</div></div></div></div>
+            </div>
+            <div class="gate" style="border-color:var(--info-b);background:var(--info-fill)">
+              <div class="gh" style="color:var(--info-fg)">? The agent asks <span class="chip info"><i class="dot"></i>waiting on you · 40 s</span></div>
+              <p>Build the weekly summary on the Resend mailer, or revive the SMTP path? Resend is what auth already uses; SMTP is dead code but has templates.</p>
+              <div class="acts" style="flex-direction:column;align-items:stretch;gap:6px">
+                <div class="opt on"><i class="r"></i>Resend — match auth, delete Legacy/SMTP in a follow-up<small>recommended</small></div>
+                <div class="opt"><i class="r"></i>SMTP — reuse its templates</div>
+                <div style="display:flex;gap:8px;align-items:center;margin-top:4px">
+                  <div style="flex:1;height:28px;border:1px solid var(--cborder);border-radius:6px;background:var(--surface);padding:0 10px;display:flex;align-items:center;color:var(--faint)">Or say it in your own words…</div>
+                  <div class="btn primary mini">Answer</div>
+                </div>
+              </div>
+            </div>
+            <div class="pane-foot"><span>Context</span><div class="meter"><i style="width:12%"></i></div><span>12% · 24k of 200k</span><span class="sp"></span><span>Turn 3 · 5 tool calls · 0 files changed</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ 4 · HAND OFF ============ -->
+      <section class="screen" id="s4">
+        <div class="runs-head"><h1>Runs</h1><div class="slots"><i></i><i></i><i></i><i class="free"></i><i class="free"></i> 3 of 5 running</div></div>
+        <div class="runs-body">
+          <div class="runlist">
+            <div class="sec label">Running</div>
+            <div class="run on"><div class="t"><span class="num">#120</span>Course import from a folder <span class="chip run" style="margin-left:auto"><i class="dot"></i>Phase 8</span></div><div class="sub"><span class="chip"><i class="dot"></i>Claude Code</span><span class="mono">feat/120-course-import</span></div></div>
+            <div class="run"><div class="t"><span class="num">#142</span>Exam timer keeps running… <span class="chip run" style="margin-left:auto"><i class="dot"></i>Phase 12</span></div><div class="sub"><span class="chip"><i class="dot"></i>Claude Code</span></div></div>
+            <div class="run"><div class="t"><span class="num">#118</span>Weekly summary email <span class="chip run" style="margin-left:auto"><i class="dot"></i>Phase 3</span></div><div class="sub"><span class="chip"><i class="dot"></i>Codex</span></div></div>
+          </div>
+          <div class="pane" style="position:relative">
+            <div class="pane-head"><span class="name">#120 · Course import from a folder</span><span class="chip"><i class="dot"></i>Claude Code</span><span class="sp"></span><div class="btn mini">Diff</div><div class="btn mini caret" style="border-color:var(--accent);color:var(--accent)">Continue in</div><div class="btn mini">Stop</div></div>
+            <div class="timeline">
+              <div class="ev"><div class="k">phase 8</div><div class="b"><p>Import works for a flat folder. Nested weeks (<span class="mono">Week 03/Lecture 2/…</span>) need the parser to carry the path; this is bigger than the issue scoped and I would rather you drive it.</p>
+                <div class="tool"><span class="cmd">Edit</span> Sources/Import/FolderImporter.swift <span class="res">· +88 −12</span></div>
+                <div class="tool"><span class="cmd">Bash</span> swift test --filter Import <span class="res">· 31 passed</span></div></div></div>
+              <div class="ev"><div class="k">note</div><div class="b"><p class="dim">This is the moment the old app opened a chat. Now you continue the same session where you actually want to sit — the worktree, branch and session id travel with it, and Dev Desk keeps the card in progress and watches the branch.</p></div></div>
+            </div>
+            <div class="pane-foot"><span>Context</span><div class="meter"><i style="width:61%"></i></div><span>61% · 122k of 200k</span><span class="sp"></span><span>Turn 22 · 40 tool calls · 6 files changed</span></div>
+            <div class="menu" style="top:46px;bottom:auto;right:70px">
+              <div class="lab">Same session</div>
+              <div class="mi h">Claude Code in Terminal<small>claude --resume a91c…</small></div>
+              <div class="mi">Claude Code app<small>opens the worktree</small></div>
+              <div class="sep"></div>
+              <div class="lab">Fresh session, same worktree</div>
+              <div class="mi">Codex<small>codex --cd …/120</small></div>
+              <div class="mi">Antigravity<small>agy -c in …/120</small></div>
+              <div class="mi">super.engineering<small>sc workspace open …/120</small></div>
+              <div class="mi">Cursor · Zed · VS Code<small>open -a</small></div>
+              <div class="sep"></div>
+              <div class="mi">Copy the resume command</div>
+              <div class="mi">Reveal worktree in Finder</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <b>What changed.</b> <b>Terminals → Runs.</b> A row is a task's run, not a pty; the pane is its event log — text, tool calls, diffs, the plan — read from the agent's protocol stream, never scraped. <b>Chats are gone</b>, both of them; the only place you type is when the run asks (a gate or a question), and that answer goes back over the same channel. <b>Start</b> shows the prepared payload — door, branch, worktree, prompt, gates — and where to run it; the ACP list is what the registry says is installed, the hand-off list is apps Dev Desk launches and then only watches. <b>Continue in</b> is the one escape hatch: the same session in the user's own terminal or app, with the ids carried over. <b>Run project</b> and <b>Survey</b> stay as background rows with a log. <b>New terminal ⌘T</b> becomes <b>Open project in Terminal</b>. SwiftTerm leaves the app.
+</div>
+
+<script>
+document.querySelectorAll('.tabs button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.id===b.dataset.s));
+  document.getElementById('nav-board').classList.toggle('on',b.dataset.s==='s1');
+  document.getElementById('nav-runs').classList.toggle('on',b.dataset.s!=='s1');
+}));
+document.getElementById('nav-board').classList.add('on');
+</script>
+</body>
+</html>

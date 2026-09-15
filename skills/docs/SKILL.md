@@ -150,6 +150,10 @@ file renamed, and against the rename reverted, returning **OK / STALE / OK**.
 Run it over every `docs/arch/*.architecture.json` in the repo — not only the ones this branch
 touched, because any diff can move a file some other diagram cites.
 
+The glob is `*.architecture.json` deliberately: the other four types (`.dataflow.json`, `.workflow.json`,
+`.sequence.json`, `.lifecycle.json`) carry no repository evidence and have nothing to re-check, so their
+presence in `docs/arch/` is expected and is not a gap in this gate (ADR 0033).
+
 A `repository-evidence/*` failure means the diagram cites code this branch moved, renamed or deleted.
 **That fails the gate.** Fix it by re-reading the system at the new commit and re-running `dev:arch`
 — which legitimately advances the pin — or by deleting the diagram. Never by editing the SHA in place.

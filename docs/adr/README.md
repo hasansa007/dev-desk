@@ -10,7 +10,7 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | # | Decision | Status |
 |---|---|---|
 | [0001](0001-adrs-live-in-docs-adr.md) | ADRs live in `docs/adr/`, numbered, superseded rather than edited | Accepted |
-| [0002](0002-diagrams-land-in-the-repo.md) | Evidenced diagrams land in `docs/arch/`, with their IR beside them | Accepted |
+| [0002](0002-diagrams-land-in-the-repo.md) | Evidenced diagrams land in `docs/arch/`, with their IR beside them | Accepted, amended by 0033 |
 | [0003](0003-the-staleness-probe-bumps-the-revision.md) | The diagram staleness probe bumps the revision to HEAD | Accepted |
 | [0004](0004-compare-cited-paths-not-the-whole-tree.md) | Compare cited paths, not the whole tree, before advancing a pin | Accepted |
 | [0005](0005-re-assert-head-before-validating.md) | Re-assert HEAD before validating, not only at the start | Accepted |
@@ -19,7 +19,7 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0008](0008-replace-the-board-add-the-opportunity-door.md) | Replace the board; add the opportunity door rather than merge it | Accepted |
 | [0009](0009-track-docs-so-an-adr-can-be-part-of-its-own-diff.md) | Track `docs/` so an ADR can be part of the diff that introduces it | Accepted |
 | [0010](0010-paths-point-at-the-install-root.md) | Paths point at the install root, not the clone | Accepted |
-| [0011](0011-the-project-board-mirrors-it-never-decides.md) | The Project board mirrors; it never decides | Accepted |
+| [0011](0011-the-project-board-mirrors-it-never-decides.md) | The Project board mirrors; it never decides | Accepted, partially reversed by 0035 |
 | [0012](0012-the-mac-app-lives-in-apps-desk.md) | The Mac app lives in `apps/desk/`, in this repo | Accepted |
 | [0013](0013-the-app-reads-git-and-github-directly.md) | The app reads git and GitHub directly, until `dev snapshot` exists | Accepted |
 | [0014](0014-dev-desk-replaces-dev-ui.md) | Dev Desk replaces `/dev:ui`; card moves go through `/dev:kanban` | Accepted |
@@ -41,3 +41,7 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0030](0030-insights-runs-its-agent-headlessly.md) | Insights runs its agent headlessly (`claude -p` / `codex exec`) | Accepted |
 | [0031](0031-a-killed-run-leaves-a-record-and-the-next-launch-offers-to-continue-it.md) | A killed run leaves a record, and the next launch offers to continue it | Accepted |
 | [0032](0032-a-tapped-file-opens-beside-the-work-or-floats-over-it.md) | A tapped file opens beside the work, or floats over it | Accepted |
+| [0033](0033-every-diagram-type-lands-in-docs-arch.md) | Every diagram type lands in `docs/arch/`, labelled rather than hidden | Accepted |
+| [0034](0034-a-failed-headless-run-keeps-its-evidence.md) | A failed headless run keeps its evidence, and one rule places every prompt | Accepted |
+| [0035](0035-the-board-stores-what-git-cannot-see.md) | The board stores what git cannot see (`.devdesk/board.json`) | Accepted |
+| [0036](0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md) | Agents run over a protocol (ACP), and the terminal leaves the app | Proposed |
