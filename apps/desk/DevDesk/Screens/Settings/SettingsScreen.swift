@@ -57,6 +57,7 @@ struct SettingsScreen: View {
         case .notifications: NotificationsPane()
         case .execution: ExecutionPane()
         case .projectOverrides: ProjectOverridesPane(model: model)
+        case .runProject: RunProjectPane(model: model)
         }
     }
 }

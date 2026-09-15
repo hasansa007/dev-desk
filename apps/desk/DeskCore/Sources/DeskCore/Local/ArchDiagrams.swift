@@ -8,12 +8,16 @@ public struct ArchDiagram: Identifiable, Hashable {
     /// The `dev:arch` type this was drawn as — `architecture`, `workflow`, `dataflow`, `sequence`, `lifecycle` —
     /// read from the sidecar's `diagram_type`. nil when there is no readable sidecar, so a caller falls back.
     public var kind: String?
+    /// The HTML file's modification time, so the newest diagram of a kind can be chosen when a repository has
+    /// drawn the same kind more than once. `.distantPast` when the file's date could not be read.
+    public var modifiedAt: Date
 
-    public init(id: String, title: String, url: URL, kind: String? = nil) {
+    public init(id: String, title: String, url: URL, kind: String? = nil, modifiedAt: Date = .distantPast) {
         self.id = id
         self.title = title
         self.url = url
         self.kind = kind
+        self.modifiedAt = modifiedAt
     }
 }
 
@@ -28,12 +32,27 @@ public enum ArchDiagrams {
         let names = ((try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []).sorted()
         return names.filter { $0.hasSuffix(".html") }.map { name in
             let stem = String(name.dropLast(5))
+            let url = directory.appendingPathComponent(name)
             let sidecar = readSidecar(stem: stem, in: directory, siblings: names)
+            let modified = (try? FileManager.default.attributesOfItem(atPath: url.path)[.modificationDate]) as? Date
             return ArchDiagram(id: stem,
                                title: sidecar.title ?? readableName(stem),
-                               url: directory.appendingPathComponent(name),
-                               kind: sidecar.kind)
+                               url: url,
+                               kind: sidecar.kind,
+                               modifiedAt: modified ?? .distantPast)
         }
+    }
+
+    /// The five diagram types `dev:arch` draws, in the skill's own order. The Diagrams screen lists exactly
+    /// these whether or not any have been drawn, so a kind is a place to generate into, not only a file to show.
+    public static let kinds = ["architecture", "workflow", "dataflow", "sequence", "lifecycle"]
+
+    /// The newest diagram of `kind` in a repository, or nil when none has been drawn. A repository that ran the
+    /// same kind twice keeps both files; the most recently written one is the one the kind's item shows.
+    public static func newest(kind: String, repositoryRoot: String) -> ArchDiagram? {
+        list(repositoryRoot: repositoryRoot)
+            .filter { $0.kind == kind }
+            .max { $0.modifiedAt < $1.modifiedAt }
     }
 
     /// What the sidecar `<stem>.<kind>.json` says about a diagram: its `meta.title` and its `diagram_type`. Both

@@ -2,16 +2,15 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, terminals, roadmap, survey, ideation, insights
+    case board, terminals, roadmap, survey, ideation, diagrams
 
     /// What the sidebar calls each place. The raw values are what a window restores its place from, so a
-    /// rename is made here and never on the case: `terminals` reads "Sessions" because a chat is one too,
-    /// and `insights` reads "Diagrams" because drawing the project is all that is left of it.
+    /// rename that need not change the stored value is made here and never on the case: `terminals` reads
+    /// "Sessions" because a chat is one too.
     public var title: String {
         switch self {
         case .terminals: return "Sessions"
-        case .insights: return "Diagrams"
-        case .board, .roadmap, .survey, .ideation: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
+        case .board, .roadmap, .survey, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
         }
     }
 }
@@ -38,6 +37,7 @@ public struct WriteFailure: Equatable {
     static func tracker(_ message: String) -> WriteFailure { WriteFailure(title: "The tracker was not changed", message: message) }
     static func branch(_ message: String) -> WriteFailure { WriteFailure(title: "The branch was not deleted", message: message) }
     static func backlog(_ message: String) -> WriteFailure { WriteFailure(title: "docs/backlog/ was not changed", message: message) }
+    static func stage(_ message: String) -> WriteFailure { WriteFailure(title: "The board was not changed", message: message) }
     static func openFailed(_ message: String) -> WriteFailure { WriteFailure(title: "The file was not opened", message: message) }
 }
 
@@ -60,7 +60,7 @@ public enum TaskActivity: String, Hashable {
 }
 
 public enum SettingsSection: String, CaseIterable, Codable, Hashable {
-    case general, appearance, agentsAndDefaults, accountsAndConnections, notifications, execution, projectOverrides
+    case general, appearance, agentsAndDefaults, accountsAndConnections, notifications, execution, projectOverrides, runProject
 
     public var title: String {
         switch self {
@@ -71,6 +71,7 @@ public enum SettingsSection: String, CaseIterable, Codable, Hashable {
         case .notifications: return "Notifications"
         case .execution: return "Execution"
         case .projectOverrides: return "Project overrides"
+        case .runProject: return "Run project"
         }
     }
 }
@@ -83,6 +84,7 @@ public enum SheetKind: Hashable, Identifiable {
     case cancelTask(String)
     case runFocus(String)
     case deleteBranch(String)
+    case addTask(String)
     case settings
 
     public var id: String {
@@ -100,6 +102,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
         case .runFocus(let door): return "runFocus:\(door)"
         case .deleteBranch(let branch): return "deleteBranch:\(branch)"
+        case .addTask(let column): return "addTask:\(column)"
         case .settings: return "settings"
         }
     }
@@ -120,6 +123,9 @@ public final class ProjectWindowModel {
     public let runs = DoorRuns()
     /// Each task's shell in this window. A sample has no folder, so none of its sessions can start.
     public let sessions: ShellSessions
+    /// How this project runs itself (`.devdesk/run.json`) and the run that is live; its session sits in
+    /// `sessions` under a `run:` id. A sample has no folder, so its plan is empty and nothing can start.
+    public let projectRuns: ProjectRuns
     /// Each task's agent in this window, in the same folders as the shells; a sample's can't start either.
     public private(set) var loadState: LoadState = .loading
     public private(set) var reloadError: String?
@@ -152,6 +158,148 @@ public final class ProjectWindowModel {
     public var showsIgnoredFindings = false
 
     static func ignoredKey(_ ref: ProjectRef) -> String { "desk.ignoredFindings.\(ref.id)" }
+
+    /// The diagram kinds whose `dev:arch` run is in flight right now, so the Diagrams screen can show a spinner
+    /// for that kind without switching away from itself. A kind is added when its Generate starts and removed
+    /// when the run ends, whatever the run wrote — the screen reads the folder again either way.
+    public private(set) var generatingDiagramKinds: Set<String> = []
+
+    /// Which diagram kind each in-flight generate session is drawing, so its end clears the right spinner. A
+    /// scratch session runs the headless `dev:arch`; when it ends, this says which kind's run just finished.
+    @ObservationIgnored private var generatingSessionKinds: [String: String] = [:]
+
+    /// What a generate that drew nothing leaves for the pane: the run's own evidence, not only a guess.
+    public struct DiagramGenerateFailure: Equatable {
+        /// What went wrong, leading with the run's own last words when it wrote any, then what the timing
+        /// says — an immediate exit is a launch failure, a long run may honestly have declined.
+        public let message: String
+        /// The last non-empty lines the run wrote, newest last — `JournalRecord.logTail`'s own shape, read
+        /// back from the session registry rather than captured a second time.
+        public let outputTail: [String]
+        /// The scratch session the run lived in. On failure it is kept, not closed, so the transcript the
+        /// CLI wrote stays readable — this is what the banner's "open the run" selects in Sessions.
+        public let sessionID: String?
+    }
+
+    /// A kind whose last generate finished without drawing a file: `dev:arch` can decline (Phase 0 needs a
+    /// committed repo it can name and cut a branch in), and a headless run that asks a question nobody answers
+    /// exits having written nothing. Rather than drop the pane silently back to "Generate", the screen reads
+    /// this and says the run produced no diagram, so a refusal is visible instead of a mystery. Cleared when a
+    /// new generate for that kind starts, and when one succeeds.
+    public private(set) var diagramGenerateFailures: [String: DiagramGenerateFailure] = [:]
+
+    /// When each kind's in-flight generate began, so its end can tell a run that never really ran (seconds)
+    /// from one that worked and declined (minutes). Keyed by kind and overwritten by the next generate, so an
+    /// abandoned start cannot grow the table past the five kinds.
+    @ObservationIgnored private var generatingKindStarts: [String: Date] = [:]
+
+    public func beginGeneratingDiagram(kind: String, sessionID: String) {
+        generatingDiagramKinds.insert(kind)
+        generatingSessionKinds[sessionID] = kind
+        generatingKindStarts[kind] = Date()
+        diagramGenerateFailures[kind] = nil
+    }
+    public func isGeneratingDiagram(kind: String) -> Bool { generatingDiagramKinds.contains(kind) }
+    public func diagramGenerateFailure(kind: String) -> DiagramGenerateFailure? { diagramGenerateFailures[kind] }
+
+    /// The kind a just-ended session was generating, and forgets it; nil when the session was not a generate.
+    /// The caller reads the folder again for that kind and takes the finished scratch session off the list.
+    @discardableResult
+    public func finishGeneratingDiagram(sessionID: String) -> String? {
+        guard let kind = generatingSessionKinds.removeValue(forKey: sessionID) else { return nil }
+        generatingDiagramKinds.remove(kind)
+        return kind
+    }
+
+    /// Called after a generate's session ends and the project has been re-read: if the kind still has no file,
+    /// the run drew nothing, and what is recorded for the pane carries the run's own evidence — its exit
+    /// status, the last lines it wrote, and the session they are still readable in — ahead of any guess about
+    /// declining. A successful draw clears any old note.
+    public func recordDiagramGenerateResult(kind: String, sessionID: String? = nil) {
+        let started = generatingKindStarts.removeValue(forKey: kind)
+        guard diagram(kind: kind) == nil else {
+            diagramGenerateFailures[kind] = nil
+            return
+        }
+        var status: Int32?
+        var tail: [String] = []
+        if let sessionID {
+            if case .ended(_, let ended) = sessions.state(for: sessionID) { status = ended }
+            tail = sessions.outputTail(for: sessionID)
+        }
+        diagramGenerateFailures[kind] = DiagramGenerateFailure(
+            message: Self.diagramFailureMessage(lastLine: tail.last, exitStatus: status,
+                                                duration: started.map { Date().timeIntervalSince($0) }),
+            outputTail: tail, sessionID: sessionID)
+    }
+
+    /// Under this many seconds, a run that drew nothing never really ran: `dev:arch` reads the repository,
+    /// cuts a branch and calls a renderer — minutes of work — so a run over in seconds died at launch, the
+    /// way one whose prompt a variadic flag swallowed did.
+    nonisolated static let launchFailureSeconds: TimeInterval = 10
+
+    /// The pane's note for a kind whose run ended with no file: the run's own last line first — what the CLI
+    /// printed is the diagnosis — then what the timing says, and only the slow case keeps the guess about
+    /// declining. `duration` nil (an end whose start was never seen) reads as the slow case.
+    nonisolated static func diagramFailureMessage(lastLine: String?, exitStatus: Int32?, duration: TimeInterval?) -> String {
+        var parts: [String] = []
+        if let lastLine, !lastLine.isEmpty {
+            parts.append("The run ended saying: `\(lastLine.replacingOccurrences(of: "`", with: "'"))`.")
+        }
+        let status = exitStatus.map { " (exit \($0))" } ?? ""
+        if let duration, duration < Self.launchFailureSeconds {
+            parts.append("It exited after \(Int(duration.rounded())) s\(status) without drawing this diagram — too fast to have drawn anything, so this is a launch failure, not a refusal.")
+        } else {
+            parts.append("The last dev:arch run finished\(status) without drawing this diagram. It may have declined — dev:arch draws from a committed repository (it names the repo and cuts a branch before writing).")
+        }
+        parts.append("Open the run in Sessions to see everything it said.")
+        return parts.joined(separator: " ")
+    }
+
+    /// The newest diagram of `kind` this project has drawn, read from disk, or nil when none exists yet. The
+    /// screen calls this when a kind is selected; a sample has no folder, so it has nothing to show.
+    public func diagram(kind: String) -> ArchDiagram? {
+        guard let root = snapshot?.repositoryRoot else { return nil }
+        return ArchDiagrams.newest(kind: kind, repositoryRoot: root)
+    }
+
+    /// Whether a diagram can be drawn here, and why not when it can't — read only where it blocks, which is the
+    /// Diagrams generate. `dev:arch` draws from committed code: it pins nodes to a real SHA and cuts a branch
+    /// before writing, so a folder that is not a repository, or a repository with no commits, cannot be drawn.
+    public enum DiagramRepoState: Equatable {
+        /// A real repo with a commit and a remote, or still loading — nothing to offer.
+        case ready
+        /// A local folder that is not a git repository. Offer `git init`.
+        case notARepository
+        /// A repository with no commits, so `HEAD` does not resolve and there is no SHA to pin to.
+        case noCommits
+        /// A committed repo with no `origin` remote. Archify's schema requires a GitHub URL for `meta.repository.url`
+        /// (`^https://github.com/owner/repo`), so a diagram cannot validate without one — offer to add the remote.
+        case noRemote
+    }
+
+    /// The repo state the Diagrams screen checks before a generate. A sample has no folder to draw from, so it
+    /// reads as ready (its own "sample" reason blocks the run elsewhere); a local project is fully drawable
+    /// (repo + commit + remote), or missing one of those in turn.
+    public var diagramRepoState: DiagramRepoState {
+        guard case .local = ref, let snapshot else { return .ready }
+        guard snapshot.repositoryRoot != nil else { return .notARepository }
+        if snapshot.project.headRevision == nil { return .noCommits }
+        return snapshot.project.remote == nil ? .noRemote : .ready
+    }
+
+    /// Adds an `origin` remote to a committed repo that has none, then reloads. Archify requires a GitHub URL to
+    /// validate, so the screen asks for one and passes it here; nothing is pushed. The URL is passed as a single
+    /// argv element, never interpolated into a shell string. Returns whether a remote now exists.
+    @discardableResult
+    public func addGitRemote(url: String) async -> Bool {
+        let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard case .local(let path) = ref, diagramRepoState == .noRemote, !trimmed.isEmpty else { return false }
+        _ = try? await runner.run("git", ["remote", "add", "origin", trimmed],
+                                  in: URL(fileURLWithPath: path, isDirectory: true), timeout: CommandTimeout.git)
+        await load()
+        return diagramRepoState == .ready
+    }
 
     /// Sessions opened for their own sake — not a door's, not a task's. They open at the project root, which
     /// is where you would have opened Terminal yourself.
@@ -239,11 +387,22 @@ public final class ProjectWindowModel {
         var root: URL?
         if case .local(let path) = ref { root = URL(fileURLWithPath: path, isDirectory: true) }
         sessions = ShellSessions(projectRoot: root)
+        projectRuns = ProjectRuns(projectRoot: root, sessions: sessions)
         // A finished run has written whatever it was going to write: read the project again rather than wait to be asked.
         sessions.onSessionEnded = { [weak self] id in
             Task {
                 await self?.load()
-                if Self.endedRunShowsDiagrams(sessionID: id) { self?.go(.insights) }
+                if Self.endedRunShowsDiagrams(sessionID: id) { self?.go(.diagrams) }
+                // A diagram generate that just finished: its spinner clears, the reload above has already
+                // picked up the new file, and on success the scratch session it ran in comes off the list. It
+                // never navigates — the Diagrams screen stays put while its own kind swaps from spinner to
+                // drawing. When the run drew nothing, a note carrying the run's own exit and last words is
+                // recorded, and the session is kept: closing it threw away the transcript that named the
+                // failure, and the pane then had nothing truer to say than "it may have declined".
+                if let kind = self?.finishGeneratingDiagram(sessionID: id) {
+                    self?.recordDiagramGenerateResult(kind: kind, sessionID: id)
+                    if self?.diagramGenerateFailure(kind: kind) == nil { self?.closeTerminal(id) }
+                }
             }
         }
     }
@@ -253,7 +412,11 @@ public final class ProjectWindowModel {
         return nil
     }
 
-    public var tasks: [DeskTask] { snapshot?.board.value ?? [] }
+    /// The board's tasks, with anything live in this window promoted out of the unstarted columns: a card
+    /// with a run, shell or agent going is being worked on whatever git has seen, so Backlog with a pulsing
+    /// "Running" pill — the report that led to ADR 0035 — cannot happen. The promotion is this window's own
+    /// view, never written anywhere: the next load recomputes it from the same facts.
+    public var tasks: [DeskTask] { (snapshot?.board.value ?? []).map(promotingRunning) }
     public var selectedTask: DeskTask? { selectedTaskID.flatMap(task) }
     public func task(_ id: String) -> DeskTask? { tasks.first { $0.id == id } }
     public var openTaskCount: Int { tasks.filter { $0.column != .done }.count }
@@ -409,6 +572,114 @@ public final class ProjectWindowModel {
             writeFailure = .backlog(Markdown.escape(error.localizedDescription))
         }
     }
+
+    // MARK: - Board stages (ADR 0035)
+
+    /// A task in an unstarted column with something live here is shown In progress; everything else about
+    /// it stays as built. Kept pure and static so the rule is testable without a live shell.
+    private func promotingRunning(_ task: DeskTask) -> DeskTask {
+        Self.promoted(task, isRunning: activity(of: task) != nil)
+    }
+
+    static func promoted(_ task: DeskTask, isRunning: Bool) -> DeskTask {
+        guard isRunning, task.column == .backlog || task.column == .readyForDev || task.column == .queued else { return task }
+        var task = task
+        task.column = .inProgress
+        return task
+    }
+
+    /// Backlog → Ready for dev: the explicit "this can be picked up" judgement git has no fact for.
+    public func moveToReadyForDev(_ task: DeskTask) async { await setStage(.readyForDev, for: task) }
+
+    /// Ready for dev / Queued → Backlog. Clearing the stage is enough: with nothing stored, the card falls
+    /// back to git and the milestone, which is what Backlog means.
+    public func returnToBacklog(_ task: DeskTask) async { await setStage(nil, for: task) }
+
+    /// Queued / In progress → Ready for dev — but only when that would be true afterwards; see
+    /// `stageBackBlockedReason`.
+    public func cancelToReadyForDev(_ task: DeskTask) async {
+        guard stageBackBlockedReason(for: task) == nil else { return }
+        await setStage(.readyForDev, for: task)
+    }
+
+    /// A start moves the card to In progress at once, instead of leaving it unstarted until the first
+    /// commit finally gives git something to say.
+    public func recordStarted(_ task: DeskTask) async { await setStage(.inProgress, for: task) }
+
+    /// A Start made with every slot busy: the card goes to Queued rather than nowhere, and the queue releases
+    /// it when one frees.
+    public func queueForStart(_ task: DeskTask) async { await setStage(.queued, for: task) }
+
+    /// Why a card cannot be moved back a column, or nil when it can. git owns In progress once commits exist
+    /// (ADR 0011), so clearing the stage would leave the card exactly where it is.
+    public func stageBackBlockedReason(for task: DeskTask) -> String? {
+        guard let branch = task.branch, let count = task.unmergedCount, count > 0 else { return nil }
+        return "It has \(count) commit\(count == 1 ? "" : "s") on \(branch) — git decides In progress, so this would not move it."
+    }
+
+    /// Writes the stage into `.devdesk/board.json` and reloads, so the board shows the result. Local and
+    /// instant: no `gh` command, no network. A `branch:`/`pr:`/`merged:` card is git's own and takes no
+    /// stage; a project with no repository root has nowhere to keep one. `BoardStages.write` never throws,
+    /// so the file is read back and a stage that did not land is reported rather than silently dropped.
+    private func setStage(_ stage: BoardStage?, for task: DeskTask) async {
+        await setStage(stage, forTaskID: task.id)
+    }
+
+    /// The same write by id alone, for a card that is not on the board yet — a task just typed into Ready
+    /// for dev needs its stage recorded before the reload that first shows it.
+    private func setStage(_ stage: BoardStage?, forTaskID id: String) async {
+        guard let path = snapshot?.repositoryRoot,
+              !id.hasPrefix("branch:"), !id.hasPrefix("pr:"), !id.hasPrefix("merged:") else { return }
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        BoardStages.read(projectRoot: root).setting(stage, for: id).write(projectRoot: root)
+        guard BoardStages.read(projectRoot: root).stages[id] == stage else {
+            writeFailure = .stage("The stage could not be written to `\(BoardStages.relativePath)`.")
+            return
+        }
+        writeFailure = nil
+        await load()
+    }
+
+    /// A task typed on the board. It is written to `docs/backlog/` (ADR 0027) — instant and local, no
+    /// tracker run — and lands in the column it was added from: adding from Ready for dev records that
+    /// stage, so the card appears where it was typed rather than at the back of Backlog. Backlog itself
+    /// records nothing — it is the absence of a stage.
+    @discardableResult
+    public func addTask(title: String, notes: String, column: BoardColumn) async -> Bool {
+        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !title.isEmpty, let root = snapshot?.repositoryRoot else { return false }
+        // Today's date is the entry's key — the date-led name the folder already sorts by — so a task
+        // typed today never collides with one typed another day.
+        let key = Self.backlogDay.string(from: Date())
+        // `LocalBacklog.write` deliberately never overwrites and hands back the existing path, which from
+        // this button would look like a press that did nothing — so a name already taken is refused aloud.
+        let name = LocalBacklog.fileName(key: key, title: title)
+        guard !LocalBacklog.read(projectPath: root).contains(where: { $0.id == name }) else {
+            writeFailure = .backlog(Markdown.escape("\(LocalBacklog.folder)/\(name).md already exists, and an entry is never overwritten. Edit that file, or give this task a different title."))
+            return false
+        }
+        do {
+            let path = try LocalBacklog.write(projectPath: root, key: key, title: title,
+                                              body: notes.trimmingCharacters(in: .whitespacesAndNewlines), source: nil)
+            let stem = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+            writeFailure = nil
+            if column == .readyForDev { await setStage(.readyForDev, forTaskID: DeskTask.localPrefix + stem) }
+            await load()
+            return true
+        } catch {
+            writeFailure = .backlog(Markdown.escape(error.localizedDescription))
+            return false
+        }
+    }
+
+    /// `2026-09-14`, in the fixed locale the board's own formatters use, so the file's name never depends
+    /// on the Mac's calendar settings.
+    private static let backlogDay: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter
+    }()
 
     // MARK: - Survey reset
 

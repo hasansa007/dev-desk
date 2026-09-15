@@ -99,7 +99,7 @@ final class SnapshotMode {
 
     private static let sampleStates: [Capture] = [
         Capture(name: "01-task42-dialog", isSheet: true) { $0.openTask("42") },
-        Capture(name: "17-insights") { $0.go(.insights) },
+        Capture(name: "17-insights") { $0.go(.diagrams) },
         Capture(name: "02-board") { $0.go(.board) },
         Capture(name: "03-board-backlog") { $0.go(.board); $0.showBacklog = true },
         Capture(name: "04-task42-overview", isSheet: true) { $0.openTask("42"); $0.tab = .requirements },
@@ -117,8 +117,8 @@ final class SnapshotMode {
         Capture(name: "20-compare-sheet", isSheet: true) { $0.openTask("42"); $0.present(.compareOutputs) },
         Capture(name: "21-followup-sheet", isSheet: true) { $0.openTask("42"); $0.present(.followUp) },
         Capture(name: "22-handoff-sheet", isSheet: true) { $0.openTask("63"); $0.present(.handoff) },
-        Capture(name: "23-dark-insights", isDark: true) { $0.go(.insights) },
-        // #65 is queued with no branch, so opening it presents the sheet rather than a workspace.
+        Capture(name: "23-dark-insights", isDark: true) { $0.go(.diagrams) },
+        // #65 is ready for dev with no branch, so opening it presents the sheet rather than a workspace.
         Capture(name: "24-unstarted-task-sheet", isSheet: true) { $0.go(.board); $0.openTask("65") },
         Capture(name: "25-cancel-task-sheet", isSheet: true) { $0.go(.board); $0.present(.cancelTask("65")) },
     ]
@@ -126,7 +126,7 @@ final class SnapshotMode {
     private static let localStates: [Capture] = [
         Capture(name: "01-board") { $0.go(.board) },
         // A real repo's own docs/arch/, so the Diagrams header shows its populated controls, not the empty state.
-        Capture(name: "01b-insights") { $0.go(.insights) },
+        Capture(name: "01b-insights") { $0.go(.diagrams) },
         Capture(name: "02-first-task-changes") { model in
             if let id = firstTaskID(model) { model.openTask(id) }
             model.tab = .changes

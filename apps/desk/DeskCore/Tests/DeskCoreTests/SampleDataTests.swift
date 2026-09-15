@@ -6,7 +6,10 @@ final class SampleDataTests: XCTestCase {
         let tasks = SampleData.studyHub().board.value ?? []
         func count(_ column: BoardColumn) -> Int { tasks.filter { $0.column == column }.count }
         XCTAssertEqual(count(.backlog), 2)
-        XCTAssertEqual(count(.queued), 1)
+        // #65 sits in Ready for dev now: the sample's "planned, unstarted" card, since Queued means
+        // "waiting for a free agent slot" (ADR 0035) and the sample has no queue.
+        XCTAssertEqual(count(.readyForDev), 1)
+        XCTAssertEqual(count(.queued), 0)
         XCTAssertEqual(count(.inProgress), 3)
         XCTAssertEqual(count(.review), 1)
         XCTAssertEqual(count(.done), 1)

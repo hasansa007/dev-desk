@@ -93,7 +93,7 @@ final class BoardBuilderTests: XCTestCase {
         let columns = Dictionary(built.map { ($0.id, $0.column) }, uniquingKeysWith: { first, _ in first })
         XCTAssertEqual(built.count, columns.count, "task ids are unique")
         XCTAssertEqual(columns, [
-            "12": .inProgress, "13": .review, "14": .queued, "15": .backlog, "16": .backlog, "18": .backlog, "19": .review,
+            "12": .inProgress, "13": .review, "14": .readyForDev, "15": .backlog, "16": .backlog, "18": .backlog, "19": .review,
             "pr:20": .review, "branch:spike/z": .inProgress, "merged:9": .done,
         ])
     }
@@ -117,12 +117,14 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.headerBadge, StatusBadge(.failed, "Changes requested"))
         XCTAssertEqual(task.nextAction, .reviewChanges)
         XCTAssertEqual(task.branchLine, "gh-13-y · base main@abc1234")
+        XCTAssertEqual(task.pullRequestNumber, 30, "the Review card's backwards move needs the PR number")
     }
 
-    func testActiveMilestoneIssueIsQueuedWithNoBranch() throws {
+    /// The active milestone means "ready for dev" now (ADR 0035): Queued is the wait for a free agent slot.
+    func testActiveMilestoneIssueIsReadyForDevWithNoBranch() throws {
         let task = try XCTUnwrap(tasks()["14"])
         XCTAssertNil(task.cardBadge)
-        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "Queued"))
+        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "Ready for dev"))
         XCTAssertEqual(task.branchLine, "No branch yet")
         XCTAssertEqual(task.nextAction, .openURL(URL(string: "https://github.com/acme/app/issues/14")!, title: "Open on GitHub"))
         XCTAssertEqual(task.activity, .available([]))
@@ -174,7 +176,7 @@ final class BoardBuilderTests: XCTestCase {
         input.github?.issues = [issue(17, "Epic: offline", labels: ["epic"], milestone: "v2", body: "- [ ] #18"),
                                 issue(21, "Epic: done", labels: ["epic"], body: "- [x] #12")]
         let columns = BoardBuilder.build(input).reduce(into: [String: BoardColumn]()) { $0[$1.id] = $1.column }
-        XCTAssertEqual(columns["17"], .queued)
+        XCTAssertEqual(columns["17"], .readyForDev)
         XCTAssertEqual(columns["21"], .backlog)
     }
 
@@ -208,6 +210,7 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.title, "Refactor networking")
         XCTAssertEqual(task.cardMeta, "PR #20")
         XCTAssertEqual(task.cardBadge, StatusBadge(.info, "Review requested"))
+        XCTAssertEqual(task.pullRequestNumber, 20)
         XCTAssertEqual(task.requirements, .available(Requirements(goal: "Moves the client.", criteria: [AcceptanceCriterion("Tests pass", isMet: false)],
                                                                   sources: "Pull request #20", body: "Moves the client.\n\n- [ ] Tests pass")))
         XCTAssertEqual(task.changes, .unavailable("The branch refactor/net is not in this checkout. Fetch it to see its diff."))
@@ -428,18 +431,19 @@ final class BoardBuilderTests: XCTestCase {
 
     func testBoardNoteNamesTheRuleAndTheActiveMilestone() {
         let ready = GitHubState.ready(GitHubData(slug: "acme/app"))
-        let rule = "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued."
+        let rule = "Git decides In progress, Review and Done; the active milestone puts an issue in Ready for dev. "
+            + "Ready for dev, Queued and a started card's In progress are recorded in .devdesk/board.json until git sees a commit."
         XCTAssertEqual(BoardBuilder.note(github: ready, activeMilestone: ("v2", "nearest due date 2026-10-01")),
                        rule + " Active milestone: v2, nearest due date 2026-10-01.")
         XCTAssertEqual(BoardBuilder.note(github: ready, activeMilestone: (nil, "no open milestone")),
-                       rule + " No active milestone, so Queued is empty.")
+                       rule + " No active milestone, so only moves made here fill Ready for dev.")
         // An unavailable GitHub says what to do about it: the note is the only place the developer is told.
         XCTAssertEqual(BoardBuilder.note(github: .unavailable("gh not installed"), activeMilestone: (nil, "gh not installed")),
                        "GitHub is unavailable (gh not installed), so the board shows local branches and docs/backlog/. " + install)
         var noIssues = GitHubData(slug: "acme/app")
         noIssues.issuesUnavailable = "the 'acme/app' repository has disabled issues"
         XCTAssertEqual(BoardBuilder.note(github: .ready(noIssues), activeMilestone: (nil, "no open milestone")),
-                       rule + " No active milestone, so Queued is empty. Open issues could not be read "
+                       rule + " No active milestone, so only moves made here fill Ready for dev. Open issues could not be read "
                        + "(the 'acme/app' repository has disabled issues), so only pull requests and branches are shown.")
     }
 
@@ -463,6 +467,80 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.parallel, .none("git log failed: fatal: bad object c0ffee1"))
     }
 
+    // MARK: - Stored stages (ADR 0035)
+
+    /// The stage fills the gap before the first commit: an issue git has nothing on lands where the file says.
+    func testAStoredStagePutsAnUntouchedIssueInItsColumn() {
+        var input = fixture
+        input.stages = ["15": .readyForDev, "18": .queued]
+        let built = tasks(input)
+        XCTAssertEqual(built["15"]?.column, .readyForDev)
+        XCTAssertEqual(built["18"]?.column, .queued)
+        XCTAssertEqual(built["18"]?.headerBadge, StatusBadge(.neutral, "Queued"), "the fallback badge names its column")
+    }
+
+    /// A start records In progress before git has a commit to show for it (ADR 0035).
+    func testAStoredInProgressStageMovesAnIssueWithNoBranch() {
+        var input = fixture
+        input.stages = ["15": .inProgress]
+        XCTAssertEqual(tasks(input)["15"]?.column, .inProgress)
+    }
+
+    /// A queued card says why it is waiting; a pipeline note of the card's own still wins — it describes
+    /// the work, which says more than the wait.
+    func testAQueuedCardCarriesTheWaitingNoteUnlessThePipelineSpeaks() {
+        var input = fixture
+        input.stages = ["15": .queued, "18": .queued, "local:c1-idle": .queued]
+        // Issue 18's branch has nothing unmerged, so git declines and the stage holds — and the branch's
+        // pipeline state gives the card a note of its own.
+        input.git?.branches.append(BranchFacts(name: "gh-18-cache", unmerged: 0, counted: true, worktree: nil))
+        input.pipeline["gh-18-cache"] = PipelineState(phase: 5, phaseGroup: "planning", tier: "standard")
+        input.localBacklog = [BacklogItem(id: "c1-idle", key: "C1", title: "Waiting locally", body: "", path: "/p/docs/backlog/c1-idle.md")]
+        let built = tasks(input)
+        XCTAssertEqual(built["15"]?.column, .queued)
+        XCTAssertEqual(built["15"]?.cardNote, "Waiting for a free agent slot")
+        XCTAssertEqual(built["local:c1-idle"]?.cardNote, "Waiting for a free agent slot", "a docs/backlog/ card waits the same way")
+        XCTAssertEqual(built["18"]?.column, .queued)
+        XCTAssertEqual(built["18"]?.cardNote, "Phase 5 · planning · advisory", "the pipeline's note wins")
+    }
+
+    /// git wins once commits exist: clearing or downgrading the stage cannot pull a branch's card back.
+    func testUnmergedCommitsBeatAStoredReadyForDevStage() {
+        var input = fixture
+        input.stages = ["12": .readyForDev]
+        XCTAssertEqual(tasks(input)["12"]?.column, .inProgress, "gh-12-x is 2 commits ahead; git decides In progress")
+    }
+
+    /// And so does an open pull request — Review is git's column, whatever the file says.
+    func testAnOpenPullRequestBeatsAStoredStage() {
+        var input = fixture
+        input.stages = ["13": .readyForDev]
+        XCTAssertEqual(tasks(input)["13"]?.column, .review)
+    }
+
+    /// A stage under a `branch:`/`pr:`/`merged:` id is stale bookkeeping about a card git owns, never a move.
+    func testAStageUnderAGitOwnedIdIsIgnored() {
+        var input = fixture
+        input.stages = ["branch:spike/z": .readyForDev, "pr:20": .queued, "merged:9": .readyForDev]
+        let built = tasks(input)
+        XCTAssertEqual(built["branch:spike/z"]?.column, .inProgress)
+        XCTAssertEqual(built["pr:20"]?.column, .review)
+        XCTAssertEqual(built["merged:9"]?.column, .done)
+    }
+
+    /// A draft pull request is still being worked on, so it sits with the work — which is what makes the
+    /// Review card's "convert to a draft" a real move back to In progress.
+    func testADraftPullRequestIsInProgressNotReview() {
+        var input = fixture
+        input.github?.openPullRequests = [pr(30, "Batch the sync", head: "gh-13-y", decision: "CHANGES_REQUESTED", draft: true),
+                                          pr(40, "Standalone draft", head: "wip/x", draft: true),
+                                          pr(41, "Ready for eyes", head: "feat/ready")]
+        let built = tasks(input)
+        XCTAssertEqual(built["13"]?.column, .inProgress, "an issue whose pull request is a draft")
+        XCTAssertEqual(built["pr:40"]?.column, .inProgress, "a draft with no issue behind it")
+        XCTAssertEqual(built["pr:41"]?.column, .review, "a non-draft pull request stays in Review")
+    }
+
     /// Work recorded with no tracker is on the board, in Backlog, marked as local (ADR 0027).
     func testALocalBacklogEntryIsABacklogCard() {
         let item = BacklogItem(id: "c1-callback", key: "C1", title: "Callback fetch returns 0", area: "Logic",
@@ -476,6 +554,17 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(card?.cardBadge?.label, "Local")
         XCTAssertEqual(card?.impact, "High")
         XCTAssertEqual(card?.requirements.value?.body, "mechanism: it schedules and returns.")
+    }
+
+    /// A `docs/backlog/` card carries a stage like any issue card, and keeps its Local badges (ADR 0035).
+    func testALocalBacklogEntryCarriesItsStoredStage() {
+        let item = BacklogItem(id: "c1-callback", key: "C1", title: "Callback fetch returns 0", area: "Logic",
+                               impact: "High", body: "mechanism: it schedules and returns.", path: "/p/docs/backlog/c1-callback.md")
+        let card = BoardBuilder.build(BoardInput(localBacklog: [item], stages: ["local:c1-callback": .readyForDev]))
+            .first { $0.isLocalBacklog }
+        XCTAssertEqual(card?.column, .readyForDev)
+        XCTAssertEqual(card?.cardBadge?.label, "Local")
+        XCTAssertEqual(card?.headerBadge, StatusBadge(.info, "Local backlog"))
     }
 
     /// An entry that already names its issue is on its way to filed/; the issue is the card, not both.

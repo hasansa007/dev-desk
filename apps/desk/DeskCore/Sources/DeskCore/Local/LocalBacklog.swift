@@ -86,7 +86,7 @@ public enum LocalBacklog {
 
     /// `2026-08-31-C1-callback-fetch-returns-0-reminders`. The key leads so the file sorts with its run, and
     /// the slug is there so the folder is readable without opening anything.
-    static func fileName(key: String, title: String) -> String {
+    public static func fileName(key: String, title: String) -> String {
         let slug = slugify(title)
         let stem = [slugify(key), slug].filter { !$0.isEmpty }.joined(separator: "-")
         return stem.isEmpty ? "item-\(Int(Date().timeIntervalSince1970))" : String(stem.prefix(80))

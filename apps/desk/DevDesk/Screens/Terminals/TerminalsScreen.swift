@@ -183,6 +183,13 @@ struct TerminalsScreen: View {
                 ? closing("Stops this run") { jobs?.stop(job.id) }
                 : closing("Takes the finished run off this list") { jobs?.remove(job.id) }
         }
+        // A project run stops through its own stop rows before the shell is ended; a plain end would skip them.
+        if case .projectRun = row.kind {
+            if row.isLive {
+                return closing("Stops this run") { if let terminals { model.stopProjectRun(sessionID: row.id, terminals: terminals) } }
+            }
+            return closing("Takes the finished run off this list") { model.projectRuns.forget(sessionID: row.id) }
+        }
         if row.isLive { return closing("Stops this session") { terminals?.end(taskID: row.id) } }
         guard case .scratch = row.kind else { return nil }
         let chat = model.scratchChat(for: row.id)
@@ -551,8 +558,11 @@ private struct SessionPane: View {
     /// A scratch session is its body alone. Its terminal started the moment it was opened and its chat has
     /// nothing to start, so a header would carry a subtitle the tab already says and no button at all.
     private var showsHeader: Bool {
-        if case .scratch = row.kind { return false }
-        return true
+        switch row.kind {
+        // A project run started as the toolbar's play was pressed; running it again is that same button.
+        case .scratch, .projectRun: return false
+        case .door, .task, .job: return true
+        }
     }
 
     var body: some View {
@@ -612,7 +622,7 @@ private struct SessionPane: View {
         case .door: return "Start run"
         // A scratch session started as it opened, and a background run has no shell to start; neither shows
         // this header, so neither reads this title.
-        case .task, .scratch, .job: return "Start"
+        case .task, .scratch, .job, .projectRun: return "Start"
         }
     }
 
@@ -627,7 +637,7 @@ private struct SessionPane: View {
         switch row.kind {
         case .door(let run): branch = nil; number = nil; note = run.folderNote; command = run.command
         case .task(let task): branch = task.branch; number = task.taskNumber; note = task.noBranchNote; command = nil
-        case .scratch, .job: return
+        case .scratch, .job, .projectRun: return
         }
         let location = worktreeLocation
         let title = row.title
@@ -665,6 +675,10 @@ private struct SessionPane: View {
                 // either way: a session that somehow is not says so through the pane's own message.
                 ShellPane(sessions: model.sessions, id: row.id, showsStop: false, showsStart: false)
             }
+        case .projectRun:
+            // The run's shell, hosted exactly as a scratch terminal's is: it started when play was pressed,
+            // and its stop is the tab's ×, which runs the configuration's stop rows first.
+            ShellPane(sessions: model.sessions, id: row.id, showsStop: false, showsStart: false)
         }
     }
 }
@@ -673,7 +687,9 @@ private struct SessionPane: View {
 /// run is still a run, and it had no surface anywhere in the app — you pressed a button, a job started, and
 /// nothing on screen ever mentioned it again.
 struct SessionRow: Identifiable {
-    enum Kind { case door(DoorRun), task(DeskTask), scratch, job(BackgroundJob) }
+    /// `projectRun` is the project running itself from the toolbar (`run:` ids): a shell like a scratch
+    /// session's, but stopped through its configuration's stop rows rather than by ending the shell outright.
+    enum Kind { case door(DoorRun), task(DeskTask), scratch, job(BackgroundJob), projectRun }
 
     let id: String
     let title: String
@@ -715,6 +731,14 @@ struct SessionRow: Identifiable {
                            isLive: job.state.isLive, kind: .job(job))
             }
         }
-        return background + doors + tasks + scratch
+        // The project's own runs, titled as they were when play was pressed: the plan may have renamed the
+        // configuration since, and the row must still say what is running.
+        let projectRuns = model.projectRuns.sessionIDs.map { id -> SessionRow in
+            let state = model.sessions.state(for: id)
+            return SessionRow(id: id, title: model.projectRuns.title(sessionID: id),
+                              subtitle: "Project run · \(RunLabel.label(for: state).label)",
+                              isLive: state.isLive, kind: .projectRun)
+        }
+        return background + doors + tasks + scratch + projectRuns
     }
 }

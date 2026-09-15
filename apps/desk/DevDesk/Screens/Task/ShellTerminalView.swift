@@ -178,10 +178,13 @@ final class ShellTerminalRegistry {
 
     private func terminal(for taskID: String) -> ShellTerminal {
         if let terminal = terminals[taskID] { return terminal }
-        // The exit carries the generation its process started under, so a late exit can't end a session started after it.
+        // The exit carries the generation its process started under, so a late exit can't end a session started
+        // after it. The transcript's tail travels with the exit: the terminal is dropped a line below, and a
+        // failed headless run's one-line error was being dropped with it.
         let terminal = ShellTerminal { [weak self] terminal, status in
             guard let self else { return }
-            sessions.markEnded(taskID: taskID, status: status, generation: terminal.generation)
+            sessions.markEnded(taskID: taskID, status: status, generation: terminal.generation,
+                               outputTail: terminal.transcriptTail())
             if terminals[taskID] === terminal { terminals[taskID] = nil }
         }
         terminals[taskID] = terminal
@@ -342,6 +345,27 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
         watchExit(of: pid)
         view.focusOnAttach = true
         view.takeFocusIfAsked()
+    }
+
+    /// The last non-empty lines on the terminal's screen and scrollback, oldest first — read from the buffer
+    /// SwiftTerm already keeps, so nothing taps the byte stream or parses escapes a second time. Read at exit,
+    /// while the view is still the transcript. `getTopVisibleRow()` is the scrollback above the screen when
+    /// the view sits at the bottom, as an unwatched headless run's does; probing past it catches lines below
+    /// a scrolled-up view, and the alternate screen (no scrollback) degrades to the visible rows.
+    func transcriptTail(limit: Int = 40) -> [String] {
+        let terminal = view.getTerminal()
+        var total = terminal.getTopVisibleRow() + terminal.rows
+        while terminal.getScrollInvariantLine(row: total) != nil { total += 1 }
+        var lines: [String] = []
+        var row = total - 1
+        while row >= 0, lines.count < limit {
+            if let line = terminal.getScrollInvariantLine(row: row) {
+                let text = line.translateToString(trimRight: true).trimmingCharacters(in: .whitespacesAndNewlines)
+                if !text.isEmpty { lines.insert(text, at: 0) }
+            }
+            row -= 1
+        }
+        return lines
     }
 
     /// SIGHUP now, then SIGKILL 2 s later to whatever of the shell and its foreground job is still there.

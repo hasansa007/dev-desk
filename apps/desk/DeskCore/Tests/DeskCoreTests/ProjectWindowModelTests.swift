@@ -342,6 +342,95 @@ final class ProjectWindowModelTests: XCTestCase {
         }
         XCTAssertTrue(message.contains("boom"))
     }
+
+    // MARK: - Diagram generation state
+
+    /// Starting a generate marks the kind as generating and clears any earlier failure; the kind is remembered
+    /// by its session id so its end clears the right spinner.
+    func testBeginningAGenerateMarksTheKindAndClearsAnyFailure() async {
+        let model = await makeStudyHubModel()
+        model.beginGeneratingDiagram(kind: "architecture", sessionID: "term:1")
+        XCTAssertTrue(model.isGeneratingDiagram(kind: "architecture"))
+        XCTAssertNil(model.diagramGenerateFailure(kind: "architecture"))
+        XCTAssertEqual(model.finishGeneratingDiagram(sessionID: "term:1"), "architecture")
+        XCTAssertFalse(model.isGeneratingDiagram(kind: "architecture"))
+        XCTAssertNil(model.finishGeneratingDiagram(sessionID: "term:1"), "a session is only finished once")
+    }
+
+    /// A generate that drew nothing records a reason for the pane, so a refusal is visible instead of a silent
+    /// revert — and it carries the session id, since the session is kept as the run's readable evidence. A
+    /// sample has no folder, so its `diagram(kind:)` is always nil — the failure path.
+    func testAGenerateThatDrawsNothingRecordsAReason() async {
+        let model = await makeStudyHubModel()
+        model.beginGeneratingDiagram(kind: "dataflow", sessionID: "term:2")
+        _ = model.finishGeneratingDiagram(sessionID: "term:2")
+        model.recordDiagramGenerateResult(kind: "dataflow", sessionID: "term:2")
+        let failure = model.diagramGenerateFailure(kind: "dataflow")
+        XCTAssertNotNil(failure)
+        XCTAssertTrue(failure?.message.contains("without drawing") ?? false, failure?.message ?? "nil")
+        XCTAssertEqual(failure?.sessionID, "term:2", "the banner opens the kept session by this id")
+    }
+
+    /// The failure note leads with the run's own last line, and an immediate exit reads as a launch failure
+    /// rather than a refusal — the swallowed-prompt bug spent its life mislabelled "it may have declined".
+    func testAnImmediateExitReadsAsALaunchFailureLedByTheRunsOwnWords() {
+        let message = ProjectWindowModel.diagramFailureMessage(
+            lastLine: "Error: Input must be provided either through stdin or as a prompt argument when using --print",
+            exitStatus: 1, duration: 2)
+        XCTAssertTrue(message.hasPrefix("The run ended saying: `Error: Input must be provided"), message)
+        XCTAssertTrue(message.contains("(exit 1)"), message)
+        XCTAssertTrue(message.contains("launch failure"), message)
+        XCTAssertFalse(message.contains("declined"), "a run that never ran must not be called a refusal")
+    }
+
+    /// A run that took its time and still drew nothing keeps the honest guess: it may really have declined.
+    func testARunThatTookItsTimeKeepsTheDeclinedWording() {
+        let slow = ProjectWindowModel.diagramFailureMessage(lastLine: nil, exitStatus: 0, duration: 300)
+        XCTAssertTrue(slow.contains("may have declined"), slow)
+        let unknown = ProjectWindowModel.diagramFailureMessage(lastLine: nil, exitStatus: nil, duration: nil)
+        XCTAssertTrue(unknown.contains("may have declined"), "no timing reads as the slow case, never as a launch verdict")
+    }
+
+    // MARK: - Diagram repo state (git setup offer)
+
+    private func repoStateModel(repositoryRoot: String?, headRevision: String?, remote: String? = nil) async -> ProjectWindowModel {
+        let snapshot = ProjectSnapshot(
+            project: ProjectInfo(name: "P", displayPath: "~/p", branch: "main", remote: remote, headRevision: headRevision),
+            isDemo: false, board: .available([]), boardNote: "",
+            findings: .available(FindingsReport(runs: [], findings: [])), roadmap: .unavailable("n/a"),
+            connections: [], connectionsNote: "",
+            capabilities: CapabilityMatrix(providers: [], rows: [], note: ""), insights: .unavailable("n/a"),
+            repositoryRoot: repositoryRoot)
+        let model = ProjectWindowModel(ref: .local(path: "/tmp/p"), source: FixedSource(snapshot: snapshot), insightsDelay: .zero)
+        await model.load()
+        return model
+    }
+
+    /// The gates in turn: not a repo, then no commit, then no remote (Archify needs a GitHub URL), then ready.
+    /// A sample has no folder to draw from and reads as ready (blocked elsewhere by its own reason).
+    func testDiagramRepoStateReflectsGitSetup() async {
+        let notRepo = await repoStateModel(repositoryRoot: nil, headRevision: nil)
+        XCTAssertEqual(notRepo.diagramRepoState, .notARepository)
+
+        let noCommits = await repoStateModel(repositoryRoot: "/tmp/p", headRevision: nil)
+        XCTAssertEqual(noCommits.diagramRepoState, .noCommits)
+
+        let noRemote = await repoStateModel(repositoryRoot: "/tmp/p", headRevision: "a1b2c3d", remote: nil)
+        XCTAssertEqual(noRemote.diagramRepoState, .noRemote)
+
+        let ready = await repoStateModel(repositoryRoot: "/tmp/p", headRevision: "a1b2c3d", remote: "github.com/o/r")
+        XCTAssertEqual(ready.diagramRepoState, .ready)
+
+        let sample = await makeStudyHubModel()
+        XCTAssertEqual(sample.diagramRepoState, .ready, "a sample is blocked by its own reason, not the git offer")
+    }
+
+    /// Adding a remote only acts on a committed repo that has none: a ready repo is left alone and reports false.
+    func testAddGitRemoteOnlyActsOnANoRemoteRepo() async {
+        let ready = await repoStateModel(repositoryRoot: "/tmp/p", headRevision: "a1b2c3d", remote: "github.com/o/r")
+        let did = await ready.addGitRemote(url: "https://github.com/o/r")
+        XCTAssertFalse(did, "a repo that already has a remote is left alone")
+    }
 }
 
 private actor LoadCounter {

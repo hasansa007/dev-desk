@@ -25,8 +25,10 @@ extension ProjectWindowModel {
 
     /// Lists the door as a run and opens the panel. Nothing executes until the pane's own Start, per ADR 0017.
     /// `id` separates runs of the same door for different tasks; the folder rule prefixes `folderNote` with where it opens.
+    /// Returns whether the run was actually dispatched, so a caller recording a stage records only real starts.
+    @discardableResult
     func prepareRun(door: String, title: String, agent: String, arguments: [String] = [],
-                    id: String? = nil, folderNote: String? = nil) {
+                    id: String? = nil, folderNote: String? = nil) -> Bool {
         let runID = id ?? DoorRuns.id(door: door)
         // One run per door, and per task: a second start would give the same id two shells and the panel one row.
         guard canRunDoors, !isRunLive(runID),
@@ -38,14 +40,19 @@ extension ProjectWindowModel {
                 go(.terminals)
             }
             runs.selectedID = isRunLive(runID) ? runID : runs.selectedID
-            return
+            return false
         }
+        // Only startAgent tracked this window's sessions, so a window whose runs are all door runs never
+        // counted towards LiveShells' app-wide agentCount — and that count now decides whether a Start
+        // queues (AgentSlots.free). Tracking is idempotent, so repeating it here costs nothing.
+        LiveShells.shared.track(agentSessions: sessions)
         runs.add(DoorRun(id: runID, title: title, agent: agent, command: command,
                          folderNote: folderNote ?? "a door reads the whole project, not one task's branch."))
         // Land on the run that was just started, the way starting an agent does. Without this the accordion
         // opened whatever was already live and the new row sat collapsed below it — a start with nothing to see.
         selectedSessionID = runID
         go(.terminals)
+        return true
     }
 
     // MARK: - Filing (ADR 0027)
@@ -161,18 +168,29 @@ extension ProjectWindowModel {
     /// starting means, and the one-run-per-task rule in `prepareRun` still holds across both.
     func startTask(_ task: DeskTask, agent: String) {
         if task.isMerged { return }
+        // "In queue if the limit is hit" (ADR 0035): with every agent slot busy, the Start parks the card
+        // in Queued rather than running past the limit — StartQueueRunner releases it as slots free.
+        if StartQueue.queuesInsteadOfStarting(task, freeSlots: AgentSlots.free) {
+            Task { await queueForStart(task) }
+            return
+        }
         if let entry = task.localBacklogID {
             // No issue to name. `/dev` takes a description as readily as a number, and the file is the description.
-            prepareRun(door: "dev", title: task.title, agent: agent,
-                       arguments: ["\(task.title) — described in \(LocalBacklog.folder)/\(entry).md"],
-                       id: DoorRuns.id(local: entry),
-                       folderNote: "this has no issue yet; /dev cuts a branch at its first write.")
+            if prepareRun(door: "dev", title: task.title, agent: agent,
+                          arguments: ["\(task.title) — described in \(LocalBacklog.folder)/\(entry).md"],
+                          id: DoorRuns.id(local: entry),
+                          folderNote: "this has no issue yet; /dev cuts a branch at its first write.") {
+                // A start is the move to In progress (ADR 0035), recorded only when something was dispatched.
+                Task { await recordStarted(task) }
+            }
             return
         }
         guard let number = task.taskNumber else { return }
-        prepareRun(door: "dev", title: "Task #\(number)", agent: agent,
-                   arguments: ["#\(number)"], id: DoorRuns.id(task: number),
-                   folderNote: "#\(number) has no branch yet; /dev cuts one at its first write.")
+        if prepareRun(door: "dev", title: "Task #\(number)", agent: agent,
+                      arguments: ["#\(number)"], id: DoorRuns.id(task: number),
+                      folderNote: "#\(number) has no branch yet; /dev cuts one at its first write.") {
+            Task { await recordStarted(task) }
+        }
     }
 
     /// Why this task cannot be started, or nil when it can.

@@ -61,4 +61,37 @@ final class ArchDiagramsTests: XCTestCase {
     func testAMissingFolderListsNothing() {
         XCTAssertTrue(ArchDiagrams.list(repositoryRoot: "/nope/not/here").isEmpty)
     }
+
+    /// The five kinds the Diagrams screen always lists, in the skill's own order.
+    func testTheFiveKindsAreTheDevArchTypesInOrder() {
+        XCTAssertEqual(ArchDiagrams.kinds, ["architecture", "workflow", "dataflow", "sequence", "lifecycle"])
+    }
+
+    /// A kind's item shows the newest file of that kind: a repo that drew the same kind twice keeps both, and
+    /// the most recently written one wins.
+    func testNewestOfAKindWinsWhenDrawnMoreThanOnce() throws {
+        let root = try makeFolder()
+        try write(root, "old.html", "<html></html>")
+        try write(root, "old.dataflow.json", "{\"diagram_type\": \"dataflow\", \"meta\": {\"title\": \"Old flow\"}}")
+        try write(root, "new.html", "<html></html>")
+        try write(root, "new.dataflow.json", "{\"diagram_type\": \"dataflow\", \"meta\": {\"title\": \"New flow\"}}")
+        // Make "new" the more recently modified HTML, whatever order the filesystem enumerates them in.
+        let dir = root.appendingPathComponent(ArchDiagrams.folder)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1_000)],
+                                              ofItemAtPath: dir.appendingPathComponent("old.html").path)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 2_000)],
+                                              ofItemAtPath: dir.appendingPathComponent("new.html").path)
+
+        let newest = ArchDiagrams.newest(kind: "dataflow", repositoryRoot: root.path)
+        XCTAssertEqual(newest?.title, "New flow")
+    }
+
+    /// A kind nothing has drawn has no diagram — that is the "Generate" state, not an error.
+    func testAKindWithNoFileHasNoNewest() throws {
+        let root = try makeFolder()
+        try write(root, "a.html", "<html></html>")
+        try write(root, "a.architecture.json", "{\"diagram_type\": \"architecture\", \"meta\": {\"title\": \"A\"}}")
+        XCTAssertNil(ArchDiagrams.newest(kind: "lifecycle", repositoryRoot: root.path))
+        XCTAssertNotNil(ArchDiagrams.newest(kind: "architecture", repositoryRoot: root.path))
+    }
 }

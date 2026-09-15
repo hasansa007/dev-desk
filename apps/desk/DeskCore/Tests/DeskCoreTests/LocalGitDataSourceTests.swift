@@ -172,7 +172,8 @@ final class LocalGitDataSourceTests: XCTestCase {
             $0.script("gh api repos/acme/app/milestones?state=open",
                       .ok(#"[{"title":"v2","due_on":"2026-10-01T07:00:00Z","created_at":"2026-08-01T00:00:00Z","open_issues":1,"closed_issues":1}]"#))
         }
-        XCTAssertEqual(snapshot.boardNote, "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued. "
+        XCTAssertEqual(snapshot.boardNote, "Git decides In progress, Review and Done; the active milestone puts an issue in Ready for dev. "
+                       + "Ready for dev, Queued and a started card's In progress are recorded in .devdesk/board.json until git sees a commit. "
                        + "Active milestone: v2, nearest due date 2026-10-01.")
         XCTAssertEqual(snapshot.projectFacts, [
             KeyValue("Base branch", "main", monospaced: true),
@@ -187,7 +188,7 @@ final class LocalGitDataSourceTests: XCTestCase {
     func testNoMilestoneExplainsWhyInTheFacts() async throws {
         let (_, snapshot) = try await githubConnection { _ in }
         XCTAssertEqual(snapshot.projectFacts.first { $0.key == "Active milestone" }?.value, "none — no open milestone")
-        XCTAssertTrue(snapshot.boardNote.hasSuffix(" No active milestone, so Queued is empty."))
+        XCTAssertTrue(snapshot.boardNote.hasSuffix(" No active milestone, so only moves made here fill Ready for dev."))
     }
 
     func testMissingGhIsReportedAsNotInstalled() async throws {

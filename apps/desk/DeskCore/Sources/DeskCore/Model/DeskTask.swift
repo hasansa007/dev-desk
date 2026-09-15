@@ -1,11 +1,13 @@
 import Foundation
 
+/// Declaration order is the on-screen column order: the board renders `allCases` left to right.
 public enum BoardColumn: String, CaseIterable, Codable, Hashable {
-    case backlog, queued, inProgress, review, done
+    case backlog, readyForDev, queued, inProgress, review, done
 
     public var title: String {
         switch self {
         case .backlog: return "Backlog"
+        case .readyForDev: return "Ready for dev"
         case .queued: return "Queued"
         case .inProgress: return "In progress"
         case .review: return "Review"
@@ -17,7 +19,10 @@ public enum BoardColumn: String, CaseIterable, Codable, Hashable {
     public var icon: String {
         switch self {
         case .backlog: return "tray"
-        case .queued: return "calendar"
+        case .readyForDev: return "checklist"
+        // An hourglass, not a calendar: Queued means "waiting for a free agent slot" now (ADR 0035),
+        // not membership of the active milestone.
+        case .queued: return "hourglass"
         case .inProgress: return "play.circle"
         case .review: return "eye"
         case .done: return "checkmark.circle"
@@ -374,6 +379,9 @@ public struct DeskTask: Identifiable, Hashable {
     public var lastCommit: Date?
     /// Commits this branch holds that the base does not, so a delete can say what would be lost.
     public var unmergedCount: Int?
+    /// The open pull request behind this card when one is known — what the Review card's backwards move
+    /// converts to a draft. Nil for a card with no pull request, and for samples.
+    public var pullRequestNumber: Int?
 
     /// A local branch with no issue and no pull request behind it — the only card whose branch this app may delete.
     public var isBranchCard: Bool { id.hasPrefix("branch:") }
@@ -396,9 +404,9 @@ public struct DeskTask: Identifiable, Hashable {
 
     public var issueLabel: String { issueNumber.map { "#\($0)" } ?? "" }
 
-    /// Nobody has started this: no branch of its own, and still where the tracker put it. A pull request from a
-    /// fork also has no branch here, but it is in Review, so it keeps its workspace.
-    public var isUnstarted: Bool { branch == nil && (column == .backlog || column == .queued) }
+    /// Nobody has started this: no branch of its own, and still before the columns git owns. A pull request
+    /// from a fork also has no branch here, but it is in Review, so it keeps its workspace.
+    public var isUnstarted: Bool { branch == nil && (column == .backlog || column == .readyForDev || column == .queued) }
 
     /// What the task's shell and `/dev` call it: the issue number, else the N of a gh-N-… branch.
     public var taskNumber: Int? { issueNumber ?? branch.flatMap { Self.ghNumber($0) } }
@@ -422,10 +430,12 @@ public struct DeskTask: Identifiable, Hashable {
                 dependencies: [Dependency] = [],
                 parallel: ParallelPreview, comparison: OutputComparison? = nil,
                 followUp: FollowUpDraft? = nil, handoff: HandoffPlan? = nil,
-                impact: String? = nil, complexity: String? = nil, lastCommit: Date? = nil, unmergedCount: Int? = nil) {
+                impact: String? = nil, complexity: String? = nil, lastCommit: Date? = nil, unmergedCount: Int? = nil,
+                pullRequestNumber: Int? = nil) {
         self.impact = impact
         self.lastCommit = lastCommit
         self.unmergedCount = unmergedCount
+        self.pullRequestNumber = pullRequestNumber
         self.complexity = complexity
         self.id = id
         self.issueNumber = issueNumber

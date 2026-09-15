@@ -76,6 +76,9 @@ struct SheetHost: View {
             RunFocusSheet(model: model, door: door)
         case .deleteBranch(let branch):
             DeleteBranchSheet(model: model, branch: branch)
+        case .addTask(let column):
+            // An unknown raw value lands in Backlog, the column that records no stage at all.
+            AddTaskSheet(model: model, column: BoardColumn(rawValue: column) ?? .backlog)
         case .settings:
             SettingsSheet(model: model)
         case .cloneRepository:

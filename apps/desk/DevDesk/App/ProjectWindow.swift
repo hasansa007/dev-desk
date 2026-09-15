@@ -7,6 +7,8 @@ struct ProjectWindow: View {
     /// This window's sessions — one per task, shell or agent (ADR 0026); closing the window or quitting ends them.
     @State private var terminals: ShellTerminalRegistry
     @State private var auto: AutoAgents
+    /// Drains the cards a Start parked in Queued (ADR 0035); it runs whether or not Auto is on.
+    @State private var queue: StartQueueRunner
     @State private var layoutRestored = false
     @State private var columns: NavigationSplitViewVisibility = .all
     @Environment(OpenProjectRegistry.self) private var registry
@@ -27,6 +29,7 @@ struct ProjectWindow: View {
         let terminals = ShellTerminalRegistry(sessions: model.sessions)
         _terminals = State(initialValue: terminals)
         _auto = State(initialValue: AutoAgents(model: model, agents: terminals))
+        _queue = State(initialValue: StartQueueRunner(model: model))
     }
 
     var body: some View {
@@ -46,7 +49,7 @@ struct ProjectWindow: View {
         } detail: {
             ContentRouter(model: model)
         }
-        .toolbar { ProjectToolbar(model: model, columns: $columns) }
+        .toolbar { ProjectToolbar(model: model, terminals: terminals, columns: $columns) }
         .navigationTitle(model.snapshot?.project.name ?? ref.displayName)
         .navigationSubtitle(subtitle)
         .sheet(item: $model.sheet) { kind in
@@ -74,6 +77,7 @@ struct ProjectWindow: View {
         SnapshotWindowHook(ref: ref, model: model)
         ShellLifetimeHook(registries: [terminals])
         AutoAgentsHook(auto: auto, ref: ref)
+        StartQueueHook(queue: queue)
         FiledWorkHook(model: model)
     }
 

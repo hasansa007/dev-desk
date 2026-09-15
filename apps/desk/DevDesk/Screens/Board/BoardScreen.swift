@@ -82,8 +82,10 @@ struct BoardScreen: View {
     @ViewBuilder
     private var boardArea: some View {
         switch model.snapshot?.board {
-        case .available(let tasks):
-            boardContent(tasks)
+        case .available:
+            // `model.tasks`, not the payload: the model promotes a task with something live here out of
+            // the unstarted columns, and the board must render that promotion (ADR 0035).
+            boardContent(model.tasks)
         case .unavailable(let reason):
             UnavailableView(reason: reason)
                 .padding(16)
@@ -204,9 +206,12 @@ private struct BoardColumnView: View {
                 } else {
                     // Continue means continue: start the agent, then go to where it lives (ADR 0026).
                     // Opening a tab and leaving Start to be pressed was navigation wearing an action's label.
-                    if case .ready(let kind) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? []) {
-                        _ = terminals?.startAgent(for: task, agent: kind, worktreeLocation: worktreeLocation,
-                                                  mode: RunModeChoice.current(for: model.ref))
+                    if case .ready(let kind) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? []),
+                       let started = terminals?.startAgent(for: task, agent: kind, worktreeLocation: worktreeLocation,
+                                                           mode: RunModeChoice.current(for: model.ref)) {
+                        // Starting the agent is starting the task, so the card leaves Ready for dev too
+                        // (ADR 0035) — but only once the launch really ran, not for a skipped start.
+                        Task { if case .launched = await started.value { await model.recordStarted(task) } }
                     }
                     model.selectedSessionID = task.id
                     model.go(.terminals)
@@ -241,20 +246,27 @@ private struct BoardColumnView: View {
             remove: { model.openTask(task.id) })
     }
 
-    /// A card offers Start only when pressing it would actually run something; the dialog still explains why not.
+    /// A card offers Start only when pressing it would actually run something; the dialog still explains why
+    /// not. Backlog offers none: starting is what moves a card to In progress (ADR 0035), and the flow says
+    /// a card reaches a run through Ready for dev.
     private func start(for task: DeskTask) -> (() -> Void)? {
-        guard column != .done, model.startBlockedReason(for: task, agent: defaultConnection) == nil else { return nil }
+        guard column != .done, column != .backlog,
+              model.startBlockedReason(for: task, agent: defaultConnection) == nil else { return nil }
         return { model.startTask(task, agent: defaultConnection) }
     }
 
-    /// Every column ends in the same row, so where a task would be added is on screen before it works. It stays
-    /// disabled until there is something to wire it to: a control that lands nowhere is worse than one that waits.
+    /// Every column that can take a typed task ends in the same row. The task is written to `docs/backlog/`
+    /// (ADR 0027), so a sample project — no folder on disk to write into — keeps the button visible but
+    /// disabled, with the reason on it.
     private var addTaskButton: some View {
-        Button("+ Add a new task") {}
+        let noFolder = model.snapshot?.repositoryRoot == nil
+        return Button("+ Add a new task") { model.present(.addTask(column.rawValue)) }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-            .disabled(true)
+            .disabled(noFolder)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .help("Adding tasks from the board is coming soon")
+            .help(noFolder
+                  ? "This project has no folder on disk, so there is nowhere to write a task"
+                  : "Type a task into \(column.title) — it is written to docs/backlog/")
     }
 
     var body: some View {
@@ -291,7 +303,11 @@ private struct BoardColumnView: View {
                          runControls: runControls(for: task),
                          isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch)
             }
-            addTaskButton
+            // Only where a new task could land: everything past Ready for dev is reached by moves and
+            // starts, never by typing a card straight into it.
+            if column == .backlog || column == .readyForDev {
+                addTaskButton
+            }
         }
         .padding(12)
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
@@ -305,15 +321,35 @@ private struct BoardColumnView: View {
         }
     }
 
-    /// Only an issue can be moved: a branch or a pull request card has no issue to edit, and a merged card is history.
+    /// The column's one lifecycle move (ADR 0035). Branch, pull-request and merged cards are git's own and
+    /// keep their menus unchanged; every card that can carry a stage — an issue's or a `docs/backlog/`
+    /// entry's — offers the move its column allows. Done offers none: its revert flow is deferred.
     private func moves(for task: DeskTask) -> CardMoves? {
-        guard let issue = task.issueNumber, task.column != .done else { return nil }
-        return CardMoves(
-            milestone: model.activeMilestone,
-            isQueued: task.column == .queued,
-            queue: { pending = PendingMove(issue: issue, action: .queue(milestone: model.activeMilestone ?? "")) },
-            backlog: { pending = PendingMove(issue: issue, action: .backlog) },
-            cancel: { model.present(.cancelTask(task.id)) })
+        guard !task.isBranchCard, !task.isMerged, !task.id.hasPrefix("pr:") else { return nil }
+        let cancel: (() -> Void)? = task.issueNumber == nil ? nil : { model.present(.cancelTask(task.id)) }
+        switch task.column {
+        case .backlog:
+            return CardMoves(title: "Move to Ready for dev", blockedReason: nil,
+                             move: { Task { await model.moveToReadyForDev(task) } }, cancel: cancel)
+        case .readyForDev:
+            return CardMoves(title: "Return to backlog", blockedReason: nil,
+                             move: { Task { await model.returnToBacklog(task) } }, cancel: cancel)
+        case .queued, .inProgress:
+            // In progress can refuse: git owns the column once commits exist, and the model says why.
+            return CardMoves(title: "Cancel — back to Ready for dev",
+                             blockedReason: task.column == .inProgress ? model.stageBackBlockedReason(for: task) : nil,
+                             move: { Task { await model.cancelToReadyForDev(task) } }, cancel: cancel)
+        case .review:
+            // Through the pull request, not around it: converting the PR to a draft is the fact that
+            // moves the card, so it goes through the same confirmation as every tracker write.
+            return CardMoves(title: "Back to In progress — convert the pull request to a draft",
+                             blockedReason: task.pullRequestNumber == nil
+                                 ? "No pull request number is known for this card, so there is nothing to convert." : nil,
+                             move: { if let number = task.pullRequestNumber { pending = PendingMove(issue: number, action: .draftPullRequest) } },
+                             cancel: cancel)
+        case .done:
+            return nil
+        }
     }
 
     private func commit() {
@@ -333,6 +369,7 @@ private struct PendingMove {
         case .backlog: return "Return to backlog"
         case .cancel: return "Close"
         case .complete: return "Mark as completed"
+        case .draftPullRequest: return "Convert to draft"
         }
     }
 }

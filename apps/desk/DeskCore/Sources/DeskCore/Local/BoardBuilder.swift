@@ -11,11 +11,16 @@ struct BoardInput {
     var pipeline: [String: PipelineState] = [:]
     /// Entries in `docs/backlog/`. They sit in Backlog after the tracker's own, marked as local (ADR 0027).
     var localBacklog: [BacklogItem] = []
+    /// Stored stages from `.devdesk/board.json`, keyed by `DeskTask.id` (ADR 0035). Consulted only
+    /// after every git rule has declined, so a stage can never contradict what git says.
+    var stages: [String: BoardStage] = [:]
     var now: Date = Date()
     var timeZone: TimeZone = .current
 }
 
-/// Pure: git and GitHub facts in, tasks out. Columns mirror scripts/dev.py (`classify`, `build_board`, `order_next`).
+/// Pure: git and GitHub facts in, tasks out. The active columns still mirror scripts/dev.py (`classify`,
+/// `build_board`, `order_next`); Ready for dev and the stored stages are Dev Desk's own (ADR 0035), a
+/// divergence `dev board` deliberately does not follow.
 enum BoardBuilder {
     static let checksLimitation = "CI results reported by GitHub for this pull request. Dev Desk has not verified behaviour in a running app."
     static let unlinkedRequirements = "No linked issue. Name the branch gh-<number>-… to link one."
@@ -34,6 +39,9 @@ enum BoardBuilder {
 
     static let dockCaption = "Agents & Terminals · your shell and the task's agent, in the task's folder"
     static let forkNote = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
+    /// Why a Queued card sits where it does (ADR 0035): a Start was made with every agent slot busy. A
+    /// pipeline note of the card's own still wins — it describes the work, which says more than the wait.
+    static let queuedNote = "Waiting for a free agent slot"
 
 
     static func note(github: GitHubState, activeMilestone: (title: String?, why: String), localBranchNote: String? = nil) -> String {
@@ -42,8 +50,9 @@ enum BoardBuilder {
             let remedy = github.unavailableRemedy.map { " \($0)" } ?? ""
             return "GitHub is unavailable (\(github.unavailableReason ?? "")), so the board shows local branches and docs/backlog/.\(remedy)" + suffix
         }
-        let rule = "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued."
-        let milestone = activeMilestone.title.map { " Active milestone: \($0), \(activeMilestone.why)." } ?? " No active milestone, so Queued is empty."
+        let rule = "Git decides In progress, Review and Done; the active milestone puts an issue in Ready for dev. "
+            + "Ready for dev, Queued and a started card's In progress are recorded in .devdesk/board.json until git sees a commit."
+        let milestone = activeMilestone.title.map { " Active milestone: \($0), \(activeMilestone.why)." } ?? " No active milestone, so only moves made here fill Ready for dev."
         let issues = data.issuesUnavailable.map { " Open issues could not be read (\($0)), so only pull requests and branches are shown." } ?? ""
         return rule + milestone + issues + suffix
     }
@@ -213,13 +222,33 @@ private struct BoardContext {
         }
     }
 
-    /// dev.py's classify; its PR OPEN and HUMAN REVIEW columns both land in Review.
+    /// dev.py's classify, then the lifecycle git cannot see (ADR 0035). Git's rules come first, so a
+    /// stored stage can only ever fill the gap before the first commit, never override a fact.
     private func column(for issue: GitHubIssue, isDeferred: Bool, pullRequest: GitHubPullRequest?, branch: BranchFacts?) -> BoardColumn {
         if isDeferred { return .backlog }
-        if pullRequest != nil { return .review }
+        // A draft pull request is still being worked on — which is what makes Review → In progress a
+        // real move: converting the PR back to a draft puts the card back where the work is.
+        if let pullRequest { return pullRequest.isDraft ? .inProgress : .review }
         if (branch?.unmerged ?? 0) > 0 { return .inProgress }
-        if let active = input.activeMilestone, issue.milestone?.title == active { return .queued }
+        if let stage = stage(for: String(issue.number)) {
+            switch stage {
+            case .inProgress: return .inProgress
+            case .queued: return .queued
+            case .readyForDev: return .readyForDev
+            }
+        }
+        // The active milestone means "ready for dev" now, not "queued": Queued is the wait for a free
+        // agent slot, which a milestone cannot know about.
+        if let active = input.activeMilestone, issue.milestone?.title == active { return .readyForDev }
         return .backlog
+    }
+
+    /// The stored stage for a card, or nil for the ids git owns: a `branch:`, `pr:` or `merged:` card's
+    /// column is a fact about commits and pull requests, and a stale entry under one of those ids must
+    /// not move it (ADR 0035).
+    private func stage(for id: String) -> BoardStage? {
+        guard !id.hasPrefix("branch:"), !id.hasPrefix("pr:"), !id.hasPrefix("merged:") else { return nil }
+        return input.stages[id]
     }
 
     /// dev.py's order_next: priority, then slice, then the issue ignored longest, then number.
@@ -252,8 +281,9 @@ private struct BoardContext {
         }
         return DeskTask(
             id: String(issue.number), issueNumber: issue.number, title: issue.title, column: column,
-            cardBadge: saysAheadOnly ? nil : badge, cardNote: state?.cardNote,
-            headerBadge: badge ?? StatusBadge(.neutral, column == .queued ? "Queued" : "Backlog"),
+            cardBadge: saysAheadOnly ? nil : badge,
+            cardNote: state?.cardNote ?? (column == .queued ? BoardBuilder.queuedNote : nil),
+            headerBadge: badge ?? StatusBadge(.neutral, column == .readyForDev ? "Ready for dev" : column == .queued ? "Queued" : "Backlog"),
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
             branch: fromFork ? nil : head, noBranchNote: fromFork ? BoardBuilder.forkNote : nil,
             nextAction: nextAction(local: local, pullRequestURL: pullRequest?.url, issueURL: issue.url),
@@ -266,7 +296,8 @@ private struct BoardContext {
             parallel: parallel(head, local: local),
             impact: DeskTask.rating("impact", in: issue.labelNames),
             complexity: DeskTask.rating("complexity", in: issue.labelNames),
-            lastCommit: fromFork ? nil : local?.lastCommit, unmergedCount: fromFork ? nil : local?.countedUnmerged)
+            lastCommit: fromFork ? nil : local?.lastCommit, unmergedCount: fromFork ? nil : local?.countedUnmerged,
+            pullRequestNumber: pullRequest?.number)
     }
 
     private func pullRequestTask(_ pullRequest: GitHubPullRequest) -> DeskTask {
@@ -275,7 +306,8 @@ private struct BoardContext {
         let state = head.flatMap { input.pipeline[$0] }
         let badge = BoardBuilder.reviewBadge(pullRequest)
         return DeskTask(
-            id: "pr:\(pullRequest.number)", title: pullRequest.title, column: .review,
+            // A draft is still being worked on, so it sits with the work, not in Review (ADR 0035).
+            id: "pr:\(pullRequest.number)", title: pullRequest.title, column: pullRequest.isDraft ? .inProgress : .review,
             cardMeta: "PR #\(pullRequest.number)", cardBadge: badge, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
             branch: pullRequest.isCrossRepository ? nil : head, noBranchNote: pullRequest.isCrossRepository ? BoardBuilder.forkNote : nil,
@@ -289,7 +321,8 @@ private struct BoardContext {
             dependencies: BoardBuilder.dependencies(pullRequest.body),
             parallel: parallel(head, local: local),
             lastCommit: pullRequest.isCrossRepository ? nil : local?.lastCommit,
-            unmergedCount: pullRequest.isCrossRepository ? nil : local?.countedUnmerged)
+            unmergedCount: pullRequest.isCrossRepository ? nil : local?.countedUnmerged,
+            pullRequestNumber: pullRequest.number)
     }
 
     private func branchTask(_ branch: BranchFacts) -> DeskTask {
@@ -311,11 +344,22 @@ private struct BoardContext {
     }
 
     /// A card for work that exists only as a file. No issue, no branch yet: its Overview is the file itself.
+    /// The stored stage is the only thing that can move it forward — there is no milestone and no pull
+    /// request to consult — so it reads its column from `.devdesk/board.json` and stays local either way.
     private func localTask(_ item: BacklogItem) -> DeskTask {
         let path = "\(LocalBacklog.folder)/\(item.id).md"
+        let id = DeskTask.localPrefix + item.id
+        let column: BoardColumn
+        switch stage(for: id) {
+        case .inProgress: column = .inProgress
+        case .queued: column = .queued
+        case .readyForDev: column = .readyForDev
+        case nil: column = .backlog
+        }
         return DeskTask(
-            id: DeskTask.localPrefix + item.id, title: item.title, column: .backlog,
+            id: id, title: item.title, column: column,
             cardMeta: item.area, cardBadge: StatusBadge(.info, "Local"),
+            cardNote: column == .queued ? BoardBuilder.queuedNote : nil,
             headerBadge: StatusBadge(.info, "Local backlog"),
             branchLine: "No branch yet", parallelLine: "",
             // The source is rendered as markdown, and a file name is the repository's text — a file called

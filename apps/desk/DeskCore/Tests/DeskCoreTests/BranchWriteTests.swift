@@ -134,10 +134,18 @@ final class BoardOrderTests: XCTestCase {
         XCTAssertEqual(BoardOrder.inColumn(.backlog, ranked).map(\.id), ranked.map(\.id))
     }
 
+    /// Ready for dev and Queued hold unstarted cards, whose ranking is the builder's, like Backlog's:
+    /// a card there has no commit date, so `newestFirst` could only scramble the priority order (ADR 0035).
+    func testTheUnstartedColumnsKeepTheBuildersRanking() {
+        let ranked = [task("p1-no-branch", nil), task("p3-with-branch", 60), task("p2-no-branch", nil)]
+        XCTAssertEqual(BoardOrder.inColumn(.readyForDev, ranked).map(\.id), ranked.map(\.id))
+        XCTAssertEqual(BoardOrder.inColumn(.queued, ranked).map(\.id), ranked.map(\.id))
+    }
+
     func testEveryOtherColumnLeadsWithTheNewestCommit() {
         let cards = [task("old", 86_400), task("new", 60)]
         XCTAssertEqual(BoardOrder.inColumn(.inProgress, cards).map(\.id), ["new", "old"])
-        XCTAssertEqual(BoardOrder.inColumn(.queued, cards).map(\.id), ["new", "old"])
+        XCTAssertEqual(BoardOrder.inColumn(.review, cards).map(\.id), ["new", "old"])
     }
 
     func testCardsCommittedAtTheSameInstantKeepTheirOrder() {

@@ -49,6 +49,8 @@ public struct LocalGitDataSource: ProjectDataSource {
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
         let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
         let localBacklog = LocalBacklog.read(projectPath: top)
+        // The stages the app itself stored (ADR 0035); a sample has no folder, so it keeps none.
+        let stages = BoardStages.read(projectRoot: topURL)
         let detected = await tools
         let board: Surface<[DeskTask]>
         if let refusal {
@@ -57,7 +59,7 @@ public struct LocalGitDataSource: ProjectDataSource {
             board = .available(BoardBuilder.build(BoardInput(git: facts, currentBranch: project.branch,
                                                              github: github.data, activeMilestone: active.title,
                                                              pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL),
-                                                             localBacklog: localBacklog)))
+                                                             localBacklog: localBacklog, stages: stages.stages)))
         }
         return ProjectSnapshot(
             project: project, isDemo: false, board: board,

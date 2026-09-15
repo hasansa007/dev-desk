@@ -3,6 +3,9 @@ import SwiftUI
 
 struct ProjectToolbar: ToolbarContent {
     let model: ProjectWindowModel
+    /// Handed in rather than read from the environment: a toolbar item that silently found nil would be a
+    /// play button that does nothing, which is the one failure this control must not have.
+    let terminals: ShellTerminalRegistry?
     @Binding var columns: NavigationSplitViewVisibility
 
     /// Counts only what is actually live, so the dot never claims a finished run is still going.
@@ -20,6 +23,10 @@ struct ProjectToolbar: ToolbarContent {
             ToolbarItem(placement: .primaryAction) {
                 ActivitySummary(badge: summary)
             }
+        }
+        // The project's own run, before the panels: it is an action on the project, not a view of it.
+        ToolbarItem(placement: .primaryAction) {
+            RunProjectControl(model: model, terminals: terminals)
         }
         // The reload ring lived here, spending its life counting down to an automatic reload nobody had asked
         // about. Reloading is a pull at the top of the screen now, and ⌘R in the Project menu.

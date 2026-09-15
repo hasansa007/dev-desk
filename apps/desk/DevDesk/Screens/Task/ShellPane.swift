@@ -67,7 +67,12 @@ struct ShellPane: View {
             }
             .task(id: id) { await trackUsage() }
         case .ended(_, let status):
-            DockMessage(text: status.map { "Shell ended (status \($0))." } ?? "Shell ended.") {
+            // With the last lines the process wrote, kept by the registry as it exited: a pane that says only
+            // "Shell ended" hides the one line that explains a run which died at launch, and a failed diagram
+            // generate's session is kept open exactly so these words stay readable.
+            let tail = sessions.outputTail(for: id)
+            DockMessage(text: status.map { "Shell ended (status \($0))." } ?? "Shell ended.",
+                        detail: tail.isEmpty ? nil : tail.suffix(12).joined(separator: "\n")) {
                 if showsStart {
                     Button("Start again") { start() }
                         .disabled(terminals == nil)

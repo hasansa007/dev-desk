@@ -6,7 +6,7 @@ final class AutoSchedulerTests: XCTestCase {
     private static let fork = "This pull request comes from a fork, so its branch isn't in this repository. The shell opens at the project root."
 
     /// A task numbered for its id, unless the id isn't a number.
-    private func task(_ id: String, _ column: BoardColumn = .queued, branch: String? = nil, noBranchNote: String? = nil,
+    private func task(_ id: String, _ column: BoardColumn = .readyForDev, branch: String? = nil, noBranchNote: String? = nil,
                       baseRef: String? = AutoSchedulerTests.base) -> DeskTask {
         DeskTask(id: id, issueNumber: Int(id), title: id, column: column, headerBadge: StatusBadge(.neutral, id), branchLine: "",
                  branch: branch, noBranchNote: noBranchNote, baseRef: baseRef,
@@ -17,8 +17,11 @@ final class AutoSchedulerTests: XCTestCase {
         AutoScheduler.tasksToStart(board: board, runningAgentTaskIDs: running, alreadyStarted: started, runningAgentsAcrossApp: across, limit: limit)
     }
 
-    func testOnlyQueuedTasksArePickedInBoardOrder() {
-        let board = [task("5", .backlog), task("9"), task("3", .inProgress), task("2"), task("7", .review), task("8", .done), task("4")]
+    /// Ready for dev is where planned work sits now (ADR 0035); Queued is the wait for a free slot, and
+    /// the wiring that starts from it arrives separately — so Auto must not pick a queued card yet.
+    func testOnlyReadyForDevTasksArePickedInBoardOrder() {
+        let board = [task("5", .backlog), task("9"), task("3", .inProgress), task("2"), task("6", .queued),
+                     task("7", .review), task("8", .done), task("4")]
         XCTAssertEqual(pick(board, limit: 6), ["9", "2", "4"], "board order, not number order")
     }
 

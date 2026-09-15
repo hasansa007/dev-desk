@@ -119,8 +119,8 @@ struct ContentRouter: View {
             FindingsScreen(model: model)
         case .ideation:
             IdeationScreen(model: model)
-        case .insights:
-            InsightsScreen(model: model)
+        case .diagrams:
+            DiagramsScreen(model: model)
         }
     }
 }

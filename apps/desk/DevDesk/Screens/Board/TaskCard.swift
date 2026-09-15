@@ -1,14 +1,17 @@
 import DeskCore
 import SwiftUI
 
-/// The bounded moves a card offers, from `dev:kanban` Phase 7; nil for a card with no issue behind it.
+/// The one lifecycle move a card's column offers (ADR 0035) — Backlog → Ready for dev → Queued →
+/// In progress → Review, each column with its single forward or backward step — plus closing the issue.
+/// Nil for the cards git owns (`branch:`, `pr:`, `merged:`) and for Done, whose revert flow is deferred.
 struct CardMoves {
-    /// The active milestone's title, or nil when the board could not read one.
-    let milestone: String?
-    let isQueued: Bool
-    let queue: () -> Void
-    let backlog: () -> Void
-    let cancel: () -> Void
+    /// What the move is called, e.g. "Move to Ready for dev".
+    let title: String
+    /// Why the move is disabled, shown as its help; nil when it can run.
+    let blockedReason: String?
+    let move: () -> Void
+    /// Close the issue as not planned (the cancel sheet asks for the reason); nil with no issue behind the card.
+    let cancel: (() -> Void)?
 }
 
 /// What a branch card can do. A card with no issue behind it had no menu at all, so nineteen of them could be
@@ -90,6 +93,11 @@ struct TaskCard: View {
         if let localActions {
             Menu {
                 runEntries
+                // A local card carries a stage like any issue card (ADR 0035): without this, a
+                // docs/backlog/ entry could never reach Ready for dev.
+                if let moves {
+                    lifecycleEntry(moves)
+                }
                 if let file = localActions.fileOnGitHub {
                     Button("File on GitHub") { file() }
                 }
@@ -127,14 +135,14 @@ struct TaskCard: View {
         } else if let moves {
             Menu {
                 runEntries
-                Button(moves.milestone.map { "Queue into \($0)" } ?? "Queue") { moves.queue() }
-                    .disabled(moves.milestone == nil || moves.isQueued)
-                Button("Return to backlog") { moves.backlog() }
-                    .disabled(!moves.isQueued)
-                Button("Cancel…") { moves.cancel() }
+                lifecycleEntry(moves)
+                if let cancel = moves.cancel {
+                    Button("Cancel…") { cancel() }
+                }
                 Divider()
+                // Only the columns a move cannot reach: a start moves a card to In progress itself now
+                // (ADR 0035), so that line is gone rather than contradicting the flow.
                 Section("Git decides these") {
-                    Button("In progress — cut a branch") {}.disabled(true)
                     Button("Review — open a pull request") {}.disabled(true)
                     Button("Done — merge it") {}.disabled(true)
                 }
@@ -191,6 +199,14 @@ struct TaskCard: View {
             .padding(.trailing, offersStart ? startWidth + 8 : 0)
             .frame(maxWidth: .infinity, minHeight: DeskButtonStyle.Size.mini.height,
                    maxHeight: DeskButtonStyle.Size.mini.height, alignment: .leading)
+    }
+
+    /// The column's one move, disabled with its reason when it cannot honestly run — a card git holds
+    /// In progress would not move, so the entry says so instead of doing nothing.
+    private func lifecycleEntry(_ moves: CardMoves) -> some View {
+        Button(moves.title) { moves.move() }
+            .disabled(moves.blockedReason != nil)
+            .help(moves.blockedReason ?? "")
     }
 
     /// Stop what is live; continue what is not. Shown first, because it is the only entry about right now.

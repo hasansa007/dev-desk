@@ -32,9 +32,9 @@ parallel: .none("No agent assigned")
 parallel: .none("No agent assigned")
             ),
             DeskTask(
-                id: "65", issueNumber: 65, title: "Reduce initial bundle size", column: .queued,
+                id: "65", issueNumber: 65, title: "Reduce initial bundle size", column: .readyForDev,
                 cardInlineText: "No agent assigned",
-                headerBadge: StatusBadge(.neutral, "Queued"), branchLine: "No branch yet",
+                headerBadge: StatusBadge(.neutral, "Ready for dev"), branchLine: "No branch yet",
                 requirements: emptyRequirements(goal: "Reduce initial bundle size", sources: "Issue #65"),
                 changes: emptyChanges(note: "No branch yet."),
                 evidence: emptyEvidence(),

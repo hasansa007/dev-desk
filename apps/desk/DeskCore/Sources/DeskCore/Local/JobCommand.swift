@@ -46,6 +46,12 @@ public struct JobLaunch: Equatable {
 }
 
 public enum JobCommand {
+    /// Both builders assemble their argv through `HeadlessArgv`. Every flag they pass today takes exactly one
+    /// value, so the prompt stays the final element and the argv is unchanged — but a variadic flag added to
+    /// `flags(for:)` or `modeFlags(for:mode:home:)` later would have swallowed a trailing prompt (the ArchRun
+    /// bug: `--allowedTools` ate the positional prompt and claude exited 1 having been given none), and the
+    /// shared rule then moves the prompt in front of the flags instead of feeding it to that flag.
+    ///
     /// Claude takes an id we choose (`--session-id`), so resuming never depends on parsing one out of the stream.
     /// Codex has no such flag, so its id is read from its JSONL, and `--last` is the fallback.
     public static func launch(door: String, agent name: String, arguments: [String] = [], permission: RunPermission,
@@ -57,14 +63,19 @@ public enum JobCommand {
         else { return nil }
         if agent.executable == "claude" {
             return JobLaunch(executable: "claude",
-                             arguments: ["-p", "--output-format", "stream-json", "--verbose", "--session-id", sessionID]
-                                 + permission.flags(for: "claude") + modeFlags(for: "claude", mode: mode, home: home)
-                                 + [prompt],
+                             arguments: HeadlessArgv.argv(
+                                 head: ["-p"],
+                                 flags: ["--output-format", "stream-json", "--verbose", "--session-id", sessionID]
+                                     + permission.flags(for: "claude") + modeFlags(for: "claude", mode: mode, home: home),
+                                 prompt: prompt),
                              sessionID: sessionID)
         }
         return JobLaunch(executable: agent.executable,
-                         arguments: ["exec", "--json", "-C", directory] + permission.flags(for: agent.executable)
-                             + modeFlags(for: agent.executable, mode: mode, home: home) + [prompt],
+                         arguments: HeadlessArgv.argv(
+                             head: ["exec"],
+                             flags: ["--json", "-C", directory] + permission.flags(for: agent.executable)
+                                 + modeFlags(for: agent.executable, mode: mode, home: home),
+                             prompt: prompt),
                          sessionID: nil)
     }
 
@@ -78,15 +89,19 @@ public enum JobCommand {
         if agent.executable == "claude" {
             guard let sessionID else { return nil }
             return JobLaunch(executable: "claude",
-                             arguments: ["-p", "--output-format", "stream-json", "--verbose", "--resume", sessionID]
-                                 + permission.flags(for: "claude") + modeFlags(for: "claude", mode: mode, home: home)
-                                 + [answer],
+                             arguments: HeadlessArgv.argv(
+                                 head: ["-p"],
+                                 flags: ["--output-format", "stream-json", "--verbose", "--resume", sessionID]
+                                     + permission.flags(for: "claude") + modeFlags(for: "claude", mode: mode, home: home),
+                                 prompt: answer),
                              sessionID: sessionID)
         }
         return JobLaunch(executable: agent.executable,
-                         arguments: ["exec", "resume", sessionID ?? "--last", "--json"]
-                             + permission.flags(for: agent.executable)
-                             + modeFlags(for: agent.executable, mode: mode, home: home) + [answer],
+                         arguments: HeadlessArgv.argv(
+                             head: ["exec", "resume", sessionID ?? "--last"],
+                             flags: ["--json"] + permission.flags(for: agent.executable)
+                                 + modeFlags(for: agent.executable, mode: mode, home: home),
+                             prompt: answer),
                          sessionID: sessionID)
     }
 

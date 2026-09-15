@@ -54,6 +54,11 @@ public final class ShellSessions {
     @ObservationIgnored public let journal: RunJournal?
     /// What each live session would be called in a recovered row, since nothing else on disk knows the task's title.
     @ObservationIgnored private var titles: [String: String] = [:]
+    /// The last non-empty lines each ended session's process wrote, newest last — the same tail
+    /// `JournalRecord.logTail` keeps for background runs, handed in by the app at exit (the terminal's own
+    /// buffer is the capture; nothing taps the stream twice) and read back by whatever must say what a run
+    /// last wrote — the Diagrams pane leads its failure notice with these lines instead of a guess.
+    @ObservationIgnored private var outputTails: [String: [String]] = [:]
 
     /// A nil root, as a sample has, leaves every session failed and runs nothing.
     public init(projectRoot: URL?, runner: CommandRunner = ProcessRunner()) {
@@ -112,6 +117,8 @@ public final class ShellSessions {
         // The previous run's reading is not this one's, and keeping it would open a fresh agent at 80%.
         usages[taskID] = nil
         usageReads[taskID] = nil
+        // Nor are its last words: a fresh run must not end wearing the previous run's output.
+        outputTails[taskID] = nil
         states[taskID] = .running(folder)
         if let title { titles[taskID] = title }
         record(taskID: taskID, branch: branch, folder: folder)
@@ -130,6 +137,9 @@ public final class ShellSessions {
 
     /// How much context this task's agent is holding, or nil when nothing has been read for it.
     public func usage(for taskID: String) -> ContextUsage? { usages[taskID] }
+
+    /// The last non-empty lines the task's ended session wrote, newest last; empty until an exit recorded some.
+    public func outputTail(for taskID: String) -> [String] { outputTails[taskID] ?? [] }
 
     /// The gap between reads. The CLI appends to its transcript as it works, so a meter that lags a few seconds
     /// is still a meter, while anything faster re-reads a 256 KB tail for a number that has barely moved.
@@ -170,9 +180,13 @@ public final class ShellSessions {
     public func generation(for taskID: String) -> Int { generations[taskID, default: 0] }
 
     /// The app calls this when the session's process exits, or when the user ends it. An exit from an earlier run is ignored,
-    /// so a process that ends late can't end the one started after it.
-    public func markEnded(taskID: String, status: Int32?, generation: Int) {
+    /// so a process that ends late can't end the one started after it. `outputTail` is the last lines the
+    /// process wrote, when the caller has them — the terminal's buffer read at exit — kept here so an ended
+    /// session can still say what it said; blank lines are dropped and the journal's own cap applies.
+    public func markEnded(taskID: String, status: Int32?, generation: Int, outputTail: [String] = []) {
         guard generation == generations[taskID, default: 0], case .running(let folder) = states[taskID] else { return }
+        let tail = outputTail.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+        if !tail.isEmpty { outputTails[taskID] = Array(tail.suffix(BackgroundJob.logLimit)) }
         states[taskID] = .ended(folder, status: status)
         // The session is over, so its record is history: recovery offers only what was interrupted.
         journal?.clear(id: taskID)

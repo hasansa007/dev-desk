@@ -175,7 +175,7 @@ struct Sidebar: View {
         case .ideation:
             guard let count = model.ideationCount, count > 0 else { return nil }
             return (count, false)
-        case .roadmap, .insights:
+        case .roadmap, .diagrams:
             return nil
         }
     }
@@ -192,7 +192,7 @@ struct Sidebar: View {
         case .roadmap: return "map"
         case .survey: return "scope"
         case .ideation: return "lightbulb"
-        case .insights: return "rectangle.3.group"
+        case .diagrams: return "rectangle.3.group"
         }
     }
 

@@ -63,10 +63,22 @@ final class TrackerWriteTests: XCTestCase {
     }
 
     func testEveryConfirmationNamesTheRepositoryAndNumber() {
-        for action in [TrackerAction.queue(milestone: "1.4"), .backlog, .cancel(reason: "why")] {
+        for action in [TrackerAction.queue(milestone: "1.4"), .backlog, .cancel(reason: "why"), .draftPullRequest] {
             XCTAssertTrue(TrackerWrite.confirmation(issue: 63, slug: slug, action: action).contains("owner/repo#63"),
                           "\(action) must name the repository and number")
         }
+    }
+
+    /// The Review card's one backwards move (ADR 0035): the number is the pull request's, and the write
+    /// converts it back to a draft rather than editing any issue.
+    func testConvertingBackToADraftUndoesPrReady() {
+        XCTAssertEqual(TrackerWrite.arguments(issue: 41, slug: "o/r", action: .draftPullRequest),
+                       ["pr", "ready", "41", "--repo", "o/r", "--undo"])
+    }
+
+    func testTheDraftConfirmationSaysWhatLeavesReview() {
+        XCTAssertEqual(TrackerWrite.confirmation(issue: 41, slug: "o/r", action: .draftPullRequest),
+                       "Convert o/r#41 back to a draft, so it leaves Review?")
     }
 
     /// The Done column is git's (ADR 0011). This write follows git rather than asserting over it, so it carries
