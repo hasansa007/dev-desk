@@ -24,7 +24,7 @@ extension ProjectWindowModel {
         // A scratch terminal, so it lands in Sessions like any other session — but selecting it is not the same
         // as showing it: the Diagrams screen stays in front, and only the kind's own pane shows the spinner.
         let previous = selectedSessionID
-        let id = newTerminal(mode: .terminal)
+        let id = newTerminal()
         selectedSessionID = previous
         beginGeneratingDiagram(kind: kind, sessionID: id)
         Task {

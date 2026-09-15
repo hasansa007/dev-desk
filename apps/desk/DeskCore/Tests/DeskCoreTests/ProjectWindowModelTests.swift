@@ -54,23 +54,16 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertEqual(Set(model.scratchTerminals).count, model.scratchTerminals.count)
     }
 
-    /// A chat is chosen when the session is created, keeps its turns in the model, and is forgotten with its row.
-    func testAScratchSessionKeepsTheModeItWasCreatedWith() async {
+    /// A scratch session is in front the moment it is opened, and is forgotten with its row.
+    func testAScratchSessionIsSelectedWhenItOpensAndForgottenWhenItCloses() async {
         let model = await makeStudyHubModel()
-        let terminal = model.newTerminal()
-        let chat = model.newTerminal(mode: .chat)
+        let first = model.newTerminal()
+        let second = model.newTerminal()
 
-        XCTAssertEqual(model.scratchMode(for: terminal), .terminal)
-        XCTAssertEqual(model.scratchMode(for: chat), .chat)
-        XCTAssertEqual(model.scratchMode(for: "42"), .terminal, "a row that is not a scratch session is a terminal")
-        XCTAssertNil(model.scratchChat(for: terminal))
-        XCTAssertNotNil(model.scratchChat(for: chat))
-        XCTAssertEqual(model.selectedSessionID, chat)
+        XCTAssertEqual(model.selectedSessionID, second)
 
-        model.closeTerminal(chat)
-        XCTAssertEqual(model.scratchTerminals, [terminal])
-        XCTAssertNil(model.scratchModes[chat])
-        XCTAssertNil(model.scratchChat(for: chat))
+        model.closeTerminal(second)
+        XCTAssertEqual(model.scratchTerminals, [first])
     }
 
     func testIgnoredFindingsAreKeptPerProject() async {

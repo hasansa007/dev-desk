@@ -22,10 +22,6 @@ public enum TaskTab: String, CaseIterable, Codable, Hashable {
     public var title: String { rawValue.prefix(1).uppercased() + rawValue.dropFirst() }
 }
 
-/// What a session opened for its own sake is: a live login shell, or a chat that runs the CLI once per message
-/// (`ChatSession`) and hosts no terminal at all. Chosen when the session is created, and never changed after.
-public enum SessionMode: String, Codable, Hashable { case terminal, chat }
-
 public enum ViewMode: String, Codable, Hashable { case focus, parallel }
 
 /// A failed write, carrying the title of what it failed to change: deleting a branch never touches the tracker,
@@ -304,12 +300,6 @@ public final class ProjectWindowModel {
     /// Sessions opened for their own sake — not a door's, not a task's. They open at the project root, which
     /// is where you would have opened Terminal yourself.
     public private(set) var scratchTerminals: [String] = []
-    /// What each of them is. A terminal is the default and needs no entry; a chat is recorded, since it is the
-    /// one that must not be given a shell.
-    public private(set) var scratchModes: [String: SessionMode] = [:]
-    /// A chat session's turns, kept here rather than in the row that shows them: a collapsed row, or a visit
-    /// to the board, must not lose what was said.
-    public private(set) var scratchChats: [String: ChatSession] = [:]
 
     /// Never reused, because the count is not an identity: open two, close the first, open another, and
     /// "count + 1" hands out term:2 a second time — two rows with one id, colliding in the list and in the
@@ -317,30 +307,19 @@ public final class ProjectWindowModel {
     @ObservationIgnored private var terminalsOpened = 0
 
     @discardableResult
-    public func newTerminal(mode: SessionMode = .terminal) -> String {
+    public func newTerminal() -> String {
         terminalsOpened += 1
         let id = "term:\(terminalsOpened)"
         scratchTerminals.append(id)
-        scratchModes[id] = mode
-        if mode == .chat { scratchChats[id] = ChatSession() }
         selectedSessionID = id
         return id
     }
 
-    /// Only when nothing of it is live: closing a row must never orphan the process behind it. A chat has no
-    /// process between messages, so its row closes whenever it is asked to.
+    /// Only when nothing of it is live: closing a row must never orphan the process behind it.
     public func closeTerminal(_ id: String) {
         guard !sessions.state(for: id).isLive else { return }
         scratchTerminals.removeAll { $0 == id }
-        scratchModes[id] = nil
-        scratchChats[id] = nil
     }
-
-    /// Terminal for anything not recorded as a chat — including every row that is not a scratch session at all.
-    public func scratchMode(for id: String) -> SessionMode { scratchModes[id] ?? .terminal }
-
-    /// The chat behind a chat-mode row; nil for a terminal.
-    public func scratchChat(for id: String) -> ChatSession? { scratchChats[id] }
     public var mode: ViewMode = .focus
     public var showBacklog = false
     public var searchText = ""

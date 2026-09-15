@@ -18,11 +18,6 @@ struct TerminalsScreen: View {
     @State private var hasChosen = false
     /// What was live when the app was last killed (ADR 0031). Records, not sessions: nothing here is running.
     @State private var recovered: [JournalRecord] = []
-    /// What is being typed into the starter's composer, which becomes a chat session's first message.
-    @State private var starterDraft = ""
-    @State private var starterModel = ""
-    /// Read here so a pick in the starter's own chip re-resolves the agent it would start.
-    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     /// Where a new terminal's worktree would go, read here because opening one starts its shell at once.
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
@@ -74,15 +69,13 @@ struct TerminalsScreen: View {
         }
     }
 
-    /// A new scratch session of the given mode, in front. The mode is chosen once and fixed for the row's life:
-    /// a terminal is a live shell, a chat runs the CLI once per message and hosts no shell at all. A terminal's
-    /// shell is started here, not by a button in its pane: opening one and being told "Not started" made every
-    /// new terminal a two-click session whose second click was never a choice.
-    private func open(_ mode: SessionMode) {
+    /// A new scratch session, in front. Its shell is started here, not by a button in its pane: opening one and
+    /// being told "Not started" made every new terminal a two-click session whose second click was never a choice.
+    private func open() {
         hasChosen = true
-        let id = model.newTerminal(mode: mode)
+        let id = model.newTerminal()
         selection = .session(id)
-        if mode == .terminal { startTerminal(id) }
+        startTerminal(id)
     }
 
     /// The same start the pane's Start button made for a scratch row — the registry resolves the folder, the
@@ -109,7 +102,7 @@ struct TerminalsScreen: View {
         ScrollView(.horizontal) {
             HStack(spacing: 2) {
                 ForEach(rows) { row in
-                    SessionTab(row: row, chat: model.scratchChat(for: row.id),
+                    SessionTab(row: row,
                                isSelected: selection == .session(row.id), close: tabClose(for: row)) {
                         hasChosen = true
                         selection = .session(row.id)
@@ -127,22 +120,12 @@ struct TerminalsScreen: View {
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
-    /// The "+" at the end of the row: a menu of the two kinds of session, not a tab. It is never in front — it
-    /// opens a session and that session's tab is — so it carries no underline and no selected state, only the
-    /// height of its neighbours so the row stays one line. Each kind is offered under the same guard the
-    /// header's button had: a shell only where the registry would start one, a chat only where there is a
-    /// folder to ask about, since a sample has none.
+    /// The "+" at the end of the row: it opens a terminal, not a tab. It is never in front — it opens a session
+    /// and that session's tab is — so it carries no underline and no selected state, only the height of its
+    /// neighbours so the row stays one line. It is offered under the same guard the header's button had: a
+    /// shell only where the registry would start one.
     private var newSessionMenu: some View {
-        Menu {
-            Button("Terminal") { open(.terminal) }
-                .disabled(model.sessions.startRefusal(for: .shell) != nil)
-                .help(model.sessions.startRefusal(for: .shell) ?? "A login shell at the project root")
-            Button("Chat") { open(.chat) }
-                .disabled(model.projectRoot == nil)
-                .help(model.projectRoot == nil
-                      ? "A sample has no folder to ask about."
-                      : "Ask the agent one question at a time, at the project root")
-        } label: {
+        Button(action: open) {
             VStack(spacing: 0) {
                 Image(systemName: "plus")
                     .font(.system(size: 11, weight: .semibold))
@@ -156,10 +139,10 @@ struct TerminalsScreen: View {
             }
             .contentShape(Rectangle())
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
         .fixedSize()
-        .help("Start a terminal or a chat")
+        .disabled(model.sessions.startRefusal(for: .shell) != nil)
+        .help(model.sessions.startRefusal(for: .shell) ?? "A login shell at the project root")
         .accessibilityLabel("New session")
     }
 
@@ -192,10 +175,7 @@ struct TerminalsScreen: View {
         }
         if row.isLive { return closing("Stops this session") { terminals?.end(taskID: row.id) } }
         guard case .scratch = row.kind else { return nil }
-        let chat = model.scratchChat(for: row.id)
-        // Not while an answer is on its way: closing the session would drop the reply it asked for.
-        return closing(chat == nil ? "Remove this terminal from the list" : "Remove this chat from the list",
-                       isEnabled: chat?.isSending != true) { model.closeTerminal(row.id) }
+        return closing("Remove this terminal from the list") { model.closeTerminal(row.id) }
     }
 
     /// Which tab takes the front when this one goes: the one after it, else the one before it, else the starter.
@@ -219,30 +199,15 @@ struct TerminalsScreen: View {
         }
     }
 
-    // MARK: - Starting by typing
+    // MARK: - Nothing open
 
-    /// The same resolution a chat's body makes, so what the starter sends is what the row would have sent.
-    private var starterChoice: AgentChoice {
-        _ = defaultConnection
-        return AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? [])
-    }
-
-    private var starterBlockedReason: String? {
-        if model.projectRoot == nil { return "A sample has no folder to ask about." }
-        if case .unavailable(let reason) = starterChoice { return reason }
-        return nil
-    }
-
-    /// The starter: the pane a window with no sessions opens on, saying what a session here is, with the
-    /// composer along the bottom where every other session in this screen keeps its input. What is typed is
-    /// always a chat, since a message is a question and a terminal has no first message; the "+" in the tab
-    /// bar still opens an empty one of either kind.
+    /// The starter: the pane a window with no sessions opens on, saying what a session here is.
     private var starter: some View {
         VStack(alignment: .leading, spacing: 10) {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionLabel("Start a session")
-                    Text("Start a task from the board, run a door from Survey, Ideation or Roadmap, or open a terminal or a chat here. Whether it takes a terminal, runs in the background or answers one question at a time, it is a session here.")
+                    Text("Start a task from the board, run a door from Survey, Ideation or Roadmap, or open a terminal here. Whether it takes a terminal or runs in the background, it is a session here.")
                         .font(DeskFont.body)
                         .foregroundStyle(DeskColor.mutedInk)
                         .lineSpacing(3)
@@ -257,31 +222,10 @@ struct TerminalsScreen: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            ChatComposer(model: model, draft: $starterDraft, modelName: $starterModel,
-                         blockedReason: starterBlockedReason, placeholder: "Ask the agent about this project to start a chat…",
-                         onSend: startChat)
-            Text(starterBlockedReason ?? "Sending opens a new chat tab with this as its first message. Each message runs the CLI once through your login shell.")
-                .font(.system(size: 11))
-                .foregroundStyle(DeskColor.faintInk)
-                .lineSpacing(3)
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(DeskColor.canvas)
-    }
-
-    /// A new chat tab, in front, with the typed text already sent to it: its own transcript shows the question
-    /// and, when it comes, the answer. The model name is read now and applies to this first message; the chat's
-    /// own composer names its own for the next.
-    private func startChat(_ text: String) {
-        guard let folder = model.projectRoot, case .ready = starterChoice,
-              let agent = AgentLaunch.agent(forConnectionName: defaultConnection) else { return }
-        let id = model.newTerminal(mode: .chat)
-        hasChosen = true
-        selection = .session(id)
-        guard let chat = model.scratchChat(for: id) else { return }
-        let name = starterModel.trimmingCharacters(in: .whitespaces)
-        Task { await chat.send(text, agent: agent, model: name.isEmpty ? nil : name, folder: folder) }
     }
 
     /// Which tab is in front on arriving. A card or a door start lands on that session; otherwise the first
@@ -470,8 +414,6 @@ private struct TabClose {
 /// pointer.
 private struct SessionTab: View {
     let row: SessionRow
-    /// The chat behind a chat-mode session, which has something running only while an answer is on its way.
-    let chat: ChatSession?
     let isSelected: Bool
     /// Nil where the session has nothing to stop or close; the tab is then a name and a light, which is what
     /// a door or a task that is not running has always been here.
@@ -479,11 +421,7 @@ private struct SessionTab: View {
     let select: () -> Void
     @State private var isHovered = false
 
-    /// A chat is "live" while an answer is on its way; between messages nothing of it runs.
-    private var dotTone: StatusTone {
-        if let chat { return chat.isSending ? .info : .ended }
-        return row.isLive ? .running : .ended
-    }
+    private var dotTone: StatusTone { row.isLive ? .running : .ended }
 
     private var showsClose: Bool { close != nil && (isSelected || isHovered) }
 
@@ -495,7 +433,7 @@ private struct SessionTab: View {
             HStack(spacing: 6) {
                 Button(action: select) {
                     HStack(spacing: 7) {
-                        StatusDot(tone: dotTone, pulses: row.isLive || chat?.isSending == true)
+                        StatusDot(tone: dotTone, pulses: row.isLive)
                         Text(row.title)
                             .font(DeskFont.body.weight(isSelected ? .semibold : .regular))
                             .foregroundStyle(isSelected ? DeskColor.ink : DeskColor.mutedInk)
@@ -537,9 +475,8 @@ private struct SessionTab: View {
     }
 }
 
-/// The session in front: what it is doing and its body — the terminal as it is, a chat that hosts no
-/// terminal at all, or a background run's log. Its name and its × belong to the tab above, and are not said
-/// twice here.
+/// The session in front: what it is doing and its body — the terminal as it is, or a background run's log.
+/// Its name and its × belong to the tab above, and are not said twice here.
 private struct SessionPane: View {
     let model: ProjectWindowModel
     let row: SessionRow
@@ -548,15 +485,8 @@ private struct SessionPane: View {
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
     @State private var answer = ""
 
-    /// The chat behind this row, when it is a scratch session in chat mode. Every other row — a door, a task,
-    /// a terminal-mode scratch session, a background run — has none, and hosts what it always did.
-    private var chat: ChatSession? {
-        guard case .scratch = row.kind else { return nil }
-        return model.scratchChat(for: row.id)
-    }
-
-    /// A scratch session is its body alone. Its terminal started the moment it was opened and its chat has
-    /// nothing to start, so a header would carry a subtitle the tab already says and no button at all.
+    /// A scratch session is its body alone. Its terminal started the moment it was opened, so a header would
+    /// carry a subtitle the tab already says and no button at all.
     private var showsHeader: Bool {
         switch row.kind {
         // A project run started as the toolbar's play was pressed; running it again is that same button.
@@ -662,19 +592,9 @@ private struct SessionPane: View {
                       taskNumber: task.taskNumber, folderNote: task.noBranchNote, startTitle: "Start shell",
                       showsStop: false, showsStart: false)
         case .scratch:
-            // A chat-mode session hosts no terminal, so the one-host rule (ADR 0026) has nothing to say
-            // about it: the row's body is the transcript and the composer, and each message is a run of
-            // its own.
-            if let chat {
-                ChatTab(model: model, session: chat, folder: model.projectRoot)
-                    .padding(12)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .background(DeskColor.canvas)
-            } else {
-                // The shell started as the session was opened, so this pane hosts it running. No Start
-                // either way: a session that somehow is not says so through the pane's own message.
-                ShellPane(sessions: model.sessions, id: row.id, showsStop: false, showsStart: false)
-            }
+            // The shell started as the session was opened, so this pane hosts it running. No Start: a session
+            // that somehow is not says so through the pane's own message.
+            ShellPane(sessions: model.sessions, id: row.id, showsStop: false, showsStart: false)
         case .projectRun:
             // The run's shell, hosted exactly as a scratch terminal's is: it started when play was pressed,
             // and its stop is the tab's ×, which runs the configuration's stop rows first.
@@ -711,18 +631,11 @@ struct SessionRow: Identifiable {
                               subtitle: model.sessions.purpose(for: id) == .agent ? "Agent" : "Terminal",
                               isLive: model.sessions.state(for: id).isLive, kind: .task(task))
         }
-        // A scratch row says which mode it was opened in: a chat is never live in the registry's sense, since
-        // nothing of it runs between messages, and its subtitle says so instead of a shell state.
         let scratch = model.scratchTerminals.map { id -> SessionRow in
             let number = id.replacingOccurrences(of: "term:", with: "")
-            switch model.scratchMode(for: id) {
-            case .chat:
-                return SessionRow(id: id, title: "Chat \(number)", subtitle: "Chat", isLive: false, kind: .scratch)
-            case .terminal:
-                return SessionRow(id: id, title: "Terminal \(number)",
-                                  subtitle: "Terminal · \(RunLabel.label(for: model.sessions.state(for: id)).label)",
-                                  isLive: model.sessions.state(for: id).isLive, kind: .scratch)
-            }
+            return SessionRow(id: id, title: "Terminal \(number)",
+                              subtitle: "Terminal · \(RunLabel.label(for: model.sessions.state(for: id)).label)",
+                              isLive: model.sessions.state(for: id).isLive, kind: .scratch)
         }
         var background: [SessionRow] = []
         if let jobs, case .local(let path) = model.ref {

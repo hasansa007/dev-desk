@@ -15,7 +15,6 @@ enum PreferenceKey {
     static let agentLimit = "desk.agentLimit"
     static let confirmQuit = "desk.confirmQuit"
     static let sidebarRail = "desk.sidebarRail"
-    static let chatStyle = "desk.chatStyle"
 
     /// The two override keys are no longer read — the connection and the mode are the app's, for every project —
     /// but a key function is how a stored value is found, and one already written stays findable.
@@ -100,20 +99,6 @@ enum ModelCatalog {
         switch agent {
         case .claude: return ["claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"]
         case .codex: return ["gpt-5-codex", "o3", "o4-mini"]
-        }
-    }
-}
-
-/// How a task's Chat draws its turns. Bubbles is a conversation; Transcript is the same turns as lines you
-/// could read straight down, which is how a terminal's output is read everywhere else in the app. The choice
-/// is made in the chat composer's chip row, and this preference is what it writes and the transcript reads.
-enum ChatStyle: String, CaseIterable {
-    case bubbles, transcript
-
-    var title: String {
-        switch self {
-        case .bubbles: return "Bubbles"
-        case .transcript: return "Transcript"
         }
     }
 }
