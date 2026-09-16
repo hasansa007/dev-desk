@@ -25,29 +25,43 @@ struct ProjectToolbar: ToolbarContent {
             }
         }
         // The project's own run, before the panels: it is an action on the project, not a view of it.
-        ToolbarItem(placement: .primaryAction) {
-            RunProjectControl(model: model, terminals: terminals)
-        }
         // The reload ring lived here, spending its life counting down to an automatic reload nobody had asked
         // about. Reloading is a pull at the top of the screen now, and ⌘R in the Project menu.
         // `#available` cannot rescue a symbol the SDK lacks: ToolbarSpacer is macOS 26 API and CI builds on
         // Xcode 16.4 (macOS 15 SDK), where it does not exist to be referenced. Swift 6.2 ships with that SDK.
         #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
-            // Flexible, not fixed: the countdown times the project and the three glyphs open panels. Adjacent,
-            // they read as one set of four controls however they are separated, so they are pushed apart.
-            ToolbarSpacer(.flexible, placement: .primaryAction)
-        } else {
+            // Run and the panel toggles are separate capsules: an action on the project is not a view of it.
+            // A ToolbarSpacer between them, fixed or flexible, left all four glyphs in one shared glass, so
+            // run opts out of the shared background and draws its own.
             ToolbarItem(placement: .primaryAction) {
-                Divider().frame(height: 16)
+                RunProjectControl(model: model, terminals: terminals)
+                    .padding(.horizontal, 6)
+                    .glassEffect(.regular.interactive(), in: .capsule)
             }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarSpacer(.fixed, placement: .primaryAction)
+            panelToggles
+        } else {
+            legacyRunAndPanels
         }
         #else
+        legacyRunAndPanels
+        #endif
+    }
+
+    @ToolbarContentBuilder private var legacyRunAndPanels: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            RunProjectControl(model: model, terminals: terminals)
+        }
         ToolbarItem(placement: .primaryAction) {
             Divider().frame(height: 16)
         }
-        #endif
-        // The panel cluster, top right, one glyph per edge — where Xcode and every other Mac app keeps it.
+        panelToggles
+    }
+
+    /// The panel cluster, top right, one glyph per edge — where Xcode and every other Mac app keeps it.
+    private var panelToggles: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
             PanelToggle(symbol: "sidebar.leading", isOn: columns != .detailOnly,
                         label: "Sidebar", help: "Hide or show the project sidebar") {
