@@ -63,6 +63,10 @@ will cost and get a word first:
 Never open a fan-out on the developer's behalf and report the bill afterwards. If they say lighter,
 they are right, and the task is Standard from then on — the tier is a proposal, not a verdict.
 
+**One pre-approval counts as the word:** a door started with `--plan=decide --max-agents=<n>` (Dev Desk's
+run sheet, ADR 0043) was approved up to that limit before it started. It declares the fan-out in its
+report instead of asking, and refuses — spending nothing — when the plan exceeds the limit.
+
 **Use the developer as a fast collaborator:** when a blocker is their state (debugger, session, dashboard) or a 30-second human action beats minutes of automation, ask for it immediately and specifically — one sentence, what + why.
 
 ---

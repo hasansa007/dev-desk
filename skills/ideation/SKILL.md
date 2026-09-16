@@ -44,6 +44,7 @@ output is a report and, on confirmation, issues. `/dev #N` does the work afterwa
 | `--perf` | performance opportunities only | all three kinds |
 | `--security` | security opportunities only | all three kinds |
 | `--quality` | duplication and coupling only | all three kinds |
+| `--plan`, `--walkthrough`, `--file`, `--max-agents` | the stops and the agent limit — **`dev:findings` Phase 1 is their source of truth**, including the `Refused:` line and the from-scratch rule | ask at every stop |
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
@@ -75,7 +76,8 @@ source root labelled **modules, not flows**.
 
 **The fan-out mechanics are `dev:findings` Phase 4** — one flow per agent never two, `/tasks` for live
 progress, the per-finder record of finding count and **done-with-nothing vs died**, the Right-Size
-declaration before spending, and the propose-a-narrowing rule above 12 flows. Name the flow in each
+declaration before spending and what `--plan` does with it, `--max-agents`, and the
+propose-a-narrowing rule above 12 flows. Name the flow in each
 task description (`ideation: checkout`).
 
 ### What an opportunity finder returns
@@ -178,7 +180,8 @@ Flows: <n>, from <where they were declared>   Kinds: <perf | security | quality>
 
 ## Phase 8 — Walk it through, one at a time (BEFORE the filing offer)
 
-**The gate is `dev:findings` Phase 8 and that door is its source of truth**: state the mechanism and
+**`--walkthrough` applies exactly as in `dev:findings` Phase 8** (`skip` and `decide` ask nothing; `decide`
+also writes the worth-doing verdict into the report). Under `alert`: **the gate is `dev:findings` Phase 8 and that door is its source of truth**: state the mechanism and
 constraints, **then STOP**; ask how they would handle it; only then give yours and diff the two
 explicitly; print the `alternatives considered` / `rejected:` line either way, *especially* when it
 is empty. `just do it` skips one, `just do it all` skips the rest. **Never batch.**
@@ -191,7 +194,7 @@ it closed as `not planned` so Phase 2 reads it back and the next run does not re
 
 ## Phase 9 — Offer to file
 
-Ask before filing anything. Then, for the confirmed set:
+**`--file` applies exactly as in `dev:findings` Phase 9.** Under `alert`, ask before filing anything. Then, for the confirmed set:
 
 - **`dev:create-issue`, labelled `enhancement`.** Never `dev:create-bug`. Filing an improvement as a
   defect makes the board lie about how broken the app is, and `dev:kanban` ranks from that board.

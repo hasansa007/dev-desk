@@ -39,6 +39,40 @@ The output is a report and, on confirmation, issues. `/dev #N` does the work aft
 | A flow name (`checkout`) | that flow only | all |
 | `--arch` | Phase 6 only — skip Phases 4 and 5 entirely | both |
 | `--bugs` | Phases 4 and 5 only — skip Phase 6 | both |
+| `--plan=decide\|alert` | how the fan-out is approved (Phase 4) | `alert` |
+| `--walkthrough=decide\|alert\|skip` | Phase 8 | `alert` |
+| `--file=decide\|alert\|skip` | Phase 9 | `alert` |
+| `--max-agents=<n>` | the most agents this run may start, finders and checkers together | none |
+
+### The stops are chosen before the run starts (ADR 0043)
+
+This door stops three times: to approve the fan-out, to walk each finding through, and to file. A run
+started from Dev Desk — often in the background, where **nobody is there to answer** — is told up front
+what each stop does. A run with no stop arguments asks at all three, exactly as before.
+
+| Value | Means |
+|---|---|
+| `alert` | stop and ask; in the background, end the turn with the question so the app shows **Answer…** |
+| `decide` | take the decision this skill's own rules make, **write it and its reason into the report**, and carry on |
+| `skip` | do not run that stop at all (not valid for `--plan`) |
+
+**Never ask at a stop whose value is `decide` or `skip`** — not "just to be safe", not once. A run
+that asks anyway is a run that hangs in the background.
+
+**`--max-agents` is a wall, not a target.** Plan first (Phase 3 flows, Phase 4 finders, ~2 checkers per
+expected finding). If the plan exceeds it, **start nothing** and end with exactly one line, first:
+
+```
+Refused: the plan needs <n> agents and the limit is <max>. Narrow the scope (one flow, --bugs or --arch) or raise the limit in Dev Desk → Settings → Execution.
+```
+
+Dev Desk shows a run that ends with `Refused:` as failed, with that line. Never narrow silently to fit.
+If checkers alone would push a started run past the limit, stop spending, write the report with what
+was verified, and name what was left unverified — the limit still holds.
+
+**Every run is from scratch.** A report that is deleted, only in git history, or older than today is
+never evidence: every finding in this run is found and verified in this run. Earlier reports are read
+only by Phase 2's dedupe, as *what was already tracked*.
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
@@ -131,11 +165,19 @@ the developer at `/tasks` when you declare the fan-out.
   once the run ends; Phase 7 reconciles the estimate against them, and unrecorded, the estimate can
   never get better
 
-**Declare the fan-out and get a word before spending it** (Right-Size, `shared/pipeline.md`): *"18
-flows → 18 finders, then ~2 checkers per finding. Go, or narrow it?"* This is the family's largest
-fan-out — 60 routes is 60 finders and can be 300 checkers — and Right-Size forbids opening one on
-the developer's behalf and reporting the bill afterwards. **Above 12 flows, propose a narrowing
-first** rather than asking them to approve a number they have no way to price.
+**Declare the fan-out before spending it** (Right-Size, `shared/pipeline.md`): *"18 flows → 18
+finders, then ~2 checkers per finding."* This is the family's largest fan-out — 60 routes is 60
+finders and can be 300 checkers. **What happens next is `--plan`:**
+
+- **`alert`** (the default) — ask *"Go, or narrow it?"* and wait. **Above 12 flows, propose a narrowing
+  first** rather than asking them to approve a number they have no way to price.
+- **`decide`** — the developer approved the run by starting it with a limit. Check the plan against
+  `--max-agents` (refuse as above if it is over), then go without asking, and record in `## COST` which
+  flows were chosen and why, and the planned agent count.
+
+**Split flows finely enough for one finder each.** A flow is one thing a user does — load and grant
+access, search, open a detail, favourite — not one screen. Two finders each covering half an app will
+return fewer findings without saying so.
 
 Each finder returns, per finding: the symptom, the file and line, the **mechanism** that produces
 it, and what it expected instead.
@@ -345,6 +387,10 @@ Per flow          findings   duration   tokens   calls
 
 ## Phase 8 — Walk it through, one finding at a time (BEFORE the filing offer)
 
+**`--walkthrough`:** `alert` runs this phase as written. `skip` goes straight to Phase 9. `decide` asks
+nothing: for each confirmed entry, write your handling and its `alternatives considered` / `rejected:`
+line under the entry in the report, where the developer reads it later.
+
 **The developer's stated purpose for this gate: build their own model of the system, not receive
 one.** A finding they can restate is worth more than three they approved. So this phase is not a
 summary — it asks first and answers second, on **every** confirmed finding.
@@ -377,7 +423,11 @@ the last one.
 
 ## Phase 9 — Offer to file, shaped for parallel work
 
-Ask before filing anything. Then, for the confirmed set:
+**`--file`:** `alert` asks before filing anything, as written. `skip` files nothing — the report is the
+result, and Dev Desk files from its Findings screen. `decide` files the confirmed set by the rules below
+without asking, and lists what it filed at the end of the report.
+
+Ask before filing anything (under `alert`). Then, for the confirmed set:
 
 - Bugs → `dev:create-bug`, one per finding, mechanism carried into `## Steps` intact.
 - **Name this run in `## Suspected`, and say what the verdict does NOT cover:** *"found by
@@ -433,7 +483,8 @@ Ask before filing anything. Then, for the confirmed set:
 
 `shared/entry.md` → *Never end silently* applies here as to every sibling.
 
-Report written → **walk the findings through (Phase 8)** → offer the filing, naming the branch it would cut. Filed → name the first issue by
+Under `decide` or `skip` at every stop, end with the report's path and what it holds — never a question.
+Otherwise: report written → **walk the findings through (Phase 8)** → offer the filing, naming the branch it would cut. Filed → name the first issue by
 cost and hand to `/dev #N`. **Nothing found → say so plainly, name what was covered and what was
 not, and offer `dev:kanban`** — a clean findings run is a real answer, but the board may still hold work,
 and stopping at "nothing" makes the developer remember there is somewhere else to look.

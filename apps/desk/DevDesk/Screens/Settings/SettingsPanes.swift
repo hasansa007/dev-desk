@@ -425,6 +425,7 @@ struct ExecutionPane: View {
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @AppStorage(PreferenceKey.agentLimit) private var agentLimit = AgentLimit.defaultValue
     @AppStorage(PreferenceKey.confirmQuit) private var confirmQuit = true
+    @AppStorage(PreferenceKey.runMaxAgents) private var runMaxAgents = RunStops.defaultMaxAgents
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -455,6 +456,16 @@ struct ExecutionPane: View {
             }
             .fixedSize()
             .padding(.top, 16)
+            Stepper(value: $runMaxAgents, in: RunStops.maxAgentsRange, step: 5) {
+                Text("A findings or ideation run may start at most \(runMaxAgents) agents")
+            }
+            .fixedSize()
+            .padding(.top, 16)
+            Text("Finders and checkers together. A run whose plan needs more starts nothing and says why.")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(4)
+                .padding(.top, 8)
             Toggle("Ask before quitting while something is running", isOn: $confirmQuit)
                 .padding(.top, 16)
             Text("Quitting ends every session and background run. The question is only ever asked when one of them is live.")

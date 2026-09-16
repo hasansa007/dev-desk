@@ -13,6 +13,9 @@ struct RunFocusSheet: View {
     @State private var flow = ""
     @State private var inBackground = false
     @State private var permission: RunPermission = .writeInRepo
+    @State private var stops = RunStops()
+    @State private var loadedStops = false
+    @AppStorage(PreferenceKey.runMaxAgents) private var runMaxAgents = RunStops.defaultMaxAgents
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var isIdeation: Bool { door == "ideation" }
@@ -51,12 +54,48 @@ struct RunFocusSheet: View {
                 } else {
                     scopePicker
                 }
+                if !isRoadmap { stopsPicker }
                 backgroundPicker
                 Text(footnote)
                     .font(.system(size: 11))
                     .foregroundStyle(DeskColor.faintInk)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .onAppear {
+            guard !loadedStops else { return }
+            loadedStops = true
+            stops = RunStops(stored: UserDefaults.standard.string(forKey: PreferenceKey.runStops(model.ref, door: door)) ?? "",
+                             maxAgents: runMaxAgents)
+        }
+    }
+
+    /// What the run does at each point it would stop and ask (ADR 0043). Chosen here because a background
+    /// run has nobody to ask, and a terminal run asked three times is a run started three times.
+    private var stopsPicker: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            SectionLabel("When the run reaches…").padding(.top, 6)
+            stopRow("Planning agents", choices: [.decide, .alert], selection: $stops.plan)
+            stopRow("Walkthrough", choices: StopChoice.allCases, selection: $stops.walkthrough)
+            stopRow("Filing", choices: StopChoice.allCases, selection: $stops.filing)
+            Text("Limit: \(runMaxAgents) agents — a plan that needs more starts nothing and says why. Change it in Settings → Execution.")
+                .font(.system(size: 11))
+                .foregroundStyle(DeskColor.faintInk)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private func stopRow(_ title: String, choices: [StopChoice], selection: Binding<StopChoice>) -> some View {
+        HStack(spacing: 10) {
+            Text(title)
+                .font(DeskFont.body)
+                .foregroundStyle(DeskColor.ink)
+                .frame(width: 130, alignment: .leading)
+            FlowLayout(spacing: 6) {
+                ForEach(choices, id: \.self) { choice in
+                    FocusChip(title: choice.title, isOn: selection.wrappedValue == choice) { selection.wrappedValue = choice }
+                }
             }
         }
     }
@@ -134,8 +173,8 @@ struct RunFocusSheet: View {
             return "The door reads this repository's own recorded gaps, PROJECT_MAP's orphans and pending work, and any findings or ideation reports — then proposes milestones with epic parents underneath. It never invents work, and it asks before filing anything."
         }
         return isIdeation
-            ? "Nothing selected means all three kinds, which is the door's own default. The run still asks before it files anything."
-            : "The door discovers the flows it can see, verifies every finding against the code, and asks before filing."
+            ? "Nothing selected means all three kinds, which is the door's own default."
+            : "The door discovers the flows it can see and verifies every finding against the code, from scratch."
     }
 
     /// Why the run cannot start, in the terms it was chosen in. A findings run names the half that is taken,
@@ -156,6 +195,11 @@ struct RunFocusSheet: View {
             if let argument = scope.argument { arguments.append(argument) }
             let name = flow.trimmingCharacters(in: .whitespacesAndNewlines)
             if !name.isEmpty { arguments.append(name) }
+        }
+        if !isRoadmap {
+            let chosen = RunStops(plan: stops.plan, walkthrough: stops.walkthrough, filing: stops.filing, maxAgents: runMaxAgents)
+            arguments += chosen.arguments
+            UserDefaults.standard.set(chosen.stored, forKey: PreferenceKey.runStops(model.ref, door: door))
         }
         // The scope names the run and nothing else: the door stays "findings", so the same SKILL is read.
         let title = isRoadmap ? "Roadmap" : (isIdeation ? "Ideation" : scope.runTitle)

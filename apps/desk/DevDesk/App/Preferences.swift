@@ -13,6 +13,8 @@ enum PreferenceKey {
     static let notifyFailures = "desk.notifyFailures"
     static let worktreeLocation = "desk.worktreeLocation"
     static let agentLimit = "desk.agentLimit"
+    /// The most agents one findings or ideation run may start (ADR 0043).
+    static let runMaxAgents = "desk.runMaxAgents"
     static let confirmQuit = "desk.confirmQuit"
     static let sidebarRail = "desk.sidebarRail"
     static let findingsGrouping = "desk.findingsGrouping"
@@ -26,6 +28,8 @@ enum PreferenceKey {
     static func connectionOverride(_ ref: ProjectRef) -> String { "desk.connectionOverride.\(ref.id)" }
     static func runModeOverride(_ ref: ProjectRef) -> String { "desk.runModeOverride.\(ref.id)" }
     static func autoMode(_ ref: ProjectRef) -> String { "desk.autoMode.\(ref.id)" }
+    /// The run sheet's stop choices for one door in one project, e.g. `decide,skip,skip`.
+    static func runStops(_ ref: ProjectRef, door: String) -> String { "desk.runStops.\(door).\(ref.id)" }
 }
 
 /// What a fresh install runs before anything is chosen. It was written out at every site that read the

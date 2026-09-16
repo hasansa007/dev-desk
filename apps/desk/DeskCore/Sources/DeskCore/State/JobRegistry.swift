@@ -257,7 +257,8 @@ public final class JobRegistry {
             writeRecord(for: jobs[index])
         case .ended(let text, let question):
             append(text, to: index)
-            setState(question.map { JobState.asking($0) } ?? .ended(text: text, failed: false), at: index)
+            // A door that refused to start (over its agent limit, ADR 0043) ended cleanly but did nothing.
+            setState(question.map { JobState.asking($0) } ?? .ended(text: text, failed: RunStops.isRefusal(text)), at: index)
         case .usage:
             // Already applied above, where every line's reading is taken. The case is spelled out so a
             // reading-only line is understood here rather than read as something unrecognised.
