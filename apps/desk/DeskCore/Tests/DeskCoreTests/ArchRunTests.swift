@@ -17,44 +17,23 @@ final class ArchRunTests: XCTestCase {
         XCTAssertEqual(prompt?.contains("Arguments: architecture "), true)
     }
 
-    /// A question in a headless run is printed and the process exits 0 with nothing drawn, so every run is
-    /// told not to ask, what an empty target means, and not to cut a branch over the developer's work.
-    func testTheRunIsToldItCannotAsk() throws {
+    /// The screen's answers ride on every prompt, so the run neither asks for a target nor cuts a branch over
+    /// the developer's work.
+    func testTheRunCarriesTheScreensAnswers() throws {
         for agent in ["Codex", "Claude"] {
             let prompt = try XCTUnwrap(ArchRun.prompt(agent: agent, kind: "workflow", target: "", home: home))
-            XCTAssertTrue(prompt.hasSuffix(ArchRun.headlessInstruction))
-            XCTAssertTrue(prompt.contains("never stop to ask"))
+            XCTAssertTrue(prompt.hasSuffix(ArchRun.screenInstruction))
             XCTAssertTrue(prompt.contains("Do not cut a branch"))
         }
     }
 
-    /// The headless argv is the verified `exec`/`-p` form. Codex's flags each take one value, so its prompt
-    /// is the single final element; claude's `--allowedTools` is variadic and consumed a trailing prompt as
-    /// one more tool name (the CLI then exited 1, given no prompt at all), so claude's prompt sits
-    /// immediately after `-p`, before every flag.
-    func testTheHeadlessArgvIsTheVerifiedFormPerCLI() throws {
-        let codex = try XCTUnwrap(ArchRun.launch(agent: "Codex", kind: "workflow", target: "", home: home))
-        XCTAssertEqual(Array(codex.dropLast()), ["codex", "exec", "-s", "workspace-write"])
-        XCTAssertEqual(codex.last, ArchRun.prompt(agent: "Codex", kind: "workflow", target: "", home: home))
-
-        let prompt = try XCTUnwrap(ArchRun.prompt(agent: "Claude", kind: "sequence", target: "checkout", home: home))
-        let claude = try XCTUnwrap(ArchRun.launch(agent: "Claude", kind: "sequence", target: "checkout", home: home))
-        XCTAssertEqual(claude, ["claude", "-p", prompt,
-                                "--permission-mode", "acceptEdits",
-                                "--allowedTools", "Bash Read Write Edit Glob Grep"])
-        // The kind reaches the prompt, so the run draws the type that was asked for.
-        XCTAssertEqual(prompt.contains(" checkout sequence"), true)
-    }
-
-    /// The regression itself: with a variadic flag in the argv the prompt must never be the final element —
-    /// trailing there is exactly where `--allowedTools` swallowed it.
-    func testTheClaudePromptIsNeverBehindTheVariadicFlag() throws {
-        let prompt = try XCTUnwrap(ArchRun.prompt(agent: "Claude", kind: "architecture", target: "", home: home))
-        let claude = try XCTUnwrap(ArchRun.launch(agent: "Claude", kind: "architecture", target: "", home: home))
-        XCTAssertTrue(claude.contains(where: HeadlessArgv.variadicFlags.contains),
-                      "this run carries a variadic flag; if that ever changes, the prompt may trail again")
-        XCTAssertNotEqual(claude.last, prompt)
-        XCTAssertEqual(claude.firstIndex(of: prompt), 2, "the prompt sits right after -p, before any flag")
+    /// Interactive, like every other door: the CLI and its prompt, no `-p`/`exec`, so the terminal shows the run.
+    func testTheArgvIsInteractive() throws {
+        for (agent, executable) in [("Claude", "claude"), ("Codex", "codex")] {
+            let prompt = try XCTUnwrap(ArchRun.prompt(agent: agent, kind: "sequence", target: "checkout", home: home))
+            XCTAssertEqual(ArchRun.launch(agent: agent, kind: "sequence", target: "checkout", home: home), [executable, prompt])
+            XCTAssertTrue(prompt.contains(" checkout sequence "))
+        }
     }
 
     /// A CLI the family has no verified headless invocation for gets no argv.

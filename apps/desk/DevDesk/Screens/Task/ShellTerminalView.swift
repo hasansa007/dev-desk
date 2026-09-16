@@ -33,9 +33,14 @@ final class ShellTerminalHost: NSView {
     func show(_ terminal: NSView) {
         guard terminal.superview !== self else { return }
         subviews.forEach { $0.removeFromSuperview() }
-        terminal.frame = bounds
-        terminal.autoresizingMask = [.width, .height]
+        // A host SwiftUI has just made has no size yet. Sizing the terminal to that told the program inside its
+        // window was a row or two, and a full-screen agent (opencode, claude) redrew for it, then again at full
+        // size into a buffer the shrink had already cut — the pane came back as scattered fragments on every tab
+        // switch. So the terminal keeps its last size until the host has a real one (`layout`).
+        terminal.autoresizingMask = []
+        if !bounds.isEmpty { terminal.frame = bounds }
         addSubview(terminal)
+        terminal.needsDisplay = true
         // Re-parenting into a dialog leaves first responder wherever it was — on the sheet's buttons, which
         // then take ↑/↓ before the terminal sees them. A terminal that has just appeared is the thing being
         // looked at, so it asks for focus again.
@@ -43,6 +48,14 @@ final class ShellTerminalHost: NSView {
             focusing.focusOnAttach = true
             focusing.takeFocusIfAsked()
         }
+    }
+
+    /// The one place the terminal takes the host's size, and only a real one — never the empty frame of a host
+    /// that has not been laid out yet.
+    override func layout() {
+        super.layout()
+        guard !bounds.isEmpty, let terminal = subviews.first, terminal.frame != bounds else { return }
+        terminal.frame = bounds
     }
 
     /// The app's events reach a local monitor before any view, so this holds whatever SwiftUI draws around the terminal.

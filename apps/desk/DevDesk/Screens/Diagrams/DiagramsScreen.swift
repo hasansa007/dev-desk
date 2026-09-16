@@ -169,7 +169,7 @@ struct DiagramsScreen: View {
             Text("Generating the \(selectedTitle) diagram…")
                 .font(DeskFont.body)
                 .foregroundStyle(DeskColor.ink)
-            Text("dev:arch is drawing this in the background — it appears in Sessions, and lands here when it finishes.")
+            Text("dev:arch is drawing this in its session — answer it there, and the drawing lands here as soon as it is written.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .multilineTextAlignment(.center)
@@ -178,6 +178,14 @@ struct DiagramsScreen: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
+        // The session does not exit when the file is written, so the folder is read again until it lands.
+        .task(id: selectedKind) {
+            while !Task.isCancelled, model.isGeneratingDiagram(kind: selectedKind) {
+                try? await Task.sleep(for: .seconds(4))
+                await model.load()
+                model.pickUpGeneratedDiagrams()
+            }
+        }
     }
 
     /// Nothing drawn for this kind yet: say what it is and offer to generate it, with an optional target so a

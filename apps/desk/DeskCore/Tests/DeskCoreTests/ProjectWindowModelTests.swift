@@ -350,6 +350,15 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertNil(model.finishGeneratingDiagram(sessionID: "term:1"), "a session is only finished once")
     }
 
+    /// An interactive run stays open after it draws, so the pick-up is what ends a generate. With no drawing newer
+    /// than the start, nothing is finished and the spinner stays — a sample has no folder, so it never has one.
+    func testPickUpLeavesAKindGeneratingUntilItsDrawingLands() async {
+        let model = await makeStudyHubModel()
+        model.beginGeneratingDiagram(kind: "workflow", sessionID: "term:3")
+        XCTAssertEqual(model.pickUpGeneratedDiagrams(), [])
+        XCTAssertTrue(model.isGeneratingDiagram(kind: "workflow"))
+    }
+
     /// A generate that drew nothing records a reason for the pane, so a refusal is visible instead of a silent
     /// revert — and it carries the session id, since the session is kept as the run's readable evidence. A
     /// sample has no folder, so its `diagram(kind:)` is always nil — the failure path.

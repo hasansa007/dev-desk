@@ -101,11 +101,9 @@ shows it — and the handoff must repeat it (Phase 5). Hiding them was tried and
 Dev Desk reads diagrams only from `docs/arch/`, so a `dataflow` written to `$SCRATCH` was a diagram the
 Diagrams screen reported as never drawn, on every retry (ADR 0033).
 
-**Headless runs** — a prompt that says nobody can answer (Dev Desk's Diagrams screen runs this door
-with `claude -p` / `codex exec`). A question there is printed, the process exits 0, and the caller
-reads a finished run that drew nothing. So: no target means the whole project; do **not** cut a
-branch or stash, write only the new `docs/arch/<name>.*` files on the current branch and leave every
-other change untouched; never ask — if something truly blocks, fail with the reason.
+**Runs from Dev Desk** — a prompt that says it was started from the Diagrams screen. No target means
+the whole project; do **not** cut a branch or stash — write only the new `docs/arch/<name>.*` files on
+the current branch and leave every other change untouched. The screen picks the file up as it lands.
 
 ## Phase 2 — Resolve the renderer
 

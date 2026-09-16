@@ -211,6 +211,22 @@ public final class ProjectWindowModel {
         return kind
     }
 
+    /// An interactive run stays open after it draws, so its end is not when the drawing arrives. After a reload,
+    /// a generating kind whose file is newer than its start is finished: the spinner gives way to the drawing and
+    /// the session stays, since the developer may still be talking to it. Returns the kinds it finished.
+    @discardableResult
+    public func pickUpGeneratedDiagrams() -> [String] {
+        var finished: [String] = []
+        for (sessionID, kind) in generatingSessionKinds {
+            guard let started = generatingKindStarts[kind], let drawn = diagram(kind: kind),
+                  drawn.modifiedAt > started else { continue }
+            _ = finishGeneratingDiagram(sessionID: sessionID)
+            recordDiagramGenerateResult(kind: kind)
+            finished.append(kind)
+        }
+        return finished
+    }
+
     /// Called after a generate's session ends and the project has been re-read: if the kind still has no file,
     /// the run drew nothing, and what is recorded for the pane carries the run's own evidence — its exit
     /// status, the last lines it wrote, and the session they are still readable in — ahead of any guess about
@@ -376,6 +392,7 @@ public final class ProjectWindowModel {
         sessions.onSessionEnded = { [weak self] id in
             Task {
                 await self?.load()
+                self?.pickUpGeneratedDiagrams()
                 if Self.endedRunShowsDiagrams(sessionID: id) { self?.go(.diagrams) }
                 // A diagram generate that just finished: its spinner clears, the reload above has already
                 // picked up the new file, and on success the scratch session it ran in comes off the list. It

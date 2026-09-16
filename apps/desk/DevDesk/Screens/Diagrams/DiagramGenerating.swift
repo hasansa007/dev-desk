@@ -1,10 +1,10 @@
 import DeskCore
 import SwiftUI
 
-/// Generating one `dev:arch` diagram from the Diagrams screen, in the background. The screen never leaves
-/// itself: the run is a scratch session that appears in Sessions and runs the headless `dev:arch` argv, so its
-/// process exits when the diagram is written. `ShellSessions.onSessionEnded` (wired in the model) then clears
-/// the kind's spinner, reloads so the new HTML is picked up, and takes the finished session off the list.
+/// Generating one `dev:arch` diagram from the Diagrams screen. The run is an interactive session in Sessions,
+/// opened in front so it is watched and answered like any other door. The Diagrams screen re-reads the folder
+/// while the kind is generating and swaps its spinner for the drawing once a newer file lands; the session stays
+/// open until the developer ends it.
 extension ProjectWindowModel {
     /// Why a diagram cannot be generated right now, or nil when it can. A sample has no folder; an agent with
     /// no verified invocation cannot run; and one run per kind at a time, so a second press does nothing.
@@ -21,11 +21,10 @@ extension ProjectWindowModel {
         guard diagramGenerateBlockedReason(kind: kind, agent: agent) == nil,
               let launch = ArchRun.launch(agent: agent, kind: kind, target: target, home: NSHomeDirectory())
         else { return }
-        // A scratch terminal, so it lands in Sessions like any other session — but selecting it is not the same
-        // as showing it: the Diagrams screen stays in front, and only the kind's own pane shows the spinner.
-        let previous = selectedSessionID
+        // A terminal in Sessions, shown: a run nobody can see is one whose questions nobody answers.
         let id = newTerminal()
-        selectedSessionID = previous
+        selectedSessionID = id
+        go(.terminals)
         beginGeneratingDiagram(kind: kind, sessionID: id)
         Task {
             await sessions.start(taskID: id, branch: nil, taskNumber: nil, noBranchNote: nil,
