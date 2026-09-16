@@ -1,22 +1,24 @@
 import DeskCore
 import SwiftUI
 
-/// Starting a project's survey reading over. Three things accumulate and none of them is owned by the same
-/// party: the findings you set aside live in the app, the screen's selection lives in the window, and the
-/// reports live in the repository. So each is a line with its own count, and nothing is cleared silently.
+/// Starting a project's survey over from nothing (ADR 0041). What accumulates is owned by different parties:
+/// set-aside findings live in the app, the screen's selection in the window, the reports in the repository and
+/// the cards they filed on the board or the tracker. Each is a line with its own count, and nothing is cleared
+/// silently. Work in progress is the one thing a reset never takes: it is listed, warned about, and offered to resume.
 struct ResetSurveySheet: View {
     @Bindable var model: ProjectWindowModel
     @State private var options = SurveyResetOptions()
     @State private var runAfterwards = false
-    /// Issues ticked for closing. Empty by default: keeping is what a reset does unless you say otherwise.
-    @State private var closing: Set<Int> = []
+    /// Cards ticked to go, by card id: issues closed as not planned, local entries to the Trash. Every card
+    /// that can go starts ticked — a reset is asked for to clean up.
+    @State private var removing: Set<String> = []
     @State private var closeReason = ""
     /// Read once when the sheet opens, so a reload underneath cannot change the list being confirmed.
     @State private var cards: [FiledCard] = []
+    @State private var reports: [String] = []
     @State private var listed = false
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
-    private var olderReports: [String] { model.olderSurveyReports }
     private var ignoredCount: Int { model.ignoredFindingsCount }
 
     /// Any survey at all, of any scope, in a terminal or in the background. Scope buys nothing here: a reset
@@ -31,11 +33,22 @@ struct ResetSurveySheet: View {
         SheetChrome(title: "Reset survey", confirmTitle: confirmTitle, confirmDisabled: !canConfirm,
                     size: .confirm, onCancel: model.dismissSheet, onConfirm: reset) {
             VStack(alignment: .leading, spacing: 14) {
-                Text("Clears what has built up between runs. The newest report is always kept — it is the current picture of this project.")
+                Text("Clears the findings and the tasks they filed, so the next run starts from nothing. Work in progress is kept.")
                     .font(DeskFont.body)
                     .foregroundStyle(DeskColor.secondaryInk)
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if isAnySurveyRunning {
+                    NoticeBanner(tone: .waiting, title: "A survey is running",
+                                 message: "Its report is being written into docs/survey/. Reset once it has finished.",
+                                 style: .compact)
+                }
+
+                line(isOn: $options.reports,
+                     title: "Clear the findings",
+                     detail: reportsDetail,
+                     enabled: !reports.isEmpty && model.canRunDoors && !isAnySurveyRunning)
 
                 line(isOn: $options.ignoredFindings,
                      title: "Bring back ignored findings",
@@ -48,20 +61,6 @@ struct ResetSurveySheet: View {
                      title: "Reset this screen",
                      detail: "Selected run, category filter and the ignored-findings view go back to how the project opens.",
                      enabled: true)
-
-                line(isOn: $options.olderReports,
-                     title: "Move older reports to the Trash",
-                     detail: reportsDetail,
-                     enabled: !olderReports.isEmpty && model.canRunDoors)
-
-                if options.olderReports, !olderReports.isEmpty {
-                    Text(olderReports.joined(separator: "   "))
-                        .font(DeskFont.mono(11))
-                        .foregroundStyle(DeskColor.faintInk)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .padding(.leading, 26)
-                }
 
                 if !cards.isEmpty {
                     Divider()
@@ -86,7 +85,11 @@ struct ResetSurveySheet: View {
         .onAppear {
             guard !listed else { return }
             listed = true
+            reports = model.surveyReports
+            options.reports = !reports.isEmpty && model.canRunDoors && !isAnySurveyRunning
+            options.ignoredFindings = ignoredCount > 0
             cards = model.surveyFiledCards.map(FiledCard.init)
+            if model.canRunDoors { removing = Set(removable.map(\.id)) }
             closeReason = "Superseded: the survey was reset on \(Self.today) to start over from a new run."
         }
     }
@@ -105,20 +108,35 @@ struct ResetSurveySheet: View {
             label = task.issueLabel
             title = task.title
             column = task.column
-            reset = FiledCardReset.of(column: task.column, branch: task.branch, issue: task.issueNumber)
+            reset = FiledCardReset.of(column: task.column, branch: task.branch, issue: task.issueNumber,
+                                      localBacklogID: task.localBacklogID)
         }
 
-        var issue: Int? {
-            if case .closable(let issue) = reset { return issue }
-            return nil
+        var canGo: Bool {
+            switch reset {
+            case .closable, .trashable: return true
+            case .inProgress, .done: return false
+            }
         }
     }
 
-    private var closable: [Int] { cards.compactMap(\.issue) }
-    private var startedCount: Int { cards.filter { $0.reset == .started }.count }
+    private var removable: [FiledCard] { cards.filter(\.canGo) }
+    private var inProgress: [FiledCard] { cards.filter { $0.reset == .inProgress } }
+    private var closingIssues: [Int] {
+        cards.compactMap { card in
+            guard removing.contains(card.id), case .closable(let issue) = card.reset else { return nil }
+            return issue
+        }
+    }
+    private var trashing: [String] {
+        cards.compactMap { card in
+            guard removing.contains(card.id), case .trashable(let entry) = card.reset else { return nil }
+            return entry
+        }
+    }
     private var trimmedReason: String { closeReason.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-    /// What the survey put on the board. Kept unless ticked; work already started is shown, never offered.
+    /// What the survey put on the board. Everything not in progress is ticked to go; in progress is kept.
     private var filedCards: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
@@ -127,17 +145,17 @@ struct ResetSurveySheet: View {
                     .font(DeskFont.label)
                     .foregroundStyle(DeskColor.faintInk)
                 Spacer(minLength: 0)
-                if closable.count > 1 {
-                    Button(closing.count == closable.count ? "Keep all" : "Select all not started") {
-                        closing = closing.count == closable.count ? [] : Set(closable)
+                if removable.count > 1 {
+                    Button(removing.count == removable.count ? "Keep all" : "Select all") {
+                        removing = removing.count == removable.count ? [] : Set(removable.map(\.id))
                     }
                     .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
                     .disabled(!model.canRunDoors)
                 }
             }
-            Text(closable.isEmpty
-                 ? "Nothing here can be closed from a reset — every task is started, done, or only in docs/backlog/."
-                 : "Everything is kept unless you tick it. A ticked task is closed on GitHub as not planned, with the reason below as its comment.")
+            Text(removable.isEmpty
+                 ? "Nothing here can go — every task is in progress or already done."
+                 : "A ticked docs/backlog/ entry goes to the Trash; a ticked issue is closed on GitHub as not planned, with the reason below. Untick what you want to keep.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(3)
@@ -152,14 +170,14 @@ struct ResetSurveySheet: View {
             .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
             .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.border))
 
-            if startedCount > 0 {
+            if !inProgress.isEmpty {
                 NoticeBanner(tone: .waiting,
-                             title: startedCount == 1 ? "1 task is already started" : "\(startedCount) tasks are already started",
-                             message: "A reset never closes work in progress. If it is no longer wanted, open its card and close it there.",
+                             title: inProgress.count == 1 ? "1 task is in progress" : "\(inProgress.count) tasks are in progress",
+                             message: "A reset never removes work in progress. Resume it, or close it from its own card if it is no longer wanted.",
                              style: .compact)
             }
 
-            if !closing.isEmpty {
+            if !closingIssues.isEmpty {
                 Text("Why").font(DeskFont.secondary).foregroundStyle(DeskColor.secondaryInk)
                 TextField("Superseded by a new survey", text: $closeReason, axis: .vertical)
                     .textFieldStyle(.plain)
@@ -178,15 +196,15 @@ struct ResetSurveySheet: View {
 
     private func cardRow(_ card: FiledCard) -> some View {
         HStack(spacing: 8) {
-            if let issue = card.issue {
-                Toggle("", isOn: Binding(get: { closing.contains(issue) },
-                                         set: { if $0 { closing.insert(issue) } else { closing.remove(issue) } }))
+            if card.canGo {
+                Toggle("", isOn: Binding(get: { removing.contains(card.id) },
+                                         set: { if $0 { removing.insert(card.id) } else { removing.remove(card.id) } }))
                     .toggleStyle(.checkbox)
                     .labelsHidden()
                     .disabled(!model.canRunDoors)
                     .frame(width: 18)
-                    .accessibilityLabel("Close \(card.label) as not planned")
-            } else if card.reset == .started {
+                    .accessibilityLabel(card.label.isEmpty ? "Move \(card.title) to the Trash" : "Close \(card.label) as not planned")
+            } else if card.reset == .inProgress {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 10))
                     .foregroundStyle(DeskColor.tone(.waiting).dot)
@@ -202,16 +220,23 @@ struct ResetSurveySheet: View {
             }
             Text(card.title)
                 .font(DeskFont.secondary)
-                .foregroundStyle(card.issue == nil ? DeskColor.mutedInk : DeskColor.ink)
+                .foregroundStyle(card.canGo ? DeskColor.ink : DeskColor.mutedInk)
                 .lineLimit(1)
                 .truncationMode(.tail)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .help(card.title)
-            Text(rowNote(card))
-                .font(.system(size: 11))
-                .foregroundStyle(DeskColor.faintInk)
-                .lineLimit(1)
-                .fixedSize()
+            if card.reset == .inProgress {
+                Button("Resume") { resume(card) }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    .disabled(!model.canRunDoors)
+                    .fixedSize()
+            } else {
+                Text(rowNote(card))
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.faintInk)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
             StatusPill(badge: StatusBadge(FindingRow.tone(of: card.column), card.column.title))
                 .fixedSize()
         }
@@ -221,11 +246,22 @@ struct ResetSurveySheet: View {
     }
 
     private func rowNote(_ card: FiledCard) -> String {
+        let ticked = removing.contains(card.id)
         switch card.reset {
-        case .closable: return closing.contains(card.issue ?? -1) ? "closes" : "kept"
-        case .started: return "started · kept"
-        case .done: return "kept"
-        case .localOnly: return "docs/backlog/ · kept"
+        case .closable: return ticked ? "closes" : "kept"
+        case .trashable: return ticked ? "to the Trash" : "kept"
+        case .inProgress, .done: return "kept"
+        }
+    }
+
+    /// A live session is picked up where it is; otherwise the start sheet, which reopens the task's own worktree.
+    private func resume(_ card: FiledCard) {
+        model.dismissSheet()
+        if model.sessions.activeTaskIDs.contains(card.id) {
+            model.selectedSessionID = card.id
+            model.go(.terminals)
+        } else {
+            model.present(.startTask(card.id))
         }
     }
 
@@ -236,23 +272,23 @@ struct ResetSurveySheet: View {
     }
 
     private var canConfirm: Bool {
-        if !closing.isEmpty && trimmedReason.isEmpty { return false }
-        return !options.isEmpty || !closing.isEmpty
+        if !closingIssues.isEmpty && trimmedReason.isEmpty { return false }
+        return !options.isEmpty || !removing.isEmpty
     }
 
     private var reportsDetail: String {
         guard model.canRunDoors else { return "A sample project has no reports on disk." }
-        switch olderReports.count {
-        case 0: return "This project has one report or none, so there is nothing older to move."
-        case 1: return "1 older report goes to the Trash; the newest stays. Recoverable from the Finder."
-        default: return "\(olderReports.count) older reports go to the Trash; the newest stays. Recoverable from the Finder."
+        switch reports.count {
+        case 0: return "There are no reports in docs/survey/."
+        case 1: return "The report in docs/survey/ goes to the Trash, and the Survey screen is empty until the next run."
+        default: return "All \(reports.count) reports in docs/survey/ go to the Trash, and the Survey screen is empty until the next run."
         }
     }
 
     private var confirmTitle: String {
         var parts: [String] = []
-        if options.olderReports && !olderReports.isEmpty { parts.append("move to Trash") }
-        if !closing.isEmpty { parts.append("close \(closing.count) task\(closing.count == 1 ? "" : "s")") }
+        if !closingIssues.isEmpty { parts.append("close \(closingIssues.count)") }
+        if !trashing.isEmpty || (options.reports && !reports.isEmpty) { parts.append("move to Trash") }
         return parts.isEmpty ? "Reset" : "Reset and " + parts.joined(separator: " and ")
     }
 
@@ -269,13 +305,13 @@ struct ResetSurveySheet: View {
         }
         .disabled(!enabled)
         .onChange(of: enabled) { _, isEnabled in if !isEnabled { isOn.wrappedValue = false } }
-        .onAppear { if !enabled { isOn.wrappedValue = false } }
     }
 
     private func reset() {
         var options = options
-        options.closeIssues = closable.filter(closing.contains)
+        options.closeIssues = closingIssues
         options.closeReason = trimmedReason
+        options.trashBacklogIDs = trashing
         let runAfterwards = runAfterwards
         model.dismissSheet()
         Task {

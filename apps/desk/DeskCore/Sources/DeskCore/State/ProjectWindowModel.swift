@@ -676,10 +676,10 @@ public final class ProjectWindowModel {
     /// How many findings this project has set aside, for the sheet that offers to bring them back.
     public var ignoredFindingsCount: Int { ignoredFindings.count }
 
-    /// Reports a cleanup would move to the Trash: every one but the newest.
-    public var olderSurveyReports: [String] {
+    /// Reports a reset would move to the Trash: all of them, newest first.
+    public var surveyReports: [String] {
         guard case .local(let path) = ref else { return [] }
-        return SurveyCleanup.olderReports(in: path)
+        return SurveyCleanup.reports(in: path)
     }
 
     /// Starts this project's survey reading over. Each part is separately owned — the app's ignored list, the
@@ -703,9 +703,9 @@ public final class ProjectWindowModel {
             findingFilter = nil
             findingKindFilter = nil
         }
-        if options.olderReports, case .local(let path) = ref {
+        if options.reports, case .local(let path) = ref {
             do {
-                try SurveyCleanup.trashOlderReports(in: path)
+                try SurveyCleanup.trashReports(in: path)
                 writeFailure = nil
             } catch {
                 writeFailure = WriteFailure(title: "The reports were not moved to the Trash",
@@ -714,6 +714,18 @@ public final class ProjectWindowModel {
         }
         if !options.closeIssues.isEmpty {
             await closeAsNotPlanned(options.closeIssues, reason: options.closeReason)
+        }
+        if !options.trashBacklogIDs.isEmpty, let root = snapshot?.repositoryRoot {
+            var failures: [String] = []
+            for item in snapshot?.localBacklog ?? [] where options.trashBacklogIDs.contains(item.id) {
+                do { try LocalBacklog.remove(atPath: item.path, projectPath: root) } catch {
+                    failures.append("\(item.title): \(error.localizedDescription)")
+                }
+            }
+            if let selected = selectedTaskID, options.trashBacklogIDs.contains(where: { selected == DeskTask.localPrefix + $0 }) {
+                selectedTaskID = nil
+            }
+            if !failures.isEmpty { writeFailure = .backlog(Markdown.escape(failures.joined(separator: "\n"))) }
         }
         await load()
         // A reset leaves the newest run selected, the way opening the project does.

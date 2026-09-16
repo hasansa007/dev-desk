@@ -500,11 +500,11 @@ struct ProjectOverridesPane: View {
     /// What a reset would actually find here, so the button is not a mystery until it is pressed.
     private var resetSummary: String {
         let ignored = model.ignoredFindingsCount
-        let older = model.olderSurveyReports.count
-        if ignored == 0 && older == 0 { return "Nothing has built up yet: no set-aside findings, no older reports." }
-        let parts = [ignored > 0 ? "\(ignored) finding\(ignored == 1 ? "" : "s") set aside" : nil,
-                     older > 0 ? "\(older) older report\(older == 1 ? "" : "s")" : nil].compactMap { $0 }
-        return parts.joined(separator: " · ") + ". The newest report is always kept."
+        let reports = model.surveyReports.count
+        if ignored == 0 && reports == 0 { return "Nothing to clear: no reports, no set-aside findings." }
+        let parts = [reports > 0 ? "\(reports) report\(reports == 1 ? "" : "s")" : nil,
+                     ignored > 0 ? "\(ignored) finding\(ignored == 1 ? "" : "s") set aside" : nil].compactMap { $0 }
+        return parts.joined(separator: " · ") + "."
     }
 
     var body: some View {
