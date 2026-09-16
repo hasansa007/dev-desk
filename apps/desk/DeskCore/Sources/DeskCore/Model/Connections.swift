@@ -4,14 +4,22 @@ public enum ConnectionState: String, Hashable { case connected, notConnected, un
 /// browser dance and its token churn, so signing in is that CLI's own command, run in a terminal you watch.
 public struct ConnectionAuth: Hashable {
     public let signIn: String
-    public let signOut: String
+    /// nil for a CLI whose sign-out is not a shell command — Gemini's lives inside its own REPL, as `/auth
+    /// logout`, so there is nothing here to run and no button to offer.
+    public let signOut: String?
     /// Who is signed in, when the CLI says so — an account, an email, a plan. Read, shown, never stored.
     public var identity: String?
+    /// `signIn` opens the tool's own interactive session rather than completing on its own, so the person
+    /// finishes the sign-in there. Gemini publishes no sign-in verb at all: the documented path is to run
+    /// bare `gemini` and choose from its menu. A button that claimed otherwise would run a command that
+    /// does not exist.
+    public let isInteractive: Bool
 
-    public init(signIn: String, signOut: String, identity: String? = nil) {
+    public init(signIn: String, signOut: String?, identity: String? = nil, isInteractive: Bool = false) {
         self.signIn = signIn
         self.signOut = signOut
         self.identity = identity
+        self.isInteractive = isInteractive
     }
 }
 

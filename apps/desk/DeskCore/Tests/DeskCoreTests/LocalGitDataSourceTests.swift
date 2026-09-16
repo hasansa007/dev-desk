@@ -270,8 +270,8 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     func testToolsAreDetectedAndNothingClaimsAnAgentConnection() async throws {
         let (_, snapshot) = try await githubConnection { _ in }
-        XCTAssertEqual(snapshot.connections.map(\.id), ["codex", "claude", "gemini", "github"])
-        XCTAssertEqual(snapshot.connections.map(\.state), [.missing, .detected, .missing, .connected])
+        XCTAssertEqual(snapshot.connections.map(\.id), ["codex", "claude", "gemini", "opencode", "github"])
+        XCTAssertEqual(snapshot.connections.map(\.state), [.missing, .detected, .missing, .missing, .connected])
         // Installed but with no account on it is not the same as installed: a run would stop at its own prompt.
         let claude = snapshot.connections.first { $0.id == "claude" }
         XCTAssertEqual(claude?.label, "not signed in")
@@ -279,10 +279,11 @@ final class LocalGitDataSourceTests: XCTestCase {
         XCTAssertEqual(claude?.auth?.signIn, "claude auth login")
         // A CLI that is not installed has nothing to sign into.
         XCTAssertNil(snapshot.connections.first { $0.id == "codex" }?.auth)
-        XCTAssertEqual(snapshot.connectionsNote, "Detected on this Mac. Dev Desk never stores credentials: signing in runs the tool's own command in a terminal you can watch.")
-        XCTAssertEqual(snapshot.capabilities.providers, ["Codex", "Claude", "Gemini"])
+        XCTAssertEqual(snapshot.connectionsNote, "Detected on this Mac. Dev Desk never stores credentials: signing in runs the tool's own command in your terminal, where you can watch it.")
+        XCTAssertEqual(snapshot.capabilities.providers, ["Codex", "Claude", "Gemini", "opencode"])
         XCTAssertEqual(snapshot.capabilities.rows.map(\.name), ["Interactive terminal", "Resume an ended session", "Attach to an external session"])
-        XCTAssertTrue(snapshot.capabilities.rows.allSatisfy { $0.values == [.notValidated, .notValidated, .notValidated] })
+        XCTAssertTrue(snapshot.capabilities.rows.allSatisfy { $0.values.count == snapshot.capabilities.providers.count })
+        XCTAssertTrue(snapshot.capabilities.rows.allSatisfy { $0.values.allSatisfy { $0 == .notValidated } })
         XCTAssertEqual(snapshot.capabilities.note, "No agent integration has been validated. Capabilities will be read from a connection once one exists.")
         // Insights runs one of these CLIs (ADR 0030), so a signed-out one is why it can't answer, not a fixed sentence.
         XCTAssertEqual(snapshot.insights, .unavailable("Claude is installed but not signed in; a run would stop at its own prompt."))

@@ -132,18 +132,13 @@ extension ProjectWindowModel {
     /// Runs a connection's own sign-in or sign-out in a terminal. Dev Desk holds no credential and implements
     /// no OAuth: each CLI owns its keychain and its browser dance, and this is the one surface the app has for
     /// letting you watch it happen (decision 14). A scratch session, because auth belongs to no task.
-    func runAuthCommand(_ command: String, connection: String) {
-        guard canRunDoors else { return }
-        let id = "auth:\(connection.lowercased())"
-        guard !isRunLive(id) else {
-            selectedSessionID = id
-            go(.terminals)
-            return
-        }
-        runs.add(DoorRun(id: id, title: "\(connection) · \(command)", agent: connection, command: command,
-                         folderNote: "signing in is the tool's own command, so it runs at the project root."))
-        selectedSessionID = id
-        go(.terminals)
+    /// Signing in happens in the developer's own terminal (ADR 0036 §4.7), never in one Dev Desk hosts.
+    /// Device-code flows, browser hand-offs and password prompts all want a real terminal, and decision 14
+    /// is strongest when the app does not host the pty a credential travels through. Returns what happened,
+    /// so the pane can say "copied" rather than nothing when Automation is refused.
+    @discardableResult
+    func runAuthCommand(_ command: String, connection: String) -> TerminalHandoff.Outcome {
+        TerminalHandoff.run(command, in: projectRoot)
     }
 
     /// Runs the CLI's own check in a terminal at the project root: `dev doctor` already reports what is

@@ -4,16 +4,24 @@ import Foundation
 /// credential: each CLI owns its own, and the app only reads what that CLI is willing to say (ADR 0013's rule
 /// about reading the tools you already have, applied to accounts).
 enum ToolDetection {
-    static let tools: [(id: String, name: String)] = [("codex", "Codex"), ("claude", "Claude"), ("gemini", "Gemini")]
-    static let note = "Detected on this Mac. Dev Desk never stores credentials: signing in runs the tool's own command in a terminal you can watch."
+    static let tools: [(id: String, name: String)] = [("codex", "Codex"), ("claude", "Claude"),
+                                                      ("gemini", "Gemini"), ("opencode", "opencode")]
+    static let note = "Detected on this Mac. Dev Desk never stores credentials: signing in runs the tool's own command in your terminal, where you can watch it."
 
-    /// The commands each CLI publishes for this, verified against their own `--help` rather than assumed.
-    /// Gemini has none here because the family has no verified way to run the pipeline with it, so there is
-    /// nothing for a sign-in to enable.
-    static func auth(for id: String) -> (signIn: String, signOut: String, status: [String])? {
+    /// The commands each CLI publishes for this, verified against their own `--help` rather than assumed
+    /// (checked again 2026-09-16). `status` is nil for a CLI that publishes no non-interactive check, and
+    /// `interactive` marks a sign-in that opens the tool's own session instead of completing by itself.
+    ///
+    /// Gemini has no sign-in verb at all — not undocumented, absent. Its documented paths are bare `gemini`
+    /// and choose from the menu, the in-REPL `/auth` dialog, or an environment variable. So it gets the one
+    /// honest action, opening `gemini` itself, and no status check to poll.
+    static func auth(for id: String) -> (signIn: String, signOut: String?, status: [String]?, interactive: Bool)? {
         switch id {
-        case "codex": return ("codex login", "codex logout", ["login", "status"])
-        case "claude": return ("claude auth login", "claude auth logout", ["auth", "status"])
+        case "codex": return ("codex login", "codex logout", ["login", "status"], false)
+        case "claude": return ("claude auth login", "claude auth logout", ["auth", "status"], false)
+        // Per provider, not per tool: this signs into what opencode will call, and `auth list` names them.
+        case "opencode": return ("opencode auth login", "opencode auth logout", ["auth", "list"], false)
+        case "gemini": return ("gemini", nil, nil, true)
         default: return nil
         }
     }
@@ -41,13 +49,23 @@ enum ToolDetection {
                 return Connection(id: tool.id, name: tool.name, state: .detected, label: "found · not supported",
                                   detail: "\(tool.name) has no confirmed way to run the dev pipeline, so Dev Desk doesn't start it.")
             }
-            let status = try? await runner.run(tool.id, auth.status, in: nil, timeout: CommandTimeout.git)
+            guard let statusCommand = auth.status else {
+                // No status verb to ask, so the app does not know and must not claim. `isSignedOut` stays
+                // false: refusing to start a CLI that may be perfectly signed in would be the worse guess.
+                return Connection(id: tool.id, name: tool.name, state: .detected, label: "found · sign-in not readable",
+                                  detail: "\(tool.name) publishes no way to check its sign-in, so Dev Desk can't tell. "
+                                      + "Opening it shows you.",
+                                  auth: ConnectionAuth(signIn: auth.signIn, signOut: auth.signOut,
+                                                       isInteractive: auth.interactive))
+            }
+            let status = try? await runner.run(tool.id, statusCommand, in: nil, timeout: CommandTimeout.git)
             let identity = status.flatMap { AuthStatus.identity(from: $0.stdout + "\n" + $0.stderr, tool: tool.id) }
             let signedIn = identity != nil
             return Connection(id: tool.id, name: tool.name, state: .detected,
                               label: signedIn ? (identity ?? "signed in") : "not signed in",
                               detail: signedIn ? nil : "\(tool.name) is installed but not signed in; a run would stop at its own prompt.",
-                              auth: ConnectionAuth(signIn: auth.signIn, signOut: auth.signOut, identity: identity),
+                              auth: ConnectionAuth(signIn: auth.signIn, signOut: auth.signOut, identity: identity,
+                                                   isInteractive: auth.interactive),
                               isSignedOut: !signedIn)
         }
     }
@@ -76,8 +94,26 @@ enum AuthStatus {
         switch tool {
         case "claude": return claude(output)
         case "codex": return codex(output)
+        case "opencode": return opencode(output)
         default: return nil
         }
+    }
+
+    /// `opencode auth list` draws a box and ends with a count: "└  1 credentials", with each stored provider
+    /// on a "●  OpenCode Zen api" line. Zero credentials is signed out. It names PROVIDERS opencode will
+    /// call, not an account of its own, so the identity says so rather than implying one login.
+    static func opencode(_ output: String) -> String? {
+        let plain = output.replacingOccurrences(of: "\u{001B}\\[[0-9;]*m", with: "", options: .regularExpression)
+        let lines = plain.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+        guard let countLine = lines.last(where: { $0.contains("credential") }),
+              let count = countLine.split(separator: " ").compactMap({ Int($0) }).first, count > 0 else { return nil }
+        let providers = lines.filter { $0.hasPrefix("●") }
+            .map { $0.dropFirst().trimmingCharacters(in: .whitespaces) }
+            // The trailing word is the method ("api"), not part of the provider's name.
+            .map { $0.split(separator: " ").dropLast().joined(separator: " ") }
+            .filter { !$0.isEmpty }
+        guard let first = providers.first else { return "\(count) provider\(count == 1 ? "" : "s")" }
+        return providers.count == 1 ? "provider · \(first)" : "\(providers.count) providers · \(first)…"
     }
 
     /// `claude auth status` answers in JSON: {"loggedIn": true, "authMethod": "claude.ai", "email": "…"}.

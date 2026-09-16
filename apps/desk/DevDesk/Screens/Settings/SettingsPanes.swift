@@ -273,6 +273,9 @@ struct AgentsAndDefaultsPane: View {
 struct AccountsPane: View {
     @Bindable var model: ProjectWindowModel
     @State private var signingOut: Connection?
+    /// Set when Automation was refused and the command went to the clipboard instead, so the pane says so
+    /// rather than appearing to do nothing.
+    @State private var copied: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -284,6 +287,8 @@ struct AccountsPane: View {
                 }
             }
             .padding(.top, 16)
+
+            if let copied { copiedNotice(copied) }
 
             Text(model.snapshot?.connectionsNote ?? "")
                 .font(DeskFont.secondary)
@@ -323,26 +328,44 @@ struct AccountsPane: View {
                 .truncationMode(.middle)
                 .help(connection.detail ?? connection.label)
             if let auth = connection.auth {
-                if connection.isSignedOut {
-                    Button("Sign in…") { run(auth.signIn, for: connection) }
+                // An interactive sign-in never shows Sign out: Gemini's is `/auth logout` inside its own
+                // session, so there is no command here to run and a button would have to invent one.
+                if connection.isSignedOut || auth.isInteractive {
+                    Button(auth.isInteractive ? "Open…" : "Sign in…") { run(auth.signIn, for: connection) }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                        .disabled(!model.canRunDoors)
-                        .help(model.canRunDoors ? "Runs `\(auth.signIn)` in a terminal" : "A sample project has no folder to run in.")
-                } else {
+                        .help(auth.isInteractive
+                              ? "Opens `\(auth.signIn)` in your terminal, where you can sign in from its own menu"
+                              : "Runs `\(auth.signIn)` in your terminal")
+                } else if let signOut = auth.signOut {
                     Button("Sign out…") { signingOut = connection }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                        .disabled(!model.canRunDoors)
-                        .help("Runs `\(auth.signOut)` in a terminal")
+                        .help("Runs `\(signOut)` in your terminal")
                 }
             }
         }
     }
 
+    /// Automation was refused, so the command is on the clipboard. Its own view: inlining the interpolation
+    /// in `body` pushed this pane past what the type-checker would solve.
+    private func copiedNotice(_ command: String) -> some View {
+        let message = "Couldn't open your terminal, so `" + command
+            + "` is on the clipboard — paste it into a terminal to finish."
+        return Text(message)
+            .font(DeskFont.secondary)
+            .foregroundStyle(DeskColor.tone(.waiting).foreground)
+            .padding(.top, 12)
+    }
+
     private func run(_ command: String?, for connection: Connection) {
         guard let command else { return }
         signingOut = nil
-        model.dismissSheet()
-        model.runAuthCommand(command, connection: connection.name)
+        switch model.runAuthCommand(command, connection: connection.name) {
+        case .opened:
+            // The terminal is in front now; the sheet would be behind it either way.
+            model.dismissSheet()
+        case .copied:
+            copied = command
+        }
     }
 
     private func tone(for state: ConnectionState) -> StatusTone {
