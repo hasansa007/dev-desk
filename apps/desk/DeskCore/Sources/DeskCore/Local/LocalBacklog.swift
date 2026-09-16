@@ -33,7 +33,7 @@ public struct BacklogItem: Identifiable, Hashable {
 
     /// Finished work. Compared case-insensitively against the one spelling the doors write, so a card a
     /// person typed `Done` into reads the same as one a run wrote.
-    public var isDone: Bool { status == "done" }
+    public var isDone: Bool { status?.lowercased() == "done" }
 
     public init(id: String, key: String, title: String, area: String? = nil, impact: String? = nil,
                 complexity: String? = nil, source: String? = nil, issue: Int? = nil, status: String? = nil,

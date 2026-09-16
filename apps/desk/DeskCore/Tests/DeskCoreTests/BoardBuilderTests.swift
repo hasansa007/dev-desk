@@ -598,7 +598,11 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(column("done"), .done)
         XCTAssertEqual(column(nil), .backlog)
         XCTAssertEqual(column("blocked"), .backlog, "an unknown status is not a column")
-        // The parser lowercases what it reads, which is where a hand-typed `Done` is normalised.
+        // The spelling really does not matter, which this test's name promised and only the parser delivered:
+        // `isDone` compared exactly, so a BacklogItem built anywhere but `parse` read `Done` as unfinished.
+        XCTAssertEqual(column("Done"), .done)
+        XCTAssertEqual(column("DONE"), .done)
+        // The parser lowercases what it reads too, so a hand-typed `Done` is normalised on the way in as well.
         XCTAssertEqual(LocalBacklog.parse("---\nkey: C1\ntitle: t\nstatus: Done\n---\n", id: "c1", path: "/p").status, "done")
     }
 
