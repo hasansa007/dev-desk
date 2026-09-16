@@ -270,8 +270,11 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     func testToolsAreDetectedAndNothingClaimsAnAgentConnection() async throws {
         let (_, snapshot) = try await githubConnection { _ in }
-        XCTAssertEqual(snapshot.connections.map(\.id), ["codex", "claude", "gemini", "opencode", "github"])
-        XCTAssertEqual(snapshot.connections.map(\.state), [.missing, .detected, .missing, .missing, .connected])
+        // Only what Dev Desk runs: Gemini and opencode ran nothing from here, so they are not rows (ADR 0036 step 3).
+        XCTAssertEqual(snapshot.connections.map(\.id), ["codex", "claude", "github"])
+        XCTAssertEqual(snapshot.connections.map(\.state), [.missing, .detected, .connected])
+        // Nothing answered `which` for a hand-off CLI, so none is offered.
+        XCTAssertEqual(snapshot.handoffAgents, [])
         // Installed but with no account on it is not the same as installed: a run would stop at its own prompt.
         let claude = snapshot.connections.first { $0.id == "claude" }
         XCTAssertEqual(claude?.label, "not signed in")
@@ -280,7 +283,7 @@ final class LocalGitDataSourceTests: XCTestCase {
         // A CLI that is not installed has nothing to sign into.
         XCTAssertNil(snapshot.connections.first { $0.id == "codex" }?.auth)
         XCTAssertEqual(snapshot.connectionsNote, "Detected on this Mac. Dev Desk never stores credentials: signing in runs the tool's own command in your terminal, where you can watch it.")
-        XCTAssertEqual(snapshot.capabilities.providers, ["Codex", "Claude", "Gemini", "opencode"])
+        XCTAssertEqual(snapshot.capabilities.providers, ["Codex", "Claude"])
         XCTAssertEqual(snapshot.capabilities.rows.map(\.name), ["Interactive terminal", "Resume an ended session", "Attach to an external session"])
         XCTAssertTrue(snapshot.capabilities.rows.allSatisfy { $0.values.count == snapshot.capabilities.providers.count })
         XCTAssertTrue(snapshot.capabilities.rows.allSatisfy { $0.values.allSatisfy { $0 == .notValidated } })

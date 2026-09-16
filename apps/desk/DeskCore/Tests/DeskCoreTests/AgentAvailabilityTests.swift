@@ -45,13 +45,6 @@ final class AgentAvailabilityTests: XCTestCase {
         }
     }
 
-    func testGeminiSaysWhyRatherThanPretendingItIsMissing() {
-        let result = AgentAvailability.resolve(connectionName: "Gemini",
-                                               connections: [connection("gemini", "Gemini")])
-        guard case .unavailable(let reason) = result else { return XCTFail("Gemini has no verified invocation") }
-        XCTAssertTrue(reason.contains("no confirmed way"), reason)
-    }
-
     /// A Debug stand-in replaces the CLI, so it needs neither an install nor a sign-in.
     func testADebugStandInNeedsNeitherAnInstallNorASignIn() {
         let result = AgentAvailability.resolve(connectionName: "Claude",

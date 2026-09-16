@@ -196,6 +196,25 @@ extension ProjectWindowModel {
         }
     }
 
+    /// Hands a task to a CLI that runs it in the developer's own terminal (ADR 0036 decision 6). The launch is NOT
+    /// remembered: `TaskLaunch` can only name a runner this window hosts, so a remembered hand-off would make the
+    /// card's next Start quietly run Claude or Codex here instead. The next Start opens the sheet again, which is true.
+    ///
+    /// The card moves to In progress only when a terminal actually opened; a command left on the clipboard has not
+    /// started anything yet. nil when the launch has no prompt to hand over.
+    func handOff(_ task: DeskTask, launch: TaskLaunch, to agent: HandoffAgent) -> TerminalHandoff.Outcome? {
+        let home = NSHomeDirectory()
+        guard let prompt = launch.prompt(home: home),
+              let family = DoorCommand.agent(named: AgentLaunch.connectionName(launch.agent)) else { return nil }
+        let outcome = TerminalHandoff.run(agent.command(prompt: prompt, familyRoot: "\(home)/\(family.root)"),
+                                          in: projectRoot)
+        if case .opened = outcome {
+            dismissSheet()
+            Task { await recordStarted(task) }
+        }
+        return outcome
+    }
+
     /// This project's launches, or nil for a project with no folder to keep them in.
     var launchStore: TaskLaunchStore? { projectRoot.map(TaskLaunchStore.init(projectRoot:)) }
 

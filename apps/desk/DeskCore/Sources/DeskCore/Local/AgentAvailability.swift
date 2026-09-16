@@ -19,9 +19,7 @@ public enum AgentAvailability: Equatable {
     public static func resolve(connectionName name: String, connections: [Connection],
                                hasStandIn: Bool = false) -> AgentAvailability {
         guard let agent = AgentLaunch.agent(forConnectionName: name) else {
-            return .unavailable(reason: name == "Gemini"
-                                ? "Gemini has no confirmed way to run the dev pipeline, so Dev Desk doesn't start it."
-                                : "\(name) isn't installed here, so Dev Desk can't start it.")
+            return .unavailable(reason: "\(name) isn't installed here, so Dev Desk can't start it.")
         }
         if hasStandIn { return .ready(agent) }
 

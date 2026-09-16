@@ -318,39 +318,29 @@ struct AccountsPane: View {
     /// One connection: what it is, who it is, and the one action it has. The app never sees a credential —
     /// it types the tool's own command into a terminal at the project root (decision 14).
     private func row(_ connection: Connection) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                StatusDot(tone: tone(for: connection.state))
-                Text(connection.name)
-                Spacer(minLength: 8)
-                Text(connection.label)
-                    .foregroundStyle(connection.isSignedOut ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .help(connection.detail ?? connection.label)
-                if let auth = connection.auth {
-                    // An interactive sign-in never shows Sign out: Gemini's is `/auth logout` inside its own
-                    // session, so there is no command here to run and a button would have to invent one.
-                    if connection.isSignedOut || auth.isInteractive {
-                        Button(auth.isInteractive ? "Open…" : "Sign in…") { run(auth.signIn, for: connection) }
-                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                            .help(auth.isInteractive
-                                  ? "Opens \(auth.signIn) in your terminal, where you can sign in from its own menu"
-                                  : "Runs \(auth.signIn) in your terminal")
-                    } else if let signOut = auth.signOut {
-                        Button("Sign out…") { signingOut = connection }
-                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                            .help("Runs \(signOut) in your terminal")
-                    }
+        HStack(spacing: 8) {
+            StatusDot(tone: tone(for: connection.state))
+            Text(connection.name)
+            Spacer(minLength: 8)
+            Text(connection.label)
+                .foregroundStyle(connection.isSignedOut ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(connection.detail ?? connection.label)
+            if let auth = connection.auth {
+                // An interactive sign-in never shows Sign out: Gemini's is `/auth logout` inside its own
+                // session, so there is no command here to run and a button would have to invent one.
+                if connection.isSignedOut || auth.isInteractive {
+                    Button(auth.isInteractive ? "Open…" : "Sign in…") { run(auth.signIn, for: connection) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help(auth.isInteractive
+                              ? "Opens \(auth.signIn) in your terminal, where you can sign in from its own menu"
+                              : "Runs \(auth.signIn) in your terminal")
+                } else if let signOut = auth.signOut {
+                    Button("Sign out…") { signingOut = connection }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help("Runs \(signOut) in your terminal")
                 }
-            }
-            // An interactive sign-in is chosen inside the tool's own menu, so what to pick has to be read
-            // before Open…, not found in a tooltip after the wrong choice.
-            if connection.auth?.isInteractive == true, let detail = connection.detail {
-                Text(detail)
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .frame(maxWidth: 700, alignment: .leading)
             }
         }
     }

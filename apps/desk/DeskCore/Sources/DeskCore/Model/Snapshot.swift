@@ -51,6 +51,8 @@ public struct ProjectSnapshot: Hashable {
     /// The repository's top level, where `docs/backlog/` is read from — so a write lands in the folder the board
     /// reads, even when the window was opened on a subfolder. Nil for a sample or a folder that is not a repo.
     public var repositoryRoot: String?
+    /// The CLIs a task can be handed to on this Mac (`HandoffAgent`); empty for a sample, which has no folder to run in.
+    public var handoffAgents: [HandoffAgent] = []
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,
@@ -59,8 +61,10 @@ public struct ProjectSnapshot: Hashable {
                 connections: [Connection], connectionsNote: String, capabilities: CapabilityMatrix,
                 insights: InsightsAvailability, projectFacts: [KeyValue] = [],
                 slug: String? = nil, activeMilestone: String? = nil,
-                localBacklog: [BacklogItem] = [], filedBacklogKeys: Set<String> = [], repositoryRoot: String? = nil) {
+                localBacklog: [BacklogItem] = [], filedBacklogKeys: Set<String> = [], repositoryRoot: String? = nil,
+                handoffAgents: [HandoffAgent] = []) {
         self.repositoryRoot = repositoryRoot
+        self.handoffAgents = handoffAgents
         self.localBacklog = localBacklog
         self.filedBacklogKeys = filedBacklogKeys
         self.ideation = ideation
