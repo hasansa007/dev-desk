@@ -152,7 +152,7 @@ final class ShellTerminalRegistry {
 
     /// `claude <prompt>` or `codex <prompt>`; a Debug build's `-DevDeskAgentExecutable` stands in for the CLI.
     static func command(_ agent: AgentKind, for task: DeskTask, mode: RunMode = .standard) -> [String] {
-        let prompt = AgentLaunch.prompt(skillRoot: AgentLaunch.skillRoot, taskNumber: task.taskNumber, hasBranch: !(task.branch ?? "").isEmpty, mode: mode)
+        let prompt = AgentLaunch.prompt(skillRoot: AgentLaunch.skillRoot(for: agent), taskNumber: task.taskNumber, hasBranch: !(task.branch ?? "").isEmpty, mode: mode)
         var arguments = AgentLaunch.arguments(agent: agent, prompt: prompt)
         if let executable = DebugLaunch.agentExecutable, !arguments.isEmpty { arguments[0] = executable }
         return arguments

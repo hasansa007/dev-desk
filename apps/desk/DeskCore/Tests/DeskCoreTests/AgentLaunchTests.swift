@@ -65,11 +65,16 @@ final class AgentLaunchTests: XCTestCase {
         XCTAssertEqual(AgentLaunch.displayName(.codex), "Codex")
     }
 
-    func testTheSkillRootIsTheDevSkillFolderWithTheTildeExpanded() {
-        let root = AgentLaunch.skillRoot
-        XCTAssertFalse(root.contains("~"), root)
-        XCTAssertTrue(root.hasPrefix("/"), root)
-        XCTAssertEqual(root, (ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()) + "/.claude/skills/dev",
+    func testEachAgentReadsItsOwnSkillRootWithTheTildeExpanded() {
+        let home = ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()
+        for agent in [AgentKind.claude, .codex] {
+            let root = AgentLaunch.skillRoot(for: agent)
+            XCTAssertFalse(root.contains("~"), root)
+            XCTAssertTrue(root.hasPrefix("/"), root)
+        }
+        // install.sh writes one copy per agent; sending Codex to Claude's copy is what this pins shut.
+        XCTAssertEqual(AgentLaunch.skillRoot(for: .claude), home + "/.claude/skills/dev",
                        "the home os.path.expanduser reads")
+        XCTAssertEqual(AgentLaunch.skillRoot(for: .codex), home + "/.codex/skills/dev")
     }
 }

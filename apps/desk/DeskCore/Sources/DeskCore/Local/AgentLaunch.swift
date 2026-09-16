@@ -28,9 +28,11 @@ public enum AgentLaunch {
         [agent.rawValue, prompt]
     }
 
-    /// Where the dev skill is installed, as `skill_root()` in scripts/dev.py has it.
-    public static var skillRoot: String {
-        NSString(string: "~/.claude/skills/dev").expandingTildeInPath
+    /// Where the family is installed for this agent, as `skill_root(agent)` in scripts/dev.py has it.
+    /// install.sh writes one copy per agent, and an agent can only read its own: pointing Codex at
+    /// `~/.claude/skills/dev` asks it to read a door it may not have.
+    public static func skillRoot(for agent: AgentKind) -> String {
+        NSString(string: "~/.\(agent.rawValue)/skills/dev").expandingTildeInPath
     }
 
     public static func displayName(_ agent: AgentKind) -> String {

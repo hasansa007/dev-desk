@@ -9,10 +9,11 @@ public struct InsightsAgentPlan: Hashable {
     /// The agent's display name, which the conversation labels its replies with.
     public var provider: String { AgentLaunch.displayName(agent) }
 
-    public init(agent: AgentKind, repositoryRoot: String, skillRoot: String = AgentLaunch.skillRoot) {
+    /// nil resolves to the agent's own install root: Insights asks whichever CLI answered, and it reads its own copy.
+    public init(agent: AgentKind, repositoryRoot: String, skillRoot: String? = nil) {
         self.agent = agent
         self.repositoryRoot = repositoryRoot
-        self.skillRoot = skillRoot
+        self.skillRoot = skillRoot ?? AgentLaunch.skillRoot(for: agent)
     }
 }
 
@@ -114,7 +115,7 @@ public struct InsightsAgent {
     /// headless run has no terminal to answer its own sign-in prompt in, so it would hang rather than fail plainly.
     /// `noAgentReason` is what the panel says when no agent is installed at all.
     public static func availability(connections: [Connection], repositoryRoot: String?,
-                                    skillRoot: String = AgentLaunch.skillRoot,
+                                    skillRoot: String? = nil,
                                     noAgentReason: String) -> InsightsAvailability {
         let agents = connections.filter { $0.state == .detected }
             .compactMap { connection in AgentKind(rawValue: connection.id).map { (connection: connection, kind: $0) } }
