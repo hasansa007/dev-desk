@@ -22,4 +22,14 @@ final class RunStopsTests: XCTestCase {
         XCTAssertTrue(RunStops.isRefusal("Planning…\nRefused: the plan needs 63 agents"))
         XCTAssertFalse(RunStops.isRefusal("Report written to docs/findings/2026-09-16.md"))
     }
+
+    /// Every agent a door can run with carries the stops, not only the ones that can run in the background.
+    func testEveryAgentsCommandCarriesTheStops() {
+        let names = (DoorCommand.agents + DoorCommand.terminalOnlyAgents).map(\.name)
+        XCTAssertEqual(Set(names), ["Claude", "Codex", "Gemini", "opencode", "Antigravity"])
+        for name in names {
+            let command = DoorCommand.build(door: "findings", agent: name, arguments: RunStops().arguments, home: "/h")
+            XCTAssertTrue(command?.contains("--plan=decide --walkthrough=skip --file=skip --max-agents=40") ?? false, name)
+        }
+    }
 }
