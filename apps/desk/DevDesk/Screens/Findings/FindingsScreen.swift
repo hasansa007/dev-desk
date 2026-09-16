@@ -259,7 +259,7 @@ private struct FindingsBoard: View {
                 .clipShape(RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
                 .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
                 .padding(EdgeInsets(top: 0, leading: 16, bottom: 18, trailing: 16))
-                .pullToRefresh(isRefreshing: model.isRefreshing) { await model.load() }
+                .pullToRefresh(isRefreshing: model.isRefreshing) { await model.sync() }
             }
             .pullToRefreshSpace()
         }

@@ -14,6 +14,15 @@ struct ContentRouter: View {
                 NoticeBanner(tone: .failed, title: "Reload failed", message: Markdown.escape(reloadError))
                     .padding([.horizontal, .top], 12)
             }
+            if let behind = model.snapshot?.checkoutBehind {
+                NoticeBanner(tone: .waiting, title: "\(behind.branch) is \(behind.count) commit\(behind.count == 1 ? "" : "s") behind origin/\(behind.base)",
+                             message: "Nothing is merged on its own: this checkout may hold uncommitted work, or an agent working in it. Update merges origin/\(behind.base) in, and stops without changing anything if git refuses.") {
+                    Button("Update") { Task { await model.updateCheckout() } }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                        .disabled(model.isWritingTracker)
+                }
+                .padding([.horizontal, .top], 12)
+            }
             if let failure = model.writeFailure {
                 NoticeBanner(tone: .failed, title: failure.title, message: failure.message) {
                     Button("Dismiss") { model.dismissWriteFailure() }

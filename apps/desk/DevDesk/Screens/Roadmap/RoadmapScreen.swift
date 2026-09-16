@@ -113,7 +113,7 @@ private struct RoadmapContent: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(EdgeInsets(top: 16, leading: 16, bottom: 18, trailing: 16))
-            .pullToRefresh(isRefreshing: model.isRefreshing) { await model.load() }
+            .pullToRefresh(isRefreshing: model.isRefreshing) { await model.sync() }
         }
         .pullToRefreshSpace()
     }

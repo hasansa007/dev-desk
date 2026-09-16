@@ -327,11 +327,25 @@ struct TaskCard: View {
     }
 
     /// On every card, so one card is not a different shape from the next: a dash where nothing rated it (ADR 0020).
+    /// Chips are fixed-size, so "impact Medium · complexity Medium" was wider than the card and pushed it past
+    /// its column. When the full row does not fit, the values shorten instead.
     private var ratingRow: some View {
-        HStack(spacing: 6) {
-            PropertyChip("impact \(task.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
-            PropertyChip("complexity \(task.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+        ViewThatFits(in: .horizontal) {
+            ratingChips(impact: task.impact, complexity: task.complexity)
+            ratingChips(impact: task.impact.map(Self.shortRating), complexity: task.complexity.map(Self.shortRating))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func ratingChips(impact: String?, complexity: String?) -> some View {
+        HStack(spacing: 6) {
+            PropertyChip("impact \(impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+            PropertyChip("complexity \(complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+        }
+    }
+
+    private static func shortRating(_ value: String) -> String {
+        value.caseInsensitiveCompare("Medium") == .orderedSame ? "Med" : value
     }
 
     /// The branch's two facts on every card, dashed when this card has no branch — the same row either way.

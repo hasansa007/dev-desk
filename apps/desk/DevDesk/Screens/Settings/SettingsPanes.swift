@@ -440,6 +440,7 @@ struct ExecutionPane: View {
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @AppStorage(PreferenceKey.agentLimit) private var agentLimit = AgentLimit.defaultValue
     @AppStorage(PreferenceKey.confirmQuit) private var confirmQuit = true
+    @AppStorage(PreferenceKey.autoReload) private var autoReload = false
     @AppStorage(PreferenceKey.runMaxAgents) private var runMaxAgents = RunStops.defaultMaxAgents
 
     var body: some View {
@@ -477,6 +478,13 @@ struct ExecutionPane: View {
             .fixedSize()
             .padding(.top, 16)
             Text("Finders and checkers together. A run whose plan needs more starts nothing and says why.")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(4)
+                .padding(.top, 8)
+            Toggle("Reload every 2 minutes", isOn: $autoReload)
+                .padding(.top, 16)
+            Text("Off, the board is read again when you act — opening, ⌘R, a start, a stop, a move — and each of those first pulls from origin. The timed reload never pulls.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)

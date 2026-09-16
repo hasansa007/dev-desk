@@ -18,6 +18,8 @@ enum PreferenceKey {
     /// The most agents one findings or ideation run may start (ADR 0043).
     static let runMaxAgents = "desk.runMaxAgents"
     static let confirmQuit = "desk.confirmQuit"
+    /// Reload every two minutes. Off by default: the board is brought up to date by what you do, not by a clock.
+    static let autoReload = "desk.autoReload"
     static let sidebarRail = "desk.sidebarRail"
     static let findingsGrouping = "desk.findingsGrouping"
     /// The developer's "Start with" list, as `StartWithList` JSON, for every project.

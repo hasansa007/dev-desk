@@ -35,7 +35,7 @@ struct DeskCommands: Commands {
                 Toggle("Compact Sidebar", isOn: $railMode)
                     .keyboardShortcut("s", modifiers: [.command, .shift])
                 Divider()
-                Button("Reload") { reload() }
+                Button("Pull and Reload") { reload() }
                     .keyboardShortcut("r")
                 Divider()
                 Button("Settings…") { openSettings() }
@@ -67,7 +67,7 @@ struct DeskCommands: Commands {
 
     private func reload() {
         guard let model else { return }
-        Task { await model.load() }
+        Task { await model.sync() }
     }
 
     private func openSettings() {

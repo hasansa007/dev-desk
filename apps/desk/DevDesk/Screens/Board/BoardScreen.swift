@@ -111,14 +111,33 @@ struct BoardScreen: View {
                         HStack(alignment: .top, spacing: 14) {
                             if !model.showBacklog {
                                 BacklogRail(count: model.counts(in: .backlog).total) { model.showBacklog = true }
+                                    .padding(.top, 16)
                             }
-                            ForEach(columns) { entry in
-                                BoardColumnView(column: entry.column, tasks: entry.tasks, model: model)
+                            // The headers are one pinned row, so a long Done column scrolls under its title
+                            // instead of taking it off screen. Spacing -1 lays each body's top border under
+                            // its header's bottom one, so the seam is a single line.
+                            LazyVStack(alignment: .leading, spacing: -1, pinnedViews: [.sectionHeaders]) {
+                                Section {
+                                    HStack(alignment: .top, spacing: 14) {
+                                        ForEach(columns) { entry in
+                                            BoardColumnView(column: entry.column, tasks: entry.tasks, model: model)
+                                        }
+                                    }
+                                } header: {
+                                    HStack(spacing: 14) {
+                                        ForEach(columns) { entry in
+                                            BoardColumnHeader(column: entry.column, model: model)
+                                        }
+                                    }
+                                    .padding(.top, 16)
+                                    .background(DeskColor.canvas)
+                                }
                             }
+                            .fixedSize(horizontal: true, vertical: false)
                         }
-                        .padding(16)
+                        .padding([.horizontal, .bottom], 16)
                         .frame(minWidth: proxy.size.width, minHeight: proxy.size.height, alignment: .topLeading)
-                        .pullToRefresh(isRefreshing: model.isRefreshing) { await model.load() }
+                        .pullToRefresh(isRefreshing: model.isRefreshing) { await model.sync() }
                     }
                     .pullToRefreshSpace()
                 }
@@ -178,6 +197,76 @@ private struct BacklogRail: View {
     }
 }
 
+/// A column's title row, pinned above the board's scroll so it stays on screen while its cards scroll under it.
+private struct BoardColumnHeader: View {
+    let column: BoardColumn
+    let model: ProjectWindowModel
+
+    static let headerShape = UnevenRoundedRectangle(topLeadingRadius: DeskMetric.cardRadius,
+                                                    topTrailingRadius: DeskMetric.cardRadius)
+    static let bodyShape = UnevenRoundedRectangle(bottomLeadingRadius: DeskMetric.cardRadius,
+                                                  bottomTrailingRadius: DeskMetric.cardRadius)
+
+    /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
+    private var counts: (total: Int, live: Int) { model.counts(in: column) }
+
+    /// What a column's header can do to the board: Backlog closes back to its rail, and In progress opens its
+    /// running tasks side by side — offered only when there are two to watch, never greyed out in wait.
+    @ViewBuilder private var columnControl: some View {
+        if column == .backlog {
+            Button { model.showBacklog = false } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Hide the backlog")
+            .accessibilityLabel("Hide the backlog")
+        } else if column == .inProgress, model.parallelTasks.count > 1 {
+            Button { model.setMode(.parallel) } label: {
+                Label("Side by side", systemImage: "rectangle.split.2x1")
+            }
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+            .help("Watch these \(model.parallelTasks.count) tasks run next to each other")
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: column.icon)
+                .imageScale(.small)
+                .foregroundStyle(DeskColor.mutedInk)
+            SectionLabel(column.title)
+            Text("\(counts.total)")
+                .font(DeskFont.label)
+                .tracking(0.66)
+                .foregroundStyle(DeskColor.disabledDot)
+            // The count of what is actually running here, so a column never looks idle while it works.
+            if counts.live > 0 {
+                HStack(spacing: 4) {
+                    StatusDot(tone: .running, pulses: true, size: 6)
+                    Text("\(counts.live) live")
+                        .font(DeskFont.label)
+                        .tracking(0.66)
+                        .foregroundStyle(DeskColor.tone(.running).foreground)
+                }
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel("\(counts.live) running in \(column.title)")
+            }
+            Spacer(minLength: 0)
+            columnControl
+        }
+        .frame(height: DeskMetric.columnHeaderHeight)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
+        .background(DeskColor.surface, in: Self.headerShape)
+        .overlay(Self.headerShape.strokeBorder(DeskColor.border))
+    }
+}
+
 private struct BoardColumnView: View {
     let column: BoardColumn
     let tasks: [DeskTask]
@@ -193,9 +282,6 @@ private struct BoardColumnView: View {
     private var backgroundConnection: String {
         BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection)
     }
-
-    /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
-    private var counts: (total: Int, live: Int) { model.counts(in: column) }
 
     /// Stop what this card has live, or continue it. An issue card continues by running its door again; a
     /// branch card has no issue for `/dev` to open, so it continues in its own agent, where Start is one press.
@@ -301,56 +387,8 @@ private struct BoardColumnView: View {
                   : "Type a task into \(column.title) — it is written to docs/backlog/")
     }
 
-    /// What a column's header can do to the board: Backlog closes back to its rail, and In progress opens its
-    /// running tasks side by side — offered only when there are two to watch, never greyed out in wait.
-    @ViewBuilder private var columnControl: some View {
-        if column == .backlog {
-            Button { model.showBacklog = false } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .frame(width: 18, height: 18)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help("Hide the backlog")
-            .accessibilityLabel("Hide the backlog")
-        } else if column == .inProgress, model.parallelTasks.count > 1 {
-            Button { model.setMode(.parallel) } label: {
-                Label("Side by side", systemImage: "rectangle.split.2x1")
-            }
-            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-            .help("Watch these \(model.parallelTasks.count) tasks run next to each other")
-        }
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 6) {
-                Image(systemName: column.icon)
-                    .imageScale(.small)
-                    .foregroundStyle(DeskColor.mutedInk)
-                SectionLabel(column.title)
-                Text("\(counts.total)")
-                    .font(DeskFont.label)
-                    .tracking(0.66)
-                    .foregroundStyle(DeskColor.disabledDot)
-                // The count of what is actually running here, so a column never looks idle while it works.
-                if counts.live > 0 {
-                    HStack(spacing: 4) {
-                        StatusDot(tone: .running, pulses: true, size: 6)
-                        Text("\(counts.live) live")
-                            .font(DeskFont.label)
-                            .tracking(0.66)
-                            .foregroundStyle(DeskColor.tone(.running).foreground)
-                    }
-                    .accessibilityElement(children: .combine)
-                    .accessibilityLabel("\(counts.live) running in \(column.title)")
-                }
-                Spacer(minLength: 0)
-                columnControl
-            }
-            .frame(height: DeskMetric.columnHeaderHeight)
             ForEach(tasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
@@ -371,10 +409,11 @@ private struct BoardColumnView: View {
                 addTaskButton
             }
         }
-        .padding(12)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
         .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
-        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
+        .background(DeskColor.surface, in: BoardColumnHeader.bodyShape)
+        .overlay(BoardColumnHeader.bodyShape.strokeBorder(DeskColor.border))
         .confirmationDialog(pending.map { TrackerWrite.confirmation(issue: $0.issue, slug: model.snapshot?.slug ?? "", action: $0.action) } ?? "",
                             isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
                             titleVisibility: .visible) {

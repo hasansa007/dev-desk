@@ -41,13 +41,20 @@ public struct LocalGitDataSource: ProjectDataSource {
 
         let topURL = URL(fileURLWithPath: top)
         async let githubState = GitHubReader(directory: root, runner: runner).read(remote: project.remote)
-        async let findings = Self.findings(in: topURL)
-        async let ideation = Self.ideation(in: topURL)
         // These config reads run nothing; they must precede the branch fan-out, whose rev-list/log/diff could lazily fetch and run uploadpack.
         let refusal = try await lazyFetchRefusal()
         let facts = refusal != nil ? GitFacts(base: nil, baseRef: nil, baseShort: nil, branches: [])
             : await GitReader(root: root, runner: runner).read(toplevel: top, currentBranch: project.branch)
         let github = await githubState
+        // Reports are read from the base and from report branches as well as from disk, and git is only read after the gate.
+        let reportRefs = refusal != nil ? [] : Self.reportRefs(facts)
+        let tree = ReportTree(root: root, runner: runner, maxBytes: Self.maxReportBytes)
+        var findingsFolders: [[String: SafeFile.Read]] = []
+        for folder in FindingsCleanup.folders {
+            findingsFolders.append(await tree.reports(in: folder, toplevel: topURL, refs: reportRefs))
+        }
+        let findings = Self.findings(findingsFolders)
+        let ideation = Self.ideation(await tree.reports(in: "docs/ideation", toplevel: topURL, refs: reportRefs))
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
         let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
         let localBacklog = LocalBacklog.read(projectPath: top)
@@ -63,10 +70,16 @@ public struct LocalGitDataSource: ProjectDataSource {
                                                              pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL),
                                                              localBacklog: localBacklog, stages: stages.stages)))
         }
-        return ProjectSnapshot(
+        var behind: CheckoutBehind?
+        if refusal == nil, let base = facts.base, let baseRef = facts.baseRef, baseRef.hasPrefix("refs/remotes/origin/"),
+           !project.branch.isEmpty, project.branch != "HEAD", project.branch != base,
+           let count = await git(["rev-list", "--count", "HEAD..\(baseRef)"]).flatMap(Int.init), count > 0 {
+            behind = CheckoutBehind(branch: project.branch, base: base, count: count)
+        }
+        var snapshot = ProjectSnapshot(
             project: project, isDemo: false, board: board,
             boardNote: refusal != nil ? "" : BoardBuilder.note(github: github, activeMilestone: active, localBranchNote: localBranchNote),
-            findings: .available(await findings), ideation: .available(await ideation),
+            findings: .available(findings), ideation: .available(ideation),
             roadmap: Self.roadmap(github),
             connections: detected + [ToolDetection.github(github)], connectionsNote: ToolDetection.note,
             capabilities: ToolDetection.capabilities,
@@ -75,6 +88,8 @@ public struct LocalGitDataSource: ProjectDataSource {
             slug: github.data?.slug, activeMilestone: active.title,
             localBacklog: localBacklog, filedBacklogKeys: LocalBacklog.filedKeys(projectPath: top), repositoryRoot: top,
             terminalAgents: await terminalCLIs)
+        snapshot.checkoutBehind = behind
+        return snapshot
     }
 
     /// A partial clone, or any promisor remote, lazy-fetches missing objects mid-read, running remote.<name>.uploadpack — even without
@@ -215,21 +230,27 @@ public struct LocalGitDataSource: ProjectDataSource {
         return states
     }
 
-    private static func findings(in toplevel: URL) -> FindingsReport {
+    /// Origin's base, then every branch holding only a report, newest first.
+    static func reportRefs(_ facts: GitFacts) -> [String] {
+        let branches = facts.branches.filter { $0.unmerged > 0 && BoardBuilder.holdsOnlyReports($0) }
+            .sorted { ($0.lastCommit ?? .distantPast) > ($1.lastCommit ?? .distantPast) }
+            .map { "refs/heads/\($0.name)" }
+        return (facts.baseRef.map { [$0] } ?? []) + branches
+    }
+
+    /// One map per `FindingsCleanup.folders` entry, name → contents, as `ReportTree` found them.
+    static func findings(_ folders: [[String: SafeFile.Read]]) -> FindingsReport {
         var runs: [FindingsRun] = []
         var findings: [Finding] = []
         var groups: [FindingsGroup] = []
         // `docs/survey/` is where reports went before the rename (ADR 0042). A run in both folders is read once,
         // from the new one.
-        let files = FindingsCleanup.folders.enumerated().flatMap { rank, relative in
-            let folder = toplevel.appendingPathComponent(relative)
-            return markdownFiles(in: folder).map { (name: $0, rank: rank, folder: folder) }
-        }
+        let files = folders.enumerated().flatMap { rank, reports in reports.map { (name: $0.key, rank: rank, read: $0.value) } }
         var seen: Set<String> = []
-        for (name, _, folder) in files.sorted(by: { ($0.name, -$0.rank) > ($1.name, -$1.rank) })
+        for (name, _, read) in files.sorted(by: { ($0.name, -$0.rank) > ($1.name, -$1.rank) })
         where seen.insert(name).inserted {
             let stem = String(name.dropLast(3))
-            switch SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) {
+            switch read {
             case .text(let text):
                 runs.append(FindingsRun(id: stem, label: stem, revision: nil))
                 findings.append(contentsOf: FindingsReportParser.parse(text, runID: stem))
@@ -245,13 +266,12 @@ public struct LocalGitDataSource: ProjectDataSource {
         return FindingsReport(runs: runs, findings: findings, groups: groups)
     }
 
-    private static func ideation(in toplevel: URL) -> IdeationReport {
-        let folder = toplevel.appendingPathComponent("docs/ideation")
+    static func ideation(_ reports: [String: SafeFile.Read]) -> IdeationReport {
         var runs: [IdeationRun] = []
         var opportunities: [Opportunity] = []
-        for name in markdownFiles(in: folder).sorted(by: >) {
+        for name in reports.keys.sorted(by: >) {
             let stem = String(name.dropLast(3))
-            switch SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) {
+            switch reports[name] ?? .skipped {
             case .text(let text):
                 runs.append(IdeationRun(id: stem, label: stem, kinds: IdeationReportParser.kinds(text)))
                 opportunities.append(contentsOf: IdeationReportParser.parse(text, runID: stem))
@@ -264,9 +284,5 @@ public struct LocalGitDataSource: ProjectDataSource {
             }
         }
         return IdeationReport(runs: runs, opportunities: opportunities)
-    }
-
-    private static func markdownFiles(in folder: URL) -> [String] {
-        ((try? FileManager.default.contentsOfDirectory(atPath: folder.path)) ?? []).filter { $0.hasSuffix(".md") }
     }
 }

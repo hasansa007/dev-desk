@@ -572,8 +572,9 @@ private struct SessionPane: View {
         let number: Int?
         let note: String?
         let command: String?
+        var freshBase = false
         switch row.kind {
-        case .door(let run): branch = nil; number = nil; note = run.folderNote; command = run.command
+        case .door(let run): branch = nil; number = nil; note = run.folderNote; command = run.command; freshBase = run.freshBase
         case .task(let task): branch = task.branch; number = task.taskNumber; note = task.noBranchNote; command = nil
         case .scratch, .job, .projectRun: return
         }
@@ -584,7 +585,17 @@ private struct SessionPane: View {
                                        noBranchNote: note, worktreeLocation: location, title: title)
             guard case .running(let folder) = model.sessions.state(for: id) else { return }
             terminals.start(taskID: id, folder: folder.url)
-            if let command { terminals.send(command + "\n", to: id) }
+            guard var command else { return }
+            if freshBase, case .local(let path) = model.ref {
+                let fresh = await FreshBaseWorktree(projectRoot: URL(fileURLWithPath: path, isDirectory: true),
+                                                    worktreeLocation: location).prepare(door: id)
+                if fresh.created {
+                    command = "cd \(ShellQuote.single(fresh.url.path)) && " + command
+                } else if let reason = fresh.note {
+                    command = "echo \(ShellQuote.single(reason)); " + command
+                }
+            }
+            terminals.send(command + "\n", to: id)
         }
     }
 

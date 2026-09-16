@@ -16,6 +16,7 @@ struct ProjectWindow: View {
     /// Asked for by hand. A window narrower than the breakpoint takes the rail anyway — an open sidebar there
     /// leaves the board no room — and gets the choice back when it widens.
     @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
+    @AppStorage(PreferenceKey.autoReload) private var autoReload = false
     @SceneStorage("desk.destination") private var storedDestination: Destination?
     @SceneStorage("desk.taskID") private var storedTaskID: String?
     @SceneStorage("desk.tab") private var storedTab: TaskTab?
@@ -60,8 +61,11 @@ struct ProjectWindow: View {
         .focusedSceneValue(\.projectModel, model)
         .preferredColorScheme(SnapshotMode.shared.colorScheme ?? appearance.colorScheme)
         .background { windowHooks }
-        .task { await model.load() }
-        .task { if !SnapshotMode.shared.isActive { await model.refresh(every: .seconds(ProjectWindowModel.refreshSeconds)) } }
+        .task { await model.sync() }
+        // Restarted by the toggle: turning it off cancels the loop, turning it on starts a fresh one.
+        .task(id: autoReload) {
+            if autoReload, !SnapshotMode.shared.isActive { await model.refresh(every: .seconds(ProjectWindowModel.refreshSeconds)) }
+        }
         .onChange(of: model.snapshot != nil) { _, isLoaded in
             if isLoaded { applyFirstLoad() }
         }
@@ -163,7 +167,7 @@ private struct FiledWorkHook: View {
                       let number = LocalBacklog.issueNumber(inRunResult: text, slug: model.snapshot?.slug) else { continue }
                 await model.markLocalItemFiled(entry: String(subject.dropFirst(DeskTask.localPrefix.count)), issue: number)
             }
-            await model.load()
+            await model.sync()
         }
     }
 }

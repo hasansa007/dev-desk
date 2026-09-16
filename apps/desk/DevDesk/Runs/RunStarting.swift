@@ -51,11 +51,15 @@ extension ProjectWindowModel {
         // queues (AgentSlots.free). Tracking is idempotent, so repeating it here costs nothing.
         LiveShells.shared.track(agentSessions: sessions)
         runs.add(DoorRun(id: runID, title: title, agent: agent, command: command,
-                         folderNote: folderNote ?? "a door reads the whole project, not one task's branch."))
+                         folderNote: folderNote ?? (FreshBaseWorktree.doors.contains(door)
+                            ? "a report door runs in a new worktree on origin's freshly fetched base branch."
+                            : "a door reads the whole project, not one task's branch."),
+                         freshBase: prebuilt == nil && FreshBaseWorktree.doors.contains(door)))
         // Land on the run that was just started, the way starting an agent does. Without this the accordion
         // opened whatever was already live and the new row sat collapsed below it — a start with nothing to see.
         selectedSessionID = runID
         go(.terminals)
+        Task { await sync() }
         return true
     }
 

@@ -16,6 +16,7 @@ struct RunFocusSheet: View {
     @State private var stops = RunStops()
     @State private var loadedStops = false
     @AppStorage(PreferenceKey.runMaxAgents) private var runMaxAgents = RunStops.defaultMaxAgents
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var isIdeation: Bool { door == "ideation" }
@@ -204,9 +205,18 @@ struct RunFocusSheet: View {
         // The scope names the run and nothing else: the door stays "findings", so the same SKILL is read.
         let title = isRoadmap ? "Roadmap" : (isIdeation ? "Ideation" : scope.runTitle)
         if inBackground, let jobs, case .local(let path) = model.ref, !backgroundConflict {
-            jobs.start(door: door, title: title, agent: agent, arguments: arguments,
-                       permission: permission, directory: path, mode: RunModeChoice.current(for: model.ref),
-                       scope: isFindingsRun ? scope : nil)
+            let agent = agent, permission = permission, mode = RunModeChoice.current(for: model.ref)
+            let scope: FindingsRunScope? = isFindingsRun ? scope : nil
+            let door = door, location = worktreeLocation, model = model
+            Task { @MainActor in
+                // Fetched and cut from origin's base, so the report describes the code as it is now.
+                let folder = await FreshBaseWorktree(projectRoot: URL(fileURLWithPath: path, isDirectory: true),
+                                                     worktreeLocation: location).prepare(door: door)
+                jobs.start(door: door, title: title, agent: agent, arguments: arguments,
+                           permission: permission, directory: path, mode: mode,
+                           scope: scope, workingDirectory: folder.created ? folder.url.path : nil)
+                await model.sync()
+            }
             model.go(.terminals)
         } else if isFindingsRun, model.isFindingsRunLive(scope: scope) {
             // A terminal is already writing this half. Show that run rather than open a second shell over it:

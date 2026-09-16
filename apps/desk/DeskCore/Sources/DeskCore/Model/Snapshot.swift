@@ -53,6 +53,8 @@ public struct ProjectSnapshot: Hashable {
     public var repositoryRoot: String?
     /// The CLIs besides Claude and Codex that can run a task in the built-in terminal (`TerminalAgent`); empty for a sample.
     public var terminalAgents: [TerminalAgent] = []
+    /// The checked-out branch when origin's base has commits it does not; nil when it is current, or is the base.
+    public var checkoutBehind: CheckoutBehind?
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,
@@ -83,5 +85,17 @@ public struct ProjectSnapshot: Hashable {
         self.projectFacts = projectFacts
         self.slug = slug
         self.activeMilestone = activeMilestone
+    }
+}
+
+public struct CheckoutBehind: Hashable {
+    public let branch: String
+    public let base: String
+    public let count: Int
+
+    public init(branch: String, base: String, count: Int) {
+        self.branch = branch
+        self.base = base
+        self.count = count
     }
 }

@@ -203,7 +203,8 @@ final class ProjectWindowModelTests: XCTestCase {
                                        insightsDelay: .zero, runner: runner)
         await model.load()
         await model.performTrackerWrite(issue: 7, action: .queue(milestone: "1.4"))
-        XCTAssertEqual(runner.keys, ["gh issue edit 7 --repo owner/repo --milestone 1.4"])
+        // A write is an action, so origin is synced before the reload; with no origin remote that is one read and nothing more.
+        XCTAssertEqual(runner.keys, ["gh issue edit 7 --repo owner/repo --milestone 1.4", FakeRunner.gitRead("remote")])
         XCTAssertNil(model.writeFailure)
         XCTAssertEqual(model.activeMilestone, "1.4")
     }

@@ -9,9 +9,12 @@ public struct DoorRun: Identifiable, Hashable {
     public var command: String
     /// Passed to the folder rule, so the shell's note says why a run opens at the project root.
     public var folderNote: String
+    /// True for a report door: its shell opens, then moves into a fresh worktree on origin's base before the command.
+    public var freshBase: Bool
 
-    public init(id: String, title: String, agent: String, command: String, folderNote: String) {
+    public init(id: String, title: String, agent: String, command: String, folderNote: String, freshBase: Bool = false) {
         self.id = id
+        self.freshBase = freshBase
         self.title = title
         self.agent = agent
         self.command = command

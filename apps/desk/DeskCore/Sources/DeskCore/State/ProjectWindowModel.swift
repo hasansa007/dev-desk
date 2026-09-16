@@ -34,6 +34,7 @@ public struct WriteFailure: Equatable {
     static func branch(_ message: String) -> WriteFailure { WriteFailure(title: "The branch was not deleted", message: message) }
     static func backlog(_ message: String) -> WriteFailure { WriteFailure(title: "docs/backlog/ was not changed", message: message) }
     static func merge(_ message: String) -> WriteFailure { WriteFailure(title: "The report was not merged", message: message) }
+    static func update(_ message: String) -> WriteFailure { WriteFailure(title: "The checkout was not updated", message: message) }
     static func stage(_ message: String) -> WriteFailure { WriteFailure(title: "The board was not changed", message: message) }
     static func openFailed(_ message: String) -> WriteFailure { WriteFailure(title: "The file was not opened", message: message) }
 }
@@ -424,7 +425,7 @@ public final class ProjectWindowModel {
         // A finished run has written whatever it was going to write: read the project again rather than wait to be asked.
         sessions.onSessionEnded = { [weak self] id in
             Task {
-                await self?.load()
+                await self?.sync()
                 self?.pickUpGeneratedDiagrams()
                 if Self.endedRunShowsDiagrams(sessionID: id) { self?.go(.diagrams) }
                 // A diagram generate that just finished: its spinner clears, the reload above has already
@@ -488,6 +489,22 @@ public final class ProjectWindowModel {
             if isFirstLoad { loadState = .failed(error.localizedDescription) } else { reloadError = error.localizedDescription }
         }
     }
+
+    /// What an action brings in from origin before the reload: a fetch, and every local branch fast-forwarded that loses
+    /// nothing by it. Only actions call this — opening, ⌘R, a start, a stop, a move, a write — never the timed reload,
+    /// so nothing reaches the network while nobody is doing anything.
+    public func sync() async {
+        if case .local(let path) = ref, !isSyncing {
+            isSyncing = true
+            lastSync = await OriginSync(root: URL(fileURLWithPath: path, isDirectory: true), runner: runner).run()
+            isSyncing = false
+        }
+        await load()
+    }
+
+    public private(set) var isSyncing = false
+    /// The last action's fetch, so a failed one can be said rather than silently leaving the board stale.
+    public private(set) var lastSync: OriginSync.Result?
 
     /// The gap between automatic reloads, shared by the window that schedules them and the ring that counts down.
     public static let refreshSeconds: Double = 120
@@ -683,7 +700,7 @@ public final class ProjectWindowModel {
             return
         }
         writeFailure = nil
-        await load()
+        await sync()
     }
 
     /// A task typed on the board. It is written to `docs/backlog/` (ADR 0027) — instant and local, no
@@ -919,7 +936,7 @@ public final class ProjectWindowModel {
             let write = TrackerWrite(slug: slug, directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner)
             try await write.perform(issue: issue, action: action)
             writeFailure = nil
-            await load()
+            await sync()
         } catch {
             writeFailure = .tracker(Markdown.escape(error.localizedDescription))
         }
@@ -960,7 +977,7 @@ public final class ProjectWindowModel {
             let write = BranchWrite(directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner)
             try await write.delete(branch: name, force: force)
             writeFailure = nil
-            await load()
+            await sync()
         } catch {
             writeFailure = .branch(Markdown.escape(error.localizedDescription))
         }
@@ -985,7 +1002,33 @@ public final class ProjectWindowModel {
         } catch {
             writeFailure = .merge(Markdown.escape(error.localizedDescription))
         }
-        await load()
+        await sync()
+    }
+
+    /// Brings origin's base into the checked-out branch, only when asked. git refuses when uncommitted changes would be
+    /// overwritten, and that refusal is shown as it is; a merge that stops on a conflict is aborted, so the checkout is
+    /// left exactly as it was rather than half-merged under whatever is working in it.
+    public func updateCheckout() async {
+        guard !isWritingTracker, case .local(let path) = ref, let behind = snapshot?.checkoutBehind else { return }
+        isWritingTracker = true
+        defer { isWritingTracker = false }
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        // With uncommitted changes a conflicted merge cannot be backed out cleanly (`merge --abort` may lose them), so it is not started.
+        let status = try? await runner.run("git", GitCommand.read(["status", "--porcelain", "--untracked-files=no"]), in: root, timeout: CommandTimeout.git)
+        guard let status, status.succeeded, status.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            writeFailure = .update(Markdown.escape("\(behind.branch) has uncommitted changes. Commit them first, then Update merges origin/\(behind.base) in."))
+            return
+        }
+        let merge = try? await runner.run("git", GitCommand.commit(["merge", "--no-edit", "refs/remotes/origin/\(behind.base)"]),
+                                          in: root, timeout: CommandTimeout.worktreeAdd)
+        if let merge, merge.succeeded {
+            writeFailure = nil
+        } else {
+            let reason = merge.flatMap { GitOutput.lastNonEmptyLine($0.stderr) ?? GitOutput.lastNonEmptyLine($0.stdout) } ?? "git merge did not finish"
+            _ = try? await runner.run("git", GitCommand.read(["merge", "--abort"]), in: root, timeout: CommandTimeout.git)
+            writeFailure = .update(Markdown.escape("origin/\(behind.base) was not merged into \(behind.branch): \(reason)"))
+        }
+        await sync()
     }
 
     public func dismissWriteFailure() { writeFailure = nil }

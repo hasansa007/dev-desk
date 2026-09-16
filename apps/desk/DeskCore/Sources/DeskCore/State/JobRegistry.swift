@@ -35,6 +35,10 @@ public struct BackgroundJob: Identifiable, Equatable {
     /// door: they have no halves, and one run of them at a time is the whole rule.
     public let scope: String?
     public let directory: String
+    /// Where the agent actually works, when that is not the project folder — a report door's fresh worktree. The
+    /// project stays `directory`, because that is what "is a findings run already going here" is asked of.
+    public var workingDirectory: String? = nil
+    public var folder: String { workingDirectory ?? directory }
     /// What this run is about, in the caller's own terms — a finding's id, an opportunity's. It lets the card
     /// that started a run find it again and say what it is doing, rather than the run being invisible.
     public var subject: String?
@@ -145,16 +149,18 @@ public final class JobRegistry {
     @discardableResult
     public func start(door: String, title: String, agent: String, arguments: [String] = [],
                       permission: RunPermission, directory: String, subject: String? = nil,
-                      mode: RunMode = .standard, scope: FindingsRunScope? = nil) -> String? {
+                      mode: RunMode = .standard, scope: FindingsRunScope? = nil, workingDirectory: String? = nil) -> String? {
+        let folder = workingDirectory ?? directory
         guard let launch = JobCommand.launch(door: door, agent: agent, arguments: arguments,
-                                             permission: permission, directory: directory, home: home,
+                                             permission: permission, directory: folder, home: home,
                                              mode: mode) else { return nil }
         let id = "job:\(door):\(UUID().uuidString.prefix(8))"
         jobs.insert(BackgroundJob(id: id, title: title, agent: agent, door: door, scope: scope?.rawValue,
                                   directory: directory, subject: subject, sessionID: launch.sessionID,
                                   permission: permission, mode: mode), at: 0)
+        jobs[0].workingDirectory = workingDirectory
         writeRecord(for: jobs[0])
-        run(id: id, launch: launch, directory: directory)
+        run(id: id, launch: launch, directory: folder)
         return id
     }
 
@@ -173,10 +179,12 @@ public final class JobRegistry {
         jobs.insert(BackgroundJob(id: id, title: record.title, agent: record.agent, door: record.door ?? "",
                                   scope: nil, directory: record.directory, subject: record.subject,
                                   sessionID: sessionID, permission: permission, mode: mode), at: 0)
+        // A session is continued in the folder it was started in; the agent keys its sessions by that folder.
+        jobs[0].workingDirectory = record.folderPath
         // The dead run has been acted on; left alone, its record would be offered again at the next launch.
         journalFor?(record.directory)?.clear(id: record.id)
         writeRecord(for: jobs[0])
-        run(id: id, launch: launch, directory: record.directory)
+        run(id: id, launch: launch, directory: jobs[0].folder)
         return id
     }
 
@@ -205,7 +213,7 @@ public final class JobRegistry {
         spawner.stop(id: id)
         setState(.starting, at: index)
         append("› \(text)", to: index)
-        run(id: id, launch: launch, directory: jobs[index].directory)
+        run(id: id, launch: launch, directory: jobs[index].folder)
     }
 
     public func stop(_ id: String) {
@@ -240,7 +248,7 @@ public final class JobRegistry {
                                     directory: job.directory, startedAt: job.startedAt, lastSeenAt: Date(),
                                     sessionID: job.sessionID, door: job.door, subject: job.subject,
                                     permission: job.permission.rawValue, mode: job.mode.rawValue,
-                                    stateLabel: job.state.label, logTail: job.log))
+                                    stateLabel: job.state.label, logTail: job.log, folderPath: job.workingDirectory))
     }
 
     private func run(id: String, launch: JobLaunch, directory: String) {
