@@ -2,7 +2,7 @@
 
 Status:  Accepted
 Date:    2026-09-16
-Commit:  6efdef2
+Commit:  0d8ce47
 
 Amends [ADR 0035](0035-the-board-stores-what-git-cannot-see.md) ("the board stores what git cannot
 see"). Extends [ADR 0027](0027-work-without-a-tracker-is-recorded-locally-and-promoted-on-request.md).
