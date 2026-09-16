@@ -44,4 +44,19 @@ final class SurveyCleanupTests: XCTestCase {
         XCTAssertTrue(SurveyResetOptions(ignoredFindings: false, viewState: false, olderReports: false).isEmpty)
         XCTAssertFalse(SurveyResetOptions(ignoredFindings: false, viewState: false, olderReports: true).isEmpty)
     }
+
+    func testClosingAnIssueIsSomethingToReset() {
+        XCTAssertFalse(SurveyResetOptions(ignoredFindings: false, viewState: false, closeIssues: [12]).isEmpty)
+    }
+
+    /// Only an untouched issue is offered: started work is closed from its own card, never from a reset.
+    func testOnlyUntouchedIssuesAreClosable() {
+        XCTAssertEqual(FiledCardReset.of(column: .backlog, branch: nil, issue: 7), .closable(issue: 7))
+        XCTAssertEqual(FiledCardReset.of(column: .queued, branch: nil, issue: 7), .closable(issue: 7))
+        XCTAssertEqual(FiledCardReset.of(column: .readyForDev, branch: "feat/x", issue: 7), .started)
+        XCTAssertEqual(FiledCardReset.of(column: .inProgress, branch: nil, issue: 7), .started)
+        XCTAssertEqual(FiledCardReset.of(column: .review, branch: nil, issue: 7), .started)
+        XCTAssertEqual(FiledCardReset.of(column: .done, branch: "feat/x", issue: 7), .done)
+        XCTAssertEqual(FiledCardReset.of(column: .backlog, branch: nil, issue: nil), .localOnly)
+    }
 }

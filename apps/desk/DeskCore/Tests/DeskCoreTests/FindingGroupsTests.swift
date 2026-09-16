@@ -64,4 +64,12 @@ final class FindingGroupsTests: XCTestCase {
         XCTAssertNil(FindingGroups.split("MockGenerator.swift").line)
         XCTAssertEqual(FindingGroups.split("C:thing").file, "C:thing")
     }
+
+    /// The source column names files; line ranges were all a head-truncated path had left to show.
+    func testFileSummaryNamesFilesNotLines() {
+        XCTAssertEqual(FindingGroups.fileSummary(["App/ContactDetailView.swift:104-115", "App/Store.swift:68"]),
+                       "ContactDetailView.swift +1")
+        XCTAssertEqual(FindingGroups.fileSummary(["A/List.swift:1", "List.swift:9-12"]), "List.swift")
+        XCTAssertEqual(FindingGroups.fileSummary([]), "—")
+    }
 }

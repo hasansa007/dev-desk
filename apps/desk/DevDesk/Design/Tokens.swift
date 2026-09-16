@@ -139,6 +139,7 @@ enum DeskMetric {
     /// choose its own: `SheetChrome` takes neither a width nor a height, and its body scrolls instead.
     static let dialogWidth: CGFloat = 900
     static let dialogHeight: CGFloat = 660
+    static let confirmWidth: CGFloat = 600
     /// A dialog is a maximum, not a size (ADR 0021, amended): it clamps to the window rather than being
     /// clipped by it. The inset is what keeps it reading as a dialog over the board at every width.
     static let dialogWindowInset: CGFloat = 40

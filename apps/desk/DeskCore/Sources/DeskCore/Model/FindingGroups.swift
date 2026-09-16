@@ -91,6 +91,18 @@ public enum FindingGroups {
         return groups
     }
 
+    /// The files a finding names, by file name, for a column too narrow for paths: `List.swift +2`. Line ranges
+    /// are left to the tooltip — a head-truncated `…re.swift:103` showed where in a file, not which file.
+    public static func fileSummary(_ locations: [String]) -> String {
+        var files: [String] = []
+        for location in locations {
+            let file = (split(location).file as NSString).lastPathComponent
+            if !file.isEmpty, !files.contains(file) { files.append(file) }
+        }
+        guard let first = files.first else { return "—" }
+        return files.count > 1 ? "\(first) +\(files.count - 1)" : first
+    }
+
     static func primary(_ finding: Finding) -> FindingCategory? {
         statusOrder.first { finding.categories.contains($0) }
     }

@@ -13,7 +13,7 @@ struct CancelTaskSheet: View {
     var body: some View {
         SheetChrome(title: "Close \(task.issueLabel) as not planned", confirmTitle: "Close as not planned",
                     confirmDisabled: trimmed.isEmpty,
-                    onCancel: model.dismissSheet, onConfirm: confirm) {
+                    size: .confirm, onCancel: model.dismissSheet, onConfirm: confirm) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(task.title)
                     .font(DeskFont.body.weight(.semibold))

@@ -46,12 +46,37 @@ public struct SurveyResetOptions: Equatable {
     public var viewState: Bool
     /// Every report but the newest, to the Trash.
     public var olderReports: Bool
+    /// Issues the survey filed that nobody started, to close as not planned with `closeReason` as the comment.
+    public var closeIssues: [Int]
+    public var closeReason: String
 
-    public init(ignoredFindings: Bool = true, viewState: Bool = true, olderReports: Bool = false) {
+    public init(ignoredFindings: Bool = true, viewState: Bool = true, olderReports: Bool = false,
+                closeIssues: [Int] = [], closeReason: String = "") {
         self.ignoredFindings = ignoredFindings
         self.viewState = viewState
         self.olderReports = olderReports
+        self.closeIssues = closeIssues
+        self.closeReason = closeReason
     }
 
-    public var isEmpty: Bool { !ignoredFindings && !viewState && !olderReports }
+    public var isEmpty: Bool { !ignoredFindings && !viewState && !olderReports && closeIssues.isEmpty }
+}
+
+/// What a reset may do with a card a survey filed. Only a card nobody has started is offered for closing:
+/// cancelling work that is under way is that card's own decision, taken from its own dialog.
+public enum FiledCardReset: Equatable {
+    /// On the tracker and untouched — may be closed as not planned.
+    case closable(issue: Int)
+    /// Has a branch, or has moved past the queue. Listed with a warning, never closed from here.
+    case started
+    case done
+    /// Only in `docs/backlog/`, with no issue to close.
+    case localOnly
+
+    public static func of(column: BoardColumn, branch: String?, issue: Int?) -> FiledCardReset {
+        if column == .done { return .done }
+        if branch != nil || column == .inProgress || column == .review { return .started }
+        guard let issue else { return .localOnly }
+        return .closable(issue: issue)
+    }
 }

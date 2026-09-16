@@ -684,6 +684,13 @@ public final class ProjectWindowModel {
 
     /// Starts this project's survey reading over. Each part is separately owned — the app's ignored list, the
     /// window's own selection, the repository's older reports — so each is separately asked for.
+    /// The board cards this project's survey findings became, in report order, each once.
+    public var surveyFiledCards: [DeskTask] {
+        var seen: Set<String> = []
+        return (snapshot?.findings.value?.findings ?? []).compactMap { boardTask(forFinding: $0.id) }
+            .filter { seen.insert($0.id).inserted }
+    }
+
     public func resetSurvey(_ options: SurveyResetOptions) async {
         guard !options.isEmpty else { return }
         if options.ignoredFindings {
@@ -704,6 +711,9 @@ public final class ProjectWindowModel {
                 writeFailure = WriteFailure(title: "The reports were not moved to the Trash",
                                             message: Markdown.escape(error.localizedDescription))
             }
+        }
+        if !options.closeIssues.isEmpty {
+            await closeAsNotPlanned(options.closeIssues, reason: options.closeReason)
         }
         await load()
         // A reset leaves the newest run selected, the way opening the project does.
@@ -832,6 +842,28 @@ public final class ProjectWindowModel {
         } catch {
             writeFailure = .tracker(Markdown.escape(error.localizedDescription))
         }
+    }
+
+    /// The same bounded cancel a card makes, once per issue, reloading once at the end. The ones that failed are
+    /// named together, so a close that half-worked says which half.
+    func closeAsNotPlanned(_ issues: [Int], reason: String) async {
+        guard !isWritingTracker else { return }
+        guard let slug = snapshot?.slug, case .local(let path) = ref else {
+            writeFailure = .tracker(TrackerWriteError.noRepository.localizedDescription)
+            return
+        }
+        isWritingTracker = true
+        defer { isWritingTracker = false }
+        let write = TrackerWrite(slug: slug, directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner)
+        var failures: [String] = []
+        for issue in issues {
+            do {
+                try await write.perform(issue: issue, action: .cancel(reason: reason))
+            } catch {
+                failures.append("#\(issue): \(error.localizedDescription)")
+            }
+        }
+        if !failures.isEmpty { writeFailure = .tracker(Markdown.escape(failures.joined(separator: "\n"))) }
     }
 
     /// Deletes a local branch: one bounded command, and `force` only ever true once its name has been typed.

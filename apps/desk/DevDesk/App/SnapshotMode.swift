@@ -137,6 +137,7 @@ final class SnapshotMode {
             UserDefaults.standard.set(FindingGrouping.file.rawValue, forKey: PreferenceKey.surveyGrouping)
             model.go(.survey)
         },
+        Capture(name: "03b-reset-survey-sheet", isSheet: true) { $0.go(.survey); $0.present(.resetSurvey) },
         Capture(name: "03c-board") { $0.go(.board) },
         Capture(name: "03b-finding-dialog", isSheet: true) { model in
             model.go(.survey)

@@ -19,7 +19,7 @@ struct DeleteBranchSheet: View {
 
     var body: some View {
         SheetChrome(title: "Delete \(branch)", confirmTitle: "Delete branch",
-                    onCancel: model.dismissSheet, onConfirm: confirm) {
+                    size: .confirm, onCancel: model.dismissSheet, onConfirm: confirm) {
             VStack(alignment: .leading, spacing: 10) {
                 Text(BranchWrite.confirmation(branch: branch, unmerged: unmerged))
                     .font(DeskFont.body)

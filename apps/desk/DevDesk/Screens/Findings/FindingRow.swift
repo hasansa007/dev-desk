@@ -102,16 +102,13 @@ struct FindingRow: View {
                 .font(DeskFont.mono(11))
                 .foregroundStyle(DeskColor.faintInk)
                 .lineLimit(1)
-                .truncationMode(.head)
+                .truncationMode(lines == nil ? .middle : .head)
                 .help(finding.locations.joined(separator: "\n"))
         }
     }
 
-    /// A path truncates from the head, so what is left is the file rather than the first folder.
-    private var sourceLine: String {
-        guard let first = finding.locations.first else { return "—" }
-        return finding.locations.count > 1 ? "\(first) +\(finding.locations.count - 1)" : first
-    }
+    /// The file, not the line: the full locations are the tooltip.
+    private var sourceLine: String { FindingGroups.fileSummary(finding.locations) }
 
     /// A state that has something to say is always shown; the Backlog button and the menu only on hover, so
     /// 26 rows are not 26 identical buttons.

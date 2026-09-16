@@ -8,6 +8,12 @@ struct ResetSurveySheet: View {
     @Bindable var model: ProjectWindowModel
     @State private var options = SurveyResetOptions()
     @State private var runAfterwards = false
+    /// Issues ticked for closing. Empty by default: keeping is what a reset does unless you say otherwise.
+    @State private var closing: Set<Int> = []
+    @State private var closeReason = ""
+    /// Read once when the sheet opens, so a reload underneath cannot change the list being confirmed.
+    @State private var cards: [FiledCard] = []
+    @State private var listed = false
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var olderReports: [String] { model.olderSurveyReports }
@@ -22,8 +28,8 @@ struct ResetSurveySheet: View {
     }
 
     var body: some View {
-        SheetChrome(title: "Reset survey", confirmTitle: confirmTitle, confirmDisabled: options.isEmpty,
-                    onCancel: model.dismissSheet, onConfirm: reset) {
+        SheetChrome(title: "Reset survey", confirmTitle: confirmTitle, confirmDisabled: !canConfirm,
+                    size: .confirm, onCancel: model.dismissSheet, onConfirm: reset) {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Clears what has built up between runs. The newest report is always kept — it is the current picture of this project.")
                     .font(DeskFont.body)
@@ -57,6 +63,11 @@ struct ResetSurveySheet: View {
                         .padding(.leading, 26)
                 }
 
+                if !cards.isEmpty {
+                    Divider()
+                    filedCards
+                }
+
                 Divider()
 
                 Toggle(isOn: $runAfterwards) {
@@ -72,6 +83,161 @@ struct ResetSurveySheet: View {
                 .disabled(!model.canRunDoors || isAnySurveyRunning)
             }
         }
+        .onAppear {
+            guard !listed else { return }
+            listed = true
+            cards = model.surveyFiledCards.map(FiledCard.init)
+            closeReason = "Superseded: the survey was reset on \(Self.today) to start over from a new run."
+        }
+    }
+
+    // MARK: - Filed cards
+
+    struct FiledCard: Identifiable {
+        let id: String
+        let label: String
+        let title: String
+        let column: BoardColumn
+        let reset: FiledCardReset
+
+        init(_ task: DeskTask) {
+            id = task.id
+            label = task.issueLabel
+            title = task.title
+            column = task.column
+            reset = FiledCardReset.of(column: task.column, branch: task.branch, issue: task.issueNumber)
+        }
+
+        var issue: Int? {
+            if case .closable(let issue) = reset { return issue }
+            return nil
+        }
+    }
+
+    private var closable: [Int] { cards.compactMap(\.issue) }
+    private var startedCount: Int { cards.filter { $0.reset == .started }.count }
+    private var trimmedReason: String { closeReason.trimmingCharacters(in: .whitespacesAndNewlines) }
+
+    /// What the survey put on the board. Kept unless ticked; work already started is shown, never offered.
+    private var filedCards: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                SectionLabel("Tasks this survey filed")
+                Text("\(cards.count)")
+                    .font(DeskFont.label)
+                    .foregroundStyle(DeskColor.faintInk)
+                Spacer(minLength: 0)
+                if closable.count > 1 {
+                    Button(closing.count == closable.count ? "Keep all" : "Select all not started") {
+                        closing = closing.count == closable.count ? [] : Set(closable)
+                    }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    .disabled(!model.canRunDoors)
+                }
+            }
+            Text(closable.isEmpty
+                 ? "Nothing here can be closed from a reset — every task is started, done, or only in docs/backlog/."
+                 : "Everything is kept unless you tick it. A ticked task is closed on GitHub as not planned, with the reason below as its comment.")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+
+            ScrollView {
+                VStack(spacing: 0) {
+                    ForEach(cards) { card in cardRow(card) }
+                }
+            }
+            .frame(maxHeight: min(CGFloat(cards.count) * 30, 210))
+            .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+            .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.border))
+
+            if startedCount > 0 {
+                NoticeBanner(tone: .waiting,
+                             title: startedCount == 1 ? "1 task is already started" : "\(startedCount) tasks are already started",
+                             message: "A reset never closes work in progress. If it is no longer wanted, open its card and close it there.",
+                             style: .compact)
+            }
+
+            if !closing.isEmpty {
+                Text("Why").font(DeskFont.secondary).foregroundStyle(DeskColor.secondaryInk)
+                TextField("Superseded by a new survey", text: $closeReason, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .lineLimit(2...4)
+                    .font(DeskFont.body)
+                    .padding(8)
+                    .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+                    .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
+                Text("dev:roadmap reads this comment back, so a closed direction is not proposed again. Reopening is `gh issue reopen`.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.faintInk)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+
+    private func cardRow(_ card: FiledCard) -> some View {
+        HStack(spacing: 8) {
+            if let issue = card.issue {
+                Toggle("", isOn: Binding(get: { closing.contains(issue) },
+                                         set: { if $0 { closing.insert(issue) } else { closing.remove(issue) } }))
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+                    .disabled(!model.canRunDoors)
+                    .frame(width: 18)
+                    .accessibilityLabel("Close \(card.label) as not planned")
+            } else if card.reset == .started {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(DeskColor.tone(.waiting).dot)
+                    .frame(width: 18)
+            } else {
+                Color.clear.frame(width: 18, height: 1)
+            }
+            if !card.label.isEmpty {
+                Text(card.label)
+                    .font(DeskFont.mono(11))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .fixedSize()
+            }
+            Text(card.title)
+                .font(DeskFont.secondary)
+                .foregroundStyle(card.issue == nil ? DeskColor.mutedInk : DeskColor.ink)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .help(card.title)
+            Text(rowNote(card))
+                .font(.system(size: 11))
+                .foregroundStyle(DeskColor.faintInk)
+                .lineLimit(1)
+                .fixedSize()
+            StatusPill(badge: StatusBadge(FindingRow.tone(of: card.column), card.column.title))
+                .fixedSize()
+        }
+        .padding(.horizontal, 10)
+        .frame(height: 30)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
+    }
+
+    private func rowNote(_ card: FiledCard) -> String {
+        switch card.reset {
+        case .closable: return closing.contains(card.issue ?? -1) ? "closes" : "kept"
+        case .started: return "started · kept"
+        case .done: return "kept"
+        case .localOnly: return "docs/backlog/ · kept"
+        }
+    }
+
+    private static var today: String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+        return formatter.string(from: Date())
+    }
+
+    private var canConfirm: Bool {
+        if !closing.isEmpty && trimmedReason.isEmpty { return false }
+        return !options.isEmpty || !closing.isEmpty
     }
 
     private var reportsDetail: String {
@@ -84,7 +250,10 @@ struct ResetSurveySheet: View {
     }
 
     private var confirmTitle: String {
-        options.olderReports && !olderReports.isEmpty ? "Reset and move to Trash" : "Reset"
+        var parts: [String] = []
+        if options.olderReports && !olderReports.isEmpty { parts.append("move to Trash") }
+        if !closing.isEmpty { parts.append("close \(closing.count) task\(closing.count == 1 ? "" : "s")") }
+        return parts.isEmpty ? "Reset" : "Reset and " + parts.joined(separator: " and ")
     }
 
     private func line(isOn: Binding<Bool>, title: String, detail: String, enabled: Bool) -> some View {
@@ -104,7 +273,9 @@ struct ResetSurveySheet: View {
     }
 
     private func reset() {
-        let options = options
+        var options = options
+        options.closeIssues = closable.filter(closing.contains)
+        options.closeReason = trimmedReason
         let runAfterwards = runAfterwards
         model.dismissSheet()
         Task {
