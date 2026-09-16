@@ -230,6 +230,23 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.dependencies, [])
     }
 
+    func testABranchHoldingOnlyAReportIsDone() throws {
+        var input = fixture
+        input.git?.branches.append(BranchFacts(name: "findings/2026-09-17", unmerged: 2, counted: true, worktree: nil,
+                                               files: [NumstatEntry(path: "docs/findings/2026-09-17.md", additions: 90, deletions: 0)]))
+        input.git?.branches.append(BranchFacts(name: "findings/mixed", unmerged: 1, counted: true, worktree: nil,
+                                               files: [NumstatEntry(path: "docs/findings/2026-09-17.md", additions: 1, deletions: 0),
+                                                       NumstatEntry(path: "Sources/App/Boot.swift", additions: 1, deletions: 0)]))
+        let built = tasks(input)
+        let report = try XCTUnwrap(built["branch:findings/2026-09-17"])
+        XCTAssertEqual(report.column, .done)
+        XCTAssertTrue(report.isFinishedReport)
+        XCTAssertEqual(report.headerBadge, StatusBadge(.ended, "Done"))
+        let mixed = try XCTUnwrap(built["branch:findings/mixed"])
+        XCTAssertEqual(mixed.column, .inProgress, "code beside the report is still work")
+        XCTAssertFalse(try XCTUnwrap(built["branch:spike/z"]).isFinishedReport, "no files read is not a finished report")
+    }
+
     func testMergedPullRequestIsDimmedDone() throws {
         let task = try XCTUnwrap(tasks()["merged:9"])
         XCTAssertEqual(task.issueNumber, 9)

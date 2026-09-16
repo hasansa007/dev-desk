@@ -96,6 +96,17 @@ enum BoardBuilder {
         }
     }
 
+    static let finishedReportBadge = StatusBadge(.ended, "Done")
+
+    /// Where the doors write the reports they finish with; a branch that changes nothing else has nothing left to run.
+    static let reportFolders = [FindingsCleanup.folder, FindingsCleanup.legacyFolder, "docs/ideation", ArchDiagrams.folder]
+
+    static func holdsOnlyReports(_ branch: BranchFacts) -> Bool {
+        !branch.files.isEmpty && branch.files.allSatisfy { file in
+            reportFolders.contains { file.path.hasPrefix($0 + "/") }
+        }
+    }
+
     static func aheadBadge(_ count: Int) -> StatusBadge {
         StatusBadge(.neutral, "\(count) commit\(count == 1 ? "" : "s") ahead")
     }
@@ -328,10 +339,12 @@ private struct BoardContext {
 
     private func branchTask(_ branch: BranchFacts) -> DeskTask {
         let state = input.pipeline[branch.name]
-        let badge = BoardBuilder.aheadBadge(branch.unmerged)
-        return DeskTask(
-            id: "branch:\(branch.name)", title: branch.name, column: .inProgress,
-            cardBadge: nil, cardNote: state?.cardNote, headerBadge: badge,
+        // A door's finished report is done where it was written; merging it is another agent's job, not this card's.
+        let finished = BoardBuilder.holdsOnlyReports(branch)
+        let badge = finished ? BoardBuilder.finishedReportBadge : BoardBuilder.aheadBadge(branch.unmerged)
+        var task = DeskTask(
+            id: "branch:\(branch.name)", title: branch.name, column: finished ? .done : .inProgress,
+            cardMeta: finished ? "report" : nil, cardBadge: nil, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(branch.name, local: branch), parallelLine: parallelLine(branch.name, local: branch),
             branch: branch.name,
             nextAction: .reviewChanges,
@@ -342,7 +355,10 @@ private struct BoardContext {
             evidence: evidence(pullRequest: nil, state: state),
             parallel: parallel(branch.name, local: branch),
             lastCommit: branch.lastCommit, unmergedCount: branch.countedUnmerged)
+        task.isFinishedReport = finished
+        return task
     }
+
 
     /// A done local card has no branch to name, so the line carries what closed it instead — free text from
     /// the card, escaped, because it is the repository's own prose.

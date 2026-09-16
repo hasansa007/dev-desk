@@ -385,6 +385,8 @@ public struct DeskTask: Identifiable, Hashable {
     /// The open pull request behind this card when one is known — what the Review card's backwards move
     /// converts to a draft. Nil for a card with no pull request, and for samples.
     public var pullRequestNumber: Int?
+    /// A branch whose commits are only a door's report: the run is done, and merging it is another job.
+    public var isFinishedReport: Bool = false
 
     /// A local branch with no issue and no pull request behind it — the only card whose branch this app may delete.
     public var isBranchCard: Bool { id.hasPrefix("branch:") }

@@ -206,6 +206,7 @@ struct TaskDialog: View {
             }
             return ("Merged", "This work is merged.", {})
         }
+        if task.isFinishedReport { return ("Done", "This run finished. Merging it is another agent's or terminal's job.", {}) }
         if task.taskNumber != nil {
             return ("Start task", model.startBlockedReason(for: task, agent: defaultConnection), {
                 model.startTask(task, agent: defaultConnection)
