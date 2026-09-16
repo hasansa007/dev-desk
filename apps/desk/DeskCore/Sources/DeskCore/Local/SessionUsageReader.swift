@@ -40,6 +40,7 @@ public enum SessionUsageReader {
         switch agent {
         case .claude: return claudeLog(directory: directory, home: home)
         case .codex: return codexLog(directory: directory, home: home)
+        case .gemini, .opencode, .antigravity: return nil
         }
     }
 

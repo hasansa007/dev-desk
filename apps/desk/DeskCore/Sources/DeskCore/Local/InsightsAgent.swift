@@ -68,6 +68,9 @@ public struct InsightsAgent {
         switch agent {
         case .claude: return ["-p", prompt]
         case .codex: return ["exec", prompt]
+        // Never planned: `availability` builds from Connection rows, which are Claude and Codex, the only agents
+        // with a headless form whose answer this app reads.
+        case .gemini, .opencode, .antigravity: return []
         }
     }
 
@@ -119,6 +122,8 @@ public struct InsightsAgent {
                                     noAgentReason: String) -> InsightsAvailability {
         let agents = connections.filter { $0.state == .detected }
             .compactMap { connection in AgentKind(rawValue: connection.id).map { (connection: connection, kind: $0) } }
+            // A headless answer this app reads: Claude or Codex, whatever else a connection row might name.
+            .filter { $0.kind.runsInBackground }
         guard let ready = agents.first(where: { !$0.connection.isSignedOut }) else {
             guard let signedOut = agents.first else { return .unavailable(noAgentReason) }
             return .unavailable(signedOut.connection.detail

@@ -16,12 +16,20 @@ public enum AgentAvailability: Equatable {
 
     /// `connectionName` is what Settings calls the agent ("Claude"), `standIn` is a Debug build's stand-in
     /// executable, which runs in place of the CLI and so needs neither an install nor a sign-in.
+    ///
+    /// `terminalAgents` are the terminal-only CLIs found on this Mac. They have no Accounts row and no sign-in this
+    /// app can read, so installed is all that can be known; a run that needs a sign-in shows the tool's own prompt
+    /// in its Sessions terminal, where it can be answered.
     public static func resolve(connectionName name: String, connections: [Connection],
-                               hasStandIn: Bool = false) -> AgentAvailability {
+                               hasStandIn: Bool = false, terminalAgents: [TerminalAgent] = []) -> AgentAvailability {
         guard let agent = AgentLaunch.agent(forConnectionName: name) else {
             return .unavailable(reason: "\(name) isn't installed here, so Dev Desk can't start it.")
         }
         if hasStandIn { return .ready(agent) }
+        if let terminal = agent.terminalAgent {
+            return terminalAgents.contains(terminal) ? .ready(agent)
+                : .unavailable(reason: "\(AgentLaunch.displayName(agent)) isn't installed here, so Dev Desk can't start it.")
+        }
 
         let connection = connections.first { $0.id == agent.rawValue }
         guard connection?.state == .detected else {

@@ -16,18 +16,15 @@ final class StartRunnersTests: XCTestCase {
                        "it runs in a session this app hosts — calling it acp would name a substrate that is not built")
     }
 
-    /// Gemini, opencode and Antigravity run in the same built-in terminal, after Claude and Codex. They cannot be
-    /// queued, so a full limit shows them unavailable instead of starting past it.
-    func testOtherCLIsJoinRunItHereAndWaitForAFreeSlot() {
-        let open = StartRunners.choices(connections: [connection("claude"), connection("codex")],
-                                        terminalAgents: [.gemini, .opencode, .antigravity])
-        XCTAssertEqual(open.here.map(\.id), ["claude", "codex", "gemini", "opencode", "antigravity"])
-        XCTAssertEqual(open.here.map(\.detail), ["terminal", "terminal", "terminal", "terminal", "terminal"])
-        XCTAssertTrue(open.here.allSatisfy(\.isAvailable))
-
-        let full = StartRunners.choices(connections: [connection("claude")], terminalAgents: [.gemini], hasFreeSlot: false)
-        XCTAssertEqual(full.here.first { $0.id == "gemini" }?.detail, "no free slot")
-        XCTAssertEqual(full.here.first { $0.id == "gemini" }?.isAvailable, false)
+    /// All five are ordinary runners now: installed is what makes the terminal-only three available, and a missing
+    /// one is shown with its reason like any other agent. There is no slot special case — the queue parks any of them.
+    func testTerminalOnlyAgentsAreRunnersJudgedByWhetherTheyAreInstalled() {
+        let choices = StartRunners.choices(connections: [connection("claude"), connection("codex")],
+                                           terminalAgents: [.gemini, .antigravity])
+        XCTAssertEqual(choices.here.map(\.id), ["claude", "codex", "gemini", "opencode", "antigravity"])
+        XCTAssertEqual(choices.here.filter(\.isAvailable).map(\.id), ["claude", "codex", "gemini", "antigravity"])
+        XCTAssertEqual(choices.here.first { $0.id == "gemini" }?.detail, "terminal")
+        XCTAssertEqual(choices.here.first { $0.id == "opencode" }?.detail, "not installed")
     }
 
     /// A row that cannot be chosen is shown with the reason rather than dropped: absence is information,
@@ -35,7 +32,7 @@ final class StartRunnersTests: XCTestCase {
     func testAnUnusableAgentIsShownWithItsReasonRatherThanHidden() {
         let choices = StartRunners.choices(connections: [connection("claude", signedOut: true),
                                                          connection("codex", state: .missing)])
-        XCTAssertEqual(choices.here.count, 2)
+        XCTAssertEqual(choices.here.count, AgentKind.allCases.count)
         XCTAssertTrue(choices.here.allSatisfy { !$0.isAvailable })
         XCTAssertEqual(choices.here.first { $0.id == "claude" }?.detail, "not signed in")
         XCTAssertEqual(choices.here.first { $0.id == "codex" }?.detail, "not installed")

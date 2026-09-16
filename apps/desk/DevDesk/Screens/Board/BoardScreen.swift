@@ -182,6 +182,11 @@ private struct BoardColumnView: View {
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @AppStorage(PreferenceKey.startWith) private var startWithData = Data()
+    @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
+    /// Filing runs in the background, so it uses the Background runs setting rather than the default connection.
+    private var backgroundConnection: String {
+        BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection)
+    }
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
     private var counts: (total: Int, live: Int) { model.counts(in: column) }
@@ -208,7 +213,8 @@ private struct BoardColumnView: View {
                 } else {
                     // Continue means continue: start the agent, then go to where it lives (ADR 0026).
                     // Opening a tab and leaving Start to be pressed was navigation wearing an action's label.
-                    if case .ready(let kind) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? []),
+                    if case .ready(let kind) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? [],
+                                   terminalAgents: model.snapshot?.terminalAgents ?? []),
                        let started = terminals?.startAgent(for: task, agent: kind, worktreeLocation: worktreeLocation,
                                                            mode: RunModeChoice.current(for: model.ref)) {
                         // Starting the agent is starting the task, so the card leaves Ready for dev too
@@ -240,9 +246,9 @@ private struct BoardColumnView: View {
 
     private func localActions(for task: DeskTask) -> LocalActions? {
         guard let item = model.localBacklogItem(for: task) else { return nil }
-        let canPromote = model.localBacklogReason == nil && model.runBlockedReason(agent: defaultConnection) == nil
+        let canPromote = model.localBacklogReason == nil && model.runBlockedReason(agent: backgroundConnection) == nil
         return LocalActions(
-            fileOnGitHub: canPromote ? { model.promoteLocalItem(task, jobs: jobs, agent: defaultConnection) } : nil,
+            fileOnGitHub: canPromote ? { model.promoteLocalItem(task, jobs: jobs, agent: backgroundConnection) } : nil,
             openFile: { NSWorkspace.shared.open(URL(fileURLWithPath: item.path)) },
             // Removal is confirmed in the dialog, where the entry's title is on screen to confirm against.
             remove: { model.openTask(task.id) })

@@ -7,6 +7,11 @@ struct TaskDialog: View {
     @Bindable var model: ProjectWindowModel
     let task: DeskTask
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
+    /// Filing runs in the background, so it uses the Background runs setting rather than the default connection.
+    private var backgroundConnection: String {
+        BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection)
+    }
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(\.terminals) private var terminals
     @Environment(\.openURL) private var openURL
@@ -155,8 +160,8 @@ struct TaskDialog: View {
         // offered, and named as again, so it is not mistaken for the first attempt.
         let triedBefore = promotion.map { !$0.state.isLive } ?? false
         return (triedBefore ? "File on GitHub again" : "File on GitHub",
-                model.runBlockedReason(agent: defaultConnection), {
-                    model.promoteLocalItem(task, jobs: jobs, agent: defaultConnection)
+                model.runBlockedReason(agent: backgroundConnection), {
+                    model.promoteLocalItem(task, jobs: jobs, agent: backgroundConnection)
                 })
     }
 
@@ -207,7 +212,8 @@ struct TaskDialog: View {
                 model.dismissSheet()
             })
         }
-        let choice = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? [])
+        let choice = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? [],
+                                   terminalAgents: model.snapshot?.terminalAgents ?? [])
         let blocked: String? = {
             if case .unavailable(let reason) = choice { return reason }
             return nil

@@ -32,8 +32,9 @@ final class DoorRunsTests: XCTestCase {
         XCTAssertEqual(command?.hasSuffix("'"), true)
     }
 
+    /// Gemini has a verified terminal command now (AgentKindTests); a tool with none still gets nothing.
     func testAnAgentWithNoVerifiedInvocationGetsNoCommand() {
-        XCTAssertNil(DoorCommand.build(door: "survey", agent: "Gemini", home: home))
+        XCTAssertNil(DoorCommand.build(door: "survey", agent: "Cursor", home: home))
     }
 
     /// Standard is the default, and the default is what every existing caller and `scripts/dev.py` agree on.

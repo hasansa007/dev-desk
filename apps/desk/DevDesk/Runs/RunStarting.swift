@@ -28,7 +28,7 @@ extension ProjectWindowModel {
     /// `id` separates runs of the same door for different tasks; the folder rule prefixes `folderNote` with where it opens.
     /// Returns whether the run was actually dispatched, so a caller recording a stage records only real starts.
     @discardableResult
-    /// `command` is typed as given, for a CLI `DoorCommand` has no invocation for (`TerminalAgent`).
+    /// `command` is typed as given, for a line built elsewhere — a "Start with" command.
     func prepareRun(door: String, title: String, agent: String, arguments: [String] = [],
                     id: String? = nil, folderNote: String? = nil, mode: RunMode? = nil,
                     command prebuilt: String? = nil) -> Bool {
@@ -200,25 +200,6 @@ extension ProjectWindowModel {
         }
     }
 
-    /// Runs a task's `/dev` with Gemini, opencode or Antigravity in the built-in terminal — the same run row, slot and
-    /// Sessions pane a Claude start gets, with the command `TerminalAgent` verified. The prompt is the launch's own,
-    /// so it reads the family from the root install.sh linked for the launch's agent.
-    ///
-    /// The launch is NOT remembered: `TaskLaunch` names Claude or Codex only, so remembering this one would make the
-    /// card's next Start quietly run one of those instead. The next Start opens the sheet again, which is true.
-    func runInTerminal(_ task: DeskTask, launch: TaskLaunch, agent: TerminalAgent) {
-        let home = NSHomeDirectory()
-        guard let prompt = launch.prompt(home: home),
-              let family = DoorCommand.agent(named: AgentLaunch.connectionName(launch.agent)),
-              let id = DoorRuns.id(for: task) else { return }
-        let command = agent.command(prompt: prompt, familyRoot: "\(home)/\(family.root)")
-        let row = runRow(for: task, id: id)
-        dismissSheet()
-        if prepareRun(door: "dev", title: row.title, agent: agent.name, id: id, folderNote: row.note, command: command) {
-            Task { await recordStarted(task) }
-        }
-    }
-
     /// The title and note `startTask` gives each kind of card, so a run row reads the same whoever carries it.
     private func runRow(for task: DeskTask, id: String) -> (title: String, note: String) {
         if task.localBacklogID != nil {
@@ -307,7 +288,7 @@ extension ProjectWindowModel {
     func runBlockedReason(agent: String) -> String? {
         if !canRunDoors { return "Sample projects have no folder, so there is nothing to run in." }
         if DoorCommand.agent(named: agent) == nil {
-            return "\(agent) has no invocation this family has verified. Choose Claude or Codex in Settings."
+            return "\(agent) has no invocation this family has verified. Choose another agent in Settings."
         }
         return nil
     }

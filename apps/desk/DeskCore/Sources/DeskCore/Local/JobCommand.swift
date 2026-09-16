@@ -58,7 +58,7 @@ public enum JobCommand {
                               directory: String, home: String,
                               sessionID: String = UUID().uuidString.lowercased(),
                               mode: RunMode = .standard) -> JobLaunch? {
-        guard let agent = DoorCommand.agent(named: name),
+        guard let agent = DoorCommand.backgroundAgent(named: name),
               let prompt = DoorCommand.prompt(door: door, agent: name, arguments: arguments, home: home, mode: mode)
         else { return nil }
         if agent.executable == "claude" {
@@ -85,7 +85,7 @@ public enum JobCommand {
     /// travels with it for the same reason: a delegate run resumed without its worker has nothing to hand to.
     public static func resume(agent name: String, sessionID: String?, answer: String,
                               permission: RunPermission, home: String, mode: RunMode = .standard) -> JobLaunch? {
-        guard let agent = DoorCommand.agent(named: name) else { return nil }
+        guard let agent = DoorCommand.backgroundAgent(named: name) else { return nil }
         if agent.executable == "claude" {
             guard let sessionID else { return nil }
             return JobLaunch(executable: "claude",

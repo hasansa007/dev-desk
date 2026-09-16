@@ -10,6 +10,7 @@ struct DiagramsScreen: View {
     @Bindable var model: ProjectWindowModel
     /// Read so a change to the default connection re-resolves the agent, the same way the starter's composer does.
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(\.terminals) private var terminals
     @State private var selectedKind = ArchDiagrams.kinds.first ?? "architecture"
@@ -20,10 +21,12 @@ struct DiagramsScreen: View {
     /// The agent a generate runs, resolved the way every other screen resolves it — the saved default connection,
     /// validated against this project's detected connections — rather than a raw preference string that fell back
     /// to Codex. `_ = defaultConnection` keeps the view re-resolving when the default changes.
+    /// A generate is a background run, so it uses the Background runs setting, never a terminal-only default.
     private var agentName: String? {
-        _ = defaultConnection
-        guard case .ready(let agent) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? []) else { return nil }
-        return DoorCommand.agents.first { $0.executable == agent.rawValue }?.name
+        let name = BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection)
+        guard case .ready(let agent) = AgentChoice.resolve(override: "", defaultConnection: name,
+                                                           connections: model.snapshot?.connections ?? []) else { return nil }
+        return AgentLaunch.connectionName(agent)
     }
 
     private var repositoryRoot: String? { model.snapshot?.repositoryRoot }

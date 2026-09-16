@@ -9,6 +9,7 @@ public enum ArchRun {
     /// bare type token after it, so a target leads and the type follows; an empty target draws the whole
     /// project. Built from the same skill path `DoorCommand` uses, so both doors read the same SKILL.md.
     public static func prompt(agent name: String, kind: String, target: String, home: String) -> String? {
+        guard DoorCommand.backgroundAgent(named: name) != nil else { return nil }
         var arguments: [String] = []
         let trimmed = target.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { arguments.append(trimmed) }
@@ -27,7 +28,7 @@ public enum ArchRun {
     /// against the installed claude at `~/.local/bin/claude`, 2.1.272). Codex's `-s` takes exactly one value,
     /// so its prompt stays the single final element. nil for a CLI this family has no verified invocation for.
     public static func launch(agent name: String, kind: String, target: String, home: String) -> [String]? {
-        guard let agent = DoorCommand.agent(named: name),
+        guard let agent = DoorCommand.backgroundAgent(named: name),
               let prompt = prompt(agent: name, kind: kind, target: target, home: home) else { return nil }
         switch agent.executable {
         case "codex":

@@ -60,7 +60,8 @@ final class AutoAgents {
             needsAnotherPass = true
             return
         }
-        guard case .ready(let agent) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? []) else { return }
+        guard case .ready(let agent) = AgentChoice.current(for: model.ref, connections: model.snapshot?.connections ?? [],
+                                   terminalAgents: model.snapshot?.terminalAgents ?? []) else { return }
         let board = model.tasks
         let started = Set(board.map(\.id).filter { Self.alreadyStarted.contains(key($0)) })
         // Active takes in a start still preparing its folder, so a task is never started twice.

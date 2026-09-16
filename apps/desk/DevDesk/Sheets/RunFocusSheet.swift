@@ -7,6 +7,7 @@ struct RunFocusSheet: View {
     @Bindable var model: ProjectWindowModel
     let door: String
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
     @State private var kinds: Set<IdeationKind> = []
     @State private var scope: SurveyScope = .both
     @State private var flow = ""
@@ -27,8 +28,15 @@ struct RunFocusSheet: View {
         return isSurvey ? jobs.hasLiveSurvey(scope: scope, in: path) : jobs.hasLiveJob(door: door, in: path)
     }
 
+    /// In the background the run needs a headless form, so it uses the Background runs setting; in a terminal, any
+    /// agent the default names.
+    private var agent: String {
+        inBackground ? BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection)
+            : defaultConnection
+    }
+
     var body: some View {
-        let blocked = model.runBlockedReason(agent: defaultConnection)
+        let blocked = model.runBlockedReason(agent: agent)
         SheetChrome(title: title,
                     confirmTitle: "Start run", confirmDisabled: blocked != nil,
                     onCancel: model.dismissSheet, onConfirm: start) {
@@ -152,7 +160,7 @@ struct RunFocusSheet: View {
         // The scope names the run and nothing else: the door stays "survey", so the same SKILL is read.
         let title = isRoadmap ? "Roadmap" : (isIdeation ? "Ideation" : scope.runTitle)
         if inBackground, let jobs, case .local(let path) = model.ref, !backgroundConflict {
-            jobs.start(door: door, title: title, agent: defaultConnection, arguments: arguments,
+            jobs.start(door: door, title: title, agent: agent, arguments: arguments,
                        permission: permission, directory: path, mode: RunModeChoice.current(for: model.ref),
                        scope: isSurvey ? scope : nil)
             model.go(.terminals)

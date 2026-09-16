@@ -100,6 +100,8 @@ public struct ContextUsage: Equatable, Sendable {
         switch agent {
         case .claude: return claude(line: line)
         case .codex: return codex(line: line)
+        // No transcript format this app reads: the meter stays empty rather than guessing at one.
+        case .gemini, .opencode, .antigravity: return nil
         }
     }
 

@@ -18,6 +18,8 @@ enum PreferenceKey {
     static let surveyGrouping = "desk.surveyGrouping"
     /// The developer's "Start with" list, as `StartWithList` JSON, for every project.
     static let startWith = "desk.startWith"
+    /// Which agent background runs use: Claude or Codex, apart from the default connection.
+    static let backgroundConnection = "desk.backgroundConnection"
 
     /// The two override keys are no longer read — the connection and the mode are the app's, for every project —
     /// but a key function is how a stored value is found, and one already written stays findable.
@@ -37,6 +39,25 @@ enum AgentDefaults {
     static let worktreeLocation = "~/.devdesk/wt"
 }
 
+/// The agent background runs use — Survey or Ideation run in the background, filing, a diagram. Only Claude and Codex
+/// have a headless form whose output this app reads, so this is its own setting rather than the default connection:
+/// a default of Gemini must not quietly become Codex for a background run. Never chosen, it shows — in Settings, where
+/// it can be changed — the default when that can run in the background, and Codex otherwise.
+enum BackgroundConnection {
+    static var choices: [String] { DoorCommand.agents.map(\.name) }
+
+    static func resolve(stored: String, defaultConnection: String) -> String {
+        if choices.contains(stored) { return stored }
+        return choices.contains(defaultConnection) ? defaultConnection : AgentDefaults.connection
+    }
+
+    static var current: String {
+        let defaults = UserDefaults.standard
+        return resolve(stored: defaults.string(forKey: PreferenceKey.backgroundConnection) ?? "",
+                       defaultConnection: defaults.string(forKey: PreferenceKey.defaultConnection) ?? AgentDefaults.connection)
+    }
+}
+
 /// How many agents may run at once, across every window.
 enum AgentLimit {
     static let defaultValue = 3
@@ -51,17 +72,18 @@ enum AgentLimit {
 /// The agent a project's Agents tab and Auto run: the app default, for every project. A per-project override
 /// was one more place to look when a run started the wrong agent, and never the place anyone looked first —
 /// `resolve` still takes one so its rule stays written down and testable, but nothing reads a stored override.
-/// Only Claude and Codex, only when installed, and only through a login shell Dev Desk can drive.
+/// Any of the five agents, only when installed, and only through a login shell Dev Desk can drive.
 enum AgentChoice: Equatable {
     case ready(AgentKind)
     case unavailable(reason: String)
 
-    static func resolve(override: String, defaultConnection: String, connections: [Connection]) -> AgentChoice {
+    static func resolve(override: String, defaultConnection: String, connections: [Connection],
+                        terminalAgents: [TerminalAgent] = []) -> AgentChoice {
         let name = override.isEmpty ? defaultConnection : override
         // The rule itself lives in DeskCore, where it is tested; this reads the preferences it needs.
         // A Debug build's stand-in runs in place of the CLI, so the CLI needs neither install nor sign-in.
         switch AgentAvailability.resolve(connectionName: name, connections: connections,
-                                         hasStandIn: DebugLaunch.agentExecutable != nil) {
+                                         hasStandIn: DebugLaunch.agentExecutable != nil, terminalAgents: terminalAgents) {
         case .unavailable(let reason): return .unavailable(reason: reason)
         case .ready(let agent):
             if let reason = LoginShell.unsupportedReason { return .unavailable(reason: reason) }
@@ -70,11 +92,11 @@ enum AgentChoice: Equatable {
     }
 
     /// What the saved preferences choose for `ref` now: the app default, which every project shares.
-    static func current(for ref: ProjectRef, connections: [Connection]) -> AgentChoice {
+    static func current(for ref: ProjectRef, connections: [Connection], terminalAgents: [TerminalAgent] = []) -> AgentChoice {
         let defaults = UserDefaults.standard
         return resolve(override: "",
                        defaultConnection: defaults.string(forKey: PreferenceKey.defaultConnection) ?? AgentDefaults.connection,
-                       connections: connections)
+                       connections: connections, terminalAgents: terminalAgents)
     }
 }
 
@@ -103,6 +125,7 @@ enum ModelCatalog {
         switch agent {
         case .claude: return ["claude-opus-4-20250514", "claude-sonnet-4-20250514", "claude-3-5-haiku-20241022"]
         case .codex: return ["gpt-5-codex", "o3", "o4-mini"]
+        case .gemini, .opencode, .antigravity: return []
         }
     }
 }

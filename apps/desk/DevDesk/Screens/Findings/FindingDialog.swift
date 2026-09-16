@@ -8,6 +8,11 @@ struct FindingDialog: View {
     let finding: Finding
     @Bindable var model: ProjectWindowModel
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
+    /// Filing runs in the background, so it uses the Background runs setting rather than the default connection.
+    private var backgroundConnection: String {
+        BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection)
+    }
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @State private var tab = Tab.overview
 
@@ -25,7 +30,7 @@ struct FindingDialog: View {
     }
 
     private var fileBlockedReason: String? {
-        model.fileBlockedReason(key: finding.id, job: filing, agent: defaultConnection)
+        model.fileBlockedReason(key: finding.id, job: filing, agent: backgroundConnection)
     }
 
     var body: some View {
@@ -183,7 +188,7 @@ struct FindingDialog: View {
     }
 
     private func file() {
-        model.fileToBacklog(finding.backlogDraft, jobs: jobs, agent: defaultConnection)
+        model.fileToBacklog(finding.backlogDraft, jobs: jobs, agent: backgroundConnection)
         model.dismissSheet()
     }
 

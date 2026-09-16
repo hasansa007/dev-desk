@@ -173,6 +173,7 @@ struct AgentsAndDefaultsPane: View {
     @Bindable var model: ProjectWindowModel
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @AppStorage(PreferenceKey.runMode) private var runMode = AgentDefaults.runMode
+    @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -186,6 +187,24 @@ struct AgentsAndDefaultsPane: View {
                 .frame(width: 200)
             }
             .padding(.top, 16)
+
+            SettingsRow("Background runs") {
+                Picker("", selection: Binding(
+                    get: { BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection) },
+                    set: { storedBackground = $0 })) {
+                    ForEach(BackgroundConnection.choices, id: \.self) { Text($0).tag($0) }
+                }
+                .labelsHidden()
+                .frame(width: 200)
+            }
+            .padding(.top, 12)
+            // Said beside the picker, because the reason it is a second setting is not visible anywhere else.
+            Text("Tasks and doors run in a terminal with the default connection, any of the five. Background runs — Survey or Ideation in the background, filing an issue, a diagram — need a headless form this app reads, which only Claude and Codex have.")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineSpacing(4)
+                .frame(maxWidth: 700, alignment: .leading)
+                .padding(.top, 8)
 
             SettingsRow("App default mode") {
                 Picker("", selection: $runMode) {
@@ -225,7 +244,8 @@ struct AgentsAndDefaultsPane: View {
         }
     }
 
-    private var providers: [String] { model.snapshot?.capabilities.providers ?? [] }
+    /// Every agent a task can start with, installed or not: the start sheet says which are missing.
+    private var providers: [String] { AgentLaunch.runnableKinds.map(AgentLaunch.connectionName) }
 
     private var capabilitiesTable: some View {
         let matrix = model.snapshot?.capabilities

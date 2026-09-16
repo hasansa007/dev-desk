@@ -1,6 +1,6 @@
 # 0036 — Agents run over a protocol, and the terminal leaves the app
 
-Status:  Accepted — reviewed 2026-09-16; amended three times 2026-09-16; implementation started at step 1
+Status:  Accepted — reviewed 2026-09-16; amended four times 2026-09-16; implementation started at step 1
 Date:    2026-09-15  ·  accepted 2026-09-16
 Commit:  (this branch)  ·  `main`  ·  design record
 [`docs/superpowers/specs/2026-09-15-runs-without-terminal-design.md`](../superpowers/specs/2026-09-15-runs-without-terminal-design.md)
@@ -248,3 +248,25 @@ Sessions row like any other. An app's run is not watched at all beyond its branc
 
 **Not built.** Decision 5's *Elsewhere* count needs a record of work started outside the app, and nothing stores
 one yet. Starting with an app therefore takes no slot and is not counted, which is true but not yet visible.
+
+## Amendment 4 — 2026-09-16 · the terminal-only agents are agents, and background runs have their own setting
+
+Amendment 2 ran Gemini, opencode and Antigravity beside Claude and Codex, but with two limits: they could not be
+queued, and a start with one was not remembered. Both came from one fact — `AgentKind` had two cases, and everything
+that remembers or queues a start stores an `AgentKind`. The developer asked for them to be *"default-able and
+remembered"*.
+
+**`AgentKind` has five cases.** The start sheet, a remembered launch, the queue, Auto and a task's own agent session
+all read the kind, so each now carries any of the five with no special path. A terminal-only kind types the command
+`TerminalAgent` verified, reading the family from Claude's root, since install.sh writes no copy for the other
+three. Installed is all that can be known about them: they have no Accounts row and no sign-in this app reads.
+
+**Background runs keep to Claude and Codex, under a setting of their own.** Survey or Ideation run in the
+background, filing an issue and a diagram need a headless form whose output this app reads. Only Claude and Codex
+have one, and reading Antigravity's is what its terms forbid. The developer chose a separate *Background runs*
+setting over a silent fallback or disabling those features. A default of Gemini must not quietly become Codex. Never
+chosen, the setting shows the default when that can run in the background, and Codex otherwise.
+`DoorCommand.backgroundAgent(named:)` is the only lookup `JobCommand` and `ArchRun` use. That fixes a latent defect:
+`JobCommand` read every non-Claude agent as Codex and would have built `gemini exec --json`. The widening also
+exposed one in Insights, which planned a headless run for any detected connection whose id was a kind. It now takes
+Claude and Codex only.

@@ -43,6 +43,11 @@ private struct FindingsBoard: View {
     @State private var collapsed: Set<String> = []
     @AppStorage(PreferenceKey.surveyGrouping) private var groupingRaw = FindingGrouping.status.rawValue
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
+    /// Filing runs in the background, so it uses the Background runs setting rather than the default connection.
+    private var backgroundConnection: String {
+        BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection)
+    }
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
     private var grouping: FindingGrouping { FindingGrouping(rawValue: groupingRaw) ?? .status }
@@ -336,7 +341,7 @@ private struct FindingsBoard: View {
     /// left alone rather than drafted a second time.
     private var fileable: [Finding] {
         checkedFindings.filter {
-            model.fileBlockedReason(key: $0.id, job: filingJob(for: $0), agent: defaultConnection) == nil
+            model.fileBlockedReason(key: $0.id, job: filingJob(for: $0), agent: backgroundConnection) == nil
         }
     }
 
@@ -363,7 +368,7 @@ private struct FindingsBoard: View {
                 }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
                 Button(toFile.count == count ? "Add \(count) to backlog" : "Add \(toFile.count) of \(count) to backlog") {
-                    toFile.forEach { model.fileToBacklog($0.backlogDraft, jobs: jobs, agent: defaultConnection) }
+                    toFile.forEach { model.fileToBacklog($0.backlogDraft, jobs: jobs, agent: backgroundConnection) }
                     checked = []
                 }
                 .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))

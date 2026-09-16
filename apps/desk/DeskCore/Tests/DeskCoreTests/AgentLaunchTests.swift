@@ -55,8 +55,10 @@ final class AgentLaunchTests: XCTestCase {
     func testConnectionNamesMapToTheAgentsDevDeskStarts() {
         XCTAssertEqual(AgentLaunch.agent(forConnectionName: "Claude"), .claude)
         XCTAssertEqual(AgentLaunch.agent(forConnectionName: "Codex"), .codex)
-        XCTAssertNil(AgentLaunch.agent(forConnectionName: "Gemini"), "no confirmed way to run the dev pipeline")
-        XCTAssertNil(AgentLaunch.agent(forConnectionName: "Antigravity"))
+        // Terminal-only agents since 2026-09-16, each with a command run for real (TerminalAgent).
+        XCTAssertEqual(AgentLaunch.agent(forConnectionName: "Gemini"), .gemini)
+        XCTAssertEqual(AgentLaunch.agent(forConnectionName: "Antigravity"), .antigravity)
+        XCTAssertNil(AgentLaunch.agent(forConnectionName: "Cursor"))
         XCTAssertNil(AgentLaunch.agent(forConnectionName: ""))
     }
 

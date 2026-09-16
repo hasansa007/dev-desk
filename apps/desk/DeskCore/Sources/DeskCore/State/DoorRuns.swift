@@ -69,7 +69,21 @@ public enum DoorCommand {
         ("Codex", "codex", ".codex/skills/dev"),
     ]
 
+    /// Terminal runs only. Their root is Claude's: install.sh writes the family for Claude and Codex alone, and these
+    /// read it from there (verified 2026-09-16).
+    public static let terminalOnlyAgents: [(name: String, executable: String, root: String)] = [
+        ("Gemini", "gemini", ".claude/skills/dev"),
+        ("opencode", "opencode", ".claude/skills/dev"),
+        ("Antigravity", "agy", ".claude/skills/dev"),
+    ]
+
+    /// Any agent a door or task may run with in a terminal.
     public static func agent(named name: String) -> (name: String, executable: String, root: String)? {
+        (agents + terminalOnlyAgents).first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
+    }
+
+    /// Only an agent a background run can use: a headless form whose output this app reads — Claude and Codex.
+    public static func backgroundAgent(named name: String) -> (name: String, executable: String, root: String)? {
         agents.first { $0.name.caseInsensitiveCompare(name) == .orderedSame }
     }
 
@@ -105,6 +119,9 @@ public enum DoorCommand {
                              mode: RunMode = .standard) -> String? {
         guard let agent = agent(named: name),
               let prompt = prompt(door: door, agent: name, arguments: arguments, home: home, mode: mode) else { return nil }
+        if let terminal = AgentLaunch.agent(forConnectionName: agent.name)?.terminalAgent {
+            return terminal.command(prompt: prompt, familyRoot: "\(home)/\(agent.root)")
+        }
         return "\(agent.executable) \(quoted(prompt))"
     }
 

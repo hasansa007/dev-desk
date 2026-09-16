@@ -16,8 +16,7 @@ struct StartTaskSheetHost: View {
             StartSheet(launch: launch,
                        choices: StartRunners.choices(connections: model.snapshot?.connections ?? [],
                                                      handoff: StartWithRows.options(StartWithList.decode(startWithData)),
-                                                     terminalAgents: model.snapshot?.terminalAgents ?? [],
-                                                     hasFreeSlot: AgentSlots.free > 0),
+                                                     terminalAgents: model.snapshot?.terminalAgents ?? []),
                        prompt: launch.prompt(home: NSHomeDirectory()) ?? "",
                        slots: StartSlots(running: LiveShells.shared.agentCount, limit: AgentLimit.current),
                        isFirstStart: !model.remembersLaunch(for: task),
@@ -31,17 +30,13 @@ struct StartTaskSheetHost: View {
         }
     }
 
-    /// A `.here` row runs the task in this window: Claude or Codex through its launch, any other CLI through the
-    /// command `TerminalAgent` verified. A `.handoff` row is an entry from the developer's "Start with" list.
+    /// A `.here` row runs the task in this window with the agent it names, any of the five. A `.handoff` row is an
+    /// entry from the developer's "Start with" list.
     private func start(_ task: DeskTask, launch: TaskLaunch, with runner: RunnerOption) {
         if runner.kind == .handoff {
             if let entry = StartWithList.decode(startWithData).first(where: { $0.id == runner.id }) {
                 model.start(task, with: entry, agent: defaultConnection)
             }
-            return
-        }
-        if let other = TerminalAgent(rawValue: runner.id) {
-            model.runInTerminal(task, launch: launch, agent: other)
             return
         }
         guard let agent = AgentKind(rawValue: runner.id) else { return }

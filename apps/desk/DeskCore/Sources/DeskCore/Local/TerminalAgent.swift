@@ -32,14 +32,21 @@ public enum TerminalAgent: String, CaseIterable, Hashable {
         }
     }
 
-    /// The line typed into the terminal. Every form stays interactive, so the pipeline's gates are answered there.
-    public func command(prompt: String, familyRoot: String) -> String {
-        let prompt = DoorCommand.quoted(prompt), root = DoorCommand.quoted(familyRoot)
+    /// The argv, for a session started with arguments. Every form stays interactive, so the pipeline's gates are
+    /// answered in the terminal.
+    public func arguments(prompt: String, familyRoot: String) -> [String] {
         switch self {
-        case .gemini: return "gemini --include-directories \(root) -i \(prompt)"
-        case .opencode: return "opencode --prompt \(prompt)"
-        case .antigravity: return "agy --add-dir \(root) -i \(prompt)"
+        case .gemini: return ["gemini", "--include-directories", familyRoot, "-i", prompt]
+        case .opencode: return ["opencode", "--prompt", prompt]
+        case .antigravity: return ["agy", "--add-dir", familyRoot, "-i", prompt]
         }
+    }
+
+    /// The line typed into a shell: the argv with every value quoted, flags left bare.
+    public func command(prompt: String, familyRoot: String) -> String {
+        arguments(prompt: prompt, familyRoot: familyRoot).enumerated()
+            .map { index, part in index == 0 || part.hasPrefix("-") ? part : DoorCommand.quoted(part) }
+            .joined(separator: " ")
     }
 
     /// The installed ones, in declaration order, by `which` — read-only, nothing is launched. An absent tool is not
