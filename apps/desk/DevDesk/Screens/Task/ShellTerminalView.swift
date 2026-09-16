@@ -127,8 +127,25 @@ final class ShellTerminalRegistry {
     func start(taskID: String, folder: URL, command: [String] = []) {
         guard !isClosed else { return }
         if let executable = command.first { executables[taskID] = executable }
-        terminal(for: taskID).start(in: folder, generation: sessions.generation(for: taskID), command: command)
+        let terminal = terminal(for: taskID)
+        runsCommand[taskID] = !command.isEmpty
+        reportsThroughHooks[taskID] = AgentHooks.reports(command.first)
+        terminal.start(in: folder, generation: sessions.generation(for: taskID), command: AgentHooks.inject(into: command))
     }
+
+    /// A door's command, typed into its shell with the agent's hooks added.
+    func sendCommand(_ line: String, to taskID: String) {
+        if AgentHooks.reports(line.split(separator: " ").first.map(String.init)) { reportsThroughHooks[taskID] = true }
+        send(AgentHooks.inject(into: line) + "\n", to: taskID)
+    }
+
+    /// What each session reports — a question, a finished turn, its own exit, a bell. Set by the window, which knows
+    /// whether the session is on screen.
+    var onEvent: ((String, TerminalEvent) -> Void)?
+    /// Sessions whose agent reports through hooks: their bell is not also read as a question.
+    private var reportsThroughHooks: [String: Bool] = [:]
+    /// Sessions started with a command, whose exit is the run ending. A plain shell exiting is the developer typing `exit`.
+    private var runsCommand: [String: Bool] = [:]
 
     /// Prepares the task's folder, then runs the agent there. The start counts towards the app's agents from this call, so Auto's limit
     /// holds while the folder is prepared. Auto passes `refusingRoot`, so a folder that would fall back to the project root fails instead,
@@ -196,9 +213,15 @@ final class ShellTerminalRegistry {
         // failed headless run's one-line error was being dropped with it.
         let terminal = ShellTerminal { [weak self] terminal, status in
             guard let self else { return }
+            if runsCommand[taskID] == true, !terminal.wasEnded, let status { onEvent?(taskID, .exited(status)) }
             sessions.markEnded(taskID: taskID, status: status, generation: terminal.generation,
                                outputTail: terminal.transcriptTail())
             if terminals[taskID] === terminal { terminals[taskID] = nil }
+        }
+        terminal.onEvent = { [weak self] event in
+            guard let self else { return }
+            if event == .bell, reportsThroughHooks[taskID] == true { return }
+            onEvent?(taskID, event)
         }
         terminals[taskID] = terminal
         return terminal
@@ -302,6 +325,13 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
     /// The session's generation when this process started.
     private(set) var generation = 0
     private let onExit: @MainActor (ShellTerminal, Int32?) -> Void
+    /// What the session reports about itself: hook events, and the bell.
+    var onEvent: (@MainActor (TerminalEvent) -> Void)?
+    /// Set by `end()`: a session the developer stopped is not news.
+    private(set) var wasEnded = false
+    /// The folder this session's hooks drop events into, and the watch on it.
+    private var eventDirectory: URL?
+    private var eventWatch: DispatchSourceFileSystemObject?
     private var exitMonitor: DispatchSourceProcess?
     /// Foreground job groups seen while signalling; an interactive shell runs each job in a group of its own.
     private var jobGroups: Set<pid_t> = []
@@ -315,6 +345,7 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
         // Option types characters, as it does in Terminal by default, rather than acting as Meta.
         view.optionAsMetaKey = false
         view.processDelegate = self
+        view.onBell = { [weak self] in self?.onEvent?(.bell) }
     }
 
     var isRunning: Bool { view.process.shellPid != 0 && !hasExited }
@@ -344,6 +375,7 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
         }
         var environment = ProcessInfo.processInfo.environment
         environment["TERM"] = "xterm-256color"
+        if let directory = watchEvents() { environment[AgentHooks.eventDirectoryVariable] = directory.path }
         // An app opened from Finder gets no locale; a locale that is set is never replaced.
         if ["LANG", "LC_ALL", "LC_CTYPE"].allSatisfy({ (environment[$0] ?? "").isEmpty }) {
             environment["LANG"] = Self.utf8Locale()
@@ -384,6 +416,7 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
     /// SIGHUP now, then SIGKILL 2 s later to whatever of the shell and its foreground job is still there.
     func end() {
         guard isRunning else { return }
+        wasEnded = true
         send(SIGHUP)
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
@@ -432,11 +465,45 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
     private func exited(rawStatus: Int32?) {
         guard !hasExited else { return }
         hasExited = true
+        readEvents()
+        eventWatch?.cancel()
+        eventWatch = nil
+        if let eventDirectory { try? FileManager.default.removeItem(at: eventDirectory) }
         exitMonitor?.cancel()
         exitMonitor = nil
         // A job that outlived its shell stays listed until end()'s SIGKILL, so quit can still reach it.
         if !hasLiveJobs { LiveShells.shared.remove(self) }
         onExit(self, Self.exitStatus(rawStatus))
+    }
+
+    /// A private folder for this session's hook events, watched for writes. nil when it cannot be made, which only
+    /// costs the notifications.
+    private func watchEvents() -> URL? {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("devdesk-events", isDirectory: true)
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        guard (try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)) != nil else { return nil }
+        let descriptor = open(directory.path, O_EVTONLY)
+        guard descriptor >= 0 else { return nil }
+        let watch = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: .write, queue: .main)
+        watch.setEventHandler { [weak self] in MainActor.assumeIsolated { self?.readEvents() } }
+        watch.setCancelHandler { close(descriptor) }
+        watch.activate()
+        eventDirectory = directory
+        eventWatch = watch
+        return directory
+    }
+
+    /// Each finished event file once, oldest first; a dotfile is still being written and is left for the next pass.
+    private func readEvents() {
+        guard let eventDirectory,
+              let names = try? FileManager.default.contentsOfDirectory(atPath: eventDirectory.path) else { return }
+        for name in names.sorted() where !name.hasPrefix(".") {
+            let file = eventDirectory.appendingPathComponent(name)
+            let contents = (try? Data(contentsOf: file)) ?? Data()
+            try? FileManager.default.removeItem(at: file)
+            if let event = AgentHooks.event(fileName: name, contents: contents) { onEvent?(event) }
+        }
     }
 
     /// waitpid's raw status. A shell killed by a signal reads as 128 + the signal, as `$?` shows it.
@@ -465,6 +532,10 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
 /// Takes keyboard focus the first time it lands in a window after a start, so the user can type straight away.
 final class FocusingTerminalView: LocalProcessTerminalView {
     var focusOnAttach = false
+    /// The app says what a bell means (a notification, with the chosen sound) instead of SwiftTerm's system beep.
+    var onBell: (() -> Void)?
+
+    override func bell(source: Terminal) { onBell?() }
 
     /// What the arrows and delete report, whatever modifier is held: their characters are the private-use
     /// ones AppKit gives function keys, so the key itself is read from the code.

@@ -105,7 +105,7 @@ struct ShellPane: View {
             guard let command else { return }
             // A login shell reads nothing until it has drawn its first prompt; typed sooner, the line is swallowed.
             try? await Task.sleep(for: .milliseconds(700))
-            terminals.send(command + "\n", to: id)
+            terminals.sendCommand(command, to: id)
         }
     }
 

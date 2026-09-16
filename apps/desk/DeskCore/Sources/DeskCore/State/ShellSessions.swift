@@ -140,6 +140,8 @@ public final class ShellSessions {
 
     /// The last non-empty lines the task's ended session wrote, newest last; empty until an exit recorded some.
     public func outputTail(for taskID: String) -> [String] { outputTails[taskID] ?? [] }
+    /// The name a session was started under, when it was given one.
+    public func title(for taskID: String) -> String? { titles[taskID] }
 
     /// The gap between reads. The CLI appends to its transcript as it works, so a meter that lags a few seconds
     /// is still a meter, while anything faster re-reads a 256 KB tail for a number that has barely moved.

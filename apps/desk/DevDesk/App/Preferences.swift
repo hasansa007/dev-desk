@@ -11,6 +11,8 @@ enum PreferenceKey {
     static let notifyDecisions = "desk.notifyDecisions"
     static let notifyCompletion = "desk.notifyCompletion"
     static let notifyFailures = "desk.notifyFailures"
+    /// A macOS system sound's name, or "" for none. Played by the app, so it sounds even when the banner is skipped.
+    static let notifySound = "desk.notifySound"
     static let worktreeLocation = "desk.worktreeLocation"
     static let agentLimit = "desk.agentLimit"
     /// The most agents one findings or ideation run may start (ADR 0043).

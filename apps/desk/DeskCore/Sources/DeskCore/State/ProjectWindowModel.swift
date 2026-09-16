@@ -448,6 +448,11 @@ public final class ProjectWindowModel {
     public var tasks: [DeskTask] { (snapshot?.board.value ?? []).map(promotingRunning) }
     public var selectedTask: DeskTask? { selectedTaskID.flatMap(task) }
     public func task(_ id: String) -> DeskTask? { tasks.first { $0.id == id } }
+
+    /// What a notification calls a session: its door run's or task's title, else the name it started under.
+    public func sessionName(_ id: String) -> String {
+        runs.runs.first { $0.id == id }?.title ?? task(id)?.title ?? sessions.title(for: id) ?? "A terminal session"
+    }
     public var openTaskCount: Int { tasks.filter { $0.column != .done }.count }
     public var findingsCount: Int? { snapshot?.findings.value?.findings.count }
     public var ideationCount: Int? { snapshot?.ideation.value?.opportunities.count }

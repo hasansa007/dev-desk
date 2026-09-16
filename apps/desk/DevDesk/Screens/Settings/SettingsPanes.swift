@@ -402,6 +402,7 @@ struct NotificationsPane: View {
     @AppStorage(PreferenceKey.notifyDecisions) private var notifyDecisions = true
     @AppStorage(PreferenceKey.notifyCompletion) private var notifyCompletion = true
     @AppStorage(PreferenceKey.notifyFailures) private var notifyFailures = true
+    @AppStorage(PreferenceKey.notifySound) private var sound = NotificationSound.defaultName
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -412,7 +413,21 @@ struct NotificationsPane: View {
                 Toggle("Failed runs", isOn: $notifyFailures)
             }
             .padding(.top, 16)
-            Text("These cover background runs — a run that needs an answer, one that finished, one that failed. A session in a terminal joins them when it can report its own state.")
+            SettingsRow("Sound") {
+                HStack(spacing: 8) {
+                    Picker("", selection: $sound) {
+                        Text("None").tag("")
+                        ForEach(NotificationSound.choices, id: \.self) { Text($0).tag($0) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 160)
+                    Button("Preview") { NotificationSound.play(sound) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                        .disabled(sound.isEmpty)
+                }
+            }
+            .padding(.top, 14)
+            Text("Background runs and terminal sessions both notify. Claude and Codex report exactly when they need you or finish a turn; other tools are heard through the terminal bell, which only guesses. The sound plays even when the session is already on screen.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)

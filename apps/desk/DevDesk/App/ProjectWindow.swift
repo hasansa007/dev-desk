@@ -65,7 +65,19 @@ struct ProjectWindow: View {
         .onChange(of: model.snapshot != nil) { _, isLoaded in
             if isLoaded { applyFirstLoad() }
         }
-        .onAppear { registry.windowOpened(ref) }
+        .onAppear {
+            registry.windowOpened(ref)
+            terminals.onEvent = { [model, ref] id, event in
+                guard case .local(let path) = ref else { return }
+                let onScreen = NSApp.isActive && model.destination == .terminals && model.selectedSessionID == id
+                RunNotifications.post(event, session: id, name: model.sessionName(id), directory: path, isOnScreen: onScreen)
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: RunNotifications.openSession)) { note in
+            guard case .local(let path) = ref, note.userInfo?["directory"] as? String == path else { return }
+            if let session = note.userInfo?["session"] as? String { model.selectedSessionID = session }
+            model.go(.terminals)
+        }
         .onDisappear { registry.windowClosed(ref) }
         .onChange(of: model.destination) { _, value in if layoutRestored { storedDestination = value } }
         .onChange(of: model.selectedTaskID) { _, value in if layoutRestored { storedTaskID = value ?? "" } }

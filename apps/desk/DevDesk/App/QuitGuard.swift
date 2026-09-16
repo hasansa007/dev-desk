@@ -1,6 +1,7 @@
 import AppKit
 import DeskCore
 import SwiftUI
+import UserNotifications
 
 /// Quitting used to end every agent and every background run without a word: `endAllBeforeQuit` fires on
 /// `willTerminate`, by which point the decision is already made. An agent mid-task is minutes of work and
@@ -28,6 +29,7 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
     private var appearanceObservation: NSKeyValueObservation?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        UNUserNotificationCenter.current().delegate = self
         // Re-assert the chosen icon on every launch: a reinstall dittos a fresh bundle over this one
         // and wipes any custom icon, so a launch is the only moment the preference can restore it.
         // This is the earliest the preference can speak, not the last word on it — see
@@ -74,5 +76,27 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
         alert.buttons.last?.keyEquivalent = "\r"
         alert.buttons.first?.keyEquivalent = ""
         return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+}
+
+/// Banners show while the app is in front too — a session in another window or tab is still news — and a click
+/// brings the app forward and hands the session to the window that owns it.
+extension QuitGuard: UNUserNotificationCenterDelegate {
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification,
+                                            withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        completionHandler([.banner, .list])
+    }
+
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse,
+                                            withCompletionHandler completionHandler: @escaping () -> Void) {
+        let info = response.notification.request.content.userInfo
+        let session = info[RunNotifications.sessionKey] as? String ?? info["desk.jobID"] as? String
+        let directory = info[RunNotifications.projectDirectoryKey] as? String
+        DispatchQueue.main.async {
+            NSApp.activate()
+            NotificationCenter.default.post(name: RunNotifications.openSession, object: nil,
+                                            userInfo: ["session": session as Any, "directory": directory as Any])
+            completionHandler()
+        }
     }
 }
