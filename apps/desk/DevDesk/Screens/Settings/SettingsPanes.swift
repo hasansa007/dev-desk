@@ -334,12 +334,12 @@ struct AccountsPane: View {
                     Button(auth.isInteractive ? "Open…" : "Sign in…") { run(auth.signIn, for: connection) }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
                         .help(auth.isInteractive
-                              ? "Opens `\(auth.signIn)` in your terminal, where you can sign in from its own menu"
-                              : "Runs `\(auth.signIn)` in your terminal")
+                              ? "Opens \(auth.signIn) in your terminal, where you can sign in from its own menu"
+                              : "Runs \(auth.signIn) in your terminal")
                 } else if let signOut = auth.signOut {
                     Button("Sign out…") { signingOut = connection }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                        .help("Runs `\(signOut)` in your terminal")
+                        .help("Runs \(signOut) in your terminal")
                 }
             }
         }
