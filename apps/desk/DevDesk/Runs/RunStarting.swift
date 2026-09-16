@@ -173,8 +173,8 @@ extension ProjectWindowModel {
             Task { await queueForStart(task) }
             return
         }
-        // Dispatched, so the parked copy has done its job; the run's own record takes over.
-        if let launch { launchStore?.clear(id: launch.id) }
+        // The launch is NOT cleared on dispatch: it is what this task was last started with, so the next
+        // Start can run it without asking again and the sheet opens only the first time.
         if let entry = task.localBacklogID {
             // No issue to name. `/dev` takes a description as readily as a number, and the file is the description.
             if prepareRun(door: "dev", title: task.title, agent: agent,
@@ -196,8 +196,24 @@ extension ProjectWindowModel {
         }
     }
 
-    /// This project's parked launches, or nil for a project with no folder to keep them in.
+    /// This project's launches, or nil for a project with no folder to keep them in.
     var launchStore: TaskLaunchStore? { projectRoot.map(TaskLaunchStore.init(projectRoot:)) }
+
+    /// The launch this task was last started with, which is also what the queue reads. Its presence is what
+    /// makes a start the task's second: the sheet opens once, and after that the same choice runs.
+    func rememberedLaunch(for task: DeskTask) -> TaskLaunch? {
+        DoorRuns.id(for: task).flatMap { launchStore?.read(id: $0) }
+    }
+
+    func remembersLaunch(for task: DeskTask) -> Bool { rememberedLaunch(for: task) != nil }
+
+    /// Starts from the sheet's choice: the launch is remembered first, so the queue and the next Start both
+    /// read what was decided here rather than a preference that may have moved since.
+    func startTask(_ task: DeskTask, with launch: TaskLaunch) {
+        launchStore?.write(launch)
+        dismissSheet()
+        startTask(task, agent: AgentLaunch.connectionName(launch.agent), using: launch)
+    }
 
     /// Everything this Start decided, as one value (ADR 0036 decision 1): the door and its arguments, the
     /// agent and mode chosen now, where a worktree may go, and the base pinned to the commit it names.

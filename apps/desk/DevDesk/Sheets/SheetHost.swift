@@ -79,6 +79,8 @@ struct SheetHost: View {
         case .addTask(let column):
             // An unknown raw value lands in Backlog, the column that records no stage at all.
             AddTaskSheet(model: model, column: BoardColumn(rawValue: column) ?? .backlog)
+        case .startTask(let taskID):
+            StartTaskSheetHost(model: model, taskID: taskID)
         case .settings:
             SettingsSheet(model: model)
         case .cloneRepository:

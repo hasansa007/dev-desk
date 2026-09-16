@@ -252,7 +252,15 @@ private struct BoardColumnView: View {
     private func start(for task: DeskTask) -> (() -> Void)? {
         guard column != .done, column != .backlog,
               model.startBlockedReason(for: task, agent: defaultConnection) == nil else { return nil }
-        return { model.startTask(task, agent: defaultConnection) }
+        // The sheet on a task's FIRST start, and whenever ⌥ asks for it; after that the remembered launch
+        // runs without a second dialog (ADR 0036 §10.3 answer 3). Auto never comes through here.
+        return {
+            if model.remembersLaunch(for: task), !NSEvent.modifierFlags.contains(.option) {
+                model.startTask(task, agent: defaultConnection, using: model.rememberedLaunch(for: task))
+            } else {
+                model.present(.startTask(task.id))
+            }
+        }
     }
 
     /// Every column that can take a typed task ends in the same row. The task is written to `docs/backlog/`

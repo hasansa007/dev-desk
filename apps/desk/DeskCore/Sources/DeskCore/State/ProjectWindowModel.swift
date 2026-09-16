@@ -81,6 +81,8 @@ public enum SheetKind: Hashable, Identifiable {
     case runFocus(String)
     case deleteBranch(String)
     case addTask(String)
+    /// The start sheet for one task: its launch, and what may carry it (ADR 0036 §4.8 moment 1).
+    case startTask(String)
     case settings
 
     public var id: String {
@@ -99,6 +101,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .runFocus(let door): return "runFocus:\(door)"
         case .deleteBranch(let branch): return "deleteBranch:\(branch)"
         case .addTask(let column): return "addTask:\(column)"
+        case .startTask(let taskID): return "startTask:\(taskID)"
         case .settings: return "settings"
         }
     }

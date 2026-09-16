@@ -1,7 +1,7 @@
 import Foundation
 
 /// The agents Dev Desk starts. Gemini has no confirmed way to run the dev pipeline, so it has no case.
-public enum AgentKind: String, Equatable {
+public enum AgentKind: String, Equatable, CaseIterable {
     case claude, codex
 }
 
@@ -34,6 +34,10 @@ public enum AgentLaunch {
     public static func skillRoot(for agent: AgentKind) -> String {
         NSString(string: "~/.\(agent.rawValue)/skills/dev").expandingTildeInPath
     }
+
+    /// The agents a Start may offer, in the order the sheet lists them. Gemini is not one: it has no case,
+    /// because the family has no verified way to run the pipeline with it.
+    public static let runnableKinds: [AgentKind] = AgentKind.allCases
 
     /// The name a connection and `DoorCommand` know this agent by — "Claude", not the longer display name.
     /// The inverse of `agent(forConnectionName:)`, and the string every start path passes around.

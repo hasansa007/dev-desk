@@ -17,18 +17,10 @@ struct StartSlots: Hashable {
     }
 }
 
-/// How gates are answered once a run is under way. Both policies block: every *Run it here* row is a
-/// protocol session, so there is no third meaning hiding behind identical chrome (ADR 0036 decision 2).
-enum StartPermissionPolicy: String, CaseIterable, Hashable {
-    case atGates, everyTool
-
-    var title: String {
-        switch self {
-        case .atGates: return "Ask at gates"
-        case .everyTool: return "Ask every tool"
-        }
-    }
-}
+// The Permissions control the mockup draws is deliberately absent until it decides something. `TaskLaunch`
+// carries no permission policy, and today a run is an interactive session whose gates are answered in its own
+// terminal — so the two radio buttons would have changed nothing while looking like they had. They arrive
+// with `ACPSession`, where `session/request_permission` makes the choice real (ADR 0036 decision 2).
 
 /// The sheet a start opens: the `TaskLaunch` on the left, who may carry it on the right, and **nothing runs
 /// until the primary button** (ADR 0036 decision 1). It is a pure view over values — it detects nothing and
@@ -43,13 +35,12 @@ struct StartSheet: View {
     /// answer 3), so this sheet says which one it is rather than deciding when to appear.
     var isFirstStart = true
     let onCancel: () -> Void
-    let onStart: (RunnerOption, StartPermissionPolicy) -> Void
+    let onStart: (RunnerOption) -> Void
 
     @State private var selectedRunnerID: String?
-    @State private var policy: StartPermissionPolicy = .atGates
 
     init(launch: TaskLaunch, choices: RunnerChoices, prompt: String, slots: StartSlots, isFirstStart: Bool = true,
-         onCancel: @escaping () -> Void, onStart: @escaping (RunnerOption, StartPermissionPolicy) -> Void) {
+         onCancel: @escaping () -> Void, onStart: @escaping (RunnerOption) -> Void) {
         self.launch = launch
         self.choices = choices
         self.prompt = prompt
@@ -179,7 +170,7 @@ struct StartSheet: View {
         NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: path)
     }
 
-    // MARK: - The two lists and the policy
+    // MARK: - The two lists
 
     private var side: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -194,13 +185,6 @@ struct StartSheet: View {
                 .padding(.top, 4)
             ForEach(choices.handoff) { option in
                 runnerRow(option)
-            }
-            SectionLabel("Permissions")
-                .padding(.top, 4)
-            ForEach(StartPermissionPolicy.allCases, id: \.self) { choice in
-                optionRow(title: choice.title, detail: nil, isSelected: policy == choice, isAvailable: true) {
-                    policy = choice
-                }
             }
         }
         .frame(width: 252, alignment: .leading)
@@ -271,7 +255,7 @@ struct StartSheet: View {
             Button("Cancel", action: onCancel)
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .regular))
             Button(primaryTitle) {
-                if let selected { onStart(selected, policy) }
+                if let selected { onStart(selected) }
             }
             .buttonStyle(DeskButtonStyle(kind: .primary, size: .regular))
             .disabled(selected == nil)
@@ -321,14 +305,14 @@ struct StartSheet_Previews: PreviewProvider {
                                     isAvailable: false),
                    ], handoff: handoff),
                    prompt: prompt, slots: StartSlots(running: 3, limit: 5, elsewhere: 2),
-                   onCancel: {}, onStart: { _, _ in })
+                   onCancel: {}, onStart: { _ in })
             .previewDisplayName("Adapters found")
 
         StartSheet(launch: launch,
                    choices: RunnerChoices(here: [], handoff: handoff,
                                           hereEmptyReason: "No ACP adapter was found. Install one, or hand this to a tool below."),
                    prompt: prompt, slots: StartSlots(running: 0, limit: 5),
-                   onCancel: {}, onStart: { _, _ in })
+                   onCancel: {}, onStart: { _ in })
             .previewDisplayName("No adapter · the reason")
     }
 }
