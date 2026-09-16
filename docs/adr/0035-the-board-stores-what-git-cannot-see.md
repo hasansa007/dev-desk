@@ -1,6 +1,6 @@
 # 0035 — The board stores what git cannot see
 
-Status:  Accepted
+Status:  Accepted, amended by [0037](0037-a-local-card-carries-its-own-done.md)
 Date:    2026-09-15
 Commit:  (uncommitted)  ·  working tree
 

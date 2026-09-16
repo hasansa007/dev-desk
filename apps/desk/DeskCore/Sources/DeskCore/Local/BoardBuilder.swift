@@ -343,30 +343,54 @@ private struct BoardContext {
             lastCommit: branch.lastCommit, unmergedCount: branch.countedUnmerged)
     }
 
+    /// A done local card has no branch to name, so the line carries what closed it instead — free text from
+    /// the card, escaped, because it is the repository's own prose.
+    static func resolvedLine(_ item: BacklogItem) -> String {
+        guard let resolved = item.resolved, !resolved.isEmpty else { return "Done — the card records no commit" }
+        return "Done · \(resolved)"
+    }
+
+    /// Said on both Changes and Evidence: the work happened, and the board was not the thing that watched it.
+    /// Claiming a diff it cannot show would be worse than saying there is none.
+    static let finishedElsewhere = "Finished outside the board — this card records the result, not a diff."
+
     /// A card for work that exists only as a file. No issue, no branch yet: its Overview is the file itself.
     /// The stored stage is the only thing that can move it forward — there is no milestone and no pull
     /// request to consult — so it reads its column from `.devdesk/board.json` and stays local either way.
+    ///
+    /// Done is the exception, and it comes from the card's own file rather than from `board.json`. ADR 0035
+    /// gives Done to git (a merged pull request), which for a local card is a rule that can never fire: there
+    /// is no branch and no pull request for git to have an opinion about, so finished work sat in In progress
+    /// with nowhere to go. Reading `status: done` off the card is not a second authority over git — it is the
+    /// lifecycle git cannot see, which is the one thing 0035 says the app may record — and it is stored where
+    /// the work is (ADR 0027) so it survives a clone, a Trash of `.devdesk/`, and a stale stored stage.
     private func localTask(_ item: BacklogItem) -> DeskTask {
         let path = "\(LocalBacklog.folder)/\(item.id).md"
         let id = DeskTask.localPrefix + item.id
         let column: BoardColumn
-        switch stage(for: id) {
-        case .inProgress: column = .inProgress
-        case .queued: column = .queued
-        case .readyForDev: column = .readyForDev
-        case nil: column = .backlog
+        if item.isDone {
+            // Ahead of the stage switch on purpose: a card left `inProgress` by an interrupted run is exactly
+            // the case this fixes, so the file must outrank the leftover stage rather than lose to it.
+            column = .done
+        } else {
+            switch stage(for: id) {
+            case .inProgress: column = .inProgress
+            case .queued: column = .queued
+            case .readyForDev: column = .readyForDev
+            case nil: column = .backlog
+            }
         }
         return DeskTask(
             id: id, title: item.title, column: column,
             cardMeta: item.area, cardBadge: StatusBadge(.info, "Local"),
             cardNote: column == .queued ? BoardBuilder.queuedNote : nil,
             headerBadge: StatusBadge(.info, "Local backlog"),
-            branchLine: "No branch yet", parallelLine: "",
+            branchLine: item.isDone ? Self.resolvedLine(item) : "No branch yet", parallelLine: "",
             // The source is rendered as markdown, and a file name is the repository's text — a file called
             // "[open](file:///…).md" would otherwise arrive as a link.
             requirements: .available(BoardBuilder.requirements(body: item.body, title: item.title, source: Markdown.escape(path))),
-            changes: .unavailable("Nothing has been started for this yet."),
-            evidence: .unavailable("Nothing has been started for this yet."),
+            changes: .unavailable(item.isDone ? Self.finishedElsewhere : "Nothing has been started for this yet."),
+            evidence: .unavailable(item.isDone ? Self.finishedElsewhere : "Nothing has been started for this yet."),
             parallel: .none("No branch yet"),
             impact: item.impact, complexity: item.complexity)
     }
