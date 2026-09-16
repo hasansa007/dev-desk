@@ -5,7 +5,7 @@ when it applies, otherwise targeted reads. The evidence ladder below is for **bu
 
 **For bugs — REQUIRED SUB-SKILL:** use `superpowers:systematic-debugging`. Reproduce BEFORE theorizing, and never assert a cause without a verifying probe (prefer the direct probe over inference).
 
-**When `## Suspected` names a `dev:survey` OR `dev:ideation` run, layers 1–2 are already done** —
+**When `## Suspected` names a `dev:findings` OR `dev:ideation` run, layers 1–2 are already done** —
 two checkers each tried to refute it against the code and could not. Start at layer 3. **Never skip
 3–5 on that basis:** both verify against the CODE and never run the app, so a CONFIRMED finding is a
 twice-checked hypothesis, not a reproduction. Its report holds the `blocks:` set and the PLAUSIBLE

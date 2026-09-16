@@ -216,21 +216,28 @@ public struct LocalGitDataSource: ProjectDataSource {
     }
 
     private static func findings(in toplevel: URL) -> FindingsReport {
-        let folder = toplevel.appendingPathComponent("docs/survey")
-        var runs: [SurveyRun] = []
+        var runs: [FindingsRun] = []
         var findings: [Finding] = []
-        var groups: [SurveyGroup] = []
-        for name in markdownFiles(in: folder).sorted(by: >) {
+        var groups: [FindingsGroup] = []
+        // `docs/survey/` is where reports went before the rename (ADR 0042). A run in both folders is read once,
+        // from the new one.
+        let files = FindingsCleanup.folders.enumerated().flatMap { rank, relative in
+            let folder = toplevel.appendingPathComponent(relative)
+            return markdownFiles(in: folder).map { (name: $0, rank: rank, folder: folder) }
+        }
+        var seen: Set<String> = []
+        for (name, _, folder) in files.sorted(by: { ($0.name, -$0.rank) > ($1.name, -$1.rank) })
+        where seen.insert(name).inserted {
             let stem = String(name.dropLast(3))
             switch SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) {
             case .text(let text):
-                runs.append(SurveyRun(id: stem, label: stem, revision: nil))
-                findings.append(contentsOf: SurveyReportParser.parse(text, runID: stem))
-                groups.append(contentsOf: SurveyReportParser.groups(text, runID: stem))
+                runs.append(FindingsRun(id: stem, label: stem, revision: nil))
+                findings.append(contentsOf: FindingsReportParser.parse(text, runID: stem))
+                groups.append(contentsOf: FindingsReportParser.groups(text, runID: stem))
             case .tooLarge:
-                runs.append(SurveyRun(id: stem, label: "\(stem) · Report too large to read (over 1 MB)", revision: nil))
+                runs.append(FindingsRun(id: stem, label: "\(stem) · Report too large to read (over 1 MB)", revision: nil))
             case .hardLink:
-                runs.append(SurveyRun(id: stem, label: "\(stem) · Report not read (it is a hard link)", revision: nil))
+                runs.append(FindingsRun(id: stem, label: "\(stem) · Report not read (it is a hard link)", revision: nil))
             case .skipped:
                 continue
             }

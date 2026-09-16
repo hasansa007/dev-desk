@@ -48,8 +48,8 @@ bare /dev ─▶ dev:kanban (board) ─▶ name an issue ─▶ /dev #N
 **The stocking loop** — what puts work on the board:
 
 ```
-dev:survey    defects + architectural drift ─┐
-dev:ideation  perf / security / quality      ├─▶ docs/{survey,ideation}/<date>.md
+dev:findings  defects + architectural drift ─┐
+dev:ideation  perf / security / quality      ├─▶ docs/{findings,ideation}/<date>.md
                                              │
 dev:roadmap   reads those + the repo's own recorded gaps + ORPHANS & PENDING below
               └─▶ milestone (= dev:kanban's QUEUE) + epic parents, PARENTS ONLY
@@ -69,8 +69,8 @@ pre-flight moves up into Phase 14.
 its decision. Skills still probe `git check-ignore -q docs/` per repo, because the answer differs.
 
 **The container.** Dev Desk (`apps/desk/`) reads what the doors and `dev` already wrote — git,
-GitHub, `docs/survey/`, `docs/ideation/`, `.dev/` state — and runs three things inside a repository: a
-door, from Survey or Ideation, and — each in the task's own worktree — a task's shell and its agent,
+GitHub, `docs/findings/`, `docs/ideation/`, `.dev/` state — and runs three things inside a repository: a
+door, from Findings or Ideation, and — each in the task's own worktree — a task's shell and its agent,
 started by you from the task's dialog or by Auto in a project where you turned it on (ADRs 0017,
 0018). Its two sample projects demo the whole design on labelled sample data; a real opened
 folder shows only what it can actually read, with the reason next to anything it can't yet (see
@@ -147,7 +147,7 @@ ORPHANS).
   is safe: fork heads get no branch and open at the project root (ADR 0017).
 - **No Ideation or PROJECT_MAP view.** `/dev:ui` rendered `docs/ideation/` reports and
   `PROJECT_MAP.md`'s sections as pages until it was retired on 2026-09-11 (ADR 0014). Dev Desk's
-  Findings reads only `docs/survey/` and Insights is unavailable for real projects, so both are read
+  Findings reads only `docs/findings/` (and the older `docs/survey/`) and Insights is unavailable for real projects, so both are read
   as files until the app adds those screens.
 
 **Deferred deliberately:**

@@ -21,10 +21,10 @@ extension SampleData {
     private static func devSkillTasks() -> [DeskTask] {
         [
             DeskTask(
-                id: "12", issueNumber: 12, title: "Survey run summaries", column: .inProgress,
+                id: "12", issueNumber: 12, title: "Findings run summaries", column: .inProgress,
                 cardMeta: "feat/run-summary",
                 headerBadge: StatusBadge(.neutral, "In progress"), branchLine: "feat/run-summary · base main",
-                requirements: .available(Requirements(goal: "Survey run summaries", sources: "Issue #12")),
+                requirements: .available(Requirements(goal: "Findings run summaries", sources: "Issue #12")),
                 changes: .available(ChangeSet(files: [], baseNote: "No diff is included for this task in the demo.")),
                 evidence: .available(Evidence(isDemo: true)),
 parallel: .none("No agent assigned")

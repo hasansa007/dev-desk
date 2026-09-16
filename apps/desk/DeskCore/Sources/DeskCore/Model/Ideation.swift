@@ -1,4 +1,4 @@
-/// What `dev:ideation` concluded about one opportunity. Refuted and declined have no survey equivalent:
+/// What `dev:ideation` concluded about one opportunity. Refuted and declined have no findings equivalent:
 /// a defect's existence argues for fixing it, an opportunity's does not.
 public enum OpportunityVerdict: String, CaseIterable, Hashable {
     case confirmed = "Confirmed"

@@ -1,13 +1,13 @@
 import DeskCore
 import SwiftUI
 
-/// Starting a project's survey over from nothing (ADR 0041). What accumulates is owned by different parties:
+/// Starting a project's findings over from nothing (ADR 0041). What accumulates is owned by different parties:
 /// set-aside findings live in the app, the screen's selection in the window, the reports in the repository and
 /// the cards they filed on the board or the tracker. Each is a line with its own count, and nothing is cleared
 /// silently. Work in progress is the one thing a reset never takes: it is listed, warned about, and offered to resume.
-struct ResetSurveySheet: View {
+struct ResetFindingsSheet: View {
     @Bindable var model: ProjectWindowModel
-    @State private var options = SurveyResetOptions()
+    @State private var options = FindingsResetOptions()
     @State private var runAfterwards = false
     /// Cards ticked to go, by card id: issues closed as not planned, local entries to the Trash. Every card
     /// that can go starts ticked — a reset is asked for to clean up.
@@ -21,16 +21,16 @@ struct ResetSurveySheet: View {
 
     private var ignoredCount: Int { model.ignoredFindingsCount }
 
-    /// Any survey at all, of any scope, in a terminal or in the background. Scope buys nothing here: a reset
+    /// Any findings run at all, of any scope, in a terminal or in the background. Scope buys nothing here: a reset
     /// moves the reports both halves are being written into, so one going at all is enough to refuse.
-    private var isAnySurveyRunning: Bool {
-        if model.isSurveyRunning() { return true }
+    private var isAnyFindingsRunLive: Bool {
+        if model.isFindingsRunLive() { return true }
         guard case .local(let path) = model.ref else { return false }
-        return jobs?.hasLiveJob(door: "survey", in: path) ?? false
+        return jobs?.hasLiveJob(door: "findings", in: path) ?? false
     }
 
     var body: some View {
-        SheetChrome(title: "Reset survey", confirmTitle: confirmTitle, confirmDisabled: !canConfirm,
+        SheetChrome(title: "Reset findings", confirmTitle: confirmTitle, confirmDisabled: !canConfirm,
                     size: .confirm, onCancel: model.dismissSheet, onConfirm: reset) {
             VStack(alignment: .leading, spacing: 14) {
                 Text("Clears the findings and the tasks they filed, so the next run starts from nothing. Work in progress is kept.")
@@ -39,22 +39,22 @@ struct ResetSurveySheet: View {
                     .lineSpacing(4)
                     .fixedSize(horizontal: false, vertical: true)
 
-                if isAnySurveyRunning {
-                    NoticeBanner(tone: .waiting, title: "A survey is running",
-                                 message: "Its report is being written into docs/survey/. Reset once it has finished.",
+                if isAnyFindingsRunLive {
+                    NoticeBanner(tone: .waiting, title: "A findings run is going",
+                                 message: "Its report is being written into docs/findings/. Reset once it has finished.",
                                  style: .compact)
                 }
 
                 line(isOn: $options.reports,
                      title: "Clear the findings",
                      detail: reportsDetail,
-                     enabled: !reports.isEmpty && model.canRunDoors && !isAnySurveyRunning)
+                     enabled: !reports.isEmpty && model.canRunDoors && !isAnyFindingsRunLive)
 
                 line(isOn: $options.ignoredFindings,
                      title: "Bring back ignored findings",
                      detail: ignoredCount == 0
                         ? "Nothing is set aside in this project."
-                        : "\(ignoredCount) finding\(ignoredCount == 1 ? "" : "s") set aside here. They live in the app, never in docs/survey/.",
+                        : "\(ignoredCount) finding\(ignoredCount == 1 ? "" : "s") set aside here. They live in the app, never in docs/findings/.",
                      enabled: ignoredCount > 0)
 
                 line(isOn: $options.viewState,
@@ -71,26 +71,26 @@ struct ResetSurveySheet: View {
 
                 Toggle(isOn: $runAfterwards) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Run a new survey afterwards").font(DeskFont.body)
+                        Text("Run findings again afterwards").font(DeskFont.body)
                         Text(model.canRunDoors
-                             ? "Opens dev:survey in Terminals. Nothing executes until you start it there."
-                             : "A sample project has no folder to survey.")
+                             ? "Opens dev:findings in Terminals. Nothing executes until you start it there."
+                             : "A sample project has no folder to read.")
                             .font(DeskFont.secondary)
                             .foregroundStyle(DeskColor.mutedInk)
                     }
                 }
-                .disabled(!model.canRunDoors || isAnySurveyRunning)
+                .disabled(!model.canRunDoors || isAnyFindingsRunLive)
             }
         }
         .onAppear {
             guard !listed else { return }
             listed = true
-            reports = model.surveyReports
-            options.reports = !reports.isEmpty && model.canRunDoors && !isAnySurveyRunning
+            reports = model.findingsReports
+            options.reports = !reports.isEmpty && model.canRunDoors && !isAnyFindingsRunLive
             options.ignoredFindings = ignoredCount > 0
-            cards = model.surveyFiledCards.map(FiledCard.init)
+            cards = model.findingsFiledCards.map(FiledCard.init)
             if model.canRunDoors { removing = Set(removable.map(\.id)) }
-            closeReason = "Superseded: the survey was reset on \(Self.today) to start over from a new run."
+            closeReason = "Superseded: the findings were reset on \(Self.today) to start over from a new run."
         }
     }
 
@@ -136,11 +136,11 @@ struct ResetSurveySheet: View {
     }
     private var trimmedReason: String { closeReason.trimmingCharacters(in: .whitespacesAndNewlines) }
 
-    /// What the survey put on the board. Everything not in progress is ticked to go; in progress is kept.
+    /// What the findings run put on the board. Everything not in progress is ticked to go; in progress is kept.
     private var filedCards: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 8) {
-                SectionLabel("Tasks this survey filed")
+                SectionLabel("Tasks these findings filed")
                 Text("\(cards.count)")
                     .font(DeskFont.label)
                     .foregroundStyle(DeskColor.faintInk)
@@ -179,7 +179,7 @@ struct ResetSurveySheet: View {
 
             if !closingIssues.isEmpty {
                 Text("Why").font(DeskFont.secondary).foregroundStyle(DeskColor.secondaryInk)
-                TextField("Superseded by a new survey", text: $closeReason, axis: .vertical)
+                TextField("Superseded by a new findings run", text: $closeReason, axis: .vertical)
                     .textFieldStyle(.plain)
                     .lineLimit(2...4)
                     .font(DeskFont.body)
@@ -279,9 +279,9 @@ struct ResetSurveySheet: View {
     private var reportsDetail: String {
         guard model.canRunDoors else { return "A sample project has no reports on disk." }
         switch reports.count {
-        case 0: return "There are no reports in docs/survey/."
-        case 1: return "The report in docs/survey/ goes to the Trash, and the Survey screen is empty until the next run."
-        default: return "All \(reports.count) reports in docs/survey/ go to the Trash, and the Survey screen is empty until the next run."
+        case 0: return "There are no reports in docs/findings/ or docs/survey/."
+        case 1: return "The report goes to the Trash, and the Findings screen is empty until the next run."
+        default: return "All \(reports.count) reports go to the Trash, and the Findings screen is empty until the next run."
         }
     }
 
@@ -315,10 +315,10 @@ struct ResetSurveySheet: View {
         let runAfterwards = runAfterwards
         model.dismissSheet()
         Task {
-            await model.resetSurvey(options)
+            await model.resetFindings(options)
             // The same door start the screen's own button uses: it asks what to focus on first, and nothing
             // executes until you start it in Terminals.
-            if runAfterwards { model.present(.runFocus("survey")) }
+            if runAfterwards { model.present(.runFocus("findings")) }
         }
     }
 }

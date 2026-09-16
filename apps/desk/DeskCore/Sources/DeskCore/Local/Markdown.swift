@@ -22,7 +22,7 @@ public enum Markdown {
     }
 
     /// Strips inline emphasis and code markers, for text that is drawn as plain text rather than rendered.
-    /// A survey bullet bolds its claim, and a title shown with its own `**` around it reads as a typo.
+    /// A findings bullet bolds its claim, and a title shown with its own `**` around it reads as a typo.
     ///
     /// Only `*` and backticks go. Underscores stay: in this app's text they are far more often part of an
     /// identifier (`is_loading`) than a pair of emphasis markers, and silently eating them renames the thing

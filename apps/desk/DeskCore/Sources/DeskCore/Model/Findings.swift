@@ -14,7 +14,7 @@ extension FindingCategory {
             return nil
         case .needsDecision:
             return ("This one is yours to decide",
-                    "dev:survey could not confirm it, so it held it back and filed nothing — it is not claiming a defect. "
+                    "dev:findings could not confirm it, so it held it back and filed nothing — it is not claiming a defect. "
                         + "Add it to the backlog to have it worked on anyway, or ignore it. Either way it stays in the report.")
         case .knownNewEvidence:
             return ("An issue already covers this",
@@ -26,7 +26,7 @@ extension FindingCategory {
     }
 }
 
-/// Which half of the survey a finding came out of. `dev:survey` writes them in one report but they are two
+/// Which half of the report a finding came out of. `dev:findings` writes them in one report but they are two
 /// different claims: a defect is something that misbehaves, a drift is the shape of the code disagreeing with
 /// the shape it is documented to have. The card said neither, so the two read as one list.
 public enum FindingKind: String, CaseIterable, Hashable {
@@ -34,7 +34,7 @@ public enum FindingKind: String, CaseIterable, Hashable {
     case architecture = "Architecture"
 }
 
-public struct SurveyRun: Identifiable, Hashable {
+public struct FindingsRun: Identifiable, Hashable {
     public var id: String
     public var label: String       // "today 09:40", or a report file stem
     public var revision: String?   // "9c2e410"
@@ -110,10 +110,10 @@ public struct Finding: Identifiable, Hashable {
     public var reconcile: Reconciliation?
     public var historyNote: String?
     /// Type, group, the code it touches and the tickets it meets — only a grouped report writes these (ADR 0040).
-    public var coordination: SurveyCoordination
+    public var coordination: FindingsCoordination
     public init(id: String, runID: String, title: String, listDetail: String, categories: Set<FindingCategory>, summary: String,
                 verificationLabel: String, locations: [String], limits: String, reconcile: Reconciliation? = nil, historyNote: String? = nil,
-                kind: FindingKind = .defect, coordination: SurveyCoordination = SurveyCoordination()) {
+                kind: FindingKind = .defect, coordination: FindingsCoordination = FindingsCoordination()) {
         self.coordination = coordination
         self.id = id
         self.runID = runID
@@ -134,18 +134,18 @@ public struct Finding: Identifiable, Hashable {
     public var backlogDescription: String {
         let sources = locations.isEmpty ? "" : " Sources: \(locations.joined(separator: ", "))."
         let scope = coordination.scopeLines.isEmpty ? "" : " Scope: \(coordination.scopeLines.joined(separator: "; "))."
-        return "\(title). \(summary)\(sources)\(scope) Found by dev:survey, run \(runID); \(verificationLabel). \(limits)"
+        return "\(title). \(summary)\(sources)\(scope) Found by dev:findings, run \(runID); \(verificationLabel). \(limits)"
     }
 }
 
 public struct FindingsReport: Hashable {
-    public var runs: [SurveyRun]
+    public var runs: [FindingsRun]
     public var findings: [Finding]
     /// The report's `## GROUPS`, for every run read. Empty for a report written before ADR 0040.
-    public var groups: [SurveyGroup]
+    public var groups: [FindingsGroup]
     /// Shown under the list, e.g. why issue search is unavailable.
     public var searchNote: String?
-    public init(runs: [SurveyRun], findings: [Finding], groups: [SurveyGroup] = [], searchNote: String? = nil) {
+    public init(runs: [FindingsRun], findings: [Finding], groups: [FindingsGroup] = [], searchNote: String? = nil) {
         self.runs = runs
         self.findings = findings
         self.groups = groups

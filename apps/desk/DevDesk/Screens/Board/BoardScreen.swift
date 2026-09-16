@@ -84,9 +84,15 @@ struct BoardScreen: View {
     @ViewBuilder
     private func boardContent(_ tasks: [DeskTask]) -> some View {
         if tasks.isEmpty {
-            EmptyStateView(title: "No tasks yet", message: "Describe the first piece of work, or run a survey to learn the codebase.") {
-                Button("Open Survey") { model.go(.survey) }
-                    .buttonStyle(DeskButtonStyle(kind: .secondary))
+            EmptyStateView(title: "No tasks yet", message: "Describe the first piece of work, or run Findings to learn the codebase.") {
+                // The columns — and their add rows — are not drawn on an empty board, so the first task is typed here.
+                HStack(spacing: 8) {
+                    Button("New Task") { model.present(.addTask(BoardColumn.backlog.rawValue)) }
+                        .buttonStyle(DeskButtonStyle(kind: .primary))
+                        .disabled(model.snapshot?.repositoryRoot == nil)
+                    Button("Open Findings") { model.go(.findings) }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary))
+                }
             }
         } else {
             let columns = visibleColumns.map { column in

@@ -161,7 +161,7 @@ Then ask — **never chain**:
 
 | | |
 |---|---|
-| Scope is the diff | A design flaw spread across untouched files is out of scope here — that is `dev:survey` |
+| Scope is the diff | A design flaw spread across untouched files is out of scope here — that is `dev:findings` |
 | Spec compliance needs a ticket | With none, say so; do not invent criteria to check against |
 | The engine is optional | Without it this is a self-review, which is weaker. The report says which ran |
 | It reads; it does not run the app | Runtime behaviour is `dev:verify`'s evidence, and this gate assumes those rows already passed |

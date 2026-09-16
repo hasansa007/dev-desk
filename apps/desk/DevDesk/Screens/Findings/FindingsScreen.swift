@@ -8,9 +8,9 @@ struct FindingsScreen: View {
         if let snapshot = model.snapshot {
             SurfaceView(snapshot.findings, fillsScreen: true) { report in
                 if report.runs.isEmpty {
-                    EmptyStateView(title: "No survey runs yet",
-                                   message: "A survey writes its report to `docs/survey/`, and it appears here.") {
-                        RunSurveyButton(model: model)
+                    EmptyStateView(title: "No findings runs yet",
+                                   message: "A findings run writes its report to `docs/findings/`, and it appears here.") {
+                        RunFindingsButton(model: model)
                     }
                 } else {
                     FindingsBoard(model: model, report: report)
@@ -20,17 +20,17 @@ struct FindingsScreen: View {
     }
 }
 
-/// Starts `dev:survey` as a run; the run's own pane asks for consent before anything executes.
-private struct RunSurveyButton: View {
+/// Starts `dev:findings` as a run; the run's own pane asks for consent before anything executes.
+private struct RunFindingsButton: View {
     let model: ProjectWindowModel
     var size: DeskButtonStyle.Size = .regular
 
     var body: some View {
-        DoorRunControl(model: model, door: "survey", title: "Run survey", size: size)
+        DoorRunControl(model: model, door: "findings", title: "Run findings", size: size)
     }
 }
 
-/// The survey is a triage list: rows sectioned by what each finding asks of you, or by the file it points at,
+/// Findings is a triage list: rows sectioned by what each finding asks of you, or by the file it points at,
 /// with checkboxes so several can be filed or ignored at once. It was a grid of cards, and before that a list
 /// beside a reading pane; the grid repeated itself on every card, and the reading pane left a finding as
 /// something to read. The row keeps the actions on the finding and the dialog keeps the evidence.
@@ -41,7 +41,7 @@ private struct FindingsBoard: View {
     @State private var showsNote = false
     @State private var checked: Set<String> = []
     @State private var collapsed: Set<String> = []
-    @AppStorage(PreferenceKey.surveyGrouping) private var groupingRaw = FindingGrouping.group.rawValue
+    @AppStorage(PreferenceKey.findingsGrouping) private var groupingRaw = FindingGrouping.group.rawValue
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
     /// Filing runs in the background, so it uses the Background runs setting rather than the default connection.
@@ -113,7 +113,7 @@ private struct FindingsBoard: View {
 
     private var header: some View {
         HStack(spacing: 10) {
-            Text("Survey")
+            Text("Findings")
                 .font(DeskFont.section)
                 .foregroundStyle(DeskColor.ink)
             Text(summary)
@@ -125,7 +125,7 @@ private struct FindingsBoard: View {
             // What builds up between runs — set-aside findings, and every report ever written — is cleared
             // from here, beside the button that adds to it.
             Menu {
-                Button("Reset survey…") { model.present(.resetSurvey) }
+                Button("Reset findings…") { model.present(.resetFindings) }
             } label: {
                 Image(systemName: "ellipsis.circle")
                     .imageScale(.medium)
@@ -134,8 +134,8 @@ private struct FindingsBoard: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .accessibilityLabel("Survey actions")
-            RunSurveyButton(model: model, size: .small)
+            .accessibilityLabel("Findings actions")
+            RunFindingsButton(model: model, size: .small)
         }
         .screenHeaderBar()
     }
@@ -166,7 +166,7 @@ private struct FindingsBoard: View {
             .menuStyle(.borderlessButton)
             .menuIndicator(.hidden)
             .fixedSize()
-            .accessibilityLabel("Survey run")
+            .accessibilityLabel("Findings run")
         } else if let run = report.runs.first {
             Text(runPlainText(run))
                 .font(DeskFont.secondary)
@@ -391,7 +391,7 @@ private struct FindingsBoard: View {
         .overlay(alignment: .top) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
-    private func runPlainText(_ run: SurveyRun) -> String {
+    private func runPlainText(_ run: FindingsRun) -> String {
         guard let revision = run.revision else { return "Run · \(run.label)" }
         return "Run · \(run.label) · rev \(revision)"
     }

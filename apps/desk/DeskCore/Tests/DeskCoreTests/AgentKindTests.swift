@@ -29,7 +29,7 @@ final class AgentKindTests: XCTestCase {
 
     /// Before this, JobCommand read any non-claude agent as Codex and would have built `gemini exec --json`.
     func testABackgroundJobIsNeverBuiltForATerminalOnlyAgent() {
-        XCTAssertNil(JobCommand.launch(door: "survey", agent: "Gemini", permission: .writeInRepo,
+        XCTAssertNil(JobCommand.launch(door: "findings", agent: "Gemini", permission: .writeInRepo,
                                        directory: "/p", home: "/Users/me"))
         XCTAssertNil(ArchRun.launch(agent: "opencode", kind: "architecture", target: "", home: "/Users/me"))
     }

@@ -1,9 +1,9 @@
 import XCTest
 @testable import DeskCore
 
-final class SurveyReportParserTests: XCTestCase {
+final class FindingsReportParserTests: XCTestCase {
     private let report = """
-    # Survey — acme/app — 2026-09-10
+    # Findings — acme/app — 2026-09-10
     Flows: 3, from PROJECT_MAP.md       Scope: all
 
     ## CONFIRMED (2)          ← eligible to file
@@ -26,7 +26,7 @@ final class SurveyReportParserTests: XCTestCase {
     """
 
     func testEachSectionBecomesItsCategoryWithLocations() {
-        let findings = SurveyReportParser.parse(report, runID: "2026-09-10")
+        let findings = FindingsReportParser.parse(report, runID: "2026-09-10")
         XCTAssertEqual(findings.map(\.id), ["2026-09-10-C1", "2026-09-10-C2", "2026-09-10-P1", "2026-09-10-T1"])
         XCTAssertEqual(findings.map(\.categories), [[.new], [.new], [.needsDecision], [.knownNewEvidence]])
         XCTAssertEqual(findings.map(\.listDetail), ["New", "New", "Needs a decision", "Known · new evidence"])
@@ -44,12 +44,12 @@ final class SurveyReportParserTests: XCTestCase {
     /// Everything outside ARCHITECTURE is a defect, whichever verdict section it sits under. The kind is read
     /// from where the report put the bullet, and nowhere else says it.
     func testFindingsOutsideTheArchitectureSectionAreDefects() {
-        let findings = SurveyReportParser.parse(report, runID: "2026-09-10")
+        let findings = FindingsReportParser.parse(report, runID: "2026-09-10")
         XCTAssertEqual(findings.map(\.kind), [.defect, .defect, .defect, .defect])
     }
 
     func testSummaryKeepsTheNonLocationPartsAndEveryFindingCarriesTheLimit() {
-        let findings = SurveyReportParser.parse(report, runID: "2026-09-10")
+        let findings = FindingsReportParser.parse(report, runID: "2026-09-10")
         XCTAssertEqual(findings.map(\.summary), [
             "mechanism: the loop exits before appending · expected: every page is kept",
             "mechanism: the key was renamed",
@@ -57,16 +57,16 @@ final class SurveyReportParserTests: XCTestCase {
             "#42",
         ])
         XCTAssertTrue(findings.allSatisfy { $0.runID == "2026-09-10" })
-        XCTAssertTrue(findings.allSatisfy { $0.limits == "Survey checks code only; nothing here was reproduced in a running app." })
+        XCTAssertTrue(findings.allSatisfy { $0.limits == "A findings run checks code only; nothing here was reproduced in a running app." })
     }
 
     func testReportWithoutFindingSectionsHasNoFindings() {
-        XCTAssertEqual(SurveyReportParser.parse("# Survey\n\n## ARCHITECTURE\n- drift → move\n", runID: "x"), [])
+        XCTAssertEqual(FindingsReportParser.parse("# Findings\n\n## ARCHITECTURE\n- drift → move\n", runID: "x"), [])
     }
 
     func testAttackerMarkdownInABulletComesOutLiteral() {
         let report = "## PLAUSIBLE (1)\n- Looks fine · click [Open](file:///System/Applications/Calculator.app) or run `rm -rf ~` to see\n"
-        let finding = SurveyReportParser.parse(report, runID: "r")[0]
+        let finding = FindingsReportParser.parse(report, runID: "r")[0]
         XCTAssertEqual(finding.title, "Looks fine")
         XCTAssertTrue(finding.summary.hasPrefix("click \\[Open\\]"), "the link brackets must be escaped")
         XCTAssertFalse(finding.summary.contains("[Open]("), "a raw link would render as a one-click launch")
@@ -76,7 +76,7 @@ final class SurveyReportParserTests: XCTestCase {
 
     func testFrameworkRoutePathsCountAsLocations() {
         let report = "## CONFIRMED (1)\n- Route params lost · app/[id]/page.tsx:12 · app/(auth)/login/page.tsx:7 · src/routes/+page.svelte:3 · mechanism: step 1 drops the id\n"
-        let finding = SurveyReportParser.parse(report, runID: "r")[0]
+        let finding = FindingsReportParser.parse(report, runID: "r")[0]
         XCTAssertEqual(finding.locations, ["app/[id]/page.tsx:12", "app/(auth)/login/page.tsx:7", "src/routes/+page.svelte:3"])
         XCTAssertEqual(finding.summary, "mechanism: step 1 drops the id")
     }
@@ -84,7 +84,7 @@ final class SurveyReportParserTests: XCTestCase {
     /// The row menu and the detail pane both file; they have to hand the door the same thing.
     func testBacklogDescriptionCarriesTheClaimItsEvidenceAndItsRun() {
         let report = "## CONFIRMED (1)\n- Token never refreshes · src/auth.ts:31 · mechanism: the timer is cleared on blur\n"
-        let finding = SurveyReportParser.parse(report, runID: "run-0940")[0]
+        let finding = FindingsReportParser.parse(report, runID: "run-0940")[0]
         let description = finding.backlogDescription
         XCTAssertTrue(description.hasPrefix("Token never refreshes. "), description)
         XCTAssertTrue(description.contains("Sources: src/auth.ts:31."), description)
@@ -93,11 +93,11 @@ final class SurveyReportParserTests: XCTestCase {
     }
 
     func testBacklogDescriptionOmitsSourcesWhenThereAreNone() {
-        let finding = SurveyReportParser.parse("## PLAUSIBLE (1)\n- Slow start\n", runID: "r")[0]
+        let finding = FindingsReportParser.parse("## PLAUSIBLE (1)\n- Slow start\n", runID: "r")[0]
         XCTAssertFalse(finding.backlogDescription.contains("Sources:"))
     }
 
-    /// The shape dev:survey actually writes: a claim on the bullet, everything else indented beneath it.
+    /// The shape dev:findings actually writes: a claim on the bullet, everything else indented beneath it.
     func testABulletsIndentedLinesAreItsBody() {
         let report = """
         ## CONFIRMED (1)
@@ -108,7 +108,7 @@ final class SurveyReportParserTests: XCTestCase {
           touches: `Services/ReminderService.swift`   blocks: shares the file with two other findings
 
         """
-        let finding = SurveyReportParser.parse(report, runID: "2026-08-31")[0]
+        let finding = FindingsReportParser.parse(report, runID: "2026-08-31")[0]
         XCTAssertEqual(finding.title, "Combine publisher emits 0 reminders")
         XCTAssertTrue(finding.summary.contains("mechanism"), finding.summary)
         XCTAssertTrue(finding.summary.contains("fires synchronously after merely scheduling the three fetches"),
@@ -134,7 +134,7 @@ final class SurveyReportParserTests: XCTestCase {
            · `ContactsStore.swift:68` · mechanism: the store is MainActor-isolated.
 
         """
-        let findings = SurveyReportParser.parse(report, runID: "2026-09-13")
+        let findings = FindingsReportParser.parse(report, runID: "2026-09-13")
         XCTAssertEqual(findings.map(\.id), ["2026-09-13-C1", "2026-09-13-C2"])
         XCTAssertEqual(findings.map(\.title), ["Tapping \"Don't Allow\" shows \"Something Went Wrong\"",
                                                "The whole contacts fetch runs on the main thread"])
@@ -144,7 +144,7 @@ final class SurveyReportParserTests: XCTestCase {
     }
 
     /// ARCHITECTURE carries its own verdicts under bold lines. Its drift lists are findings with a move
-    /// attached; its prose and its "missed by the surveyor" note are not.
+    /// attached; its prose and its "missed by the finder" note are not.
     func testTheArchitectureSectionsDriftListsAreFindings() {
         let report = """
         ## ARCHITECTURE
@@ -161,10 +161,10 @@ final class SurveyReportParserTests: XCTestCase {
         **Drift — PLAUSIBLE (held)**
         - arch-4: delete the CHANGELOG block at `ContactsStore.swift:15-19`.
 
-        **Missed by the surveyor, found by both checkers**
+        **Missed by the finder, found by both checkers**
         - `MockGenerator` has no callers. Already CONFIRMED as #12.
         """
-        let findings = SurveyReportParser.parse(report, runID: "r")
+        let findings = FindingsReportParser.parse(report, runID: "r")
         XCTAssertEqual(findings.map(\.id), ["r-C1", "r-C2", "r-P1"])
         XCTAssertEqual(findings.map(\.categories), [[.new], [.new], [.needsDecision]])
         XCTAssertEqual(findings.map(\.kind), [.architecture, .architecture, .architecture],
@@ -172,7 +172,7 @@ final class SurveyReportParserTests: XCTestCase {
         XCTAssertTrue(findings[0].title.hasPrefix("arch-1:"), findings[0].title)
         XCTAssertEqual(findings[0].locations, ["ContactDetailView.swift:104-115"])
         XCTAssertFalse(findings.contains { $0.title.contains("MockGenerator") },
-                       "a note about what the surveyor missed is not itself a finding")
+                       "a note about what the finder missed is not itself a finding")
         XCTAssertFalse(findings.contains { $0.title.contains("Actual") || $0.title.contains("Recommend") },
                        "the section's own prose bullets are not findings")
     }
@@ -190,7 +190,7 @@ final class SurveyReportParserTests: XCTestCase {
 
         - Sync drops the last page · `Pager.swift:88` · mechanism: the loop exits before appending
         """
-        let findings = SurveyReportParser.parse(report, runID: "r")
+        let findings = FindingsReportParser.parse(report, runID: "r")
         XCTAssertEqual(findings.map { $0.title.hasPrefix("arch-1:") }, [true, false])
         XCTAssertEqual(findings.map(\.kind), [.architecture, .defect])
     }
@@ -204,7 +204,7 @@ final class SurveyReportParserTests: XCTestCase {
           · `Services/ReminderService.swift:68-79` · mechanism: three unstructured tasks are fire-and-forget.
 
         """
-        let finding = SurveyReportParser.parse(report, runID: "r")[0]
+        let finding = FindingsReportParser.parse(report, runID: "r")[0]
         XCTAssertEqual(finding.locations, ["Services/ReminderService.swift:68-79"])
         XCTAssertEqual(finding.title, "Async fetch returns 0 reminders")
     }

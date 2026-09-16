@@ -6,7 +6,7 @@ final class JobCommandTests: XCTestCase {
     private let directory = "/repo"
 
     private func launch(_ agent: String, _ permission: RunPermission) -> JobLaunch? {
-        JobCommand.launch(door: "survey", agent: agent, permission: permission,
+        JobCommand.launch(door: "findings", agent: agent, permission: permission,
                           directory: directory, home: home, sessionID: "fixed-id")
     }
 
@@ -17,7 +17,7 @@ final class JobCommandTests: XCTestCase {
         XCTAssertEqual(Array(job.arguments.prefix(8)),
                        ["-p", "--output-format", "stream-json", "--verbose", "--session-id", "fixed-id",
                         "--permission-mode", "acceptEdits"])
-        XCTAssertEqual(job.arguments.last?.hasPrefix("Read /Users/tester/.claude/skills/dev/skills/survey/SKILL.md"), true)
+        XCTAssertEqual(job.arguments.last?.hasPrefix("Read /Users/tester/.claude/skills/dev/skills/findings/SKILL.md"), true)
     }
 
     func testEachPermissionLevelMapsToTheFlagsItsCliActuallyHas() throws {
@@ -35,7 +35,7 @@ final class JobCommandTests: XCTestCase {
     }
 
     func testAnAgentWithNoVerifiedInvocationLaunchesNothing() {
-        XCTAssertNil(JobCommand.launch(door: "survey", agent: "Gemini", permission: .readOnly,
+        XCTAssertNil(JobCommand.launch(door: "findings", agent: "Gemini", permission: .readOnly,
                                        directory: directory, home: home))
     }
 
@@ -65,7 +65,7 @@ final class JobCommandTests: XCTestCase {
     /// Delegate gives claude a worker through `--agents`, whose value is JSON claude parses; asserting on the
     /// parse rather than the text keeps the check from breaking when the wording of the brief is edited.
     func testDelegateModeGivesClaudeAWorkerAsParsableJSON() throws {
-        let job = try XCTUnwrap(JobCommand.launch(door: "survey", agent: "Claude", permission: .writeInRepo,
+        let job = try XCTUnwrap(JobCommand.launch(door: "findings", agent: "Claude", permission: .writeInRepo,
                                                   directory: directory, home: home, sessionID: "fixed-id", mode: .delegate))
         let index = try XCTUnwrap(job.arguments.firstIndex(of: "--agents"))
         XCTAssertTrue(job.arguments.indices.contains(index + 1))
@@ -82,12 +82,12 @@ final class JobCommandTests: XCTestCase {
         let temp = try makeTemporaryHome()
         defer { try? FileManager.default.removeItem(atPath: temp) }
 
-        let without = try XCTUnwrap(JobCommand.launch(door: "survey", agent: "Codex", permission: .writeInRepo,
+        let without = try XCTUnwrap(JobCommand.launch(door: "findings", agent: "Codex", permission: .writeInRepo,
                                                       directory: directory, home: temp, mode: .delegate))
         XCTAssertFalse(without.arguments.contains("--profile"), "no profile file means the flag would fail the run")
 
         try writeCodexDelegateProfile(under: temp)
-        let with = try XCTUnwrap(JobCommand.launch(door: "survey", agent: "Codex", permission: .writeInRepo,
+        let with = try XCTUnwrap(JobCommand.launch(door: "findings", agent: "Codex", permission: .writeInRepo,
                                                    directory: directory, home: temp, mode: .delegate))
         let index = try XCTUnwrap(with.arguments.firstIndex(of: "--profile"))
         XCTAssertTrue(with.arguments.indices.contains(index + 1))

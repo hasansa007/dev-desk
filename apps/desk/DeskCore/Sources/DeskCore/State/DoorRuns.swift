@@ -28,7 +28,7 @@ public final class DoorRuns {
 
     public init() {}
 
-    /// Replaces a run with the same id, so starting Survey twice never leaves two rows for one shell.
+    /// Replaces a run with the same id, so starting Findings twice never leaves two rows for one shell.
     public func add(_ run: DoorRun) {
         runs.removeAll { $0.id == run.id }
         runs.insert(run, at: 0)
@@ -44,10 +44,10 @@ public final class DoorRuns {
 
     /// One id shape the whole app agrees on, so a card, a run row and a shell all mean the same session.
     public static func id(door: String) -> String { "door:\(door)" }
-    /// A survey is identified by the half of the report it writes, not by its door: a defects run and an
+    /// A findings run is identified by the half of the report it writes, not by its door: a defects run and an
     /// architecture run are two runs, two rows and two shells, while the same half twice is one run asked
     /// for twice — which `prepareRun` then refuses on the id alone.
-    public static func id(door: String, scope: SurveyRunScope) -> String { "door:\(door):\(scope.rawValue)" }
+    public static func id(door: String, scope: FindingsRunScope) -> String { "door:\(door):\(scope.rawValue)" }
     public static func id(task number: Int) -> String { "task:\(number)" }
     /// A run for work that exists only in `docs/backlog/`, which has no number to name it by.
     public static func id(local entry: String) -> String { "local:\(entry)" }

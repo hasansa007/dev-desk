@@ -22,8 +22,8 @@ final class RunJournalTests: XCTestCase {
     }
 
     private func record(id: String, clean: Bool = false, lastSeen: TimeInterval = 0) -> JournalRecord {
-        JournalRecord(id: id, kind: .backgroundRun, title: "Survey", agent: "Claude", directory: root.path,
-                      startedAt: date(0), lastSeenAt: date(lastSeen), sessionID: "sess-9", door: "survey",
+        JournalRecord(id: id, kind: .backgroundRun, title: "Findings", agent: "Claude", directory: root.path,
+                      startedAt: date(0), lastSeenAt: date(lastSeen), sessionID: "sess-9", door: "findings",
                       subject: "finding:12", permission: RunPermission.readOnly.rawValue,
                       mode: RunMode.standard.rawValue, stateLabel: "Running in the background",
                       logTail: ["· Read AGENTS.md", "Reading the door"], clean: clean)
@@ -34,7 +34,7 @@ final class RunJournalTests: XCTestCase {
     /// Every field has to survive the round trip: a record that loses its permission or its session id
     /// recovers into a run started under a grant nobody chose, or into no resume at all.
     func testARecordRoundTripsWithEveryFieldIntact() throws {
-        let written = record(id: "job:survey:ab12cd34")
+        let written = record(id: "job:findings:ab12cd34")
         journal.write(written)
         XCTAssertEqual(journal.all(), [written])
         XCTAssertEqual(journal.recover(), [written])
@@ -55,8 +55,8 @@ final class RunJournalTests: XCTestCase {
     /// The journal is rewritten on every state change, so the same id must stay one file — the alternative is
     /// a directory that grows a record per line a run writes.
     func testWritingTheSameIdOverwritesRatherThanAccumulates() throws {
-        journal.write(record(id: "job:survey:ab12cd34"))
-        var second = record(id: "job:survey:ab12cd34", lastSeen: 30)
+        journal.write(record(id: "job:findings:ab12cd34"))
+        var second = record(id: "job:findings:ab12cd34", lastSeen: 30)
         second.stateLabel = "Waiting for your answer"
         journal.write(second)
         let files = try FileManager.default.contentsOfDirectory(at: runsDirectory, includingPropertiesForKeys: nil)
@@ -73,8 +73,8 @@ final class RunJournalTests: XCTestCase {
     }
 
     func testClearRemovesTheRecordAndIsSafeWhenAbsent() {
-        journal.write(record(id: "job:survey:ab12cd34"))
-        journal.clear(id: "job:survey:ab12cd34")
+        journal.write(record(id: "job:findings:ab12cd34"))
+        journal.clear(id: "job:findings:ab12cd34")
         XCTAssertTrue(journal.all().isEmpty)
         XCTAssertTrue(journal.recover().isEmpty)
         journal.clear(id: "never-written")
@@ -83,10 +83,10 @@ final class RunJournalTests: XCTestCase {
 
     /// A graceful quit does not delete the record — it stops it claiming to be a crash.
     func testMarkCleanLeavesTheRecordButTakesItOutOfRecovery() throws {
-        journal.write(record(id: "job:survey:ab12cd34"))
-        journal.markClean(id: "job:survey:ab12cd34")
+        journal.write(record(id: "job:findings:ab12cd34"))
+        journal.markClean(id: "job:findings:ab12cd34")
         XCTAssertTrue(journal.recover().isEmpty)
-        XCTAssertEqual(journal.all().map(\.id), ["job:survey:ab12cd34"])
+        XCTAssertEqual(journal.all().map(\.id), ["job:findings:ab12cd34"])
         XCTAssertEqual(journal.all().first?.clean, true)
         journal.markClean(id: "never-written")
     }
@@ -94,10 +94,10 @@ final class RunJournalTests: XCTestCase {
     /// The filename is sanitised because an id holds `:` and can hold `/`; the id itself must not be, because
     /// it is what a resume, a clear and the live registry all name the run by.
     func testAnIdWithPathCharactersKeepsItsRealIdInside() throws {
-        let awkward = "job:survey/nested:ab 12"
+        let awkward = "job:findings/nested:ab 12"
         journal.write(record(id: awkward))
         let files = try FileManager.default.contentsOfDirectory(at: runsDirectory, includingPropertiesForKeys: nil)
-        XCTAssertEqual(files.map(\.lastPathComponent), ["job-survey-nested-ab-12.json"])
+        XCTAssertEqual(files.map(\.lastPathComponent), ["job-findings-nested-ab-12.json"])
         XCTAssertEqual(journal.recover().map(\.id), [awkward])
         journal.clear(id: awkward)
         XCTAssertTrue(journal.all().isEmpty)

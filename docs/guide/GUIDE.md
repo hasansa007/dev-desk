@@ -23,12 +23,12 @@ Four doors put work *on* it, and none of them invents any — every finding trac
 
 | | |
 |---|---|
-| `/dev:survey` | what is **wrong** — defects and architectural drift |
+| `/dev:findings` | what is **wrong** — defects and architectural drift |
 | `/dev:ideation` | what is **worth doing** — performance, security, quality |
 | `/dev:roadmap` | groups their findings into **milestones**; the active one is the board's queue |
 | `/dev:insights` | answers a question about the codebase with citations, and keeps what lasts in `PROJECT_MAP.md` |
 
-`survey` and `ideation` read the same flows the same way, so run one, not both — defects first, since what is broken changes which improvements are worth making.
+`findings` and `ideation` read the same flows the same way, so run one, not both — defects first, since what is broken changes which improvements are worth making.
 
 ## Choose the depth
 
@@ -70,7 +70,7 @@ The workflow is Markdown, but Claude Code's slash commands and hooks do not tran
 - Provide the required `superpowers:systematic-debugging` and `superpowers:brainstorming` skills, or suitable equivalents that preserve their gates.
 - Adapt Claude Code hooks to the host agent when equivalent enforcement is needed.
 - Provide the project's build and verification tools. Optional integrations are described in the relevant procedures.
-- Survey can inspect flows sequentially when subagents are unavailable.
+- Findings can inspect flows sequentially when subagents are unavailable.
 - Architecture diagrams require [Archify](https://github.com/tt-a1i/archify).
 
 After installation, reload skills or restart the agent and check its loaded skill list.

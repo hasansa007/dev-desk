@@ -38,10 +38,10 @@ because each slice becomes a branch, a PR and a promotion.
 So this skill does not decompose, and it does not ask you to. It captures the boundary; Phase 5
 finds the seams inside it.
 
-**One caller arrives informed: `dev:survey`** (ADR 0040). Its tickets were each investigated and
+**One caller arrives informed: `dev:findings`** (ADR 0040). Its tickets were each investigated and
 checked against the code by two refuting checkers before a group was drawn around them, so it hands
 this skill the parent **and** the sub-issues, in group order. Filing them is not decomposing — the
-seams were found at the survey's Phases 4–5, which is the investigation this rule waits for.
+seams were found at the findings run's Phases 4–5, which is the investigation this rule waits for.
 
 ## Template
 

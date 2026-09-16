@@ -31,7 +31,7 @@ public struct BackgroundJob: Identifiable, Equatable {
     public let title: String
     public let agent: String
     public let door: String
-    /// Which half of its report a survey run writes, as `SurveyRunScope`'s raw value. Nil for every other
+    /// Which half of its report a findings run writes, as `FindingsRunScope`'s raw value. Nil for every other
     /// door: they have no halves, and one run of them at a time is the whole rule.
     public let scope: String?
     public let directory: String
@@ -115,20 +115,20 @@ public final class JobRegistry {
 
     /// One background run per door **per project**. The registry is the app's, so asking by door alone let a
     /// run in one project claim the button in every other window — and tell that window its own gaps were
-    /// being read. Two surveys in one repo would write the same report over each other; two in different
+    /// being read. Two findings runs in one repo would write the same report over each other; two in different
     /// repos are two runs.
     public func hasLiveJob(door: String, in directory: String) -> Bool {
         jobs.contains { $0.door == door && $0.directory == directory && $0.state.isLive }
     }
 
-    /// Survey is the one door where "already running" is not a door-wide answer: a defects run and an
+    /// Findings is the one door where "already running" is not a door-wide answer: a defects run and an
     /// architecture run write different halves of the report, so they belong side by side, while the same
-    /// half twice would overwrite itself. `both` occupies both halves, so it conflicts with any live survey
+    /// half twice would overwrite itself. `both` occupies both halves, so it conflicts with any live findings run
     /// and blocks either half from starting beside it.
-    public func hasLiveSurvey(scope: SurveyRunScope, in directory: String) -> Bool {
+    public func hasLiveFindingsRun(scope: FindingsRunScope, in directory: String) -> Bool {
         jobs.contains {
-            $0.door == "survey" && $0.directory == directory && $0.state.isLive
-                && SurveyRunScope(recorded: $0.scope).conflicts(with: scope)
+            $0.door == "findings" && $0.directory == directory && $0.state.isLive
+                && FindingsRunScope(recorded: $0.scope).conflicts(with: scope)
         }
     }
 
@@ -136,7 +136,7 @@ public final class JobRegistry {
     @discardableResult
     public func start(door: String, title: String, agent: String, arguments: [String] = [],
                       permission: RunPermission, directory: String, subject: String? = nil,
-                      mode: RunMode = .standard, scope: SurveyRunScope? = nil) -> String? {
+                      mode: RunMode = .standard, scope: FindingsRunScope? = nil) -> String? {
         guard let launch = JobCommand.launch(door: door, agent: agent, arguments: arguments,
                                              permission: permission, directory: directory, home: home,
                                              mode: mode) else { return nil }

@@ -112,8 +112,8 @@ final class JobStreamUsageTests: XCTestCase {
 
     /// The result event still ends the run; its reading is read separately, so neither displaces the other.
     func testAResultStillEndsTheRunAndStillReportsItsUsage() {
-        let line = #"{"type":"result","subtype":"success","is_error":false,"result":"Survey written","usage":{"input_tokens":3,"cache_creation_input_tokens":7,"cache_read_input_tokens":10,"output_tokens":50}}"#
-        XCTAssertEqual(JobStream.event(from: line), .ended(text: "Survey written", question: nil))
+        let line = #"{"type":"result","subtype":"success","is_error":false,"result":"Findings written","usage":{"input_tokens":3,"cache_creation_input_tokens":7,"cache_read_input_tokens":10,"output_tokens":50}}"#
+        XCTAssertEqual(JobStream.event(from: line), .ended(text: "Findings written", question: nil))
         XCTAssertEqual(JobStream.usage(from: line), ContextUsage(used: 20))
     }
 
@@ -145,7 +145,7 @@ final class JobRegistryUsageTests: XCTestCase {
     func testTheRunKeepsTheNewestReadingAndItsLog() throws {
         let spawner = Spawner()
         let jobs = JobRegistry(spawner: spawner, home: "/Users/test")
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         XCTAssertNil(jobs.job(id)?.usage, "a run reports nothing until its agent does")
         spawner.emit(#"{"type":"assistant","message":{"content":[{"type":"text","text":"Reading"}],"usage":{"input_tokens":10,"cache_creation_input_tokens":0,"cache_read_input_tokens":90}}}"#, to: id)

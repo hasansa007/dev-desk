@@ -6,7 +6,7 @@ import Foundation
 public enum AgentKind: String, Equatable, CaseIterable {
     case claude, codex, gemini, opencode, antigravity
 
-    /// Whether a background run — Survey or Ideation in the background, filing, a diagram — can use this agent.
+    /// Whether a background run — Findings or Ideation in the background, filing, a diagram — can use this agent.
     public var runsInBackground: Bool { self == .claude || self == .codex }
 
     /// The verified terminal command for an agent with no headless form; nil for Claude and Codex.

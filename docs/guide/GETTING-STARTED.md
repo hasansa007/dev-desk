@@ -67,7 +67,7 @@ It will land you in one of four situations.
 
 ### A · A brand-new project, nothing built yet
 
-There is no tracker to read and nothing to survey, so start by describing the thing:
+There is no tracker to read and nothing to read for findings, so start by describing the thing:
 
 ```text
 /dev a CLI that converts CSV to Parquet with a --schema flag
@@ -104,11 +104,11 @@ anything** — every finding is verified against the code by two independent che
 filed, and anything they cannot confirm is held in the report rather than filed.
 
 ```text
-/dev:survey       what is WRONG — defects, and architectural drift between the patterns in use
+/dev:findings       what is WRONG — defects, and architectural drift between the patterns in use
 /dev:ideation     what is WORTH DOING — performance, security, quality
 ```
 
-Both write a dated report first — `docs/survey/<date>.md`, `docs/ideation/<date>.md` — and filing to
+Both write a dated report first — `docs/findings/<date>.md`, `docs/ideation/<date>.md` — and filing to
 your tracker is a separate step you confirm. They walk you through the findings one at a time,
 asking how *you* would handle each before showing you an answer.
 
@@ -129,7 +129,7 @@ they are never re-proposed.
 /dev:roadmap
 ```
 
-It reads only what the repo already wrote down: your `survey` and `ideation` reports, the repo's own
+It reads only what the repo already wrote down: your `findings` and `ideation` reports, the repo's own
 `## Known gaps` / `## Known limits` sections, `PROJECT_MAP.md`'s `ORPHANS & PENDING`, and
 unmilestoned issues. **If the repo records nothing, it says so and offers to generate evidence
 first** rather than inventing a plan — an invented theme shapes months of work before anyone
@@ -156,7 +156,7 @@ does — and it **routes** rather than half-answering: a question another door o
 | You ask | It routes to |
 |---|---|
 | *draw the architecture* | `dev:arch` — an evidenced diagram, every node pinned to real code at a real commit |
-| *what is broken* | `dev:survey` |
+| *what is broken* | `dev:findings` |
 | *what could be better / is it secure* | `dev:ideation` |
 | *what should we build next* | `dev:roadmap` |
 

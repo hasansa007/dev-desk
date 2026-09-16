@@ -28,8 +28,8 @@ final class TaskLaunchTests: XCTestCase {
     }
 
     func testADoorThatIsNotTheRootReadsItsOwnSkillFile() {
-        let prompt = launch(door: "survey", arguments: []).prompt(home: home)
-        XCTAssertEqual(prompt?.contains("/.claude/skills/dev/skills/survey/SKILL.md"), true)
+        let prompt = launch(door: "findings", arguments: []).prompt(home: home)
+        XCTAssertEqual(prompt?.contains("/.claude/skills/dev/skills/findings/SKILL.md"), true)
         XCTAssertEqual(prompt?.contains("Arguments:"), false, "no arguments means no arguments clause")
     }
 

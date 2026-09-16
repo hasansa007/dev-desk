@@ -1,7 +1,7 @@
 import DeskCore
 import SwiftUI
 
-/// A finding, as a row of the survey list. It was a card in a grid, and a grid of 26 same-sized cards spent
+/// A finding, as a row of the findings list. It was a card in a grid, and a grid of 26 same-sized cards spent
 /// most of each card repeating what its neighbours said — the verification label, and ratings no unfiled
 /// finding can have — while cutting off the title, which is the finding. A row gives the title the width.
 struct FindingRow: View {

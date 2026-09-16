@@ -2,7 +2,7 @@
 name: ideation
 description: >
   Reads an EXISTING app and reports what is worth DOING to it — concrete opportunities in
-  performance, security and quality. Not defects: `dev:survey` owns those. This door asks the other
+  performance, security and quality. Not defects: `dev:findings` owns those. This door asks the other
   question, of the same code — "what does this do adequately that could be materially better?"
   Every opportunity is adversarially verified against the code before it can be filed, and the
   evidence standard is a NUMBER, not a narrative: a claim with no measurement, complexity argument
@@ -13,23 +13,23 @@ description: >
   Trigger on: "what could we improve", "find performance problems", "any security concerns",
   "where is this slow", "ideation", "what's worth optimising", "quality wins", "technical debt
   worth paying", "what should we improve next".
-allowed-tools: [git, gh, rg, grep, Read, Write, Agent]   # Read: every verdict is read-backed. Write: the report. Agent: one surveyor per flow.
+allowed-tools: [git, gh, rg, grep, Read, Write, Agent]   # Read: every verdict is read-backed. Write: the report. Agent: one finder per flow.
 ---
 
 # ideation — what is worth doing to this app
 
-A **tool**, not a phase, and it sits **upstream of Phase 0**, beside `dev:survey`.
+A **tool**, not a phase, and it sits **upstream of Phase 0**, beside `dev:findings`.
 
 **Two doors, two questions, one codebase:**
 
 | Door | Asks | Files as |
 |---|---|---|
-| `dev:survey` | *what does this do that it should not?* — defects, and architectural drift | bug · ADR · epic |
+| `dev:findings` | *what does this do that it should not?* — defects, and architectural drift | bug · ADR · epic |
 | **`dev:ideation`** | *what does this do adequately that could be materially better?* | `enhancement` |
 
 **Run one, not both, unless you mean to.** They discover the same flows and fan out the same way, so
 running both doubles the largest spend in the family. If you want everything, say so and run
-`dev:survey` first — a defect outranks an improvement, and knowing what is broken changes which
+`dev:findings` first — a defect outranks an improvement, and knowing what is broken changes which
 improvements are worth making.
 
 **It suggests. It never implements.** No fix, no refactor, no rewrite, not even an obvious one. The
@@ -47,14 +47,14 @@ output is a report and, on confirmation, issues. `/dev #N` does the work afterwa
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
-**Identical to `dev:survey` Phase 2, which is the source of truth for it** — read that door's Phase 2
+**Identical to `dev:findings` Phase 2, which is the source of truth for it** — read that door's Phase 2
 and apply it unchanged: the absolute path to `shared/entry.md` because this runs inside somebody
 else's repo, the resolved repo as the boundary for reading, writing and filing, and the **per-path
 dedupe** with its reason (the match key lives in the issue *body*, which a bulk `--json
 number,title,labels` list does not return at all).
 
 One addition: **dedupe against closed issues too.** An opportunity declined once should not be
-re-proposed. `dev:survey` searches open issues because a closed bug is a fixed bug; a closed
+re-proposed. `dev:findings` searches open issues because a closed bug is a fixed bug; a closed
 `enhancement` is often a *rejected* one, and re-filing it is how a tracker loses trust.
 
 ```bash
@@ -67,18 +67,18 @@ file nothing.
 
 ## Phase 3 — Discover the flows from evidence
 
-**Identical to `dev:survey` Phase 3.** Read it and apply it unchanged — flows from what the repo
+**Identical to `dev:findings` Phase 3.** Read it and apply it unchanged — flows from what the repo
 declares, `git ls-files` rather than a directory walk, and the fallback to one directory below the
 source root labelled **modules, not flows**.
 
-## Phase 4 — Fan out, one surveyor per flow
+## Phase 4 — Fan out, one finder per flow
 
-**The fan-out mechanics are `dev:survey` Phase 4** — one flow per agent never two, `/tasks` for live
-progress, the per-surveyor record of finding count and **done-with-nothing vs died**, the Right-Size
+**The fan-out mechanics are `dev:findings` Phase 4** — one flow per agent never two, `/tasks` for live
+progress, the per-finder record of finding count and **done-with-nothing vs died**, the Right-Size
 declaration before spending, and the propose-a-narrowing rule above 12 flows. Name the flow in each
 task description (`ideation: checkout`).
 
-### What an opportunity surveyor returns
+### What an opportunity finder returns
 
 The same standard as a bug finding, translated. Each carries **the current behaviour measured or
 derived from the code, the proposed change, and the expected gain with its unit**:
@@ -99,7 +99,7 @@ arithmetic that never applied.
 
 ## Phase 5 — Verify adversarially, before anything is filed
 
-**Never skipped.** The protocol is `dev:survey` Phase 5 and that door is its source of truth: **two
+**Never skipped.** The protocol is `dev:findings` Phase 5 and that door is its source of truth: **two
 independent checkers per finding, each prompted to refute it**, each opening the named file and its
 callers rather than reasoning from the finding's own text; checkers never see each other's verdict;
 **disagreement resolves to PLAUSIBLE, never CONFIRMED**; REFUTED findings are listed with their
@@ -172,13 +172,13 @@ Flows: <n>, from <where they were declared>   Kinds: <perf | security | quality>
 ## ALREADY TRACKED (n)
 
 ## COST
-<the `dev:survey` Phase 7 COST format, verbatim — declared vs actual, per-flow table,
+<the `dev:findings` Phase 7 COST format, verbatim — declared vs actual, per-flow table,
  FAILED rows included, wall time reported separately from the sum>
 ```
 
 ## Phase 8 — Walk it through, one at a time (BEFORE the filing offer)
 
-**The gate is `dev:survey` Phase 8 and that door is its source of truth**: state the mechanism and
+**The gate is `dev:findings` Phase 8 and that door is its source of truth**: state the mechanism and
 constraints, **then STOP**; ask how they would handle it; only then give yours and diff the two
 explicitly; print the `alternatives considered` / `rejected:` line either way, *especially* when it
 is empty. `just do it` skips one, `just do it all` skips the rest. **Never batch.**
@@ -211,7 +211,7 @@ Ask before filing anything. Then, for the confirmed set:
   the arithmetic that produced the ranking. Both stay proposals the developer corrects
   (`docs/guide/WORKFLOW.md` → *Rating an issue*); a missing label is offered, never created silently.
 - **File at most 10 per run, and name what was held.**
-- **An opportunity never outranks an open defect.** If `dev:survey` has confirmed bugs waiting, say
+- **An opportunity never outranks an open defect.** If `dev:findings` has confirmed bugs waiting, say
   so when handing off: a tracker that fills with improvements while defects wait is one nobody
   trusts.
 
@@ -224,7 +224,7 @@ disagree. Then point the developer at `docs/ideation/<date>.md` — the report i
 
 - **Never implement.** Not a fix, not a rename, not an obvious one-liner. Suggest only.
 - **Never file a PLAUSIBLE finding**, and never file without asking.
-- **Never file an opportunity as a bug** — that is `dev:survey`'s output, not this door's.
+- **Never file an opportunity as a bug** — that is `dev:findings`'s output, not this door's.
 - **Never file a gain with no number, unit or count.** That is a preference.
 - **Never re-propose something closed as `not planned`** (Phase 2). A decision is not a gap.
 - **Never recommend a rewrite.** If the honest answer is *"leave it"*, that is the finding.
@@ -240,7 +240,7 @@ disagree. Then point the developer at `docs/ideation/<date>.md` — the report i
 
 Report written → **walk them through (Phase 8)** → offer the filing, naming the branch it would cut.
 Filed → name the first by gain-over-cost and hand to `/dev #N`. **Nothing worth doing → say so
-plainly, name what was covered, and offer `dev:survey`** — "this app has no opportunities worth the
+plainly, name what was covered, and offer `dev:findings`** — "this app has no opportunities worth the
 cost" is a real and valuable answer, and it is also the moment to ask whether anything is *broken*,
 which is the other door's question.
 

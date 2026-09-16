@@ -1,6 +1,6 @@
 import Foundation
 
-/// What part of the project a finding is in. A survey report does not say — but it does say where it looked,
+/// What part of the project a finding is in. A findings report does not say — but it does say where it looked,
 /// and a path is enough to tell a screen from a test from a workflow. Derived, never invented: a finding with
 /// no source locations has no area, and says so with a dash rather than a guess.
 public enum FindingArea: String, CaseIterable, Hashable {

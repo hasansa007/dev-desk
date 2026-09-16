@@ -17,7 +17,7 @@ final class LocalBacklogTests: XCTestCase {
         let path = try LocalBacklog.write(projectPath: root.path, key: "2026-08-31-C1",
                                           title: "Callback fetch returns 0 reminders, never 12",
                                           body: "mechanism: the loop only schedules three calls.",
-                                          area: "Logic", source: "dev:survey run 2026-08-31")
+                                          area: "Logic", source: "dev:findings run 2026-08-31")
         XCTAssertTrue(path.hasSuffix("docs/backlog/2026-08-31-c1-callback-fetch-returns-0-reminders-never-12.md"), path)
 
         let items = LocalBacklog.read(projectPath: root.path)
@@ -25,7 +25,7 @@ final class LocalBacklogTests: XCTestCase {
         XCTAssertEqual(items[0].key, "2026-08-31-C1")
         XCTAssertEqual(items[0].title, "Callback fetch returns 0 reminders, never 12")
         XCTAssertEqual(items[0].area, "Logic")
-        XCTAssertEqual(items[0].source, "dev:survey run 2026-08-31")
+        XCTAssertEqual(items[0].source, "dev:findings run 2026-08-31")
         XCTAssertNil(items[0].issue, "nothing has been filed to a tracker yet")
         // Unrated, the same as an issue nobody has rated (ADR 0020).
         XCTAssertNil(items[0].impact)
@@ -114,7 +114,7 @@ final class LocalBacklogTests: XCTestCase {
     /// A draft written to disk reads as prose, not as the app's escaped rendering of it.
     func testAFindingsDraftIsReadableAsAFile() {
         let report = "## CONFIRMED (1)\n- **Holds @ObservedObject** · `MainScreen.swift:39` · mechanism: it is re-created [every] push\n"
-        let finding = SurveyReportParser.parse(report, runID: "2026-08-31")[0]
+        let finding = FindingsReportParser.parse(report, runID: "2026-08-31")[0]
         let draft = finding.backlogDraft
         XCTAssertEqual(draft.key, finding.id)
         XCTAssertEqual(draft.title, "Holds @ObservedObject")

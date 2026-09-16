@@ -78,7 +78,7 @@ final class FindingGroupsTests: XCTestCase {
     // MARK: - Grouped reports (ADR 0040)
 
     private let groupedReport = """
-    # Survey — Demo — 2026-09-16
+    # Findings — Demo — 2026-09-16
 
     ## GROUPS (1)
     ### G1 · Contact access and loading
@@ -107,7 +107,7 @@ final class FindingGroupsTests: XCTestCase {
     """
 
     func testAGroupedReportReadsIdsTypesAndLinks() {
-        let findings = SurveyReportParser.parse(groupedReport, runID: "r")
+        let findings = FindingsReportParser.parse(groupedReport, runID: "r")
         XCTAssertEqual(findings.map(\.id), ["r-C1", "r-C2", "r-C3", "r-P1"])
         let second = findings[1].coordination
         XCTAssertEqual(second.type, .logic)
@@ -127,8 +127,8 @@ final class FindingGroupsTests: XCTestCase {
     }
 
     func testByGroupRunsGroupsInOrderThenOwnThenHeld() {
-        let findings = SurveyReportParser.parse(groupedReport, runID: "r")
-        let groups = SurveyReportParser.groups(groupedReport, runID: "r")
+        let findings = FindingsReportParser.parse(groupedReport, runID: "r")
+        let groups = FindingsReportParser.groups(groupedReport, runID: "r")
         XCTAssertEqual(groups.first?.branch, "group/contact-access")
         XCTAssertEqual(groups.first?.members, ["C1", "C2"])
         let sections = FindingGroups.byGroup(findings, groups: groups)
@@ -138,7 +138,7 @@ final class FindingGroupsTests: XCTestCase {
     }
 
     func testAReportWithoutGroupsFallsBackToStatus() {
-        let findings = SurveyReportParser.parse(groupedReport, runID: "r")
+        let findings = FindingsReportParser.parse(groupedReport, runID: "r")
         XCTAssertEqual(FindingGroups.byGroup(findings, groups: []).map(\.id), FindingGroups.byStatus(findings).map(\.id))
     }
 }

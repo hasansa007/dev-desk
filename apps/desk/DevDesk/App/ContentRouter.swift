@@ -115,7 +115,7 @@ struct ContentRouter: View {
             }
         case .roadmap:
             RoadmapScreen(model: model)
-        case .survey:
+        case .findings:
             FindingsScreen(model: model)
         case .ideation:
             IdeationScreen(model: model)

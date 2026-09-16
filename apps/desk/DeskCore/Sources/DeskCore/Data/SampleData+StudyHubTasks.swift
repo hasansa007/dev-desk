@@ -63,7 +63,7 @@ parallel: .none("No agent assigned")
                     ActivityEvent(id: "42-a2", time: "11:07", text: "**Reviewer** (activity only) flagged a missing cleanup on unmount.", offersFollowUp: true),
                     ActivityEvent(id: "42-a3", time: "10:49", text: "**Verifier** finished: 18 unit checks passed, no runtime reproduction attempted."),
                     ActivityEvent(id: "42-a4", time: "10:31", text: "Plan approved by you · 3 acceptance criteria accepted."),
-                    ActivityEvent(id: "42-a5", time: "10:12", text: "Task created from issue #42 and survey finding F-108."),
+                    ActivityEvent(id: "42-a5", time: "10:12", text: "Task created from issue #42 and finding F-108."),
                 ]),
                 canCompareOutputs: true,
                 requirements: .available(Requirements(
@@ -74,7 +74,7 @@ parallel: .none("No agent assigned")
                         AcceptanceCriterion("No restoration is attempted when the list is entered fresh from search.", isMet: false),
                     ],
                     outOfScope: "Virtualised list rewrite (tracked as #71). Cross-device position sync.",
-                    sources: "User report on issue #42 · survey finding F-108 (code-inspected) · PROJECT_MAP.md § Navigation."
+                    sources: "User report on issue #42 · finding F-108 (code-inspected) · PROJECT_MAP.md § Navigation."
                 )),
                 changes: .available(ChangeSet(
                     files: [
@@ -111,7 +111,7 @@ parallel: .none("No agent assigned")
                     ],
                     failure: FailedRun(title: "Failed run · navigation e2e", message: "The browser runner could not launch in this environment. No conclusion can be drawn about the scroll behaviour from this run."),
                     limitations: "Behaviour was inspected in code and covered by unit tests. The reported symptom has not been reproduced in a running app, so this task is not verified end to end.",
-                    linked: [LinkedEvidence(title: "Survey finding F-108 · Navigation resets list state on unmount", badge: "Code-inspected", findingID: "F-108")]
+                    linked: [LinkedEvidence(title: "Finding F-108 · Navigation resets list state on unmount", badge: "Code-inspected", findingID: "F-108")]
                 )),
 dependencies: [Dependency(text: "Blocked by [#59](desk://task/59) — shared date helpers are being rewritten in review.", taskID: "59")],
 parallel: .transcript(TerminalTranscript(

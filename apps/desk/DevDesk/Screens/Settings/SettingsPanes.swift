@@ -199,7 +199,7 @@ struct AgentsAndDefaultsPane: View {
             }
             .padding(.top, 12)
             // Said beside the picker, because the reason it is a second setting is not visible anywhere else.
-            Text("Tasks and doors run in a terminal with the default connection, any of the five. Background runs — Survey or Ideation in the background, filing an issue, a diagram — need a headless form this app reads, which only Claude and Codex have.")
+            Text("Tasks and doors run in a terminal with the default connection, any of the five. Background runs — Findings or Ideation in the background, filing an issue, a diagram — need a headless form this app reads, which only Claude and Codex have.")
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
                 .lineSpacing(4)
@@ -500,7 +500,7 @@ struct ProjectOverridesPane: View {
     /// What a reset would actually find here, so the button is not a mystery until it is pressed.
     private var resetSummary: String {
         let ignored = model.ignoredFindingsCount
-        let reports = model.surveyReports.count
+        let reports = model.findingsReports.count
         if ignored == 0 && reports == 0 { return "Nothing to clear: no reports, no set-aside findings." }
         let parts = [reports > 0 ? "\(reports) report\(reports == 1 ? "" : "s")" : nil,
                      ignored > 0 ? "\(ignored) finding\(ignored == 1 ? "" : "s") set aside" : nil].compactMap { $0 }
@@ -532,9 +532,9 @@ struct ProjectOverridesPane: View {
 
                 SectionLabel("Cleanup").padding(.top, 20)
                 HStack(spacing: 10) {
-                    Button("Reset survey…") {
+                    Button("Reset findings…") {
                         model.dismissSheet()
-                        model.present(.resetSurvey)
+                        model.present(.resetFindings)
                     }
                     .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
                     Text(resetSummary)

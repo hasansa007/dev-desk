@@ -31,7 +31,7 @@ path resolves the same on every machine regardless of where the repo was cloned:
 | Antigravity | its registered skills path (`install.sh` reads it from config) — else `~/.agents/skills/dev/` |
 
 **The paths stay absolute on purpose.** These doors run inside somebody else's repo, where a bare
-`shared/entry.md` resolves to a file that does not exist — `dev:survey` Phase 2 and `dev:arch`
+`shared/entry.md` resolves to a file that does not exist — `dev:findings` Phase 2 and `dev:arch`
 Phase 0 both carry that scar. Absolute is the fix; a home-directory prefix was the accident.
 
 A clone that has never been installed has no such root. Run `install.sh` first.
@@ -56,7 +56,7 @@ so it is defined once there and never duplicated here.
 |---|---|
 | **Nothing at all** | **Entry 0 — Orient**: detect where this repo actually is, then offer the two or three doors that fit it |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
-| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `kanban`, `issues`, `survey`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, `ui` | **Confirm the handoff** — see the guard below |
+| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `kanban`, `issues`, `findings`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, `ui` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
 
 ### The empty-input row is a guard, not a convenience
@@ -110,7 +110,7 @@ Then match the FIRST situation that applies:
 |---|---|---|
 | **1 · Work in flight** | `.dev/<branch>.json` exists, or a branch carries commits not in the base | **Resume it.** Name the branch, the phase it reached, and what comes next. `/dev --continue`, or the door for that phase |
 | **2 · The board has work** | tracker reachable and has open issues | `dev:kanban` — the board, then pick one |
-| **3 · Code, but an empty tracker** | commits exist, tracker reachable and empty | `dev:survey` (what is wrong) · `dev:ideation` (what is worth doing) · `dev:roadmap` (group it into milestones) |
+| **3 · Code, but an empty tracker** | commits exist, tracker reachable and empty | `dev:findings` (what is wrong) · `dev:ideation` (what is worth doing) · `dev:roadmap` (group it into milestones) |
 | **4 · A fresh or empty project** | no commits, or no remote, or `gh` not authenticated | Say exactly what is missing and how to fix it, then offer `/dev <description>` to build the first thing |
 
 **Rules this inherits and must not lose:**
@@ -132,7 +132,7 @@ a **feature name**: `/dev run` would branch `feature/run` and start building a f
 
 Before routing to Generic, STOP if the argument is:
 
-- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `kanban`, `survey`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, with or without the
+- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `kanban`, `findings`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
 - **a RENAMED family name.** `trim` is still the advertised trigger (*"trim the comments"*) after the
@@ -213,7 +213,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:shots` | — | a running app | "screenshot the app", "app store screenshots" — capture, iOS/Android/web |
 | `dev:comment-budget` | — | a repo or a path | "trim the comments" — existing code to the doc budget; reports unless `--apply` |
 | `dev:arch` | — | a system to draw | "draw the architecture", "map this system" — verifiable diagram; renders via Archify |
-| `dev:survey` | — | an existing app | "what's wrong with this app" — defects + architectural drift, files the confirmed |
+| `dev:findings` | — | an existing app | "what's wrong with this app" — defects + architectural drift, files the confirmed |
 | `dev:ideation` | — | an existing app | "what could we improve" — perf/security/quality opportunities, files the confirmed |
 | `dev:roadmap` | — | the repo's own evidence | "what should we build next" — themes → milestones + epic parents; **makes the QUEUE exist** |
 | `dev:insights` | — | a question | "how does this work?" — cited answer, routes to the owning door, folds durable findings into `PROJECT_MAP.md` |

@@ -315,23 +315,36 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     func testFindingsListTheNewestReportFirst() async throws {
         let folder = try TempGitRepo()
-        try folder.write("docs/survey/2026-09-01.md", "## CONFIRMED (1)\n- Old bug · a.swift:1\n")
-        try folder.write("docs/survey/2026-09-10.md", "## CONFIRMED (1)\n- New bug · b.swift:2\n")
-        try folder.write("docs/survey/notes.txt", "not a report")
+        try folder.write("docs/findings/2026-09-01.md", "## CONFIRMED (1)\n- Old bug · a.swift:1\n")
+        try folder.write("docs/findings/2026-09-10.md", "## CONFIRMED (1)\n- New bug · b.swift:2\n")
+        try folder.write("docs/findings/notes.txt", "not a report")
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: githubReadyRunner(root: folder.url)).load()
         let report = try XCTUnwrap(snapshot.findings.value)
-        XCTAssertEqual(report.runs, [SurveyRun(id: "2026-09-10", label: "2026-09-10", revision: nil),
-                                     SurveyRun(id: "2026-09-01", label: "2026-09-01", revision: nil)])
+        XCTAssertEqual(report.runs, [FindingsRun(id: "2026-09-10", label: "2026-09-10", revision: nil),
+                                     FindingsRun(id: "2026-09-01", label: "2026-09-01", revision: nil)])
         XCTAssertEqual(report.findings.map(\.id), ["2026-09-10-C1", "2026-09-01-C1"])
+    }
+
+    /// Reports written before the rename stay readable (ADR 0042); a run in both folders is read from the new one.
+    func testReportsInTheOlderSurveyFolderAreStillRead() async throws {
+        let folder = try TempGitRepo()
+        try folder.write("docs/survey/2026-09-01.md", "## CONFIRMED (1)\n- Old bug · a.swift:1\n")
+        try folder.write("docs/survey/2026-09-10.md", "## CONFIRMED (1)\n- Stale copy · c.swift:3\n")
+        try folder.write("docs/findings/2026-09-10.md", "## CONFIRMED (1)\n- New bug · b.swift:2\n")
+        let snapshot = try await LocalGitDataSource(root: folder.url, runner: githubReadyRunner(root: folder.url)).load()
+        let report = try XCTUnwrap(snapshot.findings.value)
+        XCTAssertEqual(report.runs.map(\.id), ["2026-09-10", "2026-09-01"])
+        XCTAssertEqual(report.findings.map(\.id), ["2026-09-10-C1", "2026-09-01-C1"])
+        XCTAssertFalse(report.findings.contains { $0.title.contains("Stale copy") })
     }
 
     func testASymlinkedReportIsIgnoredAndItsContentsNeverAppear() async throws {
         let folder = try TempGitRepo()
-        try folder.write("docs/survey/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
+        try folder.write("docs/findings/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
         let outside = FileManager.default.temporaryDirectory.appendingPathComponent("secret-\(UUID().uuidString).md")
         try "## CONFIRMED (1)\n- Leaked secret · /etc/passwd:1\n".write(to: outside, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: outside) }
-        try FileManager.default.createSymbolicLink(at: folder.url.appendingPathComponent("docs/survey/2026-09-20.md"), withDestinationURL: outside)
+        try FileManager.default.createSymbolicLink(at: folder.url.appendingPathComponent("docs/findings/2026-09-20.md"), withDestinationURL: outside)
 
         let report = try await LocalGitDataSource(root: folder.url, runner: githubReadyRunner(root: folder.url)).load().findings.value
         XCTAssertEqual(report?.runs.map(\.id), ["2026-09-10"])
@@ -340,8 +353,8 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     func testAnOversizedReportIsRefusedButLabelled() async throws {
         let folder = try TempGitRepo()
-        try folder.write("docs/survey/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
-        try folder.write("docs/survey/2026-09-30.md", "## CONFIRMED (1)\n- x · a.swift:1\n" + String(repeating: "a", count: 1_048_600))
+        try folder.write("docs/findings/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
+        try folder.write("docs/findings/2026-09-30.md", "## CONFIRMED (1)\n- x · a.swift:1\n" + String(repeating: "a", count: 1_048_600))
 
         let report = try await LocalGitDataSource(root: folder.url, runner: githubReadyRunner(root: folder.url)).load().findings.value
         XCTAssertEqual(report?.runs.map(\.label), ["2026-09-30 · Report too large to read (over 1 MB)", "2026-09-10"])
@@ -350,11 +363,11 @@ final class LocalGitDataSourceTests: XCTestCase {
 
     func testAHardLinkedReportIsRefusedButLabelled() async throws {
         let folder = try TempGitRepo()
-        try folder.write("docs/survey/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
+        try folder.write("docs/findings/2026-09-10.md", "## CONFIRMED (1)\n- Real bug · a.swift:1\n")
         let outside = FileManager.default.temporaryDirectory.appendingPathComponent("secret-\(UUID().uuidString).md")
         try "## CONFIRMED (1)\n- Leaked secret · /etc/passwd:1\n".write(to: outside, atomically: true, encoding: .utf8)
         defer { try? FileManager.default.removeItem(at: outside) }
-        try FileManager.default.linkItem(at: outside, to: folder.url.appendingPathComponent("docs/survey/2026-09-20.md"))
+        try FileManager.default.linkItem(at: outside, to: folder.url.appendingPathComponent("docs/findings/2026-09-20.md"))
 
         let report = try await LocalGitDataSource(root: folder.url, runner: githubReadyRunner(root: folder.url)).load().findings.value
         XCTAssertEqual(report?.runs.map(\.label), ["2026-09-20 · Report not read (it is a hard link)", "2026-09-10"])

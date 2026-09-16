@@ -2,7 +2,7 @@
 name: roadmap
 description: >
   Proposes what to build NEXT, from evidence the repo already wrote down — its recorded gaps,
-  PROJECT_MAP's ORPHANS & PENDING, and prior `dev:survey` / `dev:ideation` reports — then writes the
+  PROJECT_MAP's ORPHANS & PENDING, and prior `dev:findings` / `dev:ideation` reports — then writes the
   accepted themes as GitHub MILESTONES with EPIC PARENTS underneath. The milestone is what
   `dev:kanban` reads as its QUEUE column, so this is the door that makes a queue exist.
   Files PARENTS ONLY: slices are cut at Phase 5 on the first `/dev #E`, where investigation has
@@ -17,7 +17,7 @@ allowed-tools: [gh, git, rg, grep, Read]
 
 # roadmap — what to build next, from what the repo already knows
 
-A **tool**, not a phase. It sits **upstream of Phase 0** beside `dev:survey` and `dev:ideation`, and
+A **tool**, not a phase. It sits **upstream of Phase 0** beside `dev:findings` and `dev:ideation`, and
 downstream of both: they find things, this one decides what the findings add up to.
 
 **It proposes and writes containers. It never decomposes and never starts work.**
@@ -30,12 +30,12 @@ downstream of both: they find things, this one decides what the findings add up 
 ## The loop it closes
 
 ```
-dev:survey ─┐
-dev:ideation ┴▶ docs/{survey,ideation}/<date>.md ─┐
-PROJECT_MAP.md → ORPHANS & PENDING ───────────────┤
-the repo's own recorded gaps ─────────────────────┤
-                                                  ▼
-                                            dev:roadmap
+dev:findings ─┐
+dev:ideation ─┴▶ docs/{findings,ideation}/<date>.md ─┐
+PROJECT_MAP.md → ORPHANS & PENDING ──────────────────┤
+the repo's own recorded gaps ────────────────────────┤
+                                                     ▼
+                                               dev:roadmap
                                                   │
                               milestone M ─┬─ epic E1  (parent only)
                                            └─ epic E2
@@ -101,7 +101,7 @@ written down in this repo. Read all four sources, and say which produced what:
 | The family's honesty convention | `grep -rn "Undated, therefore unproven" --include="*.md"` |
 | Deferred work in a spec's status line | `grep -rniE "^\*\*Status.*(deferred\|NOT (implemented\|executed))"` |
 | `PROJECT_MAP.md` | its `ORPHANS & PENDING` section |
-| Prior findings | `docs/survey/*.md` and `docs/ideation/*.md` — **read both**, the directories split on 2026-09-10 |
+| Prior findings | `docs/findings/*.md` (and the older `docs/survey/*.md`) and `docs/ideation/*.md` — **read all of them**, the directories split on 2026-09-10 |
 | The tracker | unmilestoned open issues from Phase 2 |
 
 **Print each candidate with its source, before proposing anything.** A theme you cannot point at a
@@ -109,7 +109,7 @@ line for is one you invented, and everything built on it inherits that.
 
 **If the repo records nothing, say so and stop proposing.** *"This repo declares no gaps, has no
 `ORPHANS & PENDING`, no prior reports and an empty tracker — I have no evidence to build a roadmap
-from"* is a complete and honest answer. Offer `dev:survey` or `dev:ideation` to **generate** the
+from"* is a complete and honest answer. Offer `dev:findings` or `dev:ideation` to **generate** the
 evidence, then come back. **Manufacturing a roadmap to fill the silence is the failure this phase
 exists to prevent** — and unlike an invented backlog item, an invented *theme* shapes months of
 work before anyone notices it rested on nothing.

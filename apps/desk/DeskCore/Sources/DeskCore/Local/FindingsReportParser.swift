@@ -1,12 +1,12 @@
 import Foundation
 
-/// Reads a dev:survey report (skills/survey/SKILL.md): CONFIRMED, PLAUSIBLE and ALREADY TRACKED bullets become findings.
-enum SurveyReportParser {
-    static let limits = "Survey checks code only; nothing here was reproduced in a running app."
+/// Reads a dev:findings report (skills/findings/SKILL.md): CONFIRMED, PLAUSIBLE and ALREADY TRACKED bullets become findings.
+enum FindingsReportParser {
+    static let limits = "A findings run checks code only; nothing here was reproduced in a running app."
 
     /// "File.swift:88", and the line ranges a report writes just as often: "File.swift:54-66".
     private static let location = try! Regex(#"^[^\s·`,;]+:\d+(-\d+)?"#)
-    /// "1. ", "12. " — a ranked list is the same list. A surveyor that ranks CONFIRMED by cost writes
+    /// "1. ", "12. " — a ranked list is the same list. A finder that ranks CONFIRMED by cost writes
     /// numbers, and reading only dashes dropped twelve confirmed defects while keeping seven held ones.
     private static let numbered = try! Regex(#"^\d+\.[ \t]+"#)
 
@@ -73,7 +73,7 @@ enum SurveyReportParser {
         var bullet: String?
         var continuation: [String] = []
         /// Inside ARCHITECTURE a bold line decides what follows: its drift lists are findings, its prose
-        /// and its "missed by the surveyor" note are not. Elsewhere a bold line is ordinary text.
+        /// and its "missed by the finder" note are not. Elsewhere a bold line is ordinary text.
         ///
         /// It is also the only thing that knows a drift from a defect once a bullet is flushed, so it is
         /// declared above `flush` rather than below it — a nested function cannot read what comes after it.
@@ -111,7 +111,7 @@ enum SurveyReportParser {
         return findings
     }
 
-    /// A finding's own line, whatever list marker the surveyor reached for: "- ", "* ", or "1. ".
+    /// A finding's own line, whatever list marker the finder reached for: "- ", "* ", or "1. ".
     private static func item(_ line: String) -> String? {
         if line.hasPrefix("- ") || line.hasPrefix("* ") { return String(line.dropFirst(2)) }
         guard let match = line.prefixMatch(of: numbered) else { return nil }
@@ -210,8 +210,8 @@ enum SurveyReportParser {
         return result.isEmpty ? nil : result
     }
 
-    static func coordination(_ continuation: [String]) -> SurveyCoordination {
-        var coordination = SurveyCoordination()
+    static func coordination(_ continuation: [String]) -> FindingsCoordination {
+        var coordination = FindingsCoordination()
         for line in continuation {
             for (key, raw) in fields(in: line) ?? [] {
                 let value = raw.trimmingCharacters(in: CharacterSet(charactersIn: "` "))
@@ -276,8 +276,8 @@ enum SurveyReportParser {
     }
 
     /// The `## GROUPS` section: `### G1 · outcome`, a `branch: … · why: …` line, then its tickets in order.
-    static func groups(_ markdown: String, runID: String) -> [SurveyGroup] {
-        var groups: [SurveyGroup] = []
+    static func groups(_ markdown: String, runID: String) -> [FindingsGroup] {
+        var groups: [FindingsGroup] = []
         var inGroups = false
         for line in GitOutput.lines(markdown) {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
@@ -291,7 +291,7 @@ enum SurveyReportParser {
                 let parts = heading.components(separatedBy: " · ")
                 guard let ref = parts.first.flatMap(firstToken) else { continue }
                 let title = parts.dropFirst().joined(separator: " · ").trimmingCharacters(in: .whitespaces)
-                groups.append(SurveyGroup(ref: ref, runID: runID, title: Markdown.plain(title.isEmpty ? ref : title),
+                groups.append(FindingsGroup(ref: ref, runID: runID, title: Markdown.plain(title.isEmpty ? ref : title),
                                           branch: nil, why: nil, members: []))
             } else if !groups.isEmpty, trimmed.lowercased().hasPrefix("branch:") || trimmed.lowercased().hasPrefix("why:") {
                 for part in trimmed.components(separatedBy: " · why:") .enumerated() {

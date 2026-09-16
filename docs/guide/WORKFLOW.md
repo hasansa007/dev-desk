@@ -24,7 +24,7 @@ The pipeline takes a task through investigation, planning, implementation, verif
 | 15 | Review cycle | Address feedback and return to Phase 14. |
 | 16 | Production | Check secrets and migrations before an approved promotion. |
 
-Phase 0 is invoked through filing commands, outside a full `/dev` run. Issues filed by `dev:survey` or `dev:ideation` supply earlier evidence, but Phase 4 still performs investigation layers 3–5.
+Phase 0 is invoked through filing commands, outside a full `/dev` run. Issues filed by `dev:findings` or `dev:ideation` supply earlier evidence, but Phase 4 still performs investigation layers 3–5.
 
 ## Decision points
 

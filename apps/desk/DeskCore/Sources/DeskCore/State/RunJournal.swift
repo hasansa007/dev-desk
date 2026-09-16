@@ -12,7 +12,7 @@ public struct JournalRecord: Codable, Equatable, Identifiable {
         case terminalSession
     }
 
-    /// The run's own id — `job:survey:ab12cd34`, or a task id. The filename is a sanitised copy of it; this
+    /// The run's own id — `job:findings:ab12cd34`, or a task id. The filename is a sanitised copy of it; this
     /// stays exact, because it is what a resume or a dismiss has to name.
     public let id: String
     public let kind: Kind

@@ -35,7 +35,7 @@ final class MarkdownTests: XCTestCase {
     }
 
     /// Mirrors the Findings run line, whose label is a report's file name.
-    func testASurveyReportFileNameInTheRunLineStaysPlain() throws {
+    func testAFindingsReportFileNameInTheRunLineStaysPlain() throws {
         for stem in ["www.evil.example", "[x](https:evil.example)", "https://evil.example", "a@b.co", "2026-09-30 · Report too large to read (over 1 MB)"] {
             let rendered = try render("Run · \(Markdown.escape(stem)) · rev `9c2e410`")
             XCTAssertEqual(links(rendered), [], "\(stem) rendered a link")

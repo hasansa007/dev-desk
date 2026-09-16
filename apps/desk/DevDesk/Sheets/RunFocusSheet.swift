@@ -9,7 +9,7 @@ struct RunFocusSheet: View {
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
     @State private var kinds: Set<IdeationKind> = []
-    @State private var scope: SurveyScope = .both
+    @State private var scope: FindingsScope = .both
     @State private var flow = ""
     @State private var inBackground = false
     @State private var permission: RunPermission = .writeInRepo
@@ -17,15 +17,15 @@ struct RunFocusSheet: View {
 
     private var isIdeation: Bool { door == "ideation" }
     private var isRoadmap: Bool { door == "roadmap" }
-    private var isSurvey: Bool { !isIdeation && !isRoadmap }
+    private var isFindingsRun: Bool { !isIdeation && !isRoadmap }
 
-    /// Whether starting this run now would collide with one already going in the background. Survey answers
+    /// Whether starting this run now would collide with one already going in the background. Findings answers
     /// it by scope: a defects run and an architecture run write different halves of the report and belong
     /// side by side, while the same half twice — or anything beside `both`, which writes the whole report —
     /// would overwrite itself. Every other door is one at a time, as it was.
     private var backgroundConflict: Bool {
         guard let jobs, case .local(let path) = model.ref else { return false }
-        return isSurvey ? jobs.hasLiveSurvey(scope: scope, in: path) : jobs.hasLiveJob(door: door, in: path)
+        return isFindingsRun ? jobs.hasLiveFindingsRun(scope: scope, in: path) : jobs.hasLiveJob(door: door, in: path)
     }
 
     /// In the background the run needs a headless form, so it uses the Background runs setting; in a terminal, any
@@ -78,7 +78,7 @@ struct RunFocusSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("Scope")
             FlowLayout(spacing: 6) {
-                ForEach(SurveyScope.allCases, id: \.self) { option in
+                ForEach(FindingsScope.allCases, id: \.self) { option in
                     FocusChip(title: option.title, isOn: scope == option) { scope = option }
                 }
             }
@@ -126,25 +126,25 @@ struct RunFocusSheet: View {
 
     private var title: String {
         if isRoadmap { return "Run the roadmap door?" }
-        return isIdeation ? "What should this ideation run look for?" : "What should this survey look at?"
+        return isIdeation ? "What should this ideation run look for?" : "What should this findings run look at?"
     }
 
     private var footnote: String {
         if isRoadmap {
-            return "The door reads this repository's own recorded gaps, PROJECT_MAP's orphans and pending work, and any survey or ideation reports — then proposes milestones with epic parents underneath. It never invents work, and it asks before filing anything."
+            return "The door reads this repository's own recorded gaps, PROJECT_MAP's orphans and pending work, and any findings or ideation reports — then proposes milestones with epic parents underneath. It never invents work, and it asks before filing anything."
         }
         return isIdeation
             ? "Nothing selected means all three kinds, which is the door's own default. The run still asks before it files anything."
             : "The door discovers the flows it can see, verifies every finding against the code, and asks before filing."
     }
 
-    /// Why the run cannot start, in the terms it was chosen in. A survey names the half that is taken,
-    /// because "a survey is already going" is the wrong answer when the other half is free to start.
+    /// Why the run cannot start, in the terms it was chosen in. A findings run names the half that is taken,
+    /// because "a findings run is already going" is the wrong answer when the other half is free to start.
     private var conflictMessage: String {
-        guard isSurvey else {
+        guard isFindingsRun else {
             return "A background \(door) run is already going. Two would write the same report over each other."
         }
-        return "A background survey is already writing \(scope == .both ? "this report" : "this half of the report"). "
+        return "A background findings run is already writing \(scope == .both ? "this report" : "this half of the report"). "
             + "Two would write it over each other — the other half can still be started on its own."
     }
 
@@ -157,32 +157,32 @@ struct RunFocusSheet: View {
             let name = flow.trimmingCharacters(in: .whitespacesAndNewlines)
             if !name.isEmpty { arguments.append(name) }
         }
-        // The scope names the run and nothing else: the door stays "survey", so the same SKILL is read.
+        // The scope names the run and nothing else: the door stays "findings", so the same SKILL is read.
         let title = isRoadmap ? "Roadmap" : (isIdeation ? "Ideation" : scope.runTitle)
         if inBackground, let jobs, case .local(let path) = model.ref, !backgroundConflict {
             jobs.start(door: door, title: title, agent: agent, arguments: arguments,
                        permission: permission, directory: path, mode: RunModeChoice.current(for: model.ref),
-                       scope: isSurvey ? scope : nil)
+                       scope: isFindingsRun ? scope : nil)
             model.go(.terminals)
-        } else if isSurvey, model.isSurveyRunning(scope: scope) {
+        } else if isFindingsRun, model.isFindingsRunLive(scope: scope) {
             // A terminal is already writing this half. Show that run rather than open a second shell over it:
             // `prepareRun` refuses a second run under the same id, but `both` beside a live `defects` is a
             // different id and would otherwise start.
             model.go(.terminals)
         } else {
             model.prepareRun(door: door, title: title, agent: defaultConnection, arguments: arguments,
-                             id: isSurvey ? DoorRuns.id(door: door, scope: scope) : nil)
+                             id: isFindingsRun ? DoorRuns.id(door: door, scope: scope) : nil)
         }
         model.dismissSheet()
     }
 }
 
-/// `dev:survey`'s own arguments: both halves by default, or one of them. The cases are DeskCore's
-/// `SurveyRunScope`, because which of them may run beside which is a rule the job registry has to hold too;
+/// `dev:findings`'s own arguments: both halves by default, or one of them. The cases are DeskCore's
+/// `FindingsRunScope`, because which of them may run beside which is a rule the job registry has to hold too;
 /// the sheet adds only how each choice reads and what it puts on the command line.
-typealias SurveyScope = SurveyRunScope
+typealias FindingsScope = FindingsRunScope
 
-extension SurveyScope {
+extension FindingsScope {
     var title: String {
         switch self {
         case .both: return "Defects and architecture"

@@ -11,7 +11,7 @@ Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE
 /dev:kanban
 /dev #496
 /dev:create-bug the course list loses its scroll position
-/dev:survey
+/dev:findings
 /dev:ideation
 /dev:roadmap
 /dev:insights
@@ -21,7 +21,7 @@ Bare `/dev` routes to `/dev:kanban` — the board. It shows the queue, what is i
 next, then asks. Its writes are bounded: move a card, cancel it with a reason, or delete it behind a
 hard gate. It never cuts a branch and never starts work.
 
-Survey writes provenance into each issue's `## Suspected` section. Its code inspection does not replace runtime verification.
+Findings writes provenance into each issue's `## Suspected` section. Its code inspection does not replace runtime verification.
 
 ## Continue delivery
  

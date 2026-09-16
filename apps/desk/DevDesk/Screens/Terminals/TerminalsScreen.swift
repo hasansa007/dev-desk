@@ -207,7 +207,7 @@ struct TerminalsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionLabel("Start a session")
-                    Text("Start a task from the board, run a door from Survey, Ideation or Roadmap, or open a terminal here. Whether it takes a terminal or runs in the background, it is a session here.")
+                    Text("Start a task from the board, run a door from Findings, Ideation or Roadmap, or open a terminal here. Whether it takes a terminal or runs in the background, it is a session here.")
                         .font(DeskFont.body)
                         .foregroundStyle(DeskColor.mutedInk)
                         .lineSpacing(3)

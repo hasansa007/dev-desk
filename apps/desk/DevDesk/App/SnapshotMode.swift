@@ -82,7 +82,7 @@ final class SnapshotMode {
         model.mode = .focus
         model.showBacklog = false
         model.searchText = ""
-        UserDefaults.standard.set(FindingGrouping.group.rawValue, forKey: PreferenceKey.surveyGrouping)
+        UserDefaults.standard.set(FindingGrouping.group.rawValue, forKey: PreferenceKey.findingsGrouping)
     }
 
     private func write(_ view: NSView?, to url: URL) {
@@ -109,9 +109,9 @@ final class SnapshotMode {
         Capture(name: "08-task57-activity") { $0.openTask("57") },
         Capture(name: "09-task63-activity") { $0.openTask("63") },
         Capture(name: "10-parallel") { $0.setMode(.parallel) },
-        Capture(name: "11-survey") { $0.go(.survey) },
-        Capture(name: "12-finding-dialog", isSheet: true) { $0.go(.survey); $0.present(.finding("F-108")) },
-        Capture(name: "13-reconcile-sheet", isSheet: true) { $0.go(.survey); $0.present(.reconcileFinding("F-108")) },
+        Capture(name: "11-findings") { $0.go(.findings) },
+        Capture(name: "12-finding-dialog", isSheet: true) { $0.go(.findings); $0.present(.finding("F-108")) },
+        Capture(name: "13-reconcile-sheet", isSheet: true) { $0.go(.findings); $0.present(.reconcileFinding("F-108")) },
         Capture(name: "13-roadmap") { $0.go(.roadmap) },
         Capture(name: "16-settings-agents", isSheet: true) { $0.settingsSection = .agentsAndDefaults; $0.present(.settings) },
         Capture(name: "19-open-project-sheet", isSheet: true) { $0.go(.board); $0.present(.openProject) },
@@ -132,25 +132,25 @@ final class SnapshotMode {
             if let id = firstTaskID(model) { model.openTask(id) }
             model.tab = .changes
         },
-        Capture(name: "03-survey") { $0.go(.survey) },
-        Capture(name: "03a-survey-by-file") { model in
-            UserDefaults.standard.set(FindingGrouping.file.rawValue, forKey: PreferenceKey.surveyGrouping)
-            model.go(.survey)
+        Capture(name: "03-findings") { $0.go(.findings) },
+        Capture(name: "03a-findings-by-file") { model in
+            UserDefaults.standard.set(FindingGrouping.file.rawValue, forKey: PreferenceKey.findingsGrouping)
+            model.go(.findings)
         },
-        Capture(name: "03b-reset-survey-sheet", isSheet: true) { $0.go(.survey); $0.present(.resetSurvey) },
+        Capture(name: "03b-reset-findings-sheet", isSheet: true) { $0.go(.findings); $0.present(.resetFindings) },
         Capture(name: "03c-board") { $0.go(.board) },
         Capture(name: "03b-finding-dialog", isSheet: true) { model in
-            model.go(.survey)
+            model.go(.findings)
             if let id = model.snapshot?.findings.value?.findings.first?.id { model.openFinding(id) }
         },
         Capture(name: "04-roadmap") { $0.go(.roadmap) },
         Capture(name: "06-settings-connections", isSheet: true) { $0.settingsSection = .accountsAndConnections; $0.present(.settings) },
         // Idle, so the capture shows the run with the command it would type; nothing is started.
         Capture(name: "08-runs-panel") { model in
-            model.go(.survey)
-            // Scoped like every survey the app starts, so the capture shows the id a real run carries.
-            model.prepareRun(door: "survey", title: SurveyRunScope.both.runTitle, agent: "Claude",
-                             id: DoorRuns.id(door: "survey", scope: .both))
+            model.go(.findings)
+            // Scoped like every findings run the app starts, so the capture shows the id a real run carries.
+            model.prepareRun(door: "findings", title: FindingsRunScope.both.runTitle, agent: "Claude",
+                             id: DoorRuns.id(door: "findings", scope: .both))
             model.go(.terminals)
         },
         Capture(name: "09-unstarted-task-sheet", isSheet: true) { model in

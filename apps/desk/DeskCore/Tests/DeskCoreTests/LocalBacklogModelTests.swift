@@ -35,7 +35,7 @@ final class LocalBacklogModelTests: XCTestCase {
     }
 
     private let draft = BacklogDraft(key: "2026-08-31-C1", title: "Callback fetch returns 0", body: "## What\n\nIt returns early.",
-                                     description: "Callback fetch returns 0.", area: "Logic", source: "dev:survey run 2026-08-31")
+                                     description: "Callback fetch returns 0.", area: "Logic", source: "dev:findings run 2026-08-31")
 
     /// Filing with no tracker puts a card on the board at once, and the finding knows it has been filed.
     func testFilingLocallyPutsACardOnTheBoard() async {

@@ -35,6 +35,6 @@ final class FindingAreaTests: XCTestCase {
 
     func testAFindingCarriesItsArea() {
         let report = "## CONFIRMED (1)\n- Tab state bleeds · `MainScreen.swift:57` · `ProjectsScreen.swift:14`\n"
-        XCTAssertEqual(SurveyReportParser.parse(report, runID: "r")[0].area, .ui)
+        XCTAssertEqual(FindingsReportParser.parse(report, runID: "r")[0].area, .ui)
     }
 }

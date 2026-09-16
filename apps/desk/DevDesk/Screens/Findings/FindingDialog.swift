@@ -3,7 +3,7 @@ import SwiftUI
 
 /// A finding's card, opened — the same dialog a task card opens, assembled from the same chrome
 /// (`DialogChrome.swift`). A finding and a task are both "one thing you might do something about", and reading
-/// one in a split pane while the other got a dialog made the survey feel like a different app.
+/// one in a split pane while the other got a dialog made Findings feel like a different app.
 struct FindingDialog: View {
     let finding: Finding
     @Bindable var model: ProjectWindowModel
@@ -64,7 +64,7 @@ struct FindingDialog: View {
             if let area = finding.area {
                 PropertyChip(area.rawValue, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             }
-            // Only once it is an issue: a survey rates nothing, so before filing these were dashes on every finding.
+            // Only once it is an issue: a findings run rates nothing, so before filing these were dashes on every finding.
             if let trackedTask {
                 PropertyChip("impact \(trackedTask.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
                 PropertyChip("complexity \(trackedTask.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)

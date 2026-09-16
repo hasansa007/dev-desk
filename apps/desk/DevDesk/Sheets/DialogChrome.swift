@@ -4,7 +4,7 @@ import SwiftUI
 /// The dialog a card opens: identity at the top, the work in the middle, what you can do to it along the
 /// bottom (ADR 0021's fixed size, ADR 0024's one chrome).
 ///
-/// These were `TaskDialog`'s own private views. The survey's findings are cards too and open the same dialog,
+/// These were `TaskDialog`'s own private views. The findings are cards too and open the same dialog,
 /// and a second dialog that merely *looked* like this one would have drifted from it the first time either
 /// changed — so the pieces moved here and both dialogs are assembled from them.
 

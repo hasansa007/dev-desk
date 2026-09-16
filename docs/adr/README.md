@@ -50,3 +50,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0039](0039-a-confirmation-is-as-big-as-its-question.md) | A confirmation is as big as its question, and a survey reset asks about the cards it filed | Accepted |
 | [0040](0040-a-survey-files-tickets-in-groups-and-names-the-code-they-share.md) | A survey files tickets in groups, and names the code they share | Accepted |
 | [0041](0041-a-survey-reset-clears-the-findings-and-keeps-work-in-progress.md) | A survey reset clears the findings and what they filed, and keeps work in progress | Accepted |
+| [0042](0042-survey-is-renamed-findings-in-the-app-the-door-and-the-folder.md) | Survey is renamed Findings, in the app, the door and the folder | Accepted |

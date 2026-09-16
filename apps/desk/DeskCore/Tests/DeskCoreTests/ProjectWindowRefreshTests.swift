@@ -80,7 +80,7 @@ final class EndedRunNavigationTests: XCTestCase {
     }
 
     func testNoOtherDoorMovesTheWindow() {
-        XCTAssertFalse(ProjectWindowModel.endedRunShowsDiagrams(sessionID: DoorRuns.id(door: "survey")))
+        XCTAssertFalse(ProjectWindowModel.endedRunShowsDiagrams(sessionID: DoorRuns.id(door: "findings")))
         XCTAssertFalse(ProjectWindowModel.endedRunShowsDiagrams(sessionID: DoorRuns.id(door: "dev")))
     }
 

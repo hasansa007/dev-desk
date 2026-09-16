@@ -48,8 +48,8 @@ final class JobStreamTests: XCTestCase {
     }
 
     func testASuccessfulResultEndsWithoutAQuestion() {
-        let event = JobStream.event(from: #"{"type":"result","subtype":"success","is_error":false,"result":"Survey written"}"#)
-        XCTAssertEqual(event, .ended(text: "Survey written", question: nil))
+        let event = JobStream.event(from: #"{"type":"result","subtype":"success","is_error":false,"result":"Findings written"}"#)
+        XCTAssertEqual(event, .ended(text: "Findings written", question: nil))
     }
 
     /// A headless run has no terminal to prompt in, so needing an answer shows up as its ending.
@@ -102,7 +102,7 @@ final class JobRegistryTests: XCTestCase {
 
     func testStartingAJobSpawnsTheHeadlessArgv() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         XCTAssertEqual(spawner.launched.count, 1)
         XCTAssertEqual(spawner.launched[0].launch.executable, "claude")
@@ -113,14 +113,14 @@ final class JobRegistryTests: XCTestCase {
 
     func testAnAgentWithNoVerifiedInvocationStartsNothing() {
         let (jobs, spawner) = registry()
-        XCTAssertNil(jobs.start(door: "survey", title: "Survey", agent: "Gemini", permission: .readOnly, directory: "/repo"))
+        XCTAssertNil(jobs.start(door: "findings", title: "Findings", agent: "Gemini", permission: .readOnly, directory: "/repo"))
         XCTAssertTrue(spawner.launched.isEmpty, "a guessed invocation is worse than none")
         XCTAssertTrue(jobs.jobs.isEmpty)
     }
 
     func testTheLogStreamsAndTheSessionIdIsLearned() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Codex",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Codex",
                                           permission: .readOnly, directory: "/repo"))
         spawner.emit(#"{"type":"system","subtype":"init","session_id":"sess-9"}"#, to: id)
         spawner.emit(#"{"type":"assistant","message":{"content":[{"type":"text","text":"Reading"}]}}"#, to: id)
@@ -131,7 +131,7 @@ final class JobRegistryTests: XCTestCase {
 
     func testARunThatEndsOnAQuestionWaitsRatherThanFinishing() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         spawner.emit(#"{"type":"result","subtype":"error_max_turns","is_error":true,"result":"Push?"}"#, to: id)
         XCTAssertEqual(jobs.job(id)?.state, .asking("Push?"))
@@ -142,7 +142,7 @@ final class JobRegistryTests: XCTestCase {
 
     func testAnsweringResumesTheSameSession() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         let sessionID = jobs.job(id)?.sessionID
         XCTAssertNotNil(sessionID)
@@ -160,7 +160,7 @@ final class JobRegistryTests: XCTestCase {
     /// waiting forever: an asking job ignores its own exit, and answering resumes a session that fails the same.
     func testARealFailureEndsRatherThanAsking() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         spawner.emit(#"{"type":"result","subtype":"error_during_execution","is_error":true,"result":"Credit balance too low"}"#, to: id)
         XCTAssertEqual(jobs.job(id)?.state, .ended(text: "Credit balance too low", failed: false))
@@ -171,7 +171,7 @@ final class JobRegistryTests: XCTestCase {
     /// in stalls on its first tool call and asks again — a loop the developer cannot break.
     func testAnsweringCarriesTheGrantTheRunStartedWith() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .everything, directory: "/repo"))
         spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
         jobs.answer("go", to: id)
@@ -184,7 +184,7 @@ final class JobRegistryTests: XCTestCase {
     /// so it is the one that shows the stored mode travelled with the answer.
     func testAnsweringADelegateRunCarriesTheDelegateFlags() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .writeInRepo, directory: "/repo", mode: .delegate))
         XCTAssertTrue(try XCTUnwrap(spawner.launched.first).launch.arguments.contains("--agents"),
                       "a delegate run starts with its worker")
@@ -198,7 +198,7 @@ final class JobRegistryTests: XCTestCase {
     /// the new one — marking a live run finished, and leaving it unstoppable.
     func testAnsweringStopsThePreviousProcessFirst() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         spawner.emit(#"{"type":"result","subtype":"error_permission","is_error":true,"result":"Push?"}"#, to: id)
         jobs.answer("go", to: id)
@@ -207,73 +207,73 @@ final class JobRegistryTests: XCTestCase {
 
     func testOneBackgroundRunPerDoor() throws {
         let (jobs, _) = registry()
-        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        _ = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                      permission: .readOnly, directory: "/repo"))
-        XCTAssertTrue(jobs.hasLiveJob(door: "survey", in: "/repo"))
+        XCTAssertTrue(jobs.hasLiveJob(door: "findings", in: "/repo"))
         XCTAssertFalse(jobs.hasLiveJob(door: "ideation", in: "/repo"))
-        XCTAssertFalse(jobs.hasLiveJob(door: "survey", in: "/other"),
+        XCTAssertFalse(jobs.hasLiveJob(door: "findings", in: "/other"),
                        "one run per door is per project — another repo's window is not running this")
     }
 
-    /// Survey is blocked by the half of the report it writes, not by its door: the two halves are written by
+    /// Findings is blocked by the half of the report it writes, not by its door: the two halves are written by
     /// different runs and belong side by side.
-    func testTwoSurveyScopesRunSideBySideAndTheSameScopeDoesNot() throws {
+    func testTwoFindingsScopesRunSideBySideAndTheSameScopeDoesNot() throws {
         let (jobs, _) = registry()
-        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey · Defects", agent: "Claude",
+        _ = try XCTUnwrap(jobs.start(door: "findings", title: "Findings · Defects", agent: "Claude",
                                      permission: .writeInRepo, directory: "/repo", scope: .defects))
-        XCTAssertTrue(jobs.hasLiveSurvey(scope: .defects, in: "/repo"), "the same half twice would overwrite itself")
-        XCTAssertFalse(jobs.hasLiveSurvey(scope: .architecture, in: "/repo"),
+        XCTAssertTrue(jobs.hasLiveFindingsRun(scope: .defects, in: "/repo"), "the same half twice would overwrite itself")
+        XCTAssertFalse(jobs.hasLiveFindingsRun(scope: .architecture, in: "/repo"),
                        "the other half writes somewhere else and may start")
-        XCTAssertFalse(jobs.hasLiveSurvey(scope: .defects, in: "/other"), "still per project")
+        XCTAssertFalse(jobs.hasLiveFindingsRun(scope: .defects, in: "/other"), "still per project")
     }
 
     /// `both` occupies the whole report, so it conflicts with everything — in either direction.
     func testBothConflictsWithEveryScope() throws {
         let (jobs, _) = registry()
-        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        _ = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                      permission: .writeInRepo, directory: "/repo", scope: .both))
-        XCTAssertTrue(jobs.hasLiveSurvey(scope: .defects, in: "/repo"))
-        XCTAssertTrue(jobs.hasLiveSurvey(scope: .architecture, in: "/repo"))
-        XCTAssertTrue(jobs.hasLiveSurvey(scope: .both, in: "/repo"))
+        XCTAssertTrue(jobs.hasLiveFindingsRun(scope: .defects, in: "/repo"))
+        XCTAssertTrue(jobs.hasLiveFindingsRun(scope: .architecture, in: "/repo"))
+        XCTAssertTrue(jobs.hasLiveFindingsRun(scope: .both, in: "/repo"))
     }
 
-    func testAHalfEachBlocksAWholeSurvey() throws {
+    func testAHalfEachBlocksAWholeFindingsRun() throws {
         let (jobs, _) = registry()
-        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey · Defects", agent: "Claude",
+        _ = try XCTUnwrap(jobs.start(door: "findings", title: "Findings · Defects", agent: "Claude",
                                      permission: .writeInRepo, directory: "/repo", scope: .defects))
-        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey · Architecture", agent: "Claude",
+        _ = try XCTUnwrap(jobs.start(door: "findings", title: "Findings · Architecture", agent: "Claude",
                                      permission: .writeInRepo, directory: "/repo", scope: .architecture))
         XCTAssertEqual(jobs.liveCount, 2, "the two halves run together")
-        XCTAssertTrue(jobs.hasLiveSurvey(scope: .both, in: "/repo"), "a whole survey would write over both of them")
+        XCTAssertTrue(jobs.hasLiveFindingsRun(scope: .both, in: "/repo"), "a whole findings run would write over both of them")
     }
 
     /// A finished run blocks nothing, and a run recorded without a scope is read as the whole report rather
-    /// than as something a second survey may quietly write over.
+    /// than as something a second findings run may quietly write over.
     func testAScopeIsOnlyBlockedWhileItsRunIsLive() throws {
         let (jobs, _) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .writeInRepo, directory: "/repo"))
-        XCTAssertTrue(jobs.hasLiveSurvey(scope: .architecture, in: "/repo"), "no scope recorded means both halves")
+        XCTAssertTrue(jobs.hasLiveFindingsRun(scope: .architecture, in: "/repo"), "no scope recorded means both halves")
         jobs.stop(id)
-        XCTAssertFalse(jobs.hasLiveSurvey(scope: .both, in: "/repo"))
+        XCTAssertFalse(jobs.hasLiveFindingsRun(scope: .both, in: "/repo"))
     }
 
-    /// Roadmap and create-issue have no halves: their rule is the door-wide one, and the scope of a survey
+    /// Roadmap and create-issue have no halves: their rule is the door-wide one, and the scope of a findings run
     /// beside them changes nothing about it.
     func testOtherDoorsStillBlockByDoorAlone() throws {
         let (jobs, _) = registry()
         _ = try XCTUnwrap(jobs.start(door: "roadmap", title: "Roadmap", agent: "Claude",
                                      permission: .writeInRepo, directory: "/repo"))
-        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey · Defects", agent: "Claude",
+        _ = try XCTUnwrap(jobs.start(door: "findings", title: "Findings · Defects", agent: "Claude",
                                      permission: .writeInRepo, directory: "/repo", scope: .defects))
         XCTAssertTrue(jobs.hasLiveJob(door: "roadmap", in: "/repo"))
-        XCTAssertFalse(jobs.hasLiveSurvey(scope: .architecture, in: "/repo"),
-                       "another door's run is not a survey of any scope")
+        XCTAssertFalse(jobs.hasLiveFindingsRun(scope: .architecture, in: "/repo"),
+                       "another door's run is not a findings run of any scope")
     }
 
     func testAnsweringAJobThatIsNotAskingDoesNothing() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         jobs.answer("hello", to: id)
         XCTAssertEqual(spawner.launched.count, 1, "a running job is not waiting on anything")
@@ -281,7 +281,7 @@ final class JobRegistryTests: XCTestCase {
 
     func testStopEndsItAndTheRowStaysUntilRemoved() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         jobs.stop(id)
         XCTAssertEqual(spawner.stopped, [id])
@@ -293,7 +293,7 @@ final class JobRegistryTests: XCTestCase {
 
     func testALiveJobCannotBeRemovedFromTheList() throws {
         let (jobs, _) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         jobs.remove(id)
         XCTAssertEqual(jobs.jobs.count, 1, "removing a row must never orphan its process")
@@ -302,7 +302,7 @@ final class JobRegistryTests: XCTestCase {
     /// A crash writes no result line. Without this the row pulses forever and the count never comes down.
     func testACrashWithNoResultStillEnds() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         spawner.exit(9, of: id)
         XCTAssertEqual(jobs.job(id)?.state, .ended(text: "Exited with status 9", failed: true))
@@ -310,7 +310,7 @@ final class JobRegistryTests: XCTestCase {
 
     func testTheLogIsCappedSoARunThatTalksForeverIsStillARow() throws {
         let (jobs, spawner) = registry()
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .readOnly, directory: "/repo"))
         for i in 1...(BackgroundJob.logLimit + 40) {
             spawner.emit("{\"type\":\"assistant\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"line \(i)\"}]}}", to: id)
@@ -335,7 +335,7 @@ final class JobRegistryTests: XCTestCase {
     func testALiveRunIsWrittenDownAndItsEndClearsIt() throws {
         let (jobs, spawner, journal, root) = try journalled()
         defer { try? FileManager.default.removeItem(at: root) }
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Codex",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Codex",
                                           permission: .writeInRepo, directory: root.path, mode: .delegate))
         let started = try XCTUnwrap(journal.recover().first)
         XCTAssertEqual(started.id, id)
@@ -353,7 +353,7 @@ final class JobRegistryTests: XCTestCase {
         XCTAssertEqual(running.sessionID, "sess-9", "without the id there is nothing to resume")
         XCTAssertEqual(running.logTail, ["Reading the door"])
 
-        spawner.emit(#"{"type":"result","subtype":"success","is_error":false,"result":"Survey written"}"#, to: id)
+        spawner.emit(#"{"type":"result","subtype":"success","is_error":false,"result":"Findings written"}"#, to: id)
         XCTAssertTrue(journal.all().isEmpty, "a finished run is history, not something to offer to continue")
     }
 
@@ -362,7 +362,7 @@ final class JobRegistryTests: XCTestCase {
     func testAGracefulQuitMarksTheRecordCleanInsteadOfLeavingItLookingLikeACrash() throws {
         let (jobs, _, journal, root) = try journalled()
         defer { try? FileManager.default.removeItem(at: root) }
-        _ = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        _ = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                      permission: .readOnly, directory: root.path))
         jobs.markAllClean()
         XCTAssertTrue(journal.recover().isEmpty)
@@ -374,7 +374,7 @@ final class JobRegistryTests: XCTestCase {
     func testResumingFromARecordContinuesTheSessionAndClearsTheRecord() throws {
         let (jobs, spawner, journal, root) = try journalled()
         defer { try? FileManager.default.removeItem(at: root) }
-        let id = try XCTUnwrap(jobs.start(door: "survey", title: "Survey", agent: "Claude",
+        let id = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                           permission: .everything, directory: root.path))
         let record = try XCTUnwrap(journal.recover().first)
         // The run itself is gone; this stands in for the app it died with.
@@ -384,14 +384,14 @@ final class JobRegistryTests: XCTestCase {
         XCTAssertTrue(launch.arguments.contains("--resume"))
         XCTAssertTrue(launch.arguments.contains(try XCTUnwrap(record.sessionID)))
         XCTAssertTrue(launch.arguments.contains("--dangerously-skip-permissions"), "the dead run's grant, not today's default")
-        XCTAssertEqual(jobs.job(resumed)?.title, "Survey")
+        XCTAssertEqual(jobs.job(resumed)?.title, "Findings")
         XCTAssertEqual(journal.recover().map(\.id), [resumed], "the old record is gone; the new run has its own")
     }
 
     func testARecordWithNoSessionIdHasNothingToResume() throws {
         let (jobs, _, _, root) = try journalled()
         defer { try? FileManager.default.removeItem(at: root) }
-        let record = JournalRecord(id: "job:survey:dead", kind: .backgroundRun, title: "Survey", agent: "Claude",
+        let record = JournalRecord(id: "job:findings:dead", kind: .backgroundRun, title: "Findings", agent: "Claude",
                                    directory: root.path, stateLabel: "Running in the background")
         XCTAssertNil(jobs.resumeFromRecord(record))
         XCTAssertTrue(jobs.jobs.isEmpty, "a resume that cannot continue the session must start nothing")

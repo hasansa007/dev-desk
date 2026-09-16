@@ -15,7 +15,7 @@ enum PreferenceKey {
     static let agentLimit = "desk.agentLimit"
     static let confirmQuit = "desk.confirmQuit"
     static let sidebarRail = "desk.sidebarRail"
-    static let surveyGrouping = "desk.surveyGrouping"
+    static let findingsGrouping = "desk.findingsGrouping"
     /// The developer's "Start with" list, as `StartWithList` JSON, for every project.
     static let startWith = "desk.startWith"
     /// Which agent background runs use: Claude or Codex, apart from the default connection.
@@ -39,7 +39,7 @@ enum AgentDefaults {
     static let worktreeLocation = "~/.devdesk/wt"
 }
 
-/// The agent background runs use — Survey or Ideation run in the background, filing, a diagram. Only Claude and Codex
+/// The agent background runs use — Findings or Ideation run in the background, filing, a diagram. Only Claude and Codex
 /// have a headless form whose output this app reads, so this is its own setting rather than the default connection:
 /// a default of Gemini must not quietly become Codex for a background run. Never chosen, it shows — in Settings, where
 /// it can be changed — the default when that can run in the background, and Codex otherwise.

@@ -38,11 +38,11 @@ extension Finding {
             ("What", Markdown.unescape(summary)),
             ("Sources", sources),
             ("Scope", coordination.scopeLines.isEmpty ? nil : coordination.scopeLines.map { "- \($0)" }.joined(separator: "\n")),
-            ("Found by", "dev:survey, run \(runID) · \(Markdown.unescape(verificationLabel))"),
+            ("Found by", "dev:findings, run \(runID) · \(Markdown.unescape(verificationLabel))"),
             ("Limits", Markdown.unescape(limits)),
         ])
         return BacklogDraft(key: id, title: Markdown.unescape(title), body: body, description: backlogDescription,
-                            area: area?.rawValue, source: "dev:survey run \(runID)")
+                            area: area?.rawValue, source: "dev:findings run \(runID)")
     }
 }
 

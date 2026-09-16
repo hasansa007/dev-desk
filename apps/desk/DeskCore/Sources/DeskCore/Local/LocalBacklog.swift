@@ -2,7 +2,7 @@ import Foundation
 
 /// One item filed while there was no tracker to file into. `docs/guide/GETTING-STARTED.md` said that without
 /// `gh` the filing doors cannot work, which is true of GitHub and was taken to mean the work cannot be
-/// recorded at all — so a survey of a repo with no reachable remote produced fifteen findings and nowhere to
+/// recorded at all — so a findings run on a repo with no reachable remote produced fifteen findings and nowhere to
 /// put them (ADR 0027).
 ///
 /// A file in the repo rather than app state: it survives, it is reviewable, it travels with a clone, and it is
@@ -17,7 +17,7 @@ public struct BacklogItem: Identifiable, Hashable {
     public var area: String?
     public var impact: String?
     public var complexity: String?
-    /// "dev:survey run 2026-08-31", so a card can say where it came from.
+    /// "dev:findings run 2026-08-31", so a card can say where it came from.
     public var source: String?
     /// The issue it became, once a tracker existed and it was promoted. Never filed twice.
     public var issue: Int?

@@ -11,7 +11,7 @@ The family is a set of doors — `/dev` and 21 siblings — that run one shared 
 | Layer | Holds | Written by |
 | --- | --- | --- |
 | 1 · Truth | git branches and commits; GitHub issues, milestones and PRs | git and GitHub, through the doors |
-| 2 · Memory | `PROJECT_MAP.md`, `docs/adr/`, `docs/survey/` and `docs/ideation/` reports, `.dev/<branch>.json` | Phases 10 and 12, `dev:insights`, `dev:survey`, `dev:ideation`, `dev state checkpoint` |
+| 2 · Memory | `PROJECT_MAP.md`, `docs/adr/`, `docs/findings/` and `docs/ideation/` reports, `.dev/<branch>.json` | Phases 10 and 12, `dev:insights`, `dev:findings`, `dev:ideation`, `dev state checkpoint` |
 | 3 · Engine | the doors; `shared/pipeline.md`, Phases 0–16; four human gates: 5 discuss · 6 architecture · 14 merge · 16 prod | prose, executed by the agent |
 | 4 · Helpers | the `dev` CLI: `state · board · run · project · doctor`; hooks: `branch-guard`, `pr-gates`, `teardown`, `context-load` | `scripts/dev.py`, `hooks/` |
 | 5 · Container | Dev Desk's project windows and its own preferences, never repository truth | the app, in `apps/desk/` |
@@ -28,7 +28,7 @@ Five destinations, and two panels on the window's edges ([ADR 0021](../adr/0021-
 
 - **Board** — every card opens the same dialog over the board, started or not.
 - **Roadmap** — GitHub milestones.
-- **Survey** reads `docs/survey/` reports; **Ideation** reads `docs/ideation/`. Each asks what a run should focus on, runs the door, and files what you approve through `dev:create-issue`.
+- **Findings** reads `docs/findings/` reports (and the older `docs/survey/`); **Ideation** reads `docs/ideation/`. Each asks what a run should focus on, runs the door, and files what you approve through `dev:create-issue`.
 - **Insights** is a destination, and unavailable for real projects.
 - **Files** down the right edge browses the project's own folder; **Runs** along the bottom lists every door this window started.
 - **A task's dialog holds its Shell and its agents.** Both run in the task's own worktree, and start only when you start them ([ADR 0017](../adr/0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md)) — or when Auto starts a queued task's agent, in a project where you turned Auto on ([ADR 0018](../adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)).

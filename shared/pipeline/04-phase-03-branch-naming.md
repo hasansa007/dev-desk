@@ -27,7 +27,7 @@ from another in-flight branch carries its commits into your PR. Mechanics and sc
 
 ### Shared code — where to branch from, and how to land
 
-A ticket filed by `dev:survey` carries `group:`, `needs:` and `shares:` in its `## Scope` (or its
+A ticket filed by `dev:findings` carries `group:`, `needs:` and `shares:` in its `## Scope` (or its
 `docs/backlog/` header). Read them before cutting, and cut from the right base:
 
 | The ticket says | Branch from | Lands in |

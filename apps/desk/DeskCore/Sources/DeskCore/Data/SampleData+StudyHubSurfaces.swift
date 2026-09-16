@@ -45,7 +45,7 @@ extension SampleData {
 
     static func studyHubFindings() -> FindingsReport {
         FindingsReport(
-            runs: [SurveyRun(id: "run-0940", label: "today 09:40", revision: "9c2e410")],
+            runs: [FindingsRun(id: "run-0940", label: "today 09:40", revision: "9c2e410")],
             findings: [
                 Finding(
                     id: "F-108", runID: "run-0940", title: "Navigation resets list state on unmount",
@@ -80,13 +80,13 @@ extension SampleData {
                         ],
                         proposedUpdate: [
                             "comment on #42:",
-                            "+ Survey F-108 (rev 9c2e410, code-inspected, not reproduced)",
+                            "+ Finding F-108 (rev 9c2e410, code-inspected, not reproduced)",
                             "+ Locations: useScrollRestore.ts:18, CourseList.tsx:63",
                             "+ No status change proposed",
                         ],
                         deliveryNote: "GitHub is unavailable — the update will be queued locally until the connection returns. Nothing is created silently."
                     ),
-                    historyNote: "Three surveys have produced evidence for this finding since 4 Sep. History is preserved on the finding rather than filed as repeated tickets."
+                    historyNote: "Three findings runs have produced evidence for this finding since 4 Sep. History is preserved on the finding rather than filed as repeated tickets."
                 ),
                 Finding(
                     id: "F-111", runID: "run-0940", title: "Exam attempt store writes twice",
@@ -160,9 +160,9 @@ extension SampleData {
                 citation: "useScrollRestore.ts:18 · stackEntry.ts:27 · PROJECT_MAP.md § Navigation"
             ),
             quickActions: [
-                InsightsQuickAction(id: "survey", title: "Run survey", reply: InsightsReply(
-                    text: "Survey is a separate workflow. Opening it in Findings with the current revision preselected — this chat will not run it silently.",
-                    citation: "Findings › Run survey")),
+                InsightsQuickAction(id: "findings", title: "Run findings", reply: InsightsReply(
+                    text: "Findings is a separate workflow. Opening it with the current revision preselected — this chat will not run it silently.",
+                    citation: "Findings › Run findings")),
                 InsightsQuickAction(id: "roadmap", title: "Explore roadmap", reply: InsightsReply(
                     text: "Continuity is the theme with the most committed work. Two Board tasks are attached to milestone 1.4, and one considered item has no commitment yet.",
                     citation: "Roadmap › Learning continuity")),

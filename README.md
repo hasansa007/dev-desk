@@ -80,7 +80,7 @@ Bare `/dev` **orients**: it detects where the repo actually is and offers the tw
 | `/dev:create-bug` | File a bug report without implementing the fix. |
 | `/dev:create-epic` | File a parent epic; split it during planning. |
 | `/dev:kanban` | Show current work, the queue, next tasks and statistics; move, cancel or delete a card. |
-| `/dev:survey` | Inspect an app for defects and architectural drift; file the confirmed. |
+| `/dev:findings` | Inspect an app for defects and architectural drift; file the confirmed. |
 | `/dev:ideation` | Inspect an app for performance, security and quality opportunities; file the confirmed. |
 | `/dev:roadmap` | Propose themes from the repo's own evidence; write milestones and epic parents. |
 | `/dev:insights` | Answer a question about the codebase with citations; keep what lasts in `PROJECT_MAP.md`. |

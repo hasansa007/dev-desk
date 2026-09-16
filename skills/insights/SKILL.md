@@ -93,13 +93,13 @@ difference from here.
 | The question | Owner | Why not here |
 |---|---|---|
 | *draw / diagram / map the system* | `dev:arch` | it produces an evidenced diagram whose nodes point at real code at a real commit |
-| *what is broken* | `dev:survey` | findings need two adversarial checkers before anyone acts on them |
+| *what is broken* | `dev:findings` | findings need two adversarial checkers before anyone acts on them |
 | *what could be better / is it secure* | `dev:ideation` | same, plus the gain must carry a number |
 | *what should we build next* | `dev:roadmap` | a theme needs traceable evidence and a milestone to live in |
 | *what am I working on* | `dev:kanban` | the board is computed from git, not remembered |
 | *are the docs current* | `dev:docs` | it owns ADRs and the staleness check |
 
-**A one-paragraph answer plus the offer is right. A half-survey is not.** The line: describing what
+**A one-paragraph answer plus the offer is right. A half-findings run is not.** The line: describing what
 you can see is an answer; *judging* it — this is a bug, this is slow, this should be next — is
 another door's verdict, and here it would arrive unverified.
 
@@ -176,7 +176,7 @@ Then ask what they want next.
 | | |
 |---|---|
 | It reads; it does not run the app | A question that needs runtime behaviour goes to `dev:verify` or `dev:launch` |
-| No adversarial verification | Answers are cited, not checked by a second reader. A *judgement* needs `dev:survey` or `dev:ideation`, which do check |
+| No adversarial verification | Answers are cited, not checked by a second reader. A *judgement* needs `dev:findings` or `dev:ideation`, which do check |
 | `PROJECT_MAP.md` has no schema beyond three headings | Drift detection under `map` is best-effort and citation-based, not mechanical |
 
 ## Scar tissue
@@ -197,5 +197,5 @@ Analysis` both depend on it — yet `dev-skill` itself has no `PROJECT_MAP.md`. 
 principles and honoured in none is the reason this door has a Phase 5 at all.
 
 **Undated, therefore unproven:** this door has never been run. The durable/not-durable test, the
-`map` drift audit, and whether routing actually stops the half-survey are all designed rather than
+`map` drift audit, and whether routing actually stops the half-findings run are all designed rather than
 observed.

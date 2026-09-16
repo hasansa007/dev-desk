@@ -1,6 +1,6 @@
 import Foundation
 
-/// How the survey list is sectioned: by what each finding asks of you, or by the file it points at.
+/// How the findings list is sectioned: by what each finding asks of you, or by the file it points at.
 public enum FindingGrouping: String, CaseIterable, Hashable {
     /// The tickets as they will run: each group in order, then what runs on its own, then what is held (ADR 0040).
     case group = "By group"
@@ -8,7 +8,7 @@ public enum FindingGrouping: String, CaseIterable, Hashable {
     case file = "By file"
 }
 
-/// One section of the survey list. `lines` is only set when grouped by file: the parts of each finding's
+/// One section of the findings list. `lines` is only set when grouped by file: the parts of each finding's
 /// locations that fall in this file, so a row can say `:101` under a header that already names the file.
 public struct FindingGroup: Identifiable, Hashable {
     public var id: String
@@ -41,7 +41,7 @@ public enum FindingGroups {
     static let statusOrder: [FindingCategory] = [.new, .knownNewEvidence, .needsDecision, .closedOrDeclined]
 
     public static func group(_ findings: [Finding], by grouping: FindingGrouping, filed: Set<String> = [],
-                             groups: [SurveyGroup] = []) -> [FindingGroup] {
+                             groups: [FindingsGroup] = []) -> [FindingGroup] {
         switch grouping {
         case .group: return byGroup(findings, groups: groups, filed: filed)
         case .status: return byStatus(findings, filed: filed)
@@ -66,7 +66,7 @@ public enum FindingGroups {
 
     /// Each report group in its own order, then the tickets that run on their own, then held findings. A report
     /// with no GROUPS section has nothing to group by, so it reads by status instead.
-    public static func byGroup(_ findings: [Finding], groups: [SurveyGroup], filed: Set<String> = []) -> [FindingGroup] {
+    public static func byGroup(_ findings: [Finding], groups: [FindingsGroup], filed: Set<String> = []) -> [FindingGroup] {
         let runs = Set(findings.map(\.runID))
         let relevant = groups.filter { runs.contains($0.runID) }
         guard !relevant.isEmpty else { return byStatus(findings, filed: filed) }

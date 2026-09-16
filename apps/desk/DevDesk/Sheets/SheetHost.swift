@@ -60,7 +60,7 @@ struct SheetHost: View {
             } else {
                 SheetChrome(title: "Finding", confirmTitle: "Add to backlog…", confirmDisabled: true,
                             onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
-                    UnavailableView(reason: "This finding is not in the survey report any more.")
+                    UnavailableView(reason: "This finding is not in the findings report any more.")
                 }
             }
         case .cancelTask(let taskID):
@@ -87,8 +87,8 @@ struct SheetHost: View {
             CloneRepositorySheet(onDismiss: model.dismissSheet)
         case .createProject:
             CreateProjectSheet(onDismiss: model.dismissSheet)
-        case .resetSurvey:
-            ResetSurveySheet(model: model)
+        case .resetFindings:
+            ResetFindingsSheet(model: model)
         }
     }
 

@@ -1,6 +1,6 @@
 import Foundation
 
-/// What kind of change a survey ticket asks for (ADR 0040). Kind says which half of the survey a finding came
+/// What kind of change a findings ticket asks for (ADR 0040). Kind says which half of the report a finding came
 /// from; this says what fixing it touches, which is what decides its order inside a group.
 public enum TicketType: String, CaseIterable, Hashable {
     case dataFlow = "Data flow"
@@ -38,9 +38,9 @@ public struct TicketLink: Hashable {
     }
 }
 
-/// The lines a grouped survey report writes under each ticket. All optional: a report written before
+/// The lines a grouped findings report writes under each ticket. All optional: a report written before
 /// ADR 0040 has none of them, and reads exactly as it did.
-public struct SurveyCoordination: Hashable {
+public struct FindingsCoordination: Hashable {
     public var ref: String?
     public var type: TicketType?
     public var groupRef: String?
@@ -55,7 +55,7 @@ public struct SurveyCoordination: Hashable {
 
     public init() {}
 
-    public var isEmpty: Bool { self == SurveyCoordination() }
+    public var isEmpty: Bool { self == FindingsCoordination() }
 
     /// The coordination as the `## Scope` lines a filed ticket carries, in the report's own words.
     public var scopeLines: [String] {
@@ -84,7 +84,7 @@ public struct SurveyCoordination: Hashable {
 }
 
 /// One `### G1 · outcome` block under `## GROUPS`: tickets that reach the base branch together (ADR 0040).
-public struct SurveyGroup: Identifiable, Hashable {
+public struct FindingsGroup: Identifiable, Hashable {
     public var id: String { "\(runID)-\(ref)" }
     public var ref: String
     public var runID: String

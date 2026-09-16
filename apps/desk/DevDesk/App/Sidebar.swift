@@ -169,7 +169,7 @@ struct Sidebar: View {
         case .terminals:
             let live = SessionRow.all(in: model).filter(\.isLive).count
             return live > 0 ? (live, true) : nil
-        case .survey:
+        case .findings:
             guard let count = model.findingsCount, count > 0 else { return nil }
             return (count, false)
         case .ideation:
@@ -190,7 +190,7 @@ struct Sidebar: View {
         case .board: return "square.grid.3x2"
         case .terminals: return "apple.terminal"
         case .roadmap: return "map"
-        case .survey: return "scope"
+        case .findings: return "scope"
         case .ideation: return "lightbulb"
         case .diagrams: return "rectangle.3.group"
         }
