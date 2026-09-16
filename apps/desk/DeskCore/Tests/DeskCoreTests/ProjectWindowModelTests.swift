@@ -336,6 +336,45 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertTrue(message.contains("boom"))
     }
 
+    // MARK: - Roadmap waits on Findings
+
+    /// No report, an empty one, or a run still going: Roadmap is refused with the reason. A finished report frees it.
+    func testRoadmapWaitsForAFinishedFindingsReport() {
+        let empty = FindingsReport(runs: [], findings: [])
+        XCTAssertNotNil(ProjectWindowModel.roadmapBlockedReason(findings: nil, findingsInProgress: false))
+        XCTAssertNotNil(ProjectWindowModel.roadmapBlockedReason(findings: .unavailable("no folder"), findingsInProgress: false))
+        XCTAssertTrue(ProjectWindowModel.roadmapBlockedReason(findings: .available(empty), findingsInProgress: false)?
+            .contains("no findings yet") ?? false)
+        let sample = SampleData.studyHubFindings()
+        XCTAssertFalse(sample.runs.isEmpty)
+        XCTAssertNil(ProjectWindowModel.roadmapBlockedReason(findings: .available(sample), findingsInProgress: false))
+        XCTAssertTrue(ProjectWindowModel.roadmapBlockedReason(findings: .available(sample), findingsInProgress: true)?
+            .contains("still running") ?? false)
+    }
+
+    /// Waiting holds while Findings runs and, once it finishes with a report, opens Roadmap's start sheet — it never
+    /// starts the run itself. Cancelling ends the wait with nothing opened.
+    @MainActor
+    func testRoadmapAfterFindingsOpensTheStartSheetOnceFindingsFinishes() async {
+        let model = await makeStudyHubModel()
+        var running = true
+        model.runRoadmapAfterFindings(findingsInProgress: { running }, poll: .milliseconds(10))
+        try? await Task.sleep(for: .milliseconds(50))
+        XCTAssertNotNil(model.roadmapWaitingForFindings)
+        XCTAssertNil(model.sheet)
+        running = false
+        await model.roadmapWaitingForFindings?.value
+        XCTAssertNil(model.roadmapWaitingForFindings)
+        XCTAssertEqual(model.sheet, .runFocus("roadmap"))
+
+        model.dismissSheet()
+        running = true
+        model.runRoadmapAfterFindings(findingsInProgress: { running }, poll: .milliseconds(10))
+        model.cancelRoadmapAfterFindings()
+        XCTAssertNil(model.roadmapWaitingForFindings)
+        XCTAssertNil(model.sheet)
+    }
+
     // MARK: - Diagram generation state
 
     /// Starting a generate marks the kind as generating and clears any earlier failure; the kind is remembered

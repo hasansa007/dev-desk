@@ -28,6 +28,21 @@ struct DoorRunControl: View {
         return jobs?.hasLiveJob(door: door, in: path) ?? false
     }
 
+    /// Only the roadmap door waits on another: nil for every other door.
+    private var roadmapBlockedReason: String? {
+        guard door == "roadmap" else { return nil }
+        return ProjectWindowModel.roadmapBlockedReason(findings: model.snapshot?.findings, findingsInProgress: findingsInProgress)
+    }
+
+    private var findingsInProgress: Bool { Self.findingsInProgress(model: model, jobs: jobs) }
+
+    /// A Findings run in this window's terminals, or a background one in this project that is running or waiting on an answer.
+    static func findingsInProgress(model: ProjectWindowModel, jobs: JobRegistry?) -> Bool {
+        if model.isFindingsRunLive() { return true }
+        guard case .local(let path) = model.ref else { return false }
+        return jobs?.hasUnfinishedJob(door: "findings", in: path) ?? false
+    }
+
     private func isFindingsRunBlocked(_ scope: FindingsScope) -> Bool {
         if model.isFindingsRunLive(scope: scope) { return true }
         guard case .local(let path) = model.ref else { return false }
@@ -45,8 +60,23 @@ struct DoorRunControl: View {
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: size))
             .help("This door is already running. Open Runs to watch it or stop it.")
             .accessibilityLabel("\(door) is running. Open Runs.")
+        } else if door == "roadmap", model.roadmapWaitingForFindings != nil {
+            Button { model.cancelRoadmapAfterFindings() } label: {
+                HStack(spacing: 6) {
+                    StatusDot(tone: .waiting, pulses: true, size: 6)
+                    Text("Waiting for Findings")
+                }
+            }
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: size))
+            .help("Roadmap starts once Findings finishes. Click to stop waiting.")
+        } else if door == "roadmap", findingsInProgress, model.runBlockedReason(agent: defaultConnection) == nil {
+            Button("Run after Findings") {
+                model.runRoadmapAfterFindings { [model, jobs] in Self.findingsInProgress(model: model, jobs: jobs) }
+            }
+            .buttonStyle(DeskButtonStyle(kind: .primary, size: size))
+            .help("Findings is still running. Roadmap builds from its report, so this waits for it and then opens Roadmap's start.")
         } else {
-            let blocked = model.runBlockedReason(agent: defaultConnection)
+            let blocked = model.runBlockedReason(agent: defaultConnection) ?? roadmapBlockedReason
             Button(title) { model.present(.runFocus(door)) }
                 .buttonStyle(DeskButtonStyle(kind: .primary, size: size))
                 .disabled(blocked != nil)

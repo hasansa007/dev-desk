@@ -162,6 +162,34 @@ public final class ProjectWindowModel {
     /// The diagram kinds whose `dev:arch` run is in flight right now, so the Diagrams screen can show a spinner
     /// for that kind without switching away from itself. A kind is added when its Generate starts and removed
     /// when the run ends, whatever the run wrote — the screen reads the folder again either way.
+    /// Roadmap asked for while Findings was still running: held until that run finishes, then its start sheet
+    /// opens. Nil when nothing is waiting.
+    public private(set) var roadmapWaitingForFindings: Task<Void, Never>?
+
+    /// Waits for Findings to finish — `findingsInProgress` is read again every few seconds — then re-reads the
+    /// project so the new report counts, and opens Roadmap's start sheet if it can now run. The sheet still asks
+    /// before anything starts, so a wait that ends while the developer is elsewhere starts nothing unseen.
+    public func runRoadmapAfterFindings(findingsInProgress: @escaping @MainActor () -> Bool,
+                                        poll: Duration = .seconds(5)) {
+        guard roadmapWaitingForFindings == nil else { return }
+        roadmapWaitingForFindings = Task { [weak self] in
+            while !Task.isCancelled, findingsInProgress() {
+                try? await Task.sleep(for: poll)
+            }
+            guard !Task.isCancelled, let self else { return }
+            await self.load()
+            self.roadmapWaitingForFindings = nil
+            if Self.roadmapBlockedReason(findings: self.snapshot?.findings, findingsInProgress: false) == nil {
+                self.present(.runFocus("roadmap"))
+            }
+        }
+    }
+
+    public func cancelRoadmapAfterFindings() {
+        roadmapWaitingForFindings?.cancel()
+        roadmapWaitingForFindings = nil
+    }
+
     public private(set) var generatingDiagramKinds: Set<String> = []
 
     /// Which diagram kind each in-flight generate session is drawing, so its end clears the right spinner. A
@@ -816,6 +844,19 @@ public final class ProjectWindowModel {
     /// that half of the report only — `defects` is free to start beside a live `architecture` run, and both
     /// are refused beside a live `both`, which occupies the whole report. Passing nothing asks the door-wide
     /// question ("is any findings run going?"), which is what resetting findings has to know.
+    /// Roadmap builds from what Findings recorded, so it is offered only once there is a finished report: not
+    /// before any, and not while a run is still writing one — a roadmap read from half a report proposes from
+    /// half the evidence. nil when it can run.
+    public nonisolated static func roadmapBlockedReason(findings: Surface<FindingsReport>?, findingsInProgress: Bool) -> String? {
+        if findingsInProgress {
+            return "Findings is still running. Roadmap builds from its report, so it waits for that run to finish."
+        }
+        guard let report = findings?.value, !report.runs.isEmpty else {
+            return "There are no findings yet. Roadmap builds from what Findings records, so run Findings first."
+        }
+        return nil
+    }
+
     public func isFindingsRunLive(scope: FindingsRunScope? = nil) -> Bool {
         FindingsRunScope.allCases.contains { live in
             isRunLive(DoorRuns.id(door: "findings", scope: live)) && (scope.map(live.conflicts(with:)) ?? true)

@@ -121,6 +121,15 @@ public final class JobRegistry {
         jobs.contains { $0.door == door && $0.directory == directory && $0.state.isLive }
     }
 
+    /// Live, or stopped on a question it is waiting to have answered: either way the run has not finished.
+    public func hasUnfinishedJob(door: String, in directory: String) -> Bool {
+        jobs.contains {
+            guard $0.door == door, $0.directory == directory else { return false }
+            if case .asking = $0.state { return true }
+            return $0.state.isLive
+        }
+    }
+
     /// Findings is the one door where "already running" is not a door-wide answer: a defects run and an
     /// architecture run write different halves of the report, so they belong side by side, while the same
     /// half twice would overwrite itself. `both` occupies both halves, so it conflicts with any live findings run
