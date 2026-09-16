@@ -15,35 +15,21 @@ struct BoardScreen: View {
         .background(DeskColor.canvas)
     }
 
+    /// The title and the search, nothing else. Show backlog and Side by side sat up here as a switch styled as a
+    /// button and a button disabled most of the time, both a screen's width from the columns they changed; each
+    /// now lives on its column.
     private var header: some View {
         HStack(spacing: 10) {
             Text("Board")
                 .font(DeskFont.section)
                 .foregroundStyle(DeskColor.ink)
+            Spacer(minLength: 0)
             searchField
-            BacklogToggle(isOn: $model.showBacklog)
             if let note = model.snapshot?.boardNote, !note.isEmpty {
                 rulesButton(note)
             }
-            Spacer(minLength: 0)
-            sideBySideButton
         }
         .screenHeaderBar()
-    }
-
-    /// The toolbar's old Focus/Parallel pair named two modes without naming what changed, and pressing either
-    /// one usually changed nothing. This names the change, sits on the screen it changes, and says why it is
-    /// unavailable instead of going quiet.
-    @ViewBuilder private var sideBySideButton: some View {
-        let running = model.parallelTasks
-        Button(running.count > 1 ? "Side by side (\(running.count))" : "Side by side") {
-            model.setMode(.parallel)
-        }
-        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-        .disabled(running.count < 2)
-        .help(running.count < 2
-              ? "Side by side needs two tasks in progress, each in its own checkout"
-              : "Watch these \(running.count) tasks run next to each other")
     }
 
     private var searchField: some View {
@@ -117,6 +103,9 @@ struct BoardScreen: View {
                 GeometryReader { proxy in
                     ScrollView([.horizontal, .vertical]) {
                         HStack(alignment: .top, spacing: 14) {
+                            if !model.showBacklog {
+                                BacklogRail(count: model.counts(in: .backlog).total) { model.showBacklog = true }
+                            }
                             ForEach(columns) { entry in
                                 BoardColumnView(column: entry.column, tasks: entry.tasks, model: model)
                             }
@@ -151,23 +140,35 @@ private struct ColumnEntry: Identifiable {
     var id: BoardColumn { column }
 }
 
-private struct BacklogToggle: View {
-    @Binding var isOn: Bool
+/// The backlog, closed: always on the board, so the count is visible without a switch, and one click from open.
+private struct BacklogRail: View {
+    let count: Int
+    let open: () -> Void
 
     var body: some View {
-        Button {
-            isOn.toggle()
-        } label: {
-            Text("Show backlog")
-                .font(DeskFont.secondary)
-                .foregroundStyle(isOn ? Color.white : DeskColor.ink)
-                .padding(.horizontal, 10)
-                .controlChrome(fill: isOn ? DeskColor.accent : DeskColor.surface)
+        Button(action: open) {
+            VStack(spacing: 8) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(DeskColor.mutedInk)
+                Text("BACKLOG  \(count)")
+                    .font(DeskFont.label)
+                    .tracking(0.66)
+                    .foregroundStyle(DeskColor.faintInk)
+                    .fixedSize()
+                    .rotationEffect(.degrees(90))
+                    .frame(width: 18, height: 120)
+            }
+            .padding(.vertical, 12)
+            .frame(width: 34, alignment: .top)
+            .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
+            .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("Show backlog")
-        .accessibilityValue(isOn ? "On" : "Off")
-        .accessibilityAddTraits(.isButton)
+        .help("Show the backlog")
+        .accessibilityLabel("Backlog, \(count) tasks")
+        .accessibilityHint("Shows the backlog column")
     }
 }
 
@@ -277,6 +278,29 @@ private struct BoardColumnView: View {
                   : "Type a task into \(column.title) — it is written to docs/backlog/")
     }
 
+    /// What a column's header can do to the board: Backlog closes back to its rail, and In progress opens its
+    /// running tasks side by side — offered only when there are two to watch, never greyed out in wait.
+    @ViewBuilder private var columnControl: some View {
+        if column == .backlog {
+            Button { model.showBacklog = false } label: {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Hide the backlog")
+            .accessibilityLabel("Hide the backlog")
+        } else if column == .inProgress, model.parallelTasks.count > 1 {
+            Button { model.setMode(.parallel) } label: {
+                Label("Side by side", systemImage: "rectangle.split.2x1")
+            }
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+            .help("Watch these \(model.parallelTasks.count) tasks run next to each other")
+        }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
@@ -300,6 +324,8 @@ private struct BoardColumnView: View {
                     .accessibilityElement(children: .combine)
                     .accessibilityLabel("\(counts.live) running in \(column.title)")
                 }
+                Spacer(minLength: 0)
+                columnControl
             }
             .frame(height: DeskMetric.columnHeaderHeight)
             ForEach(tasks) { task in

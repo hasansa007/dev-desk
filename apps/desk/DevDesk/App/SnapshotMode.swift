@@ -82,6 +82,7 @@ final class SnapshotMode {
         model.mode = .focus
         model.showBacklog = false
         model.searchText = ""
+        UserDefaults.standard.set(FindingGrouping.status.rawValue, forKey: PreferenceKey.surveyGrouping)
     }
 
     private func write(_ view: NSView?, to url: URL) {
@@ -132,6 +133,11 @@ final class SnapshotMode {
             model.tab = .changes
         },
         Capture(name: "03-survey") { $0.go(.survey) },
+        Capture(name: "03a-survey-by-file") { model in
+            UserDefaults.standard.set(FindingGrouping.file.rawValue, forKey: PreferenceKey.surveyGrouping)
+            model.go(.survey)
+        },
+        Capture(name: "03c-board") { $0.go(.board) },
         Capture(name: "03b-finding-dialog", isSheet: true) { model in
             model.go(.survey)
             if let id = model.snapshot?.findings.value?.findings.first?.id { model.openFinding(id) }

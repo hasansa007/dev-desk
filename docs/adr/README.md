@@ -28,8 +28,8 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0017](0017-a-tasks-shell-opens-in-its-own-worktree-when-asked.md) | A task's shell opens in that task's own worktree, and only when asked | Accepted, amended by 0036 |
 | [0018](0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md) | Dev Desk starts the task's agent, by hand or in Auto for queued tasks | Accepted, amended by 0030, 0036 |
 | [0019](0019-deep-features-cant-skip-the-architecture-gate.md) | Deep features can't skip the architecture gate; dev:audit checks it | Accepted |
-| [0020](0020-impact-and-complexity-are-labels-the-doors-propose.md) | Impact and complexity are labels the doors propose and the developer corrects | Accepted |
-| [0021](0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md) | A card opens one dialog, and the panels are the window's edges | Accepted, amended by 0028, 0032 |
+| [0020](0020-impact-and-complexity-are-labels-the-doors-propose.md) | Impact and complexity are labels the doors propose and the developer corrects | Accepted, amended by 0038 |
+| [0021](0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md) | A card opens one dialog, and the panels are the window's edges | Accepted, amended by 0028, 0032, 0038 |
 | [0022](0022-dev-desk-deletes-a-local-branch-and-nothing-else.md) | Dev Desk deletes a local branch, and nothing else | Accepted, amended by 0023, 0029 |
 | [0023](0023-the-gate-ran-late-and-took-the-fold-with-it.md) | The gate ran late, and took the fold with it | Accepted, amended by 0024 |
 | [0024](0024-a-board-card-is-one-block-and-its-chrome-is-one-modifier.md) | A board card is one block, and its chrome is one modifier | Accepted |
@@ -46,3 +46,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0035](0035-the-board-stores-what-git-cannot-see.md) | The board stores what git cannot see (`.devdesk/board.json`) | Accepted, amended by 0037 |
 | [0036](0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md) | Agents run over a protocol (ACP), and the terminal leaves the app | Accepted |
 | [0037](0037-a-local-card-carries-its-own-done.md) | A `docs/backlog/` card's Done comes from its own file, not `board.json` | Accepted |
+| [0038](0038-the-survey-is-a-triage-list-and-board-controls-live-on-their-columns.md) | The survey is a triage list, and the board's controls live on their columns | Accepted |

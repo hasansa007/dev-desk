@@ -30,15 +30,22 @@ private struct RunSurveyButton: View {
     }
 }
 
-/// The survey reads like the board: a header bar, filters, and cards. It was a list beside a reading pane,
-/// which made a finding something you read rather than something you do something about.
+/// The survey is a triage list: rows sectioned by what each finding asks of you, or by the file it points at,
+/// with checkboxes so several can be filed or ignored at once. It was a grid of cards, and before that a list
+/// beside a reading pane; the grid repeated itself on every card, and the reading pane left a finding as
+/// something to read. The row keeps the actions on the finding and the dialog keeps the evidence.
 private struct FindingsBoard: View {
     @Bindable var model: ProjectWindowModel
     let report: FindingsReport
 
     @State private var showsNote = false
+    @State private var checked: Set<String> = []
+    @State private var collapsed: Set<String> = []
+    @AppStorage(PreferenceKey.surveyGrouping) private var groupingRaw = FindingGrouping.status.rawValue
+    @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
-    private let columns = [GridItem(.adaptive(minimum: 268, maximum: 400), spacing: 12, alignment: .top)]
+    private var grouping: FindingGrouping { FindingGrouping(rawValue: groupingRaw) ?? .status }
 
     private var runFindings: [Finding] {
         report.findings.filter { model.selectedRunID == nil || $0.runID == model.selectedRunID }
@@ -60,14 +67,22 @@ private struct FindingsBoard: View {
         return "\(total) finding\(total == 1 ? "" : "s")" + (ignoredCount > 0 ? " · \(ignoredCount) ignored" : "")
     }
 
+    private var groups: [FindingGroup] { FindingGroups.group(visibleFindings, by: grouping) }
+
     var body: some View {
         VStack(spacing: 0) {
             header
             filters
             content
+            if !checked.isEmpty { selectionBar }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
+        // A selection is of rows on screen. Changing what is on screen must not leave a hidden row selected,
+        // where "Add 3 to backlog" would file one nobody can see.
+        .onChange(of: model.selectedRunID) { checked = [] }
+        .onChange(of: model.findingKindFilter) { checked = [] }
+        .onChange(of: model.showsIgnoredFindings) { checked = [] }
     }
 
     private var header: some View {
@@ -156,34 +171,34 @@ private struct FindingsBoard: View {
         }
     }
 
+    /// Defect or architecture on the left, how the list is sectioned on the right. Status was a row of chips
+    /// here too, but the sections are the status now, so a chip for each only filtered to one section.
     private var filters: some View {
-        FlowLayout(spacing: 5) {
-            ForEach(FindingCategory.allCases, id: \.self) { category in
-                let isSelected = model.findingFilter == category
-                FindingFilterChip(title: "\(category.rawValue) \(report.count(of: category, run: model.selectedRunID))",
-                                  category: category, isSelected: isSelected) {
-                    model.findingFilter = isSelected ? nil : category
+        HStack(spacing: 10) {
+            Picker("Kind", selection: $model.findingKindFilter) {
+                Text("All \(runFindings.count - ignoredCount)").tag(FindingKind?.none)
+                ForEach(FindingKind.allCases, id: \.self) { kind in
+                    Text("\(kind.rawValue) \(report.count(of: kind, run: model.selectedRunID))").tag(FindingKind?.some(kind))
                 }
             }
-            // The other half of what a finding is: which side of the report it came out of. It filters beside
-            // the categories rather than inside them — "New" and "Architecture" are two questions about one
-            // finding, so a category and a kind can be on together.
-            ForEach(FindingKind.allCases, id: \.self) { kind in
-                let isSelected = model.findingKindFilter == kind
-                FindingFilterChip(title: "\(kind.rawValue) \(report.count(of: kind, run: model.selectedRunID))",
-                                  isSelected: isSelected) {
-                    model.findingKindFilter = isSelected ? nil : kind
-                }
-            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
             if ignoredCount > 0 || model.showsIgnoredFindings {
                 FindingFilterChip(title: "Ignored \(ignoredCount)", category: .closedOrDeclined,
                                   isSelected: model.showsIgnoredFindings) {
                     model.showsIgnoredFindings.toggle()
                 }
             }
+            Spacer(minLength: 0)
+            Picker("Group", selection: $groupingRaw) {
+                ForEach(FindingGrouping.allCases, id: \.self) { Text($0.rawValue).tag($0.rawValue) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(EdgeInsets(top: 10, leading: 16, bottom: 4, trailing: 16))
+        .padding(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
     }
 
     @ViewBuilder private var content: some View {
@@ -194,16 +209,163 @@ private struct FindingsBoard: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         } else {
             ScrollView {
-                LazyVGrid(columns: columns, alignment: .leading, spacing: 12) {
-                    ForEach(visibleFindings) { finding in
-                        FindingCard(finding: finding, model: model)
+                LazyVStack(spacing: 0, pinnedViews: .sectionHeaders) {
+                    ForEach(groups) { group in
+                        Section {
+                            if !collapsed.contains(group.id) {
+                                // Keyed by section as well: grouped by file, one finding is a row in every file
+                                // it names, and a lazy stack given the same id twice leaves blank rows.
+                                ForEach(group.findings, id: \.id) { finding in
+                                    FindingRow(finding: finding, model: model, isChecked: binding(for: finding.id),
+                                               lines: grouping == .file ? (group.lines[finding.id] ?? "—") : nil)
+                                        .id("\(group.id)/\(finding.id)")
+                                }
+                            }
+                        } header: {
+                            groupHeader(group)
+                        }
                     }
                 }
-                .padding(EdgeInsets(top: 12, leading: 16, bottom: 18, trailing: 16))
+                // A new list per grouping. The lazy stack otherwise keeps the rows it built for the other
+                // grouping — same finding ids — and shows by-status rows under by-file headers.
+                .id(grouping)
+                .clipShape(RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
+                .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
+                .padding(EdgeInsets(top: 0, leading: 16, bottom: 18, trailing: 16))
                 .pullToRefresh(isRefreshing: model.isRefreshing) { await model.load() }
             }
             .pullToRefreshSpace()
         }
+    }
+
+    /// The section's name, its count, and what the section means — said once here rather than on every row.
+    /// Its checkbox selects the whole section, which is how a run's sixteen new findings are filed together.
+    private func groupHeader(_ group: FindingGroup) -> some View {
+        let ids = Set(group.findings.map(\.id))
+        let allChecked = !ids.isEmpty && ids.isSubset(of: checked)
+        let isCollapsed = collapsed.contains(group.id)
+        return HStack(spacing: 10) {
+            Toggle("", isOn: Binding(get: { allChecked },
+                                     set: { if $0 { checked.formUnion(ids) } else { checked.subtract(ids) } }))
+                .toggleStyle(.checkbox)
+                .labelsHidden()
+                .frame(width: FindingRow.Width.check)
+                .accessibilityLabel("Select every finding in \(group.title)")
+            Button {
+                if isCollapsed { collapsed.remove(group.id) } else { collapsed.insert(group.id) }
+            } label: {
+                HStack(spacing: 7) {
+                    Image(systemName: isCollapsed ? "chevron.right" : "chevron.down")
+                        .font(.system(size: 9, weight: .semibold))
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .frame(width: 10)
+                    if let category = group.category {
+                        StatusDot(tone: FindingTone.of(category), size: 7)
+                    }
+                    if grouping == .file {
+                        Text(group.title)
+                            .font(DeskFont.mono(11.5, weight: .semibold))
+                            .foregroundStyle(DeskColor.ink)
+                            .lineLimit(1)
+                            .truncationMode(.head)
+                    } else {
+                        Text(group.title.uppercased())
+                            .font(DeskFont.label)
+                            .tracking(0.66)
+                            .foregroundStyle(DeskColor.secondaryInk)
+                    }
+                    Text("\(group.findings.count)")
+                        .font(DeskFont.label)
+                        .foregroundStyle(DeskColor.faintInk)
+                    if let note = groupNote(group) {
+                        Text(note)
+                            .font(.system(size: 11))
+                            .foregroundStyle(DeskColor.mutedInk)
+                            .lineLimit(1)
+                    }
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(group.title), \(group.findings.count) findings")
+            .accessibilityValue(isCollapsed ? "Collapsed" : "Expanded")
+        }
+        .padding(.horizontal, 14)
+        .frame(height: 32)
+        .background(DeskColor.headerFill)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+    }
+
+    /// What a status section is asking, and how far its findings were verified when they all agree.
+    private func groupNote(_ group: FindingGroup) -> String? {
+        let meaning: String?
+        switch group.category {
+        case .new: meaning = "not filed yet"
+        case .knownNewEvidence: meaning = "an issue already covers these"
+        case .needsDecision: meaning = "not confirmed — filed only if you choose to"
+        case .closedOrDeclined: meaning = "decided against before"
+        case nil: meaning = nil
+        }
+        let parts = [meaning, group.sharedVerification].compactMap { $0 }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func binding(for id: String) -> Binding<Bool> {
+        Binding(get: { checked.contains(id) },
+                set: { if $0 { checked.insert(id) } else { checked.remove(id) } })
+    }
+
+    private var checkedFindings: [Finding] { visibleFindings.filter { checked.contains($0.id) } }
+
+    /// Only the checked findings that can be filed right now: one already filing, filed or in the backlog is
+    /// left alone rather than drafted a second time.
+    private var fileable: [Finding] {
+        checkedFindings.filter { finding in
+            let job: BackgroundJob? = {
+                guard let jobs, case .local(let path) = model.ref else { return nil }
+                return jobs.job(subject: finding.id, in: path)
+            }()
+            return model.fileBlockedReason(key: finding.id, job: job, agent: defaultConnection) == nil
+        }
+    }
+
+    private var selectionBar: some View {
+        let count = checkedFindings.count
+        let toFile = fileable
+        return HStack(spacing: 10) {
+            Text("\(count) selected")
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.secondaryInk)
+            Button("Clear") { checked = [] }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+            Spacer(minLength: 0)
+            if model.showsIgnoredFindings {
+                Button("Stop ignoring") {
+                    checkedFindings.forEach { model.restoreFinding($0.id) }
+                    checked = []
+                }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+            } else {
+                Button("Ignore") {
+                    checkedFindings.forEach { model.ignoreFinding($0.id) }
+                    checked = []
+                }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                Button(toFile.count == count ? "Add \(count) to backlog" : "Add \(toFile.count) of \(count) to backlog") {
+                    toFile.forEach { model.fileToBacklog($0.backlogDraft, jobs: jobs, agent: defaultConnection) }
+                    checked = []
+                }
+                .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                .disabled(toFile.isEmpty)
+                .help(toFile.count == count ? model.backlogDestination
+                      : "The rest are already filing, filed, or in docs/backlog/")
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .background(DeskColor.surface)
+        .overlay(alignment: .top) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
     private func runPlainText(_ run: SurveyRun) -> String {

@@ -15,6 +15,7 @@ enum PreferenceKey {
     static let agentLimit = "desk.agentLimit"
     static let confirmQuit = "desk.confirmQuit"
     static let sidebarRail = "desk.sidebarRail"
+    static let surveyGrouping = "desk.surveyGrouping"
 
     /// The two override keys are no longer read — the connection and the mode are the app's, for every project —
     /// but a key function is how a stored value is found, and one already written stays findable.

@@ -1,6 +1,6 @@
 # 0021 — A card opens one dialog, and the panels are the window's edges
 
-Status:  Accepted
+Status:  Accepted, amended by [0038](0038-the-survey-is-a-triage-list-and-board-controls-live-on-their-columns.md)
 Date:    2026-09-12
 Commit:  (this branch)  ·  `feat/macos-app-missing-features`
 

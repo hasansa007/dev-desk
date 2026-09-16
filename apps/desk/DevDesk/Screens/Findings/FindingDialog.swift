@@ -59,8 +59,11 @@ struct FindingDialog: View {
             if let area = finding.area {
                 PropertyChip(area.rawValue, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             }
-            PropertyChip("impact \(trackedTask?.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
-            PropertyChip("complexity \(trackedTask?.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+            // Only once it is an issue: a survey rates nothing, so before filing these were dashes on every finding.
+            if let trackedTask {
+                PropertyChip("impact \(trackedTask.impact ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+                PropertyChip("complexity \(trackedTask.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
+            }
             PropertyChip(finding.verificationLabel, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             PropertyChip(finding.locations.isEmpty ? "no source locations" : "\(finding.locations.count) source\(finding.locations.count == 1 ? "" : "s")",
                          fill: DeskColor.neutralChipFill2, verticalPadding: 1)
@@ -242,5 +245,13 @@ enum FindingTone {
         if finding.categories.contains(.new) { return .info }
         if finding.categories.contains(.needsDecision) { return .waiting }
         return .neutral
+    }
+
+    static func of(_ category: FindingCategory) -> StatusTone {
+        switch category {
+        case .new: return .info
+        case .needsDecision: return .waiting
+        default: return .neutral
+        }
     }
 }
