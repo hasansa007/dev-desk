@@ -1,6 +1,6 @@
 # 0036 — Agents run over a protocol, and the terminal leaves the app
 
-Status:  Accepted — reviewed 2026-09-16; implementation started at step 1
+Status:  Accepted — reviewed 2026-09-16; amended 2026-09-16; implementation started at step 1
 Date:    2026-09-15  ·  accepted 2026-09-16
 Commit:  (this branch)  ·  `main`  ·  design record
 [`docs/superpowers/specs/2026-09-15-runs-without-terminal-design.md`](../superpowers/specs/2026-09-15-runs-without-terminal-design.md)
@@ -154,3 +154,34 @@ an editor; a handed-off task is watched by its branch, as any external work alre
   quit could be survivable (journal it, resume with history next launch). `QuitGuard.swift` was
   written for a world where a killed run was lost. That assumption is now false and needs its own
   decision rather than inheritance.
+
+## Amendment — 2026-09-16 · a handed-off session can be resumed, and Gemini CLI leaves the list
+
+Two facts arrived after the review, both from running the CLIs rather than reading about them.
+
+**1. Hand-off resume is terms-compatible, and Antigravity already implements it.** *Rejected* above
+reads "Antigravity's FAQ names third-party access as a terms violation. Launch and watch," which left
+*resume* looking like a casualty of the same rule. It is not. What the FAQ bans is third-party
+software using **Antigravity's OAuth** to reach the service — its own example is OpenClaw with
+Antigravity OAuth — and Google is enforcing it, suspending paying subscribers on 2026-09-03 with
+opencode named among the triggers. Launching Google's own binary is not that: `agy` authenticates as
+itself, and no credential passes through a tool that is not Google's. `agy` 1.2.1 ships `--continue`
+and `--conversation <ID>` beside `--print`, so decision 6's *Continue in ▾* can hand Antigravity a
+folder **and a conversation id**, exactly as it hands Claude `claude --resume <id>`.
+super.engineering reads its own history the same way (`sc history get --provider KEY --session ID`).
+
+So *Resume an ended session* in the capability matrix is validatable for a handed-off provider and
+must not be recorded as unavailable for one. What stays rejected is unchanged and better evidenced:
+**embedding** — Dev Desk holding the session and speaking to the provider's backend — is both the
+shape the terms forbid and the shape accounts were suspended for. The distinction the terms actually
+draw is not app-versus-terminal, it is *whose binary holds the credential*.
+
+**2. Gemini CLI is no longer a provider an individual developer has.** Context and Consequences both
+count it among the adapters that spawn their own binary, and that assumption is now false. Google cut
+every individual tier — free, AI Pro, AI Ultra — off that client on 2026-06-18. A browser sign-in
+completed on this Mac on 2026-09-16 and the next call was still refused with `IneligibleTierError` /
+`UNSUPPORTED_CLIENT`, pointing at Antigravity; only a paid API key or a Code Assist
+Standard/Enterprise licence authenticates. The Consequences bullet's arithmetic stands, its roster
+does not: Gemini CLI is present on PATH and unusable, which is worse than absent, because detection
+that trusts `which` reports it ready. Detection must read auth, not presence.
+`scripts/dev.py` records the same reason (36d0fc7).
