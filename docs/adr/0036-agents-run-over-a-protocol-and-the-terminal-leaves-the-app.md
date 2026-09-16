@@ -1,6 +1,6 @@
 # 0036 — Agents run over a protocol, and the terminal leaves the app
 
-Status:  Accepted — reviewed 2026-09-16; amended twice 2026-09-16; implementation started at step 1
+Status:  Accepted — reviewed 2026-09-16; amended three times 2026-09-16; implementation started at step 1
 Date:    2026-09-15  ·  accepted 2026-09-16
 Commit:  (this branch)  ·  `main`  ·  design record
 [`docs/superpowers/specs/2026-09-15-runs-without-terminal-design.md`](../superpowers/specs/2026-09-15-runs-without-terminal-design.md)
@@ -219,3 +219,32 @@ instead of quietly running Claude.
 **Amendment 1 overstated one thing.** It said Gemini CLI "is no longer a provider an individual developer has".
 That is true of Google sign-in, which is what it tested. The same developer added an API key the same afternoon and
 Gemini ran. What an individual lost is the subscription path, not the CLI.
+
+## Amendment 3 — 2026-09-16 · "Continue in ▾" is the developer's own list
+
+Decision 6 named the apps a task could go to: Terminal, Codex, Antigravity, super.engineering, an editor. The
+developer asked for the list to be theirs instead: *"other apps like super.engineer or ZadLoop … a list of
+applications that can be configured by user"*, and then *"don't focus on the specific name — but on the 'start
+with..' an app."* A fixed list goes stale as soon as a new app ships, and every name on it is a claim this app would
+have to keep true.
+
+**What an entry is.** Settings › Start with holds entries for every project, of two kinds, because apps accept
+different things:
+
+- **An app**, chosen from `/Applications`, is opened on the project folder. Nearly every app accepts a folder, and
+  a folder carries no task, so the task's prompt is put on the clipboard.
+- **A command** with `{folder}`, `{prompt}`, `{taskFile}` and `{title}` is typed into a Sessions terminal with the
+  task filled in. That reaches any app with a command line without Dev Desk knowing the app. Every value is
+  single-quoted as it goes in, so a card title cannot end the string or start a second command. A name in braces
+  that is not a placeholder is left as written and flagged in Settings.
+
+**Where it is offered.** The start sheet's empty hand-off section becomes *Or start with*, and every card that
+offers Start gets a *Start with ▸* submenu ending in *Edit this list…*. A card that cannot start offers neither.
+
+**What Dev Desk knows afterwards.** A start with the list moves the card to In progress, like any start. The launch
+is written to `.devdesk/start-with/`, which `{taskFile}` names. It is deliberately not `.devdesk/launch/`: a file
+there makes the card's next Start run without the sheet, and it can only name Claude or Codex. A command's run is a
+Sessions row like any other. An app's run is not watched at all beyond its branch.
+
+**Not built.** Decision 5's *Elsewhere* count needs a record of work started outside the app, and nothing stores
+one yet. Starting with an app therefore takes no slot and is not counted, which is true but not yet visible.
