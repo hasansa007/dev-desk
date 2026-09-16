@@ -564,7 +564,10 @@ AGENTS = {
     "codex": ["codex", "exec"],        # verified 2026-09-10
 }
 UNSUPPORTED = {
-    "antigravity": "a PATH shim reports the real CLI is not installed",
+    # Not an install problem, and recording it as one invited re-enabling this the moment a shim was fixed:
+    # agy is installed and on PATH here. Antigravity's own FAQ names third-party software accessing it as a
+    # Terms violation and grounds for suspension, which no install can change. Launch it, never drive it.
+    "antigravity": "its terms forbid third-party tools accessing it; open it yourself instead",
     "gemini": "no non-interactive invocation confirmed",
 }
 
