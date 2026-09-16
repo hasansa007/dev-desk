@@ -568,7 +568,13 @@ UNSUPPORTED = {
     # agy is installed and on PATH here. Antigravity's own FAQ names third-party software accessing it as a
     # Terms violation and grounds for suspension, which no install can change. Launch it, never drive it.
     "antigravity": "its terms forbid third-party tools accessing it; open it yourself instead",
-    "gemini": "no non-interactive invocation confirmed",
+    # Not an invocation problem either, and the old reason said it was: `gemini -p` is documented in
+    # 0.60.0's own --help and runs, reaching the auth layer, which is as far as a bad invocation could
+    # get. Google cut every individual tier — free, AI Pro, AI Ultra — off this client on 2026-06-18,
+    # so a freshly completed OAuth is still refused (IneligibleTierError, UNSUPPORTED_CLIENT) and
+    # pointed at Antigravity, the row above. Only a paid API key or a Code Assist Standard/Enterprise
+    # licence signs in, and neither is a subscription this family may assume. Verified 2026-09-16.
+    "gemini": "Google ended individual-tier access 2026-06-18; only a paid API key or Code Assist licence signs in",
 }
 
 
