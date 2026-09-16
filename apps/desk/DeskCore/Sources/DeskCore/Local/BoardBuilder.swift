@@ -96,7 +96,7 @@ enum BoardBuilder {
         }
     }
 
-    static let finishedReportBadge = StatusBadge(.ended, "Done")
+    static let reportAwaitingApprovalBadge = StatusBadge(.waiting, "Report ready — approve?")
 
     /// Where the doors write the reports they finish with; a branch that changes nothing else has nothing left to run.
     static let reportFolders = [FindingsCleanup.folder, FindingsCleanup.legacyFolder, "docs/ideation", ArchDiagrams.folder]
@@ -223,7 +223,9 @@ private struct BoardContext {
                 && !(branch.head.map(mergedHeads.contains) ?? false)
                 && branch.name != input.currentBranch
         }.map(branchTask)
+        let unmergedNames = Set(branches.filter { $0.unmerged > 0 }.map(\.name))
         let merged = mergedPullRequests.map(mergedTask)
+            + (input.git?.reportMerges ?? []).filter { !unmergedNames.contains($0.branch) }.map(reportMergedTask)
         // An entry that already names its issue is waiting to be moved to filed/; the issue is the card.
         let local = input.localBacklog.filter { $0.issue == nil }.map(localTask)
         return (active + pullRequestTasks + branchTasks + orderNext(backlog) + local + deferred + merged).map { task in
@@ -339,12 +341,12 @@ private struct BoardContext {
 
     private func branchTask(_ branch: BranchFacts) -> DeskTask {
         let state = input.pipeline[branch.name]
-        // A door's finished report is done where it was written; merging it is another agent's job, not this card's.
+        // A door's finished report waits for approval, and approving merges it; it is Done only once the base has it.
         let finished = BoardBuilder.holdsOnlyReports(branch)
-        let badge = finished ? BoardBuilder.finishedReportBadge : BoardBuilder.aheadBadge(branch.unmerged)
+        let badge = finished ? BoardBuilder.reportAwaitingApprovalBadge : BoardBuilder.aheadBadge(branch.unmerged)
         var task = DeskTask(
-            id: "branch:\(branch.name)", title: branch.name, column: finished ? .done : .inProgress,
-            cardMeta: finished ? "report" : nil, cardBadge: nil, cardNote: state?.cardNote, headerBadge: badge,
+            id: "branch:\(branch.name)", title: branch.name, column: finished ? .review : .inProgress,
+            cardMeta: finished ? "report" : nil, cardBadge: finished ? badge : nil, cardNote: state?.cardNote, headerBadge: badge,
             branchLine: branchLine(branch.name, local: branch), parallelLine: parallelLine(branch.name, local: branch),
             branch: branch.name,
             nextAction: .reviewChanges,
@@ -410,6 +412,23 @@ private struct BoardContext {
             evidence: .unavailable(item.isDone ? Self.finishedElsewhere : "Nothing has been started for this yet."),
             parallel: .none("No branch yet"),
             impact: item.impact, complexity: item.complexity)
+    }
+
+    private func reportMergedTask(_ record: ReportMergeRecord) -> DeskTask {
+        let day = record.date.isEmpty ? nil : String(record.date.prefix(10))
+        let base = input.git?.base ?? "the base branch"
+        let reason = "Approved and merged into \(base)" + (day.map { " on \($0)." } ?? ".")
+        var task = DeskTask(
+            id: "report:\(record.branch)", title: record.branch, column: .done,
+            cardMeta: "merged", isDimmed: true, headerBadge: StatusBadge(.ended, "Merged"),
+            branchLine: [record.branch, day.map { "merged \($0)" } ?? "merged"].joined(separator: " · "),
+            activity: .unavailable(reason),
+            requirements: .unavailable(reason),
+            changes: .unavailable(reason),
+            evidence: .unavailable(reason),
+            parallel: .none("Merged"))
+        task.isFinishedReport = true
+        return task
     }
 
     private func mergedTask(_ pullRequest: GitHubMergedPullRequest) -> DeskTask {

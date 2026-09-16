@@ -17,8 +17,14 @@ struct TaskDialog: View {
     @Environment(\.openURL) private var openURL
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @State private var confirmsRemoval = false
+    @State private var confirmsApproval = false
 
     private var activity: TaskActivity? { model.activity(of: task) }
+
+    private var changedFileCount: Int {
+        if case .available(let changes) = task.changes { return changes.files.count }
+        return 0
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -129,6 +135,19 @@ struct TaskDialog: View {
                     Button("Cancel", role: .cancel) {}
                 }
             }
+            if task.isFinishedReport, !task.isMerged, let branch = task.branch {
+                Color.clear.frame(width: 0, height: 0)
+                    .confirmationDialog("Approve this report?", isPresented: $confirmsApproval, titleVisibility: .visible) {
+                        Button("Merge and push") {
+                            model.dismissSheet()
+                            Task { await model.approveReport(task) }
+                        }
+                        Button("Cancel", role: .cancel) {}
+                    } message: {
+                        Text(ReportMerge.confirmation(branch: branch, base: ReportMerge.originBase(task.baseRef) ?? "the base branch",
+                                                      commits: task.unmergedCount, files: changedFileCount))
+                    }
+            }
             if let delete = deleteBranch {
                 Button(role: .destructive) { delete() } label: {
                     Label("Delete branch", systemImage: "trash")
@@ -206,7 +225,9 @@ struct TaskDialog: View {
             }
             return ("Merged", "This work is merged.", {})
         }
-        if task.isFinishedReport { return ("Done", "This run finished. Merging it is another agent's or terminal's job.", {}) }
+        if task.isFinishedReport {
+            return ("Approve & merge", model.isWritingTracker ? "A write is already running." : nil, { confirmsApproval = true })
+        }
         if task.taskNumber != nil {
             return ("Start task", model.startBlockedReason(for: task, agent: defaultConnection), {
                 model.startTask(task, agent: defaultConnection)

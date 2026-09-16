@@ -401,6 +401,9 @@ private struct BoardColumnView: View {
             return CardMoves(title: "Cancel — back to Ready for dev",
                              blockedReason: task.column == .inProgress ? model.stageBackBlockedReason(for: task) : nil,
                              move: { Task { await model.cancelToReadyForDev(task) } }, cancel: cancel)
+        case .review where task.isFinishedReport:
+            // Approval is the only way forward, and it is the dialog's button; there is no pull request to draft.
+            return nil
         case .review:
             // Through the pull request, not around it: converting the PR to a draft is the fact that
             // moves the card, so it goes through the same confirmation as every tracker write.

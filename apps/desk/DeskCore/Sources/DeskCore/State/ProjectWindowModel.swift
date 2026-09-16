@@ -33,6 +33,7 @@ public struct WriteFailure: Equatable {
     static func tracker(_ message: String) -> WriteFailure { WriteFailure(title: "The tracker was not changed", message: message) }
     static func branch(_ message: String) -> WriteFailure { WriteFailure(title: "The branch was not deleted", message: message) }
     static func backlog(_ message: String) -> WriteFailure { WriteFailure(title: "docs/backlog/ was not changed", message: message) }
+    static func merge(_ message: String) -> WriteFailure { WriteFailure(title: "The report was not merged", message: message) }
     static func stage(_ message: String) -> WriteFailure { WriteFailure(title: "The board was not changed", message: message) }
     static func openFailed(_ message: String) -> WriteFailure { WriteFailure(title: "The file was not opened", message: message) }
 }
@@ -963,6 +964,28 @@ public final class ProjectWindowModel {
         } catch {
             writeFailure = .branch(Markdown.escape(error.localizedDescription))
         }
+    }
+
+    /// Approving a finished report merges it into origin's base and pushes; the reload is what moves the card to Done.
+    public func approveReport(_ task: DeskTask) async {
+        guard !isWritingTracker, task.isFinishedReport, !task.isMerged, let branch = task.branch else { return }
+        guard case .local(let path) = ref else {
+            writeFailure = .merge(ReportMergeError.notThisRepository.localizedDescription)
+            return
+        }
+        guard let base = ReportMerge.originBase(task.baseRef) else {
+            writeFailure = .merge(ReportMergeError.noOriginBase.localizedDescription)
+            return
+        }
+        isWritingTracker = true
+        defer { isWritingTracker = false }
+        do {
+            try await ReportMerge(directory: URL(fileURLWithPath: path, isDirectory: true), runner: runner).merge(branch: branch, base: base)
+            writeFailure = nil
+        } catch {
+            writeFailure = .merge(Markdown.escape(error.localizedDescription))
+        }
+        await load()
     }
 
     public func dismissWriteFailure() { writeFailure = nil }

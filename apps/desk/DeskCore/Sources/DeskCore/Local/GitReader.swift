@@ -46,6 +46,13 @@ struct GitFacts: Equatable {
     var branches: [BranchFacts]
     /// The total count of non-base local branches when more than the cap exist, so the note can say what was left out.
     var truncatedBranchCount: Int? = nil
+    /// Reports approved from the board, read back from the base's merges so an approved card stays in Done.
+    var reportMerges: [ReportMergeRecord] = []
+}
+
+struct ReportMergeRecord: Equatable {
+    let branch: String
+    let date: String
 }
 
 struct GitReadFailure: Error {
@@ -55,6 +62,16 @@ struct GitReadFailure: Error {
 /// Pure parsers for the git output GitReader collects.
 enum GitOutput {
     static let baseCandidates = ["staging", "develop", "main", "master"]
+
+    /// `log --format=%s%x1f%aI` lines, keeping only the merges `ReportMerge` made, newest first, one per branch.
+    static func reportMerges(_ text: String) -> [ReportMergeRecord] {
+        var seen = Set<String>()
+        return lines(text).compactMap { line in
+            let parts = line.components(separatedBy: "\u{1f}")
+            guard let branch = ReportMerge.branch(fromSubject: parts[0]), seen.insert(branch).inserted else { return nil }
+            return ReportMergeRecord(branch: branch, date: parts.count > 1 ? parts[1] : "")
+        }
+    }
     static let maxDiffFiles = 200
     static let maxDiffLines = 1500
     static let maxBranches = 200
@@ -311,8 +328,14 @@ struct GitReader {
             facts.lastCommit = committed[name]
             return facts
         }
+        var reportMerges: [ReportMergeRecord] = []
+        if let baseRef {
+            let log = await output(["log", "--first-parent", "--merges", "-n", "100", "--format=%s%x1f%aI", baseRef, "--"])
+            reportMerges = GitOutput.reportMerges(log ?? "")
+        }
         return GitFacts(base: base, baseRef: baseRef, baseShort: baseShort, branches: branches,
-                        truncatedBranchCount: candidates.count > GitOutput.maxBranches ? candidates.count : nil)
+                        truncatedBranchCount: candidates.count > GitOutput.maxBranches ? candidates.count : nil,
+                        reportMerges: reportMerges)
     }
 
     /// A `for-each-ref --format=%(refname) %(objectname) %(committerdate:unix)` line; ref names can't hold spaces,

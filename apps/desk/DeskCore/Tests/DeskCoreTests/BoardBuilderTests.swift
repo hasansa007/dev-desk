@@ -230,7 +230,7 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(task.dependencies, [])
     }
 
-    func testABranchHoldingOnlyAReportIsDone() throws {
+    func testABranchHoldingOnlyAReportWaitsForApprovalInReview() throws {
         var input = fixture
         input.git?.branches.append(BranchFacts(name: "findings/2026-09-17", unmerged: 2, counted: true, worktree: nil,
                                                files: [NumstatEntry(path: "docs/findings/2026-09-17.md", additions: 90, deletions: 0)]))
@@ -239,12 +239,26 @@ final class BoardBuilderTests: XCTestCase {
                                                        NumstatEntry(path: "Sources/App/Boot.swift", additions: 1, deletions: 0)]))
         let built = tasks(input)
         let report = try XCTUnwrap(built["branch:findings/2026-09-17"])
-        XCTAssertEqual(report.column, .done)
+        XCTAssertEqual(report.column, .review)
         XCTAssertTrue(report.isFinishedReport)
-        XCTAssertEqual(report.headerBadge, StatusBadge(.ended, "Done"))
+        XCTAssertFalse(report.isMerged)
+        XCTAssertEqual(report.headerBadge, StatusBadge(.waiting, "Report ready — approve?"))
         let mixed = try XCTUnwrap(built["branch:findings/mixed"])
         XCTAssertEqual(mixed.column, .inProgress, "code beside the report is still work")
         XCTAssertFalse(try XCTUnwrap(built["branch:spike/z"]).isFinishedReport, "no files read is not a finished report")
+    }
+
+    func testAnApprovedReportIsDoneOnceTheBaseHoldsItsMerge() throws {
+        var input = fixture
+        input.git?.reportMerges = [ReportMergeRecord(branch: "findings/2026-09-17", date: "2026-09-17T01:10:00+03:00")]
+        let done = try XCTUnwrap(tasks(input)["report:findings/2026-09-17"])
+        XCTAssertEqual(done.column, .done)
+        XCTAssertTrue(done.isMerged)
+        XCTAssertEqual(done.headerBadge, StatusBadge(.ended, "Merged"))
+        // New commits on the same branch after approval are work again, not a second Done card.
+        input.git?.branches.append(BranchFacts(name: "findings/2026-09-17", unmerged: 1, counted: true, worktree: nil,
+                                               files: [NumstatEntry(path: "docs/findings/2026-09-17.md", additions: 1, deletions: 0)]))
+        XCTAssertNil(tasks(input)["report:findings/2026-09-17"])
     }
 
     func testMergedPullRequestIsDimmedDone() throws {
