@@ -1,17 +1,19 @@
 import Foundation
 
-/// A CLI a task can be handed to. Dev Desk types its command into the developer's OWN terminal and the session runs
-/// there, out of the app's sight and followed by its branch (ADR 0036 decision 6, brought forward from step 6).
+/// A CLI besides Claude and Codex that can run a task's `/dev` in Dev Desk's built-in terminal: the app types its
+/// command into a session in Sessions, exactly as it does for Claude and Codex, so the run is counted against the slot
+/// limit and watched where every other run is. ADR 0036 amendment 2 keeps that terminal until ACP sessions exist.
 ///
 /// Only commands that ran for real belong here. Checked 2026-09-16: Gemini 0.60.0 (API key) and opencode 1.18.31 —
-/// the build a login shell resolves, not the older one in ~/.opencode/bin — each read a repository file and the
-/// family's own SKILL.md. Antigravity 1.2.1 was run by the developer rather than by this tooling, because a
-/// third-party tool invoking it is exactly what its terms forbid; handing it a command to run is not.
+/// the build a login shell resolves, not the older one in ~/.opencode/bin — each ran this exact command in a terminal
+/// against a clone of this repository, read the family's SKILL.md and answered from it. Antigravity 1.2.1 was run by
+/// the developer rather than by this tooling, because a third-party tool invoking it is what its terms forbid; typing
+/// its own binary's command into a terminal is not, since `agy` holds its credential and the app never touches it.
 ///
 /// The family lives outside the project, so a tool that fences its file tools to the workspace is given the family's
 /// folder. Without `--include-directories`, a headless Gemini asked to read SKILL.md waited five minutes and printed
 /// nothing.
-public enum HandoffAgent: String, CaseIterable, Hashable {
+public enum TerminalAgent: String, CaseIterable, Hashable {
     case gemini, opencode, antigravity
 
     public var name: String {
@@ -41,9 +43,9 @@ public enum HandoffAgent: String, CaseIterable, Hashable {
     }
 
     /// The installed ones, in declaration order, by `which` — read-only, nothing is launched. An absent tool is not
-    /// offered at all: a hand-off row with nothing behind it is the kind of claim ADR 0036 exists to stop.
-    public static func detect(runner: CommandRunner) async -> [HandoffAgent] {
-        let found = await allCases.concurrentMap { agent -> (HandoffAgent, Bool) in
+    /// offered at all: a row with nothing behind it is the kind of claim ADR 0036 exists to stop.
+    public static func detect(runner: CommandRunner) async -> [TerminalAgent] {
+        let found = await allCases.concurrentMap { agent -> (TerminalAgent, Bool) in
             let result = try? await runner.run("which", [agent.executable], in: nil, timeout: CommandTimeout.git)
             return (agent, result?.succeeded ?? false)
         }

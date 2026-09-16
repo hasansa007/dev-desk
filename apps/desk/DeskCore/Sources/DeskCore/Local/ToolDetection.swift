@@ -6,7 +6,7 @@ import Foundation
 enum ToolDetection {
     /// Only the CLIs Dev Desk can run. Gemini and opencode were rows here and ran nothing — the app starts Claude and
     /// Codex alone — so they left on 2026-09-16 and return when an ACP session exists to carry them (ADR 0036 step 3).
-    /// Their sign-in reading is in git at 5aaa4f5. What they CAN do today is take a hand-off: `HandoffAgent`.
+    /// Their sign-in reading is in git at 5aaa4f5. They run tasks today as `TerminalAgent`s.
     static let tools: [(id: String, name: String)] = [("codex", "Codex"), ("claude", "Claude")]
     static let note = "Detected on this Mac. Dev Desk never stores credentials: signing in runs the tool's own command in your terminal, where you can watch it."
 

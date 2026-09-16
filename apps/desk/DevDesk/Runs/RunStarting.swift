@@ -27,13 +27,16 @@ extension ProjectWindowModel {
     /// `id` separates runs of the same door for different tasks; the folder rule prefixes `folderNote` with where it opens.
     /// Returns whether the run was actually dispatched, so a caller recording a stage records only real starts.
     @discardableResult
+    /// `command` is typed as given, for a CLI `DoorCommand` has no invocation for (`TerminalAgent`).
     func prepareRun(door: String, title: String, agent: String, arguments: [String] = [],
-                    id: String? = nil, folderNote: String? = nil, mode: RunMode? = nil) -> Bool {
+                    id: String? = nil, folderNote: String? = nil, mode: RunMode? = nil,
+                    command prebuilt: String? = nil) -> Bool {
         let runID = id ?? DoorRuns.id(door: door)
         // One run per door, and per task: a second start would give the same id two shells and the panel one row.
         guard canRunDoors, !isRunLive(runID),
-              let command = DoorCommand.build(door: door, agent: agent, arguments: arguments, home: NSHomeDirectory(),
-                                              mode: mode ?? RunModeChoice.current(for: ref))
+              let command = prebuilt ?? DoorCommand.build(door: door, agent: agent, arguments: arguments,
+                                                          home: NSHomeDirectory(),
+                                                          mode: mode ?? RunModeChoice.current(for: ref))
         else {
             if isRunLive(runID) {
                 selectedSessionID = runID
@@ -196,23 +199,32 @@ extension ProjectWindowModel {
         }
     }
 
-    /// Hands a task to a CLI that runs it in the developer's own terminal (ADR 0036 decision 6). The launch is NOT
-    /// remembered: `TaskLaunch` can only name a runner this window hosts, so a remembered hand-off would make the
-    /// card's next Start quietly run Claude or Codex here instead. The next Start opens the sheet again, which is true.
+    /// Runs a task's `/dev` with Gemini, opencode or Antigravity in the built-in terminal — the same run row, slot and
+    /// Sessions pane a Claude start gets, with the command `TerminalAgent` verified. The prompt is the launch's own,
+    /// so it reads the family from the root install.sh linked for the launch's agent.
     ///
-    /// The card moves to In progress only when a terminal actually opened; a command left on the clipboard has not
-    /// started anything yet. nil when the launch has no prompt to hand over.
-    func handOff(_ task: DeskTask, launch: TaskLaunch, to agent: HandoffAgent) -> TerminalHandoff.Outcome? {
+    /// The launch is NOT remembered: `TaskLaunch` names Claude or Codex only, so remembering this one would make the
+    /// card's next Start quietly run one of those instead. The next Start opens the sheet again, which is true.
+    func runInTerminal(_ task: DeskTask, launch: TaskLaunch, agent: TerminalAgent) {
         let home = NSHomeDirectory()
         guard let prompt = launch.prompt(home: home),
-              let family = DoorCommand.agent(named: AgentLaunch.connectionName(launch.agent)) else { return nil }
-        let outcome = TerminalHandoff.run(agent.command(prompt: prompt, familyRoot: "\(home)/\(family.root)"),
-                                          in: projectRoot)
-        if case .opened = outcome {
-            dismissSheet()
+              let family = DoorCommand.agent(named: AgentLaunch.connectionName(launch.agent)),
+              let id = DoorRuns.id(for: task) else { return }
+        let command = agent.command(prompt: prompt, familyRoot: "\(home)/\(family.root)")
+        // The same title and note `startTask` gives each kind of card, so the row reads the same whoever runs it.
+        let title: String, note: String
+        if task.localBacklogID != nil {
+            title = task.title
+            note = "this has no issue yet; /dev cuts a branch at its first write."
+        } else {
+            let number = task.taskNumber.map(String.init) ?? ""
+            title = "Task #\(number)"
+            note = "#\(number) has no branch yet; /dev cuts one at its first write."
+        }
+        dismissSheet()
+        if prepareRun(door: "dev", title: title, agent: agent.name, id: id, folderNote: note, command: command) {
             Task { await recordStarted(task) }
         }
-        return outcome
     }
 
     /// This project's launches, or nil for a project with no folder to keep them in.

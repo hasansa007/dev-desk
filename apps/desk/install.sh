@@ -48,7 +48,8 @@ if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
             }
             for (i = 1; i <= n; i++) if (pid[i] in seen) {
                 name = cmd[i]; sub(/.*\//, "", name)
-                if (name == "claude" || name == "codex") print name
+                # gemini is a node script, so it shows as node: under Dev Desk that is an agent, not a coincidence.
+                if (name == "claude" || name == "codex" || name == "opencode" || name == "agy" || name == "node") print name
             }
         }' | sort -u | tr '\n' ' ')
     if [ -n "$LIVE" ]; then

@@ -16,6 +16,20 @@ final class StartRunnersTests: XCTestCase {
                        "it runs in a session this app hosts — calling it acp would name a substrate that is not built")
     }
 
+    /// Gemini, opencode and Antigravity run in the same built-in terminal, after Claude and Codex. They cannot be
+    /// queued, so a full limit shows them unavailable instead of starting past it.
+    func testOtherCLIsJoinRunItHereAndWaitForAFreeSlot() {
+        let open = StartRunners.choices(connections: [connection("claude"), connection("codex")],
+                                        terminalAgents: [.gemini, .opencode, .antigravity])
+        XCTAssertEqual(open.here.map(\.id), ["claude", "codex", "gemini", "opencode", "antigravity"])
+        XCTAssertEqual(open.here.map(\.detail), ["terminal", "terminal", "terminal", "terminal", "terminal"])
+        XCTAssertTrue(open.here.allSatisfy(\.isAvailable))
+
+        let full = StartRunners.choices(connections: [connection("claude")], terminalAgents: [.gemini], hasFreeSlot: false)
+        XCTAssertEqual(full.here.first { $0.id == "gemini" }?.detail, "no free slot")
+        XCTAssertEqual(full.here.first { $0.id == "gemini" }?.isAvailable, false)
+    }
+
     /// A row that cannot be chosen is shown with the reason rather than dropped: absence is information,
     /// and a list that silently omits Claude looks like Claude does not exist.
     func testAnUnusableAgentIsShownWithItsReasonRatherThanHidden() {

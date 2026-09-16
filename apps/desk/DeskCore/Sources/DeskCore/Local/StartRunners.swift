@@ -8,8 +8,12 @@ import Foundation
 /// them would name a substrate that is not built, which is the kind of claim this ADR exists to stop.
 public enum StartRunners {
     /// `handoff` comes from the launchers `AcpDetection` probes, so the two lists have one source each.
-    public static func choices(connections: [Connection], handoff: [RunnerOption] = []) -> RunnerChoices {
-        let rows = AgentLaunch.runnableKinds.map { kind -> RunnerOption in
+    ///
+    /// `terminalAgents` are the other CLIs found on this Mac. They run in the same built-in terminal, but the queue can
+    /// only park a Claude or Codex launch, so with no free slot they are shown unavailable rather than queued.
+    public static func choices(connections: [Connection], handoff: [RunnerOption] = [],
+                               terminalAgents: [TerminalAgent] = [], hasFreeSlot: Bool = true) -> RunnerChoices {
+        let known = AgentLaunch.runnableKinds.map { kind -> RunnerOption in
             let name = AgentLaunch.displayName(kind)
             switch AgentAvailability.resolve(connectionName: AgentLaunch.connectionName(kind),
                                              connections: connections) {
@@ -21,6 +25,13 @@ public enum StartRunners {
                                     isAvailable: false)
             }
         }
+        // Installed is all that can be known: none of these publishes a sign-in check this app reads, and a run that
+        // needs one shows the tool's own prompt in the terminal, in Sessions, where it can be answered.
+        let others = terminalAgents.map {
+            RunnerOption(id: $0.rawValue, name: $0.name, detail: hasFreeSlot ? "terminal" : "no free slot", kind: .here,
+                         isAvailable: hasFreeSlot)
+        }
+        let rows = known + others
         return RunnerChoices(here: rows, handoff: handoff,
                              hereEmptyReason: rows.contains(where: \.isAvailable) ? nil : emptyReason(rows))
     }

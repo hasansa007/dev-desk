@@ -30,13 +30,13 @@ public struct LocalGitDataSource: ProjectDataSource {
         async let info = identity()
         async let toplevel = repositoryRoot()
         async let tools = ToolDetection.detect(runner: runner)
-        async let handoffs = HandoffAgent.detect(runner: runner)
+        async let terminalCLIs = TerminalAgent.detect(runner: runner)
         let project = await info
         let top: String
         switch await toplevel {
         case .success(let path): top = path
         case .failure(let failure):
-            return Self.plainFolder(project, tools: await tools, handoffs: await handoffs, reason: failure.detail)
+            return Self.plainFolder(project, tools: await tools, terminalCLIs: await terminalCLIs, reason: failure.detail)
         }
 
         let topURL = URL(fileURLWithPath: top)
@@ -74,7 +74,7 @@ public struct LocalGitDataSource: ProjectDataSource {
             projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github),
             slug: github.data?.slug, activeMilestone: active.title,
             localBacklog: localBacklog, filedBacklogKeys: LocalBacklog.filedKeys(projectPath: top), repositoryRoot: top,
-            handoffAgents: await handoffs)
+            terminalAgents: await terminalCLIs)
     }
 
     /// A partial clone, or any promisor remote, lazy-fetches missing objects mid-read, running remote.<name>.uploadpack — even without
@@ -162,7 +162,7 @@ public struct LocalGitDataSource: ProjectDataSource {
         }
     }
 
-    private static func plainFolder(_ project: ProjectInfo, tools: [Connection], handoffs: [HandoffAgent],
+    private static func plainFolder(_ project: ProjectInfo, tools: [Connection], terminalCLIs: [TerminalAgent],
                                     reason: String) -> ProjectSnapshot {
         let unread = reason != notARepository
         let github = GitHubState.unavailable(unread ? "git could not read this folder" : "no GitHub remote")
@@ -175,7 +175,7 @@ public struct LocalGitDataSource: ProjectDataSource {
             insights: InsightsAgent.availability(connections: tools, repositoryRoot: nil, noAgentReason: insightsReason),
             projectFacts: facts(base: nil, baseShort: nil, remote: nil,
                                 active: (nil, unread ? "git could not read this folder" : "not a git repository"), github: github),
-            handoffAgents: handoffs)
+            terminalAgents: terminalCLIs)
     }
 
     /// Without open issues every theme would look empty, so an issue-read failure makes the roadmap unavailable rather than bare.

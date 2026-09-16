@@ -273,8 +273,8 @@ final class LocalGitDataSourceTests: XCTestCase {
         // Only what Dev Desk runs: Gemini and opencode ran nothing from here, so they are not rows (ADR 0036 step 3).
         XCTAssertEqual(snapshot.connections.map(\.id), ["codex", "claude", "github"])
         XCTAssertEqual(snapshot.connections.map(\.state), [.missing, .detected, .connected])
-        // Nothing answered `which` for a hand-off CLI, so none is offered.
-        XCTAssertEqual(snapshot.handoffAgents, [])
+        // Nothing answered `which` for another CLI, so none is offered.
+        XCTAssertEqual(snapshot.terminalAgents, [])
         // Installed but with no account on it is not the same as installed: a run would stop at its own prompt.
         let claude = snapshot.connections.first { $0.id == "claude" }
         XCTAssertEqual(claude?.label, "not signed in")

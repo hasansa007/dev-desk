@@ -34,16 +34,13 @@ struct StartSheet: View {
     /// Drives the `first start` chip only. The compact confirm for a second start is a different surface (§10.3
     /// answer 3), so this sheet says which one it is rather than deciding when to appear.
     var isFirstStart = true
-    /// A sentence the footer shows in place of the slot line — today only "the command is on the clipboard".
-    var notice: String?
     let onCancel: () -> Void
     let onStart: (RunnerOption) -> Void
 
     @State private var selectedRunnerID: String?
 
     init(launch: TaskLaunch, choices: RunnerChoices, prompt: String, slots: StartSlots, isFirstStart: Bool = true,
-         notice: String? = nil, onCancel: @escaping () -> Void, onStart: @escaping (RunnerOption) -> Void) {
-        self.notice = notice
+         onCancel: @escaping () -> Void, onStart: @escaping (RunnerOption) -> Void) {
         self.launch = launch
         self.choices = choices
         self.prompt = prompt
@@ -186,15 +183,11 @@ struct StartSheet: View {
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("Run it here")
             hereList
-            // No header over an empty list: an "Or hand it to" with nothing under it reads as a failure to load.
+            // No header over an empty list: the hand-off launchers arrive with *Continue in* (step 6), and
+            // until then an "Or hand it to" with nothing under it reads as a failure to load.
             if !choices.handoff.isEmpty {
                 SectionLabel("Or hand it to")
                     .padding(.top, 4)
-                // Said on screen, not in a tooltip: what a hand-off gives up has to be read before choosing one.
-                Text("Runs in your own terminal. Dev Desk follows the branch, not the session.")
-                    .font(DeskFont.small)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .fixedSize(horizontal: false, vertical: true)
                 ForEach(choices.handoff) { option in
                     runnerRow(option)
                 }
@@ -261,11 +254,9 @@ struct StartSheet: View {
 
     private var footer: some View {
         HStack(spacing: 10) {
-            Text(notice ?? slots.line)
+            Text(slots.line)
                 .font(DeskFont.small)
-                .foregroundStyle(notice == nil ? DeskColor.mutedInk : DeskColor.tone(.waiting).dot)
-                .lineLimit(2)
-                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(DeskColor.mutedInk)
             Spacer(minLength: 8)
             Button("Cancel", action: onCancel)
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .regular))

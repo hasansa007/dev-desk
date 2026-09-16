@@ -1,6 +1,6 @@
 # 0036 — Agents run over a protocol, and the terminal leaves the app
 
-Status:  Accepted — reviewed 2026-09-16; amended 2026-09-16; implementation started at step 1
+Status:  Accepted — reviewed 2026-09-16; amended twice 2026-09-16; implementation started at step 1
 Date:    2026-09-15  ·  accepted 2026-09-16
 Commit:  (this branch)  ·  `main`  ·  design record
 [`docs/superpowers/specs/2026-09-15-runs-without-terminal-design.md`](../superpowers/specs/2026-09-15-runs-without-terminal-design.md)
@@ -185,3 +185,37 @@ Standard/Enterprise licence authenticates. The Consequences bullet's arithmetic 
 does not: Gemini CLI is present on PATH and unusable, which is worse than absent, because detection
 that trusts `which` reports it ready. Detection must read auth, not presence.
 `scripts/dev.py` records the same reason (36d0fc7).
+
+## Amendment 2 — 2026-09-16 · the terminal stays until ACP exists, and every CLI runs in it
+
+**Decisions 6 and 7 are deferred, not dropped.** The built-in terminal and SwiftTerm stay until `ACPSession` exists
+to replace them. Until then, "What needs a TTY leaves the app" applies to sign-in — `TerminalHandoff` — and not to
+task runs.
+
+The developer, choosing between an external hand-off and the app's own terminal: *"1, all in one app."* The case
+for it was already on screen. Typing `opencode` into a Sessions terminal ran it, and Claude and Codex under *Run it
+here* have always run in that terminal (`StartRunners` labels them `terminal`, not `acp v1`, for exactly that
+reason). Removing it is steps 3 and 7, which nothing has scheduled. Building a second path out to Terminal.app in
+the meantime would have split one Start into two places to watch.
+
+**Gemini, opencode and Antigravity run under *Run it here*, in that terminal.** `TerminalAgent` holds one command
+each, run for real against a clone of this repository on 2026-09-16 — each read the family's SKILL.md and answered
+from it:
+
+- `gemini --include-directories <family> -i '<prompt>'` — 0.60.0 on an API key. The folder flag is needed: without
+  it a headless Gemini asked to read SKILL.md waited five minutes and printed nothing.
+- `opencode --prompt '<prompt>'` — 1.18.31, the build a login shell resolves.
+- `agy --add-dir <family> -i '<prompt>'` — 1.2.1, run by the developer. Amendment 1's line holds here: `agy` holds
+  its own credential and the app types a command into a shell, which is not third-party access.
+
+They take the same run row, slot and Sessions pane as Claude. Two limits are real and stated in the code rather than
+hidden. The queue can park only a Claude or Codex `TaskLaunch`, so with no free slot these rows are unavailable
+rather than queued. And a start with one of them is not remembered, so the card's next Start opens the sheet
+instead of quietly running Claude.
+
+**This withdraws the external hand-off from 8e9567e.** The "Or hand it to" section returns to empty, which is where
+*Continue in ▾* will fill it.
+
+**Amendment 1 overstated one thing.** It said Gemini CLI "is no longer a provider an individual developer has".
+That is true of Google sign-in, which is what it tested. The same developer added an API key the same afternoon and
+Gemini ran. What an individual lost is the subscription path, not the CLI.
