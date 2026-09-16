@@ -95,10 +95,11 @@ struct StartSheet: View {
         .background(DeskColor.headerFill)
     }
 
-    /// `Start #212 — <title>` when a card owns the launch; a door run has no number to print, so it says the door.
+    /// `Start #212 — <title>` for an issue card. A `docs/backlog/` card's id is a long slug, not a number,
+    /// and printing it filled the header with the title twice over — so only numbered cards show a number.
     private var title: String {
-        guard let task = launch.task else { return "Start \(launch.door) — \(launch.title)" }
-        return "Start #\(task) — \(launch.title)"
+        guard let number = launch.arguments.first(where: { $0.hasPrefix("#") }) else { return "Start \(launch.title)" }
+        return "Start \(number) — \(launch.title)"
     }
 
     // MARK: - Payload
@@ -122,7 +123,9 @@ struct StartSheet: View {
     /// Only what the launch actually carries. A row with no value is left out rather than printed with a dash:
     /// `TaskLaunch` pins no branch and no gate list, and a placeholder there would read as a decision taken.
     private var payloadRows: [KeyValue] {
-        var rows = [KeyValue("Door", ([launch.door] + launch.arguments).joined(separator: " "), monospaced: true)]
+        // The door alone: its arguments can be a whole paragraph for a local card, and the prompt below
+        // already shows them in full.
+        var rows = [KeyValue("Door", launch.door, monospaced: true)]
         if !launch.worktreeLocation.isEmpty {
             rows.append(KeyValue("Folder", launch.worktreeLocation, monospaced: true))
         }
@@ -136,8 +139,12 @@ struct StartSheet: View {
         return rows
     }
 
-    /// The path ADR 0036 decision 1 fixes. It is relative because the sheet is handed a launch, not a project root.
-    private var taskFilePath: String { ".devdesk/launch/\(launch.id).json" }
+    /// The path ADR 0036 decision 1 fixes, as the store actually writes it: an id carries a colon, which the
+    /// filename cannot, so printing the raw id named a file that does not exist. Relative, because the sheet
+    /// is handed a launch and not a project root.
+    private var taskFilePath: String {
+        "\(TaskLaunchStore.relativeFolder)/\(TaskLaunchStore.fileName(for: launch.id))"
+    }
 
     private var promptBox: some View {
         ScrollView {
@@ -174,17 +181,16 @@ struct StartSheet: View {
 
     private var side: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 5) {
-                SectionLabel("Run it here")
-                Text("· acp only")
-                    .font(DeskFont.small)
-                    .foregroundStyle(DeskColor.faintInk)
-            }
+            SectionLabel("Run it here")
             hereList
-            SectionLabel("Or hand it to")
-                .padding(.top, 4)
-            ForEach(choices.handoff) { option in
-                runnerRow(option)
+            // No header over an empty list: the hand-off launchers arrive with *Continue in* (step 6), and
+            // until then an "Or hand it to" with nothing under it reads as a failure to load.
+            if !choices.handoff.isEmpty {
+                SectionLabel("Or hand it to")
+                    .padding(.top, 4)
+                ForEach(choices.handoff) { option in
+                    runnerRow(option)
+                }
             }
         }
         .frame(width: 252, alignment: .leading)

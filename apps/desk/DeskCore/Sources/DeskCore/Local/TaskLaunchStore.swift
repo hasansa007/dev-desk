@@ -37,8 +37,12 @@ public struct TaskLaunchStore {
         try? FileManager.default.removeItem(at: url(for: id))
     }
 
+    /// What a launch is actually called on disk. An id carries a colon (`task:212`) and a filename must
+    /// not, so anything printing the raw id names a file that is not there — the start sheet did.
+    public static func fileName(for id: String) -> String { RunJournal.fileName(for: id) }
+
     public func url(for id: String) -> URL {
-        directory.appendingPathComponent(RunJournal.fileName(for: id))
+        directory.appendingPathComponent(Self.fileName(for: id))
     }
 
     private static let encoder: JSONEncoder = {

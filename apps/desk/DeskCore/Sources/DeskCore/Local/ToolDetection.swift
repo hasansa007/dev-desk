@@ -59,7 +59,19 @@ enum ToolDetection {
                                                        isInteractive: auth.interactive))
             }
             let status = try? await runner.run(tool.id, statusCommand, in: nil, timeout: CommandTimeout.git)
-            let identity = status.flatMap { AuthStatus.identity(from: $0.stdout + "\n" + $0.stderr, tool: tool.id) }
+            let output = status.map { $0.stdout + "\n" + $0.stderr } ?? ""
+            let identity = AuthStatus.identity(from: output, tool: tool.id)
+            // A CLI that answers with nothing has not said it is signed out — it has said nothing. Claiming
+            // "not signed in" from silence is how a working install gets a Start disabled under it, and the
+            // `opencode` on this Mac's PATH does exactly that: exit 0, no output, from a different build than
+            // the one on a developer's own PATH.
+            if identity == nil, output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                return Connection(id: tool.id, name: tool.name, state: .detected, label: "found · sign-in not readable",
+                                  detail: "\(tool.name) answered its own status check with nothing, so Dev Desk can't "
+                                      + "tell whether it is signed in. Opening it shows you.",
+                                  auth: ConnectionAuth(signIn: auth.signIn, signOut: auth.signOut,
+                                                       isInteractive: auth.interactive))
+            }
             let signedIn = identity != nil
             return Connection(id: tool.id, name: tool.name, state: .detected,
                               label: signedIn ? (identity ?? "signed in") : "not signed in",
