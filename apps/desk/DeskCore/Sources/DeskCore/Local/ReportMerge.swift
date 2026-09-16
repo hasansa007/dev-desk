@@ -69,7 +69,7 @@ public struct ReportMerge {
                       failure: "Could not open a worktree on origin/\(base)")
         do {
             try await git(["merge", "--no-ff", "-m", Self.subject(branch: branch, base: base), "refs/heads/\(branch)"],
-                          in: scratch, timeout: CommandTimeout.worktreeAdd, failure: "\(branch) does not merge cleanly into \(base)")
+                          signed: true, in: scratch, timeout: CommandTimeout.worktreeAdd, failure: "Could not merge \(branch) into \(base)")
             try await git(["push", "origin", "HEAD:refs/heads/\(base)"], in: scratch, timeout: CommandTimeout.clone,
                           failure: "The merge was made but origin refused the push")
             // The push moves origin's ref; the tracking ref the board counts against is brought along with it.
@@ -85,10 +85,10 @@ public struct ReportMerge {
         _ = try? await run(["worktree", "remove", "--force", "--", scratch.path], in: directory, timeout: CommandTimeout.git)
     }
 
-    private func git(_ arguments: [String], in folder: URL? = nil, timeout: TimeInterval, failure: String) async throws {
+    private func git(_ arguments: [String], signed: Bool = false, in folder: URL? = nil, timeout: TimeInterval, failure: String) async throws {
         let result: CommandResult
         do {
-            result = try await run(arguments, in: folder ?? directory, timeout: timeout)
+            result = try await run(arguments, signed: signed, in: folder ?? directory, timeout: timeout)
         } catch let cancellation as CancellationError {
             throw cancellation
         } catch {
@@ -100,7 +100,7 @@ public struct ReportMerge {
         }
     }
 
-    private func run(_ arguments: [String], in folder: URL, timeout: TimeInterval) async throws -> CommandResult {
-        try await runner.run("git", GitCommand.read(arguments), in: folder, timeout: timeout)
+    private func run(_ arguments: [String], signed: Bool = false, in folder: URL, timeout: TimeInterval) async throws -> CommandResult {
+        try await runner.run("git", signed ? GitCommand.commit(arguments) : GitCommand.read(arguments), in: folder, timeout: timeout)
     }
 }

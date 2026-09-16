@@ -11,13 +11,18 @@ final class ReportMergeTests: XCTestCase {
         let runner = FakeRunner([
             key("fetch --no-tags origin +refs/heads/staging:refs/remotes/origin/staging"): .ok(),
             key("worktree add --detach -- /tmp/scratch refs/remotes/origin/staging"): .ok(),
-            FakeRunner.gitRead("merge --no-ff -m") + " Merge report findings/2026-09-17 into staging refs/heads/findings/2026-09-17": .ok(),
+            (["git"] + GitCommand.commitFlags + ["merge", "--no-ff", "-m"]).joined(separator: " ")
+                + " Merge report findings/2026-09-17 into staging refs/heads/findings/2026-09-17": .ok(),
             key("push origin HEAD:refs/heads/staging"): .ok(),
             key("worktree remove --force -- /tmp/scratch"): .ok(),
         ])
         try await ReportMerge(directory: repo, runner: runner, scratch: scratch).merge(branch: "findings/2026-09-17", base: "staging")
         XCTAssertEqual(runner.calls.filter { $0.key.contains(" merge ") || $0.key.contains(" push ") }.map(\.directory), [scratch, scratch])
         XCTAssertEqual(runner.keys.last, key("worktree remove --force -- /tmp/scratch"))
+        // A repo that signs commits (gpg.format ssh) refuses the merge if its signer is blanked.
+        let merge = try XCTUnwrap(runner.keys.first { $0.contains(" merge ") })
+        XCTAssertFalse(merge.contains("gpg."))
+        XCTAssertTrue(merge.contains("core.hooksPath=/dev/null"))
     }
 
     func testAMergeThatFailsStillRemovesTheWorktreeAndPushesNothing() async {
@@ -30,7 +35,7 @@ final class ReportMergeTests: XCTestCase {
             try await ReportMerge(directory: repo, runner: runner, scratch: scratch).merge(branch: "findings/x", base: "staging")
             XCTFail("an unscripted merge fails")
         } catch {
-            XCTAssertTrue(error.localizedDescription.hasPrefix("findings/x does not merge cleanly into staging"))
+            XCTAssertTrue(error.localizedDescription.hasPrefix("Could not merge findings/x into staging"))
         }
         XCTAssertFalse(runner.keys.contains(key("push origin HEAD:refs/heads/staging")))
         XCTAssertEqual(runner.keys.last, key("worktree remove --force -- /tmp/scratch"))

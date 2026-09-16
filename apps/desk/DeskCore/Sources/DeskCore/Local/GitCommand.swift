@@ -13,4 +13,12 @@ enum GitCommand {
 
     /// The hardening flags, which must precede the subcommand, followed by it.
     static func read(_ arguments: [String]) -> [String] { readFlags + arguments }
+
+    /// A commit the developer approved is written the way their own would be: a repo that signs commits needs its
+    /// signing program, so only the flags that do not blank a signer are kept.
+    static let commitFlags = stride(from: 0, to: readFlags.count, by: 2).flatMap { index -> [String] in
+        readFlags[index + 1].hasPrefix("gpg.") ? [] : [readFlags[index], readFlags[index + 1]]
+    }
+
+    static func commit(_ arguments: [String]) -> [String] { commitFlags + arguments }
 }
