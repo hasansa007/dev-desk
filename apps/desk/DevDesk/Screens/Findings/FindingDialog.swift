@@ -104,6 +104,16 @@ struct FindingDialog: View {
             MarkdownText(finding.summary, color: DeskColor.secondaryInk)
                 .lineSpacing(5)
                 .frame(maxWidth: 760, alignment: .leading)
+            if !finding.coordination.scopeLines.isEmpty {
+                // How it runs beside the other tickets, in the report's own words (ADR 0040).
+                SectionLabel("Scope").padding(.top, 4)
+                Text(finding.coordination.scopeLines.joined(separator: "\n"))
+                    .font(DeskFont.mono(11.5))
+                    .foregroundStyle(DeskColor.secondaryInk)
+                    .lineSpacing(4)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: 760, alignment: .leading)
+            }
             if let reconcile = finding.reconcile {
                 ReconcileCard(finding: finding, reconcile: reconcile, model: model)
             }

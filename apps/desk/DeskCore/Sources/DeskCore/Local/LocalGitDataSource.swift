@@ -219,12 +219,14 @@ public struct LocalGitDataSource: ProjectDataSource {
         let folder = toplevel.appendingPathComponent("docs/survey")
         var runs: [SurveyRun] = []
         var findings: [Finding] = []
+        var groups: [SurveyGroup] = []
         for name in markdownFiles(in: folder).sorted(by: >) {
             let stem = String(name.dropLast(3))
             switch SafeFile.read(folder.appendingPathComponent(name), maxBytes: maxReportBytes, within: toplevel) {
             case .text(let text):
                 runs.append(SurveyRun(id: stem, label: stem, revision: nil))
                 findings.append(contentsOf: SurveyReportParser.parse(text, runID: stem))
+                groups.append(contentsOf: SurveyReportParser.groups(text, runID: stem))
             case .tooLarge:
                 runs.append(SurveyRun(id: stem, label: "\(stem) · Report too large to read (over 1 MB)", revision: nil))
             case .hardLink:
@@ -233,7 +235,7 @@ public struct LocalGitDataSource: ProjectDataSource {
                 continue
             }
         }
-        return FindingsReport(runs: runs, findings: findings)
+        return FindingsReport(runs: runs, findings: findings, groups: groups)
     }
 
     private static func ideation(in toplevel: URL) -> IdeationReport {

@@ -41,7 +41,7 @@ private struct FindingsBoard: View {
     @State private var showsNote = false
     @State private var checked: Set<String> = []
     @State private var collapsed: Set<String> = []
-    @AppStorage(PreferenceKey.surveyGrouping) private var groupingRaw = FindingGrouping.status.rawValue
+    @AppStorage(PreferenceKey.surveyGrouping) private var groupingRaw = FindingGrouping.group.rawValue
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
     /// Filing runs in the background, so it uses the Background runs setting rather than the default connection.
@@ -50,7 +50,7 @@ private struct FindingsBoard: View {
     }
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
 
-    private var grouping: FindingGrouping { FindingGrouping(rawValue: groupingRaw) ?? .status }
+    private var grouping: FindingGrouping { FindingGrouping(rawValue: groupingRaw) ?? .group }
 
     private var runFindings: [Finding] {
         report.findings.filter { model.selectedRunID == nil || $0.runID == model.selectedRunID }
@@ -68,12 +68,19 @@ private struct FindingsBoard: View {
     }
 
     private var summary: String {
+        // A grouped report's rows are tickets: say how many will run, and how many wait on a decision.
+        if report.groups.contains(where: { group in runFindings.contains { $0.runID == group.runID } }) {
+            let held = runFindings.filter { $0.categories.contains(.needsDecision) }.count
+            let tickets = runFindings.count - held
+            return "\(tickets) ticket\(tickets == 1 ? "" : "s") · \(held) held" + (ignoredCount > 0 ? " · \(ignoredCount) ignored" : "")
+        }
         let total = runFindings.count
         return "\(total) finding\(total == 1 ? "" : "s")" + (ignoredCount > 0 ? " · \(ignoredCount) ignored" : "")
     }
 
     private var groups: [FindingGroup] {
-        FindingGroups.group(visibleFindings, by: grouping, filed: Set(visibleFindings.filter(isFiled).map(\.id)))
+        FindingGroups.group(visibleFindings, by: grouping, filed: Set(visibleFindings.filter(isFiled).map(\.id)),
+                            groups: report.groups)
     }
 
     private func filingJob(for finding: Finding) -> BackgroundJob? {
@@ -236,7 +243,8 @@ private struct FindingsBoard: View {
                                 // it names, and a lazy stack given the same id twice leaves blank rows.
                                 ForEach(group.findings, id: \.id) { finding in
                                     FindingRow(finding: finding, model: model, isChecked: binding(for: finding.id),
-                                               lines: grouping == .file ? (group.lines[finding.id] ?? "—") : nil)
+                                               lines: grouping == .file ? (group.lines[finding.id] ?? "—") : nil,
+                                               showsPosition: grouping == .group)
                                         .id("\(group.id)/\(finding.id)")
                                 }
                             }
@@ -296,7 +304,7 @@ private struct FindingsBoard: View {
                     Text("\(group.findings.count)")
                         .font(DeskFont.label)
                         .foregroundStyle(DeskColor.faintInk)
-                    if let note = groupNote(group) {
+                    if let note = group.detail ?? groupNote(group) {
                         Text(note)
                             .font(.system(size: 11))
                             .foregroundStyle(DeskColor.mutedInk)

@@ -2,6 +2,8 @@ import Foundation
 
 /// How the survey list is sectioned: by what each finding asks of you, or by the file it points at.
 public enum FindingGrouping: String, CaseIterable, Hashable {
+    /// The tickets as they will run: each group in order, then what runs on its own, then what is held (ADR 0040).
+    case group = "By group"
     case status = "By status"
     case file = "By file"
 }
@@ -14,8 +16,12 @@ public struct FindingGroup: Identifiable, Hashable {
     public var category: FindingCategory?
     public var findings: [Finding]
     public var lines: [String: String]
+    /// A group's branch and why it is a group — said once in its header.
+    public var detail: String?
 
-    public init(id: String, title: String, category: FindingCategory? = nil, findings: [Finding], lines: [String: String] = [:]) {
+    public init(id: String, title: String, category: FindingCategory? = nil, findings: [Finding], lines: [String: String] = [:],
+                detail: String? = nil) {
+        self.detail = detail
         self.id = id
         self.title = title
         self.category = category
@@ -34,8 +40,10 @@ public enum FindingGroups {
     /// The order a finding's categories are read in: a finding carrying two is shown under the first.
     static let statusOrder: [FindingCategory] = [.new, .knownNewEvidence, .needsDecision, .closedOrDeclined]
 
-    public static func group(_ findings: [Finding], by grouping: FindingGrouping, filed: Set<String> = []) -> [FindingGroup] {
+    public static func group(_ findings: [Finding], by grouping: FindingGrouping, filed: Set<String> = [],
+                             groups: [SurveyGroup] = []) -> [FindingGroup] {
         switch grouping {
+        case .group: return byGroup(findings, groups: groups, filed: filed)
         case .status: return byStatus(findings, filed: filed)
         case .file: return byFile(findings)
         }
@@ -54,6 +62,40 @@ public enum FindingGroups {
         if !rest.isEmpty { groups.append(FindingGroup(id: "uncategorised", title: "Uncategorised", findings: rest)) }
         groups.append(FindingGroup(id: "filed", title: "Filed", findings: findings.filter { filed.contains($0.id) }))
         return groups.filter { !$0.findings.isEmpty }
+    }
+
+    /// Each report group in its own order, then the tickets that run on their own, then held findings. A report
+    /// with no GROUPS section has nothing to group by, so it reads by status instead.
+    public static func byGroup(_ findings: [Finding], groups: [SurveyGroup], filed: Set<String> = []) -> [FindingGroup] {
+        let runs = Set(findings.map(\.runID))
+        let relevant = groups.filter { runs.contains($0.runID) }
+        guard !relevant.isEmpty else { return byStatus(findings, filed: filed) }
+        var placed: Set<String> = []
+        var sections: [FindingGroup] = []
+        for group in relevant {
+            let mine = findings.filter { $0.runID == group.runID }
+            var members = group.members.compactMap { ref in mine.first { $0.coordination.ref == ref } }
+            // A ticket that names this group but was left off its list still belongs to it, after the listed ones.
+            members += mine.filter { $0.coordination.groupRef == group.ref && !members.contains($0) }
+                .sorted { ($0.coordination.groupOrder ?? .max) < ($1.coordination.groupOrder ?? .max) }
+            members = members.filter { !placed.contains($0.id) }
+            guard !members.isEmpty else { continue }
+            placed.formUnion(members.map(\.id))
+            let detail = [group.branch, group.why].compactMap { $0 }.joined(separator: " · ")
+            sections.append(FindingGroup(id: "group-\(group.id)", title: group.title, findings: members,
+                                         detail: detail.isEmpty ? nil : detail))
+        }
+        let rest = findings.filter { !placed.contains($0.id) }
+        let held = rest.filter { $0.categories.contains(.needsDecision) && !filed.contains($0.id) }
+        let own = rest.filter { !held.contains($0) }
+        if !own.isEmpty {
+            sections.append(FindingGroup(id: "ungrouped", title: "On its own", findings: own,
+                                         detail: "its own branch · waits only for the code it shares"))
+        }
+        if !held.isEmpty {
+            sections.append(FindingGroup(id: "held", title: "Held", category: .needsDecision, findings: held))
+        }
+        return sections
     }
 
     /// Busiest file first. A finding spanning three files is listed under all three — that is what "which

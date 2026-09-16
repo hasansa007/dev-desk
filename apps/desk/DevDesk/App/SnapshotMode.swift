@@ -82,7 +82,7 @@ final class SnapshotMode {
         model.mode = .focus
         model.showBacklog = false
         model.searchText = ""
-        UserDefaults.standard.set(FindingGrouping.status.rawValue, forKey: PreferenceKey.surveyGrouping)
+        UserDefaults.standard.set(FindingGrouping.group.rawValue, forKey: PreferenceKey.surveyGrouping)
     }
 
     private func write(_ view: NSView?, to url: URL) {

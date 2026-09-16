@@ -199,7 +199,54 @@ a pile of bug issues**.
 
 State the cost of doing nothing, or the recommendation is a preference.
 
-## Phase 7 — Write the report
+## Phase 7 — Shape tickets and groups, then write the report
+
+### 7a — One ticket per fix, and every shared line of code named
+
+A report row is read as a ticket — by a person and by Dev Desk, which lists every row. Twenty-six rows
+for eight fixes is a board nobody starts. So before writing, shape the verified findings:
+
+- **Fold findings that are one fix into one entry.** Same fix site and one change fixes all of them —
+  a defect and the drift item on the same line (`print` on the search path, and "print where the code
+  uses os.Logger"), or three symptoms of one matcher. The entry keeps every mechanism and names them
+  in `cases:`. Sharing a *file* is not a fold; sharing the *fix* is.
+- **Name the code, not only the file.** `touches:` lists `File.swift › function()` — the functions,
+  properties or types the fix changes. A file alone cannot tell two tickets that edit different
+  functions (parallel, git merges them cleanly) from two that rewrite the same one (they must wait).
+- **Write the direction.** `needs: <id> — <why>` when this fix does not apply until that one has
+  landed: it edits code the other moves, or reads state the other introduces. Directional, and never
+  inferred from a shared file alone.
+- **Write every meeting.** `shares: <id> <File › code> — different code, parallel` or `— same code,
+  after <id>`. Both tickets carry the line, so whichever starts second knows.
+- **Held cases stay held, with their criticality.** A PLAUSIBLE case whose fix site is a confirmed
+  entry's is listed on that entry as `held: <id> <case> — <high|low>: <what it breaks>` — high only
+  when it breaks something the README or the app's audience relies on. It is never folded into a
+  CONFIRMED entry: the developer decides at Phase 8, and a yes turns it into a case there.
+
+### 7b — Group what must ship together
+
+A **group** is tickets that must reach the base branch together to make one outcome true. It gets one
+branch, `group/<slug>`; its tickets merge into that branch as their agents finish, and the group merges
+once, with one review. Tests, in order of strength:
+
+1. **A `needs` chain.** B needs C → same group. Half of it on the base branch is a broken state.
+2. **One user flow across layers** — the data, logic and UI tickets of one screen or behaviour.
+3. **One drift epic** from Phase 6.
+
+**Not a group:** a shared file (that is `shares:`), a shared root cause (that is one ticket), a shared
+type or severity. **Hotfix and security tickets are never grouped** — they go to the base branch alone,
+first, and open groups pull the base branch in afterwards.
+
+Order inside a group runs **data → logic → UI → tests**, then by `needs`. Size follows the outcome,
+not a number; a group large enough to hide its own order is split into subgroups, one level deep.
+Everything ungrouped runs on its own branch: it starts now when its `shares` are all different code,
+and otherwise waits for the ticket it shares code with and branches from that ticket's work.
+
+Every entry carries `type:` — **Data flow** (state, threading, source of truth), **Logic** (the rules
+are wrong), **UI** (renders wrong over right data), **Architecture** (structure, no behaviour change) or
+**Tests** — and `id:`, the reference every `needs`, `shares`, `held` and group line uses.
+
+### 7c — Write the report
 
 **Under a flag, the sections whose source phase was skipped are omitted, never left empty.**
 `--arch` skips Phases 4-5, so the report carries ARCHITECTURE only and Phase 9 files no bugs;
@@ -226,16 +273,29 @@ must not be described as if it were.
 # Survey — <repo> — <date>
 Flows: <n>, from <where they were declared>       Scope: <all | flow | --arch>
 
+## GROUPS (n)
+### <id> · <outcome>
+branch: group/<slug> · why: <needs chain | one flow across layers | drift epic> — <one line>
+1. <entry id> — <title>
+2. <entry id> — <title>
+
 ## CONFIRMED (n)          ← eligible to file
 - <symptom> · <file:line> · mechanism: <exact steps> · expected: <what should happen>
-  touches: <paths>        blocks: <other finding, if same files>
+  id: <C1>   type: <Data flow | Logic | UI | Architecture | Tests>   group: <G1 · 2 of 3 | none>
+  touches: <File.swift › function(), property>; <Other.swift › Type>
+  needs: <id> — <why>                      (one line each; omit when none)
+  shares: <id> <File › code> — <different code, parallel | same code, after id>
+  cases: <folded finding> · <folded finding>   (omit when one)
+  held: <id> <case> — <high|low>: <what it breaks>
 
 ## PLAUSIBLE (n)          ← held, not filed
 - <symptom> · why it could not be confirmed from the code
+  id: <P1>   near: <entry id whose fix site it shares, if any>
 
 ## ARCHITECTURE
 Actual: <counts, and how counted>   Recommend: <the majority pattern>   Cost of doing nothing: <…>
 - <drift item> → <the move>
+  id: <A1>   type: Architecture   group: <G3 · 1 of 4 | none>   touches / needs / shares as above
 
 ## ALREADY TRACKED (n)
 
@@ -243,6 +303,10 @@ Actual: <counts, and how counted>   Recommend: <the majority pattern>   Cost of 
 Declared <shape>  ·  Actual <agents, wall, tokens, calls>  ·  Overrun <what and why, or none>
 <per-flow table: findings, duration, tokens, calls — FAILED rows included>
 ```
+
+**The field lines are indented under their entry, one `key:` per field or several separated by three
+spaces**, and `id:` is required on every entry once any entry has one — Dev Desk resolves `needs`,
+`shares`, `held` and the GROUPS lists through it, and an unresolvable reference is shown as one.
 
 **A finding's line may be bulleted (`-`) or numbered (`1.`)** — numbering a ranked CONFIRMED list is
 expected, and the section heading is what decides a verdict, not the marker. A drift list keeps its
@@ -322,13 +386,23 @@ Ask before filing anything. Then, for the confirmed set:
   adversarial verification is spent twice.
 - Architecture → `dev:create-epic` for the drift, or an ADR when it is a decision rather than work.
   **`dev:docs` owns ADRs** — their numbering and location are its rules, not this skill's. Hand it over rather than inventing a path.
-- **Touched files go in `## Scope`** — `dev:create-bug`'s existing field for *where it bites*. Do
-  not invent a `touches:` field: per `docs/guide/CONTRIBUTING.md`, a per-type template field
-  belongs to the `dev:create-*` member, not to a caller asserting one from outside.
-- **Two issues touching one file are conflicting, not blocking.** Say so in both `## Scope` lines
-  and let whoever starts second rebase. Blocking is a real dependency — B's fix does not apply until
-  A's has landed — and it is directional, which "same file" never tells you. Calling every shared
-  file a block serialises a codebase behind its utils module, the opposite of what this list is for.
+- **The coordination lines go in `## Scope`** — `dev:create-bug`'s existing field for *where it
+  bites*: `touches`, `needs`, `shares` and `group`, verbatim from the report. Do not invent a
+  template field: per `docs/guide/CONTRIBUTING.md`, a per-type field belongs to the `dev:create-*`
+  member, not to a caller asserting one from outside.
+- **A shared file is not a block; shared code is an order.** `shares … different code` runs in
+  parallel. `shares … same code, after <id>` and `needs` wait, and the one that waits branches from
+  the work it waited for (`shared/pipeline/04-phase-03-branch-naming.md` → *Shared code*). Calling
+  every shared file a block serialises a codebase behind its utils module; calling nothing a block
+  sends two agents to rewrite one function and leaves the merge to whoever finishes second.
+- **A group files as a `dev:create-epic` parent with its tickets as sub-issues**, in group order.
+  This is the one caller that files an epic's slices itself (ADR 0040): Phases 4–5 already
+  investigated each one against the code, which is what `dev:create-epic` waits for Phase 5 to do.
+  **With no tracker** (ADR 0027) the group is a parent entry in `docs/backlog/` and each ticket's
+  entry carries `group:`, `order:`, `needs:` and `touches:` in its header.
+- **Starting over adopts what already started.** Before filing, match every entry against open
+  issues and `docs/backlog/` by key and title. A ticket already in progress or done is adopted — its
+  group and order are recorded on it — never filed a second time.
 - **Set a priority label on each filed issue, from the cost ranking.** `dev:kanban` Phase 5 orders
   NEXT by `P1 → P2 → P3`, then slice, then oldest `updatedAt` — ten issues filed the same minute
   share a timestamp, so without labels the order it shows is arbitrary and this phase's ranking dies
@@ -337,9 +411,9 @@ Ask before filing anything. Then, for the confirmed set:
   it stands, complexity the cost of fixing it. Both are proposals the developer corrects
   (`docs/guide/WORKFLOW.md` → *Rating an issue*), and a label the repo lacks is offered, never
   created silently.
-- **File at most 10 per run, and name what was held.** `dev:kanban` shows the top 2–3 of BACKLOG, so
-  ten is already more board than anyone reads at once; thirty is a backlog that gets skipped
-  wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim
+- **File at most 10 top-level items per run — a group counts as one — and name what was held.**
+  `dev:kanban` shows the top 2–3 of BACKLOG, so ten is already more board than anyone reads at once;
+  thirty is a backlog that gets skipped wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim
   that can be argued with. The rest stay in the report, which is why the report is written first.
 
 ## Never

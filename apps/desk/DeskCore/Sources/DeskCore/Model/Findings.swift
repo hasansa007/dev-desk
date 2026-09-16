@@ -109,9 +109,12 @@ public struct Finding: Identifiable, Hashable {
     public var limits: String
     public var reconcile: Reconciliation?
     public var historyNote: String?
+    /// Type, group, the code it touches and the tickets it meets — only a grouped report writes these (ADR 0040).
+    public var coordination: SurveyCoordination
     public init(id: String, runID: String, title: String, listDetail: String, categories: Set<FindingCategory>, summary: String,
                 verificationLabel: String, locations: [String], limits: String, reconcile: Reconciliation? = nil, historyNote: String? = nil,
-                kind: FindingKind = .defect) {
+                kind: FindingKind = .defect, coordination: SurveyCoordination = SurveyCoordination()) {
+        self.coordination = coordination
         self.id = id
         self.runID = runID
         self.title = title
@@ -130,18 +133,22 @@ public struct Finding: Identifiable, Hashable {
     /// claim, the evidence, and where the claim came from, so the issue can be judged without the report.
     public var backlogDescription: String {
         let sources = locations.isEmpty ? "" : " Sources: \(locations.joined(separator: ", "))."
-        return "\(title). \(summary)\(sources) Found by dev:survey, run \(runID); \(verificationLabel). \(limits)"
+        let scope = coordination.scopeLines.isEmpty ? "" : " Scope: \(coordination.scopeLines.joined(separator: "; "))."
+        return "\(title). \(summary)\(sources)\(scope) Found by dev:survey, run \(runID); \(verificationLabel). \(limits)"
     }
 }
 
 public struct FindingsReport: Hashable {
     public var runs: [SurveyRun]
     public var findings: [Finding]
+    /// The report's `## GROUPS`, for every run read. Empty for a report written before ADR 0040.
+    public var groups: [SurveyGroup]
     /// Shown under the list, e.g. why issue search is unavailable.
     public var searchNote: String?
-    public init(runs: [SurveyRun], findings: [Finding], searchNote: String? = nil) {
+    public init(runs: [SurveyRun], findings: [Finding], groups: [SurveyGroup] = [], searchNote: String? = nil) {
         self.runs = runs
         self.findings = findings
+        self.groups = groups
         self.searchNote = searchNote
     }
 

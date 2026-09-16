@@ -74,4 +74,71 @@ final class FindingGroupsTests: XCTestCase {
         XCTAssertEqual(FindingGroups.fileNames([]), [])
         XCTAssertEqual(FindingGroups.fileNames(["Tests.swift", "and whatever each testable seam needs", "and"]), ["Tests.swift"])
     }
+
+    // MARK: - Grouped reports (ADR 0040)
+
+    private let groupedReport = """
+    # Survey — Demo — 2026-09-16
+
+    ## GROUPS (1)
+    ### G1 · Contact access and loading
+    branch: group/contact-access · why: needs chain — each builds on the state the one before leaves
+    1. C1 — Load contacts off the main thread
+    2. C2 — "Don't Allow" shows the error screen
+
+    ## CONFIRMED (3)
+    1. **Load contacts off the main thread** · `ContactsStore.swift:68` · mechanism: runs on the main actor
+       id: C1   type: Data flow   group: G1 · 1 of 2
+       touches: ContactsStore.swift › load(); ContactsListView.swift › content
+       cases: #2 fetch on main · arch-4 comment claims the fix
+    2. **"Don't Allow" shows the error screen** · `ContactsStore.swift:103` · mechanism: requestAccess throws on denial
+       id: C2   type: Logic   group: G1 · 2 of 2
+       touches: ContactsStore.swift › requestAccessIfNeeded(), load()
+       needs: C1 — both edit load()
+       shares: C3 ContactsStore.swift › init(contacts:state:) — different code, parallel
+       held: P1 limited access with zero contacts — low: no documented way to reach it
+    3. **Birthdays show the wrong date** · `Contact.swift:73` · mechanism: date(from:) fills year 1
+       id: C3   type: Logic   group: none
+       touches: Contact.swift › init(_:)
+
+    ## PLAUSIBLE (1)
+    - **Limited access with zero contacts shows an empty list** · no documentation found
+      id: P1   near: C2
+    """
+
+    func testAGroupedReportReadsIdsTypesAndLinks() {
+        let findings = SurveyReportParser.parse(groupedReport, runID: "r")
+        XCTAssertEqual(findings.map(\.id), ["r-C1", "r-C2", "r-C3", "r-P1"])
+        let second = findings[1].coordination
+        XCTAssertEqual(second.type, .logic)
+        XCTAssertEqual(second.groupRef, "G1")
+        XCTAssertEqual(second.position, "2 of 2")
+        XCTAssertEqual(second.touches, [CodeTouch(file: "ContactsStore.swift", code: "requestAccessIfNeeded(), load()")])
+        XCTAssertEqual(second.needs, [TicketLink(ref: "C1", note: "both edit load()", waits: true)])
+        XCTAssertEqual(second.shares.first?.ref, "C3")
+        XCTAssertEqual(second.shares.first?.waits, false)
+        XCTAssertEqual(second.waitsFor, ["C1"])
+        XCTAssertEqual(second.held.count, 1)
+        XCTAssertEqual(findings[0].coordination.cases.count, 2)
+        XCTAssertNil(findings[2].coordination.groupRef)
+        // Field lines are coordination, not prose.
+        XCTAssertFalse(findings[1].summary.contains("needs"))
+        XCTAssertTrue(findings[0].locations.contains("ContactsListView.swift"))
+    }
+
+    func testByGroupRunsGroupsInOrderThenOwnThenHeld() {
+        let findings = SurveyReportParser.parse(groupedReport, runID: "r")
+        let groups = SurveyReportParser.groups(groupedReport, runID: "r")
+        XCTAssertEqual(groups.first?.branch, "group/contact-access")
+        XCTAssertEqual(groups.first?.members, ["C1", "C2"])
+        let sections = FindingGroups.byGroup(findings, groups: groups)
+        XCTAssertEqual(sections.map(\.title), ["Contact access and loading", "On its own", "Held"])
+        XCTAssertEqual(sections[0].findings.map(\.id), ["r-C1", "r-C2"])
+        XCTAssertEqual(sections[1].findings.map(\.id), ["r-C3"])
+    }
+
+    func testAReportWithoutGroupsFallsBackToStatus() {
+        let findings = SurveyReportParser.parse(groupedReport, runID: "r")
+        XCTAssertEqual(FindingGroups.byGroup(findings, groups: []).map(\.id), FindingGroups.byStatus(findings).map(\.id))
+    }
 }

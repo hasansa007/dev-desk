@@ -10,6 +10,8 @@ struct FindingRow: View {
     @Binding var isChecked: Bool
     /// Set when the list is grouped by file: the header names the file, so the row says only where in it.
     var lines: String?
+    /// Set when the list is grouped by group: the area column says where in its group the ticket runs.
+    var showsPosition = false
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @State private var isHovered = false
@@ -23,6 +25,18 @@ struct FindingRow: View {
     }
 
     private var isIgnored: Bool { model.ignoredFindings.contains(finding.id) }
+
+    /// The tickets this one waits for. Inside a group its position already says so, so only the rest are named.
+    private var waits: [String] {
+        let coordination = finding.coordination
+        guard showsPosition, coordination.groupRef != nil else { return coordination.waitsFor }
+        return []
+    }
+
+    private var waitHelp: String {
+        (finding.coordination.needs + finding.coordination.shares.filter(\.waits))
+            .map { "\($0.ref): \($0.note)" }.joined(separator: "\n")
+    }
 
     /// Why filing cannot be asked for right now. A run of its own already going is one of the reasons: a
     /// second one would draft a second issue for the same finding, and the app can see that before it happens.
@@ -52,19 +66,30 @@ struct FindingRow: View {
                 StatusPill(badge: StatusBadge(FindingTone.of(finding), finding.listDetail))
                     .fixedSize()
             }
-            Text(finding.title)
-                .font(.system(size: 12.5, weight: .medium))
-                .foregroundStyle(DeskColor.ink)
-                .lineLimit(1)
-                .truncationMode(.tail)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .help(finding.title)
+            HStack(spacing: 6) {
+                Text(finding.title)
+                    .font(.system(size: 12.5, weight: .medium))
+                    .foregroundStyle(DeskColor.ink)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .help(finding.title)
+                if !waits.isEmpty {
+                    Text("after \(waits.joined(separator: ", "))")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .lineLimit(1)
+                        .fixedSize()
+                        .help(waitHelp)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
             if lines == nil {
-                Text(finding.kind.rawValue)
+                // A grouped report names what kind of change the fix is; an older one only which half it came from.
+                Text(finding.coordination.type?.rawValue ?? finding.kind.rawValue)
                     .font(DeskFont.secondary)
                     .foregroundStyle(DeskColor.secondaryInk)
                     .frame(width: Width.kind, alignment: .leading)
-                Text(finding.area?.rawValue ?? "—")
+                Text(showsPosition ? (finding.coordination.position ?? "—") : (finding.area?.rawValue ?? "—"))
                     .font(DeskFont.secondary)
                     .foregroundStyle(DeskColor.secondaryInk)
                     .frame(width: Width.area, alignment: .leading)

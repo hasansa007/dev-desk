@@ -37,6 +37,7 @@ extension Finding {
         let body = BacklogDraft.sections([
             ("What", Markdown.unescape(summary)),
             ("Sources", sources),
+            ("Scope", coordination.scopeLines.isEmpty ? nil : coordination.scopeLines.map { "- \($0)" }.joined(separator: "\n")),
             ("Found by", "dev:survey, run \(runID) · \(Markdown.unescape(verificationLabel))"),
             ("Limits", Markdown.unescape(limits)),
         ])

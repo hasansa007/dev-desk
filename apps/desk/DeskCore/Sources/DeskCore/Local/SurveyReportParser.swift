@@ -125,9 +125,9 @@ enum SurveyReportParser {
         // A bullet's claim is its first line; the mechanism, what was expected and what was measured are on
         // the indented lines under it. Reading only the first line gave every finding a title and an empty
         // body — a report of fifteen that said nothing once you opened one.
-        let structured = ["touches:", "blocks:", "conflicts:"]
         let body = continuation.map { $0.trimmingCharacters(in: .whitespaces) }
-            .filter { line in !structured.contains { line.hasPrefix($0) } }   // structured fields, not prose
+            .filter { !isFieldLine($0) }   // structured fields, not prose
+        let coordination = self.coordination(continuation)
         let parts = ([text] + body).joined(separator: " ")
             .components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }
         var locations: [String] = []
@@ -149,7 +149,9 @@ enum SurveyReportParser {
             let tail = remainder.trimmingCharacters(in: CharacterSet(charactersIn: "`,;. ")).trimmingCharacters(in: .whitespaces)
             if !found { rest.append(part) } else if !tail.isEmpty { rest.append(tail) }
         }
-        for path in continuation.flatMap(touchedPaths) where !locations.contains(path) {
+        let touchedFiles = coordination.touches.isEmpty
+            ? continuation.flatMap(touchedPaths) : coordination.touches.map(\.file)
+        for path in touchedFiles where !locations.contains(path) {
             locations.append(path)
         }
         // A drift item is one sentence — "arch-1: dead copy at `View.swift:104-115` → delete it" — with no
@@ -160,7 +162,10 @@ enum SurveyReportParser {
                 if bare.prefixMatch(of: location) != nil, !locations.contains(bare) { locations.append(bare) }
             }
         }
-        return Finding(id: "\(runID)-\(section.idLetter)\(index)", runID: runID, title: Markdown.plain(parts.first ?? text),
+        // The report's own id when it writes one: `needs`, `shares` and GROUPS refer to it, and it survives an
+        // entry being moved within the report where a position would not.
+        let id = coordination.ref.map { "\(runID)-\($0)" } ?? "\(runID)-\(section.idLetter)\(index)"
+        return Finding(id: id, runID: runID, title: Markdown.plain(parts.first ?? text),
                        listDetail: section.category.rawValue, categories: [section.category],
                        // Markers off first, then escape what is left: the body is read, not rendered, so a
                        // paragraph of `backticks` and \*stars\* is punctuation nobody asked for — and escaping
@@ -168,7 +173,143 @@ enum SurveyReportParser {
                        // report's own text stays literal text.
                        summary: Markdown.escape(Markdown.plain(rest.joined(separator: " · "))),
                        verificationLabel: section.verificationLabel, locations: locations, limits: limits,
-                       kind: kind)
+                       kind: kind, coordination: coordination)
+    }
+
+    // MARK: - Coordination fields (ADR 0040)
+
+    static let fieldKeys = ["id", "type", "group", "touches", "needs", "shares", "cases", "held", "near", "blocks", "conflicts"]
+    /// Three or more spaces separate fields written on one line: `id: C1   type: Logic   group: G1 · 2 of 3`.
+    private static let fieldGap = try! Regex(#"\s{3,}"#)
+
+    static func isFieldLine(_ line: String) -> Bool {
+        fields(in: line) != nil
+    }
+
+    /// `[(key, value)]` when the whole line is fields, nil when it is prose that merely contains a colon.
+    static func fields(in line: String) -> [(String, String)]? {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        var result: [(String, String)] = []
+        for segment in trimmed.split(separator: fieldGap) {
+            guard let colon = segment.firstIndex(of: ":") else {
+                // A value with a wide gap inside it belongs to the field before it.
+                guard let last = result.popLast() else { return nil }
+                result.append((last.0, last.1 + " " + segment.trimmingCharacters(in: .whitespaces)))
+                continue
+            }
+            let key = segment[..<colon].trimmingCharacters(in: .whitespaces).lowercased()
+            let value = segment[segment.index(after: colon)...].trimmingCharacters(in: .whitespaces)
+            if fieldKeys.contains(key) {
+                result.append((key, value))
+            } else if let last = result.popLast() {
+                result.append((last.0, last.1 + "   " + segment))
+            } else {
+                return nil
+            }
+        }
+        return result.isEmpty ? nil : result
+    }
+
+    static func coordination(_ continuation: [String]) -> SurveyCoordination {
+        var coordination = SurveyCoordination()
+        for line in continuation {
+            for (key, raw) in fields(in: line) ?? [] {
+                let value = raw.trimmingCharacters(in: CharacterSet(charactersIn: "` "))
+                guard !value.isEmpty else { continue }
+                switch key {
+                case "id": coordination.ref = firstToken(value)
+                case "type": coordination.type = TicketType(label: value)
+                case "group":
+                    guard value.lowercased() != "none" else { continue }
+                    let parts = value.components(separatedBy: "·").map { $0.trimmingCharacters(in: .whitespaces) }
+                    coordination.groupRef = parts.first.flatMap(firstToken)
+                    if parts.count > 1 {
+                        let numbers = parts[1].split(whereSeparator: { !$0.isNumber }).compactMap { Int($0) }
+                        coordination.groupOrder = numbers.first
+                        coordination.groupSize = numbers.count > 1 ? numbers[1] : nil
+                    }
+                case "touches": coordination.touches += touches(value)
+                case "needs": coordination.needs += link(value, waits: true).map { [$0] } ?? []
+                case "shares":
+                    let waits = value.lowercased().contains("same code")
+                    coordination.shares += link(value, waits: waits).map { [$0] } ?? []
+                case "cases":
+                    coordination.cases += value.components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }
+                        .filter { !$0.isEmpty }
+                case "held": coordination.held.append(value)
+                case "near": coordination.near = firstToken(value)
+                default: break
+                }
+            }
+        }
+        return coordination
+    }
+
+    /// `A.swift › load(), request(); B.swift › View` — or the older bare `A.swift, B.swift`.
+    static func touches(_ value: String) -> [CodeTouch] {
+        guard value.contains("›") else {
+            return value.split(whereSeparator: { $0 == "," || $0 == ";" || $0.isWhitespace })
+                .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "`")) }
+                .filter { FindingGroups.isFileName(($0 as NSString).lastPathComponent) }
+                .map { CodeTouch(file: $0, code: nil) }
+        }
+        return value.split(separator: ";").compactMap { part in
+            let pieces = part.split(separator: "›", maxSplits: 1).map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "` ")) }
+            guard let file = pieces.first, !file.isEmpty else { return nil }
+            return CodeTouch(file: file, code: pieces.count > 1 && !pieces[1].isEmpty ? pieces[1] : nil)
+        }
+    }
+
+    /// `C2 — why` → (C2, why). The ref is the first word; what follows a dash is the note.
+    static func link(_ value: String, waits: Bool) -> TicketLink? {
+        guard let ref = firstToken(value) else { return nil }
+        var note = String(value.dropFirst(value.distance(from: value.startIndex, to: value.range(of: ref)!.upperBound)))
+            .trimmingCharacters(in: .whitespaces)
+        if note.hasPrefix("—") || note.hasPrefix("-") { note = String(note.dropFirst()).trimmingCharacters(in: .whitespaces) }
+        return TicketLink(ref: ref, note: note, waits: waits)
+    }
+
+    static func firstToken(_ value: String) -> String? {
+        value.split(whereSeparator: \.isWhitespace).first
+            .map { $0.trimmingCharacters(in: CharacterSet(charactersIn: "`#*,.;:()")) }
+            .flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// The `## GROUPS` section: `### G1 · outcome`, a `branch: … · why: …` line, then its tickets in order.
+    static func groups(_ markdown: String, runID: String) -> [SurveyGroup] {
+        var groups: [SurveyGroup] = []
+        var inGroups = false
+        for line in GitOutput.lines(markdown) {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if line.hasPrefix("## ") {
+                inGroups = line.dropFirst(3).uppercased().hasPrefix("GROUPS")
+                continue
+            }
+            guard inGroups else { continue }
+            if line.hasPrefix("### ") {
+                let heading = line.dropFirst(4)
+                let parts = heading.components(separatedBy: " · ")
+                guard let ref = parts.first.flatMap(firstToken) else { continue }
+                let title = parts.dropFirst().joined(separator: " · ").trimmingCharacters(in: .whitespaces)
+                groups.append(SurveyGroup(ref: ref, runID: runID, title: Markdown.plain(title.isEmpty ? ref : title),
+                                          branch: nil, why: nil, members: []))
+            } else if !groups.isEmpty, trimmed.lowercased().hasPrefix("branch:") || trimmed.lowercased().hasPrefix("why:") {
+                for part in trimmed.components(separatedBy: " · why:") .enumerated() {
+                    if part.offset == 0 {
+                        if trimmed.lowercased().hasPrefix("why:") {
+                            groups[groups.count - 1].why = String(part.element.dropFirst(4)).trimmingCharacters(in: .whitespaces)
+                        } else {
+                            groups[groups.count - 1].branch = firstToken(String(part.element.dropFirst(7)))
+                        }
+                    } else {
+                        groups[groups.count - 1].why = part.element.trimmingCharacters(in: .whitespaces)
+                    }
+                }
+            } else if !groups.isEmpty, let item = item(line), let ref = firstToken(item) {
+                groups[groups.count - 1].members.append(ref)
+            }
+        }
+        return groups
     }
 
     /// The paths after "touches:" on a bullet's continuation line, up to whatever structured field follows —
