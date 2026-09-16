@@ -73,6 +73,8 @@ public struct LocalGitDataSource: ProjectDataSource {
         var behind: CheckoutBehind?
         if refusal == nil, let base = facts.base, let baseRef = facts.baseRef, baseRef.hasPrefix("refs/remotes/origin/"),
            !project.branch.isEmpty, project.branch != "HEAD", project.branch != base,
+           // Production takes a release, never a merge of the base offered by a banner.
+           !OriginSync.neverMoved.contains(project.branch),
            let count = await git(["rev-list", "--count", "HEAD..\(baseRef)"]).flatMap(Int.init), count > 0 {
             behind = CheckoutBehind(branch: project.branch, base: base, count: count)
         }

@@ -1014,7 +1014,8 @@ public final class ProjectWindowModel {
     /// overwritten, and that refusal is shown as it is; a merge that stops on a conflict is aborted, so the checkout is
     /// left exactly as it was rather than half-merged under whatever is working in it.
     public func updateCheckout() async {
-        guard !isWritingTracker, case .local(let path) = ref, let behind = snapshot?.checkoutBehind else { return }
+        guard !isWritingTracker, case .local(let path) = ref, let behind = snapshot?.checkoutBehind,
+              !OriginSync.neverMoved.contains(behind.branch) else { return }
         isWritingTracker = true
         defer { isWritingTracker = false }
         let root = URL(fileURLWithPath: path, isDirectory: true)
