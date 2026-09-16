@@ -189,7 +189,7 @@ struct DiagramsScreen: View {
             VStack(alignment: .leading, spacing: 12) {
                 // Only where it blocks: dev:arch draws from committed code, so a folder that is not a repo, or
                 // one with no commits, cannot be drawn. Offer the setup step instead of a Generate that fails.
-                switch model.diagramRepoState {
+                switch model.diagramRepoState(kind: selectedKind) {
                 case .notARepository: repoSetupContent
                 case .noCommits: needsCommitContent
                 case .noRemote: needsRemoteContent
@@ -258,12 +258,12 @@ struct DiagramsScreen: View {
                      message: "dev:arch draws from committed code, so it needs at least one commit to pin to. Commit your files — e.g. git add -A && git commit -m \"initial commit\" — then generate this diagram.")
     }
 
-    /// The repo has a commit but no `origin` remote. Archify's schema requires `meta.repository.url` to be a
-    /// GitHub URL (`^https://github.com/owner/repo`), so a diagram cannot validate without one. Ask for the URL
+    /// An architecture diagram in a repo with a commit but no `origin` remote. Archify checks architecture's
+    /// evidence against a GitHub `origin` (`^https://github.com/owner/repo`), so it cannot validate without one. Ask for the URL
     /// — nothing is pushed — then add the remote and draw. This is the renderer's requirement, not the app's.
     @ViewBuilder private var needsRemoteContent: some View {
         NoticeBanner(tone: .waiting, title: "This repository has no GitHub remote",
-                     message: "Archify (the renderer) validates every diagram against a GitHub repository URL, so it needs an origin remote to pin to. Add the repo's GitHub URL below — nothing is pushed — then the diagram can be drawn.")
+                     message: "An architecture diagram pins every component to code at a commit, and Archify (the renderer) checks those pins against the repo's GitHub origin. Add the repo's GitHub URL below — nothing is pushed — then the diagram can be drawn. Workflow, data flow, sequence and lifecycle draw without one.")
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("GitHub URL")
             TextField("https://github.com/owner/repo", text: $remoteURL)

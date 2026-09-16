@@ -36,7 +36,7 @@ worst, and the thing someone needs when onboarding, reviewing a design, or prese
    only. A tool runs no phase, so Right-Size has nothing to size; Simplicity First is what lets
    Phase 3 refuse a diagram.
 
-**Name the repo before writing, and cut a branch.** `dev:survey` requires that for one markdown
+**Name the repo before writing, and cut a branch.** `dev:findings` requires that for one markdown
 report; this door lands two files and one of them is three-quarters of a megabyte.
 
 **A committed local repo with no `origin` is drawable — do not block on the remote.** The gate is a
@@ -46,6 +46,9 @@ when there is **no** remote, fall back to the checkout's own directory name and 
 The write boundary still holds — cut a branch and land the files under the invoked repo's `docs/arch/`
 exactly as below. Only refuse for the repository's sake when there is **no commit at all** (`HEAD`
 does not resolve): there is then nothing to pin to, and the diagram cannot be evidence of anything.
+One exception: an **evidenced `architecture`** diagram needs a GitHub `origin` — Archify fails
+`repository-evidence/url-invalid` without a github.com URL and checks it against `origin`. With no
+remote, draw the four unevidenced types; for `architecture`, ask for the remote rather than drop evidence.
 
 ## Phase 1 — Arguments
 

@@ -2,7 +2,7 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, terminals, roadmap, survey, ideation, diagrams
+    case board, terminals, roadmap, findings, ideation, diagrams
 
     /// What the sidebar calls each place. The raw values are what a window restores its place from, so a
     /// rename that need not change the stored value is made here and never on the case: `terminals` reads
@@ -10,7 +10,7 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
     public var title: String {
         switch self {
         case .terminals: return "Sessions"
-        case .board, .roadmap, .survey, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
+        case .board, .roadmap, .findings, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
         }
     }
 }
@@ -75,7 +75,7 @@ public enum SettingsSection: String, CaseIterable, Codable, Hashable {
 
 public enum SheetKind: Hashable, Identifiable {
     case openProject, compareOutputs, followUp, handoff, reconcileFinding(String), cloneRepository, createProject
-    case resetSurvey
+    case resetFindings
     case task(String)
     case finding(String)
     case cancelTask(String)
@@ -95,7 +95,7 @@ public enum SheetKind: Hashable, Identifiable {
         case .reconcileFinding(let findingID): return "reconcileFinding:\(findingID)"
         case .cloneRepository: return "cloneRepository"
         case .createProject: return "createProject"
-        case .resetSurvey: return "resetSurvey"
+        case .resetFindings: return "resetFindings"
         case .task(let taskID): return "task:\(taskID)"
         case .finding(let findingID): return "finding:\(findingID)"
         case .cancelTask(let taskID): return "cancelTask:\(taskID)"
@@ -139,9 +139,9 @@ public final class ProjectWindowModel {
     public var tab: TaskTab = .activity
     /// Which session the Terminals destination has in front, when more than one is live.
     public var selectedSessionID: String?
-    /// Findings the developer has set aside. A survey reports what the code says; whether a finding is worth
+    /// Findings the developer has set aside. A findings reports what the code says; whether a finding is worth
     /// acting on is a judgement the report cannot make, and re-reading the same fifteen items every run is how
-    /// a report stops being read at all. Kept per project in the app, never written into `docs/survey/`.
+    /// a report stops being read at all. Kept per project in the app, never written into `docs/findings/`.
     public var ignoredFindings: Set<String> {
         get { Set(UserDefaults.standard.stringArray(forKey: Self.ignoredKey(ref)) ?? []) }
         set { UserDefaults.standard.set(Array(newValue).sorted(), forKey: Self.ignoredKey(ref)) }
@@ -273,19 +273,20 @@ public final class ProjectWindowModel {
         case notARepository
         /// A repository with no commits, so `HEAD` does not resolve and there is no SHA to pin to.
         case noCommits
-        /// A committed repo with no `origin` remote. Archify's schema requires a GitHub URL for `meta.repository.url`
-        /// (`^https://github.com/owner/repo`), so a diagram cannot validate without one — offer to add the remote.
+        /// A committed repo with no `origin` remote, asked for an architecture diagram. Only architecture carries
+        /// repository evidence, and Archify checks it against a GitHub `origin` — offer to add the remote. The
+        /// other four kinds carry no evidence and draw without one.
         case noRemote
     }
 
     /// The repo state the Diagrams screen checks before a generate. A sample has no folder to draw from, so it
-    /// reads as ready (its own "sample" reason blocks the run elsewhere); a local project is fully drawable
-    /// (repo + commit + remote), or missing one of those in turn.
-    public var diagramRepoState: DiagramRepoState {
+    /// reads as ready (its own "sample" reason blocks the run elsewhere); a local project needs a repo and a
+    /// commit, and a remote only for `architecture`, the one kind whose nodes Archify pins to a GitHub origin.
+    public func diagramRepoState(kind: String) -> DiagramRepoState {
         guard case .local = ref, let snapshot else { return .ready }
         guard snapshot.repositoryRoot != nil else { return .notARepository }
         if snapshot.project.headRevision == nil { return .noCommits }
-        return snapshot.project.remote == nil ? .noRemote : .ready
+        return kind == "architecture" && snapshot.project.remote == nil ? .noRemote : .ready
     }
 
     /// Adds an `origin` remote to a committed repo that has none, then reloads. Archify requires a GitHub URL to
@@ -294,11 +295,11 @@ public final class ProjectWindowModel {
     @discardableResult
     public func addGitRemote(url: String) async -> Bool {
         let trimmed = url.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard case .local(let path) = ref, diagramRepoState == .noRemote, !trimmed.isEmpty else { return false }
+        guard case .local(let path) = ref, diagramRepoState(kind: "architecture") == .noRemote, !trimmed.isEmpty else { return false }
         _ = try? await runner.run("git", ["remote", "add", "origin", trimmed],
                                   in: URL(fileURLWithPath: path, isDirectory: true), timeout: CommandTimeout.git)
         await load()
-        return diagramRepoState == .ready
+        return diagramRepoState(kind: "architecture") == .ready
     }
 
     /// Sessions opened for their own sake — not a door's, not a task's. They open at the project root, which
@@ -512,7 +513,7 @@ public final class ProjectWindowModel {
     }
 
     /// The board card a finding became. A filed finding is not "in backlog" for long — its card moves on to
-    /// In progress and Done — so the survey asks the board where it is rather than remembering where it went.
+    /// In progress and Done — so the findings run asks the board where it is rather than remembering where it went.
     public func boardTask(forFinding key: String) -> DeskTask? {
         guard !key.isEmpty, let item = snapshot?.localBacklog.first(where: { $0.key == key }) else { return nil }
         return tasks.first { $0.localBacklogID == item.id }
@@ -671,27 +672,27 @@ public final class ProjectWindowModel {
         return formatter
     }()
 
-    // MARK: - Survey reset
+    // MARK: - Findings reset
 
     /// How many findings this project has set aside, for the sheet that offers to bring them back.
     public var ignoredFindingsCount: Int { ignoredFindings.count }
 
     /// Reports a reset would move to the Trash: all of them, newest first.
-    public var surveyReports: [String] {
+    public var findingsReports: [String] {
         guard case .local(let path) = ref else { return [] }
-        return SurveyCleanup.reports(in: path)
+        return FindingsCleanup.reports(in: path)
     }
 
-    /// Starts this project's survey reading over. Each part is separately owned — the app's ignored list, the
+    /// Starts this project's findings reading over. Each part is separately owned — the app's ignored list, the
     /// window's own selection, the repository's older reports — so each is separately asked for.
-    /// The board cards this project's survey findings became, in report order, each once.
-    public var surveyFiledCards: [DeskTask] {
+    /// The board cards this project's findings became, in report order, each once.
+    public var findingsFiledCards: [DeskTask] {
         var seen: Set<String> = []
         return (snapshot?.findings.value?.findings ?? []).compactMap { boardTask(forFinding: $0.id) }
             .filter { seen.insert($0.id).inserted }
     }
 
-    public func resetSurvey(_ options: SurveyResetOptions) async {
+    public func resetFindings(_ options: FindingsResetOptions) async {
         guard !options.isEmpty else { return }
         if options.ignoredFindings {
             ignoredFindings = []
@@ -705,7 +706,7 @@ public final class ProjectWindowModel {
         }
         if options.reports, case .local(let path) = ref {
             do {
-                try SurveyCleanup.trashReports(in: path)
+                try FindingsCleanup.trashReports(in: path)
                 writeFailure = nil
             } catch {
                 writeFailure = WriteFailure(title: "The reports were not moved to the Trash",
@@ -736,9 +737,9 @@ public final class ProjectWindowModel {
     }
 
     /// Opens the finding's card, the way a task's card opens: the dialog, not a reading pane. A link from
-    /// elsewhere in the app lands on the survey screen with that finding open on top of it.
+    /// elsewhere in the app lands on the Findings screen with that finding open on top of it.
     public func openFinding(_ id: String) {
-        destination = .survey
+        destination = .findings
         findingFilter = nil
         findingKindFilter = nil
         showsIgnoredFindings = ignoredFindings.contains(id)
@@ -794,13 +795,13 @@ public final class ProjectWindowModel {
     /// Whether this door already has a run of its own live in this window — the one a second press is refused.
     public func isDoorRunning(_ door: String) -> Bool { isRunLive(DoorRuns.id(door: door)) }
 
-    /// Whether a survey in a terminal would clash with one already going here. Passing a scope asks about
+    /// Whether a findings run in a terminal would clash with one already going here. Passing a scope asks about
     /// that half of the report only — `defects` is free to start beside a live `architecture` run, and both
     /// are refused beside a live `both`, which occupies the whole report. Passing nothing asks the door-wide
-    /// question ("is any survey going?"), which is what resetting the survey has to know.
-    public func isSurveyRunning(scope: SurveyRunScope? = nil) -> Bool {
-        SurveyRunScope.allCases.contains { live in
-            isRunLive(DoorRuns.id(door: "survey", scope: live)) && (scope.map(live.conflicts(with:)) ?? true)
+    /// question ("is any findings run going?"), which is what resetting findings has to know.
+    public func isFindingsRunLive(scope: FindingsRunScope? = nil) -> Bool {
+        FindingsRunScope.allCases.contains { live in
+            isRunLive(DoorRuns.id(door: "findings", scope: live)) && (scope.map(live.conflicts(with:)) ?? true)
         }
     }
 

@@ -113,7 +113,7 @@ final class ProjectWindowModelTests: XCTestCase {
 
     func testParallelModeReturnsToBoard() async {
         let model = await makeStudyHubModel()
-        model.go(.survey)
+        model.go(.findings)
         model.setMode(.parallel)
         XCTAssertEqual(model.destination, .board)
         XCTAssertEqual(model.parallelTasks.map(\.id), ["42", "57"])
@@ -322,7 +322,7 @@ final class ProjectWindowModelTests: XCTestCase {
     func testLinkRoutesToFinding() async {
         let model = await makeStudyHubModel()
         model.handle(.finding("F-093"))
-        XCTAssertEqual(model.destination, .survey)
+        XCTAssertEqual(model.destination, .findings)
         XCTAssertEqual(model.selectedFindingID, "F-093")
     }
 
@@ -399,23 +399,25 @@ final class ProjectWindowModelTests: XCTestCase {
         return model
     }
 
-    /// The gates in turn: not a repo, then no commit, then no remote (Archify needs a GitHub URL), then ready.
+    /// The gates in turn: not a repo, then no commit, then no remote (architecture only — its evidence needs a
+    /// GitHub origin), then ready.
     /// A sample has no folder to draw from and reads as ready (blocked elsewhere by its own reason).
     func testDiagramRepoStateReflectsGitSetup() async {
         let notRepo = await repoStateModel(repositoryRoot: nil, headRevision: nil)
-        XCTAssertEqual(notRepo.diagramRepoState, .notARepository)
+        XCTAssertEqual(notRepo.diagramRepoState(kind: "architecture"), .notARepository)
 
         let noCommits = await repoStateModel(repositoryRoot: "/tmp/p", headRevision: nil)
-        XCTAssertEqual(noCommits.diagramRepoState, .noCommits)
+        XCTAssertEqual(noCommits.diagramRepoState(kind: "architecture"), .noCommits)
 
         let noRemote = await repoStateModel(repositoryRoot: "/tmp/p", headRevision: "a1b2c3d", remote: nil)
-        XCTAssertEqual(noRemote.diagramRepoState, .noRemote)
+        XCTAssertEqual(noRemote.diagramRepoState(kind: "architecture"), .noRemote)
+        XCTAssertEqual(noRemote.diagramRepoState(kind: "workflow"), .ready, "only architecture carries evidence")
 
         let ready = await repoStateModel(repositoryRoot: "/tmp/p", headRevision: "a1b2c3d", remote: "github.com/o/r")
-        XCTAssertEqual(ready.diagramRepoState, .ready)
+        XCTAssertEqual(ready.diagramRepoState(kind: "architecture"), .ready)
 
         let sample = await makeStudyHubModel()
-        XCTAssertEqual(sample.diagramRepoState, .ready, "a sample is blocked by its own reason, not the git offer")
+        XCTAssertEqual(sample.diagramRepoState(kind: "architecture"), .ready, "a sample is blocked by its own reason, not the git offer")
     }
 
     /// Adding a remote only acts on a committed repo that has none: a ready repo is left alone and reports false.
