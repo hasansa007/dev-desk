@@ -35,8 +35,14 @@ struct DeskCommands: Commands {
                 Toggle("Compact Sidebar", isOn: $railMode)
                     .keyboardShortcut("s", modifiers: [.command, .shift])
                 Divider()
-                Button("Pull and Reload") { reload() }
+                // Xcode's keys: ⌘R runs, ⌘. stops. Pulling moved to ⇧⌘R.
+                Button("Run") { model?.windowCommand = WindowCommandRequest(.run) }
                     .keyboardShortcut("r")
+                Button("Stop Run") { model?.windowCommand = WindowCommandRequest(.stop) }
+                    .keyboardShortcut(".")
+                    .disabled(model?.projectRuns.isAnythingRunning != true)
+                Button("Pull and Reload") { reload() }
+                    .keyboardShortcut("r", modifiers: [.command, .shift])
                 Divider()
                 Button("Settings…") { openSettings() }
             }

@@ -2,13 +2,74 @@ import DeskCore
 import SwiftUI
 
 extension ProjectWindowModel {
-    /// Starts a run of the project in a session of its own — `run:<configuration id>` — at the project root,
-    /// with the plan's line typed into the shell the way a door's command is. Nil for the configuration runs
-    /// the default. A run already live for that configuration is shown rather than started twice.
-    func startProjectRun(configurationID: String? = nil, intent: ProjectRunIntent = .run,
+    /// The project folder, on whatever branch it is on — what the toolbar's play runs.
+    var projectFolderTarget: RunTarget? {
+        guard let root = projectRoot else { return nil }
+        return RunTarget(folder: root, branch: snapshot?.project.branch ?? RunTarget.branch(in: root), isProjectFolder: true)
+    }
+
+    /// What ⌘R runs: the Terminals tab in front when its session works in a folder of its own — a task's worktree,
+    /// or a run already going in one — and the project folder everywhere else.
+    var runTarget: RunTarget? {
+        guard let root = projectFolderTarget else { return nil }
+        guard destination == .terminals, let id = selectedSessionID else { return root }
+        let folderPath: String? = {
+            if let path = projectRuns.sessionFolders[id] { return path }
+            switch sessions.state(for: id) {
+            case .running(let folder), .ended(let folder, _): return folder.url.path
+            default: return nil
+            }
+        }()
+        guard let folderPath, URL(fileURLWithPath: folderPath).standardizedFileURL != root.folder.standardizedFileURL else { return root }
+        let folder = URL(fileURLWithPath: folderPath, isDirectory: true)
+        return RunTarget(folder: folder, branch: RunTarget.branch(in: folder), isProjectFolder: false)
+    }
+
+    /// A press of play, for `target`. One live run per configuration across every folder: the same folder shows
+    /// the run already going, another folder asks first, because both would want the same port.
+    func requestProjectRun(configurationID: String? = nil, intent: ProjectRunIntent = .run, target: RunTarget,
+                           terminals: ShellTerminalRegistry, worktreeLocation: String) {
+        if intent != .setupOnly, let live = projectRuns.liveRun(configurationID: configurationID) {
+            if live.folderPath.map({ URL(fileURLWithPath: $0).standardizedFileURL }) == target.folder.standardizedFileURL {
+                selectedSessionID = live.sessionID
+                go(.terminals)
+            } else {
+                let configuration = configurationID.map(projectRuns.plan.configuration(id:)) ?? projectRuns.plan.defaultConfiguration
+                pendingRunReplacement = RunReplacement(
+                    configurationID: configurationID, intent: intent, folderPath: target.folder.path, branch: target.branch,
+                    liveSessionID: live.sessionID,
+                    liveBranch: live.folderPath.map { RunTarget.branch(in: URL(fileURLWithPath: $0, isDirectory: true)) } ?? "another folder",
+                    configurationName: configuration?.name ?? "The run")
+            }
+            return
+        }
+        startProjectRun(configurationID: configurationID, intent: intent, target: target, terminals: terminals,
+                        worktreeLocation: worktreeLocation)
+    }
+
+    /// "Stop it and run here": the live run ends first — its port has to be free — then this one starts.
+    func confirmRunReplacement(terminals: ShellTerminalRegistry, worktreeLocation: String) {
+        guard let replacement = pendingRunReplacement else { return }
+        pendingRunReplacement = nil
+        stopProjectRun(sessionID: replacement.liveSessionID, terminals: terminals)
+        let folder = URL(fileURLWithPath: replacement.folderPath, isDirectory: true)
+        let target = RunTarget(folder: folder, branch: replacement.branch, isProjectFolder: folder.standardizedFileURL == projectRoot?.standardizedFileURL)
+        Task {
+            for _ in 0..<40 where projectRuns.isLive(sessionID: replacement.liveSessionID) {
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            startProjectRun(configurationID: replacement.configurationID, intent: replacement.intent, target: target,
+                            terminals: terminals, worktreeLocation: worktreeLocation)
+        }
+    }
+
+    /// Starts a run of the project in a session of its own — `run:<configuration id>` — in `target`'s folder, with
+    /// the plan's line typed into the shell the way a door's command is. The shell opens at the project root and
+    /// moves into a worktree before the line, and the run's title names the branch it runs.
+    func startProjectRun(configurationID: String? = nil, intent: ProjectRunIntent = .run, target: RunTarget? = nil,
                          terminals: ShellTerminalRegistry, worktreeLocation: String) {
-        guard let root = projectRoot else { return }
-        guard let launch = projectRuns.prepare(configurationID: configurationID, intent: intent, folderPath: root.path) else {
+        guard let root = projectRoot, let target = target ?? projectFolderTarget else { return }
+        guard var launch = projectRuns.prepare(configurationID: configurationID, intent: intent, folderPath: target.folder.path) else {
             if let id = configurationID.map(ProjectRuns.sessionID(configurationID:)) ?? projectRuns.liveSessionID,
                projectRuns.isLive(sessionID: id) {
                 selectedSessionID = id
@@ -16,18 +77,21 @@ extension ProjectWindowModel {
             }
             return
         }
+        launch.title += " · \(target.branch)"
         // Land on the run, the way every other start does: its output is the point of pressing play.
         selectedSessionID = launch.sessionID
         go(.terminals)
         let id = launch.sessionID
+        let line = target.folder.standardizedFileURL == root.standardizedFileURL
+            ? launch.shellLine : "cd \(ShellQuote.single(target.folder.path)) && " + launch.shellLine
         Task {
             await sessions.start(taskID: id, branch: nil, taskNumber: nil, noBranchNote: nil,
                                  worktreeLocation: worktreeLocation, title: launch.title)
             guard case .running(let folder) = sessions.state(for: id) else { return }
-            // Recorded where the shell really opened, which is what the setup marker is keyed by.
-            projectRuns.dispatched(launch, in: folder.url.path)
+            // Recorded where the run really goes, which is what the setup marker is keyed by.
+            projectRuns.dispatched(launch, in: target.isProjectFolder ? folder.url.path : target.folder.path)
             terminals.start(taskID: id, folder: folder.url)
-            terminals.send(launch.shellLine + "\n", to: id)
+            terminals.send(line + "\n", to: id)
         }
     }
 
@@ -116,6 +180,13 @@ struct RunProjectControl: View {
             Image(systemName: isRunning ? "stop.fill" : "play.fill")
                 .imageScale(.medium)
                 .foregroundStyle(isRunning ? DeskColor.tone(.running).dot : DeskColor.navInk)
+            if !isRunning, isWide, !isSample, let branch = model.projectFolderTarget?.branch {
+                Text(branch)
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .lineLimit(1)
+                    .frame(maxWidth: 160)
+            }
             if isRunning {
                 StatusDot(tone: .running, pulses: true)
                 if isWide {
@@ -133,7 +204,7 @@ struct RunProjectControl: View {
         if isRunning { return "Stop \(liveName)" }
         if let blockedReason { return blockedReason }
         let name = runs.plan.defaultConfiguration?.name ?? ""
-        return "Run \(name) in a terminal at the project root"
+        return "Run \(name) on \(model.projectFolderTarget?.branch ?? "the project folder") — the project folder (⌘R runs the Terminals tab in front when it has a worktree)"
     }
 
     private func primaryAction() {
@@ -141,14 +212,16 @@ struct RunProjectControl: View {
         if let liveSessionID {
             model.stopProjectRun(sessionID: liveSessionID, terminals: terminals)
         } else {
-            model.startProjectRun(terminals: terminals, worktreeLocation: worktreeLocation)
+            guard let target = model.projectFolderTarget else { return }
+            model.requestProjectRun(target: target, terminals: terminals, worktreeLocation: worktreeLocation)
         }
     }
 
     private func run(_ configurationID: String?, intent: ProjectRunIntent = .run) {
         guard let terminals else { return }
-        model.startProjectRun(configurationID: configurationID, intent: intent, terminals: terminals,
-                              worktreeLocation: worktreeLocation)
+        guard let target = model.projectFolderTarget else { return }
+        model.requestProjectRun(configurationID: configurationID, intent: intent, target: target, terminals: terminals,
+                                worktreeLocation: worktreeLocation)
     }
 
     @ViewBuilder private var menuItems: some View {

@@ -108,6 +108,8 @@ public final class ShellSessions {
         let plan = await readPlan(resolver, purpose: purpose, branch: branch, taskNumber: taskNumber,
                                   noBranchNote: noBranchNote, baseRef: baseRef)
         let folder = await resolver.materialise(plan, for: purpose)
+        // git carries tracked files only; a run in the new worktree needs the project's own env files too.
+        if folder.created, let projectRoot { await EnvFiles.copy(from: projectRoot, to: folder.url, runner: runner) }
         // A folder with a note is the project root, where the task's own checkout should have been.
         if refusingRoot, let note = folder.note {
             states[taskID] = .failed(note)

@@ -43,6 +43,8 @@ final class HeldRunner: CommandRunner {
 final class ShellSessionsTests: XCTestCase {
     private static let root = URL(fileURLWithPath: "/work/My App", isDirectory: true)
     private static let listKey = FakeRunner.gitRead("worktree list --porcelain -z")
+    /// A new worktree is followed by the read that finds the untracked env files to copy into it.
+    private static let envKey = FakeRunner.gitRead("ls-files -z --others --ignored --exclude-standard --directory")
     private static let mainOnly = "worktree /work/My App\0HEAD \(String(repeating: "1", count: 40))\0branch refs/heads/main\0\0"
     private static let noFolder = "Sample projects have no folder, so there is no shell to start."
 
@@ -134,7 +136,7 @@ final class ShellSessionsTests: XCTestCase {
         await start.value
         XCTAssertEqual(sessions.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: true)))
         XCTAssertEqual(sessions.runningTaskIDs, ["7"])
-        XCTAssertEqual(fake.keys, [Self.listKey, addKey(path)], "one worktree list and one worktree add")
+        XCTAssertEqual(fake.keys, [Self.listKey, addKey(path), Self.envKey], "one worktree list, one worktree add, one env-file read")
     }
 
     func testStartPlansWithTheLocationGivenAtTheClickNotAnEarlierRefresh() async throws {
@@ -150,7 +152,7 @@ final class ShellSessionsTests: XCTestCase {
         // The worktree location changed in Settings between the preview and the click.
         await sessions.start(taskID: "7", branch: "gh-7-demo", taskNumber: 7, worktreeLocation: now.url.path)
         XCTAssertEqual(sessions.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: true)))
-        XCTAssertEqual(fake.keys, [Self.listKey, Self.listKey, addKey(path)])
+        XCTAssertEqual(fake.keys, [Self.listKey, Self.listKey, addKey(path), Self.envKey])
         XCTAssertFalse(FileManager.default.fileExists(atPath: stale.path))
     }
 
@@ -166,7 +168,7 @@ final class ShellSessionsTests: XCTestCase {
         await sessions.start(taskID: "7", branch: "gh-7-demo", taskNumber: 7, worktreeLocation: location.url.path)
         await sessions.refreshPlan(taskID: "7", branch: "gh-7-demo", taskNumber: 7, worktreeLocation: location.url.path)
         XCTAssertEqual(sessions.state(for: "7"), .running(created), "a running session ignores another start and a refresh")
-        XCTAssertEqual(fake.keys, [Self.listKey, addKey(path)])
+        XCTAssertEqual(fake.keys, [Self.listKey, addKey(path), Self.envKey])
 
         sessions.markEnded(taskID: "7", status: 129, generation: sessions.generation(for: "7"))
         sessions.markEnded(taskID: "8", status: 0, generation: sessions.generation(for: "8"))
@@ -178,7 +180,7 @@ final class ShellSessionsTests: XCTestCase {
         fake.script(Self.listKey, .ok(listing(path)))
         await sessions.start(taskID: "7", branch: "gh-7-demo", taskNumber: 7, worktreeLocation: location.url.path)
         XCTAssertEqual(sessions.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: false)))
-        XCTAssertEqual(fake.keys, [Self.listKey, addKey(path), Self.listKey])
+        XCTAssertEqual(fake.keys, [Self.listKey, addKey(path), Self.envKey, Self.listKey])
     }
 
     func testALateExitFromAnEarlierRunLeavesTheNewRunRunning() async throws {
@@ -273,7 +275,7 @@ final class ShellSessionsTests: XCTestCase {
         let created = TaskFolder(url: path, note: nil, created: true)
         XCTAssertEqual(agents.state(for: "7"), .running(created))
         XCTAssertEqual(agents.runningTaskIDs, ["7"])
-        XCTAssertEqual(fake.keys, [Self.listKey, detachKey(path)])
+        XCTAssertEqual(fake.keys, [Self.listKey, detachKey(path), Self.envKey])
 
         agents.markEnded(taskID: "7", status: 0, generation: agents.generation(for: "7"))
         XCTAssertEqual(agents.state(for: "7"), .ended(created, status: 0))
@@ -282,7 +284,7 @@ final class ShellSessionsTests: XCTestCase {
         fake.script(Self.listKey, .ok(Self.mainOnly + "worktree \(path.path)\0HEAD \(String(repeating: "2", count: 40))\0detached\0\0"))
         await agents.start(taskID: "7", purpose: .agent, branch: nil, taskNumber: 7, worktreeLocation: location.url.path, baseRef: Self.base)
         XCTAssertEqual(agents.state(for: "7"), .running(TaskFolder(url: path, note: nil, created: false)))
-        XCTAssertEqual(fake.keys, [Self.listKey, detachKey(path), Self.listKey])
+        XCTAssertEqual(fake.keys, [Self.listKey, detachKey(path), Self.envKey, Self.listKey])
     }
 
     func testASampleAgentSessionFailsWithItsReasonAndNeverRunsACommand() async {

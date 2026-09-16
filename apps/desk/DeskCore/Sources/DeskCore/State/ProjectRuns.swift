@@ -12,7 +12,7 @@ public struct ProjectRunLaunch: Equatable, Sendable {
     public let sessionID: String
     /// Nil for setup alone, which belongs to no configuration.
     public let configuration: ProjectRunConfiguration?
-    public let title: String
+    public var title: String
     public let shellLine: String
     /// Whether the setup rows lead the line — what the marker file records once the run is dispatched.
     public let includesSetup: Bool
@@ -85,6 +85,8 @@ public final class ProjectRuns {
     /// The configuration behind each live run's session, kept so stopping it can find its stop rows even
     /// after the plan has been edited under it.
     @ObservationIgnored private var sessionConfigurations: [String: ProjectRunConfiguration] = [:]
+    /// The folder each run session runs in — the project folder, or a worktree.
+    public private(set) var sessionFolders: [String: String] = [:]
 
     @ObservationIgnored public let projectRoot: URL?
     @ObservationIgnored private let sessions: ShellSessions
@@ -145,6 +147,13 @@ public final class ProjectRuns {
 
     public var isAnythingRunning: Bool { liveSessionID != nil }
 
+    /// The live run of `configurationID` (nil = the default), with the folder it runs in.
+    public func liveRun(configurationID: String?) -> (sessionID: String, folderPath: String?)? {
+        guard let configuration = configurationID.map(plan.configuration(id:)) ?? plan.defaultConfiguration else { return nil }
+        let id = Self.sessionID(configurationID: configuration.id)
+        return isLive(sessionID: id) ? (id, sessionFolders[id]) : nil
+    }
+
     /// The stop rows for a live session, as one line, or nil when its configuration has none.
     public func stopLine(sessionID: String) -> String? {
         guard let configuration = sessionConfigurations[sessionID] else { return nil }
@@ -199,6 +208,7 @@ public final class ProjectRuns {
         if !sessionIDs.contains(launch.sessionID) { sessionIDs.append(launch.sessionID) }
         sessionTitles[launch.sessionID] = launch.title
         sessionConfigurations[launch.sessionID] = launch.configuration
+        sessionFolders[launch.sessionID] = folderPath
         if launch.includesSetup { markSetupStarted(in: folderPath) }
     }
 
@@ -208,5 +218,6 @@ public final class ProjectRuns {
         sessionIDs.removeAll { $0 == sessionID }
         sessionTitles[sessionID] = nil
         sessionConfigurations[sessionID] = nil
+        sessionFolders[sessionID] = nil
     }
 }

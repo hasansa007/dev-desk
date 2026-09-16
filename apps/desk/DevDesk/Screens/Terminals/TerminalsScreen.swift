@@ -536,6 +536,17 @@ private struct SessionPane: View {
                     .lineLimit(1)
             }
             Spacer(minLength: 4)
+            if let target = worktreeTarget, model.projectRuns.canRun {
+                Button {
+                    guard let terminals else { return }
+                    model.requestProjectRun(target: target, terminals: terminals, worktreeLocation: worktreeLocation)
+                } label: {
+                    Label("Run \(target.branch)", systemImage: "play.fill")
+                }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                .disabled(terminals == nil)
+                .help("Runs \(model.projectRuns.plan.defaultConfiguration?.name ?? "the project") in this session's worktree, on \(target.branch)")
+            }
             if startsHere {
                 Button(startTitle) { start() }
                     .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
@@ -545,6 +556,18 @@ private struct SessionPane: View {
         .padding(.horizontal, 11)
         .padding(.vertical, 7)
         .background(DeskColor.headerFill)
+    }
+
+    /// This session's own worktree, when it has one: a task started in a folder that is not the project folder.
+    private var worktreeTarget: RunTarget? {
+        guard case .task = row.kind, let root = model.projectRoot else { return nil }
+        switch model.sessions.state(for: row.id) {
+        case .running(let folder), .ended(let folder, _):
+            guard folder.url.standardizedFileURL != root.standardizedFileURL else { return nil }
+            return RunTarget(folder: folder.url, branch: RunTarget.branch(in: folder.url), isProjectFolder: false)
+        default:
+            return nil
+        }
     }
 
     /// A live session has nothing to start and a background run has no shell at all: Start is for a door or

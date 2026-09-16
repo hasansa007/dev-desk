@@ -43,6 +43,7 @@ public struct FreshBaseWorktree {
         guard let add, add.succeeded else {
             return atRoot("git could not add a worktree on origin/\(base)" + (add.flatMap { GitOutput.lastNonEmptyLine($0.stderr) }.map { ": \($0)" } ?? ""))
         }
+        await EnvFiles.copy(from: projectRoot, to: path, runner: runner)
         return TaskFolder(url: path, note: nil, created: true)
     }
 

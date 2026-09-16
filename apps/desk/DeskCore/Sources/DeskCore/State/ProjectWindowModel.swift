@@ -503,6 +503,11 @@ public final class ProjectWindowModel {
     }
 
     public private(set) var isSyncing = false
+
+    /// A run waiting on "stop the other one first?" — see `RunReplacement`.
+    public var pendingRunReplacement: RunReplacement?
+    /// ⌘R / ⌘. from the menu, carried out by the window that owns the terminals.
+    public var windowCommand: WindowCommandRequest?
     /// The last action's fetch, so a failed one can be said rather than silently leaving the board stale.
     public private(set) var lastSync: OriginSync.Result?
 

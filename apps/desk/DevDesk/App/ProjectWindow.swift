@@ -17,6 +17,7 @@ struct ProjectWindow: View {
     /// leaves the board no room — and gets the choice back when it widens.
     @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
     @AppStorage(PreferenceKey.autoReload) private var autoReload = false
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @SceneStorage("desk.destination") private var storedDestination: Destination?
     @SceneStorage("desk.taskID") private var storedTaskID: String?
     @SceneStorage("desk.tab") private var storedTab: TaskTab?
@@ -62,6 +63,34 @@ struct ProjectWindow: View {
         .preferredColorScheme(SnapshotMode.shared.colorScheme ?? appearance.colorScheme)
         .background { windowHooks }
         .task { await model.sync() }
+        .onChange(of: model.windowCommand) { _, request in
+            guard let request else { return }
+            model.windowCommand = nil
+            switch request.command {
+            case .run:
+                if let target = model.runTarget {
+                    model.requestProjectRun(target: target, terminals: terminals, worktreeLocation: worktreeLocation)
+                }
+            case .stop:
+                let target = model.runTarget?.folder.standardizedFileURL
+                let runs = model.projectRuns
+                // The run in the folder ⌘R would target, else whatever is live.
+                let id = runs.sessionIDs.first { runs.isLive(sessionID: $0) && runs.sessionFolders[$0].map { URL(fileURLWithPath: $0).standardizedFileURL } == target }
+                    ?? runs.liveSessionID
+                if let id { model.stopProjectRun(sessionID: id, terminals: terminals) }
+            }
+        }
+        .confirmationDialog(model.pendingRunReplacement.map { "\($0.configurationName) is running on \($0.liveBranch)" } ?? "",
+                            isPresented: Binding(get: { model.pendingRunReplacement != nil },
+                                                 set: { if !$0 { model.pendingRunReplacement = nil } }),
+                            titleVisibility: .visible) {
+            Button("Stop it and run \(model.pendingRunReplacement?.branch ?? "here")") {
+                model.confirmRunReplacement(terminals: terminals, worktreeLocation: worktreeLocation)
+            }
+            Button("Cancel", role: .cancel) { model.pendingRunReplacement = nil }
+        } message: {
+            Text("Both would use the same port, so only one run of a configuration goes at a time.")
+        }
         // Restarted by the toggle: turning it off cancels the loop, turning it on starts a fresh one.
         .task(id: autoReload) {
             if autoReload, !SnapshotMode.shared.isActive { await model.refresh(every: .seconds(ProjectWindowModel.refreshSeconds)) }
