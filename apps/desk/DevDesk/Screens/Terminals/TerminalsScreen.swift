@@ -56,6 +56,14 @@ struct TerminalsScreen: View {
         .background(DeskColor.canvas)
         .onAppear(perform: syncSelection)
         .onAppear(perform: loadRecovered)
+        // Initial too: the menu can ask from another screen, before this one exists to hear it change.
+        .onChange(of: model.terminalAwaitingStart, initial: true) { _, id in
+            guard let id else { return }
+            model.terminalAwaitingStart = nil
+            hasChosen = true
+            selection = .session(id)
+            startTerminal(id)
+        }
         .onChange(of: model.selectedSessionID) { _, id in
             guard let id else { return }
             hasChosen = true

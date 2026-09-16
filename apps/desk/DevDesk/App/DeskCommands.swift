@@ -60,7 +60,8 @@ struct DeskCommands: Commands {
 
     private func newTerminal() {
         guard let model, model.sessions.startRefusal(for: .shell) == nil else { return }
-        model.newTerminal()
+        // The same start the "+" makes: a row alone is a terminal with no shell behind it.
+        model.terminalAwaitingStart = model.newTerminal()
         model.go(.terminals)
     }
 

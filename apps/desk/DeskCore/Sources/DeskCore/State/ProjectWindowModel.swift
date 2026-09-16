@@ -355,6 +355,10 @@ public final class ProjectWindowModel {
     /// session registry, so the new terminal draws the old one's frame.
     @ObservationIgnored private var terminalsOpened = 0
 
+    /// A terminal opened from outside the Terminals screen (the menu's New Terminal) whose shell that screen
+    /// still has to start — the screen owns the terminal views, so the menu can only ask.
+    public var terminalAwaitingStart: String?
+
     @discardableResult
     public func newTerminal() -> String {
         terminalsOpened += 1
