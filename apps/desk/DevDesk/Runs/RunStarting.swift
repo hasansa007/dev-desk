@@ -1,3 +1,4 @@
+import AppKit
 import DeskCore
 import SwiftUI
 
@@ -211,24 +212,55 @@ extension ProjectWindowModel {
               let family = DoorCommand.agent(named: AgentLaunch.connectionName(launch.agent)),
               let id = DoorRuns.id(for: task) else { return }
         let command = agent.command(prompt: prompt, familyRoot: "\(home)/\(family.root)")
-        // The same title and note `startTask` gives each kind of card, so the row reads the same whoever runs it.
-        let title: String, note: String
-        if task.localBacklogID != nil {
-            title = task.title
-            note = "this has no issue yet; /dev cuts a branch at its first write."
-        } else {
-            let number = task.taskNumber.map(String.init) ?? ""
-            title = "Task #\(number)"
-            note = "#\(number) has no branch yet; /dev cuts one at its first write."
-        }
+        let row = runRow(for: task, id: id)
         dismissSheet()
-        if prepareRun(door: "dev", title: title, agent: agent.name, id: id, folderNote: note, command: command) {
+        if prepareRun(door: "dev", title: row.title, agent: agent.name, id: id, folderNote: row.note, command: command) {
             Task { await recordStarted(task) }
         }
     }
 
+    /// The title and note `startTask` gives each kind of card, so a run row reads the same whoever carries it.
+    private func runRow(for task: DeskTask, id: String) -> (title: String, note: String) {
+        if task.localBacklogID != nil {
+            return (task.title, "this has no issue yet; /dev cuts a branch at its first write.")
+        }
+        let number = task.taskNumber.map(String.init) ?? ""
+        return ("Task #\(number)", "#\(number) has no branch yet; /dev cuts one at its first write.")
+    }
+
+    /// Starts a task with an entry from the developer's "Start with" list (ADR 0036 decision 6, widened).
+    ///
+    /// The launch is written first, to `.devdesk/start-with/` — never where a remembered launch is read, or the
+    /// card's next Start would quietly run Claude here. An app is opened on the project folder with the prompt on
+    /// the clipboard, because a folder is all nearly every app accepts. A command is typed into a Sessions
+    /// terminal with its placeholders filled, so its output and any failure are where every other run is.
+    func start(_ task: DeskTask, with entry: StartWithEntry, agent: String) {
+        guard let root = projectRoot, let launch = taskLaunch(for: task, agent: agent),
+              let prompt = launch.prompt(home: NSHomeDirectory()), let id = DoorRuns.id(for: task) else { return }
+        let store = TaskLaunchStore(projectRoot: root, folder: TaskLaunchStore.startWithFolder)
+        store.write(launch)
+        switch entry.kind {
+        case .app(let path):
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(prompt, forType: .string)
+            NSWorkspace.shared.open([root], withApplicationAt: URL(fileURLWithPath: path),
+                                    configuration: NSWorkspace.OpenConfiguration())
+            dismissSheet()
+            Task { await recordStarted(task) }
+        case .command(let template):
+            let values = ["folder": root.path, "prompt": prompt, "taskFile": store.url(for: launch.id).path,
+                          "title": task.title]
+            let row = runRow(for: task, id: id)
+            dismissSheet()
+            if prepareRun(door: "dev", title: row.title, agent: entry.name, id: id, folderNote: row.note,
+                          command: StartWithTemplate.render(template, values: values).line) {
+                Task { await recordStarted(task) }
+            }
+        }
+    }
+
     /// This project's launches, or nil for a project with no folder to keep them in.
-    var launchStore: TaskLaunchStore? { projectRoot.map(TaskLaunchStore.init(projectRoot:)) }
+    var launchStore: TaskLaunchStore? { projectRoot.map { TaskLaunchStore(projectRoot: $0) } }
 
     /// The launch this task was last started with, which is also what the queue reads. Its presence is what
     /// makes a start the task's second: the sheet opens once, and after that the same choice runs.

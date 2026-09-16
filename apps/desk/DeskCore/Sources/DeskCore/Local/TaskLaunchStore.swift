@@ -11,11 +11,15 @@ import Foundation
 /// same time, and a shared index is the thing that loses one when both rewrite it.
 public struct TaskLaunchStore {
     public static let relativeFolder = ".devdesk/launch"
+    /// Where a launch handed to another app is written. NOT `relativeFolder`: a file there is what makes a card's
+    /// next Start run without the sheet, and it can only name Claude or Codex, so a task started with another app
+    /// would have its next Start quietly run Claude here.
+    public static let startWithFolder = ".devdesk/start-with"
 
     private let directory: URL
 
-    public init(projectRoot: URL) {
-        self.directory = projectRoot.appendingPathComponent(Self.relativeFolder, isDirectory: true)
+    public init(projectRoot: URL, folder: String = TaskLaunchStore.relativeFolder) {
+        self.directory = projectRoot.appendingPathComponent(folder, isDirectory: true)
     }
 
     /// Never throws: a full disk or a read-only checkout must not be able to stop the card being queued.

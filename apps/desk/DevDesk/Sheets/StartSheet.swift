@@ -186,7 +186,7 @@ struct StartSheet: View {
             // No header over an empty list: the hand-off launchers arrive with *Continue in* (step 6), and
             // until then an "Or hand it to" with nothing under it reads as a failure to load.
             if !choices.handoff.isEmpty {
-                SectionLabel("Or hand it to")
+                SectionLabel("Or start with")
                     .padding(.top, 4)
                 ForEach(choices.handoff) { option in
                     runnerRow(option)
@@ -280,7 +280,7 @@ struct StartSheet: View {
     /// The button names the choice, and names what that choice does: a hand-off does not run anything here.
     private var primaryTitle: String {
         guard let selected else { return "Start" }
-        return selected.kind == .here ? "Run with \(selected.name)" : "Hand it to \(selected.name)"
+        return selected.kind == .here ? "Run with \(selected.name)" : "Start with \(selected.name)"
     }
 }
 

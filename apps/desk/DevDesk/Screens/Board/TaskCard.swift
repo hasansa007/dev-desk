@@ -41,6 +41,15 @@ private struct StartWidthKey: SwiftUI.PreferenceKey {
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
 }
 
+/// One entry of the developer's "Start with" list, as a card's menu offers it.
+struct StartWithItem: Identifiable {
+    let id: String
+    let name: String
+    /// False for an app that is no longer where the list says; the menu keeps it, disabled, rather than hide it.
+    let isAvailable: Bool
+    let start: () -> Void
+}
+
 /// Stopping and continuing what a card is running. A card in In Progress is git's judgement about commits,
 /// never a claim that anything is working — so the card says which, and offers the control that matches.
 struct CardRunControls {
@@ -67,6 +76,9 @@ struct TaskCard: View {
     var localActions: LocalActions?
     /// Stop and Continue, on every card that could be running something.
     var runControls: CardRunControls?
+    /// The "Start with" list for a card that can start; nil hides the submenu, an empty list still offers editing it.
+    var startWith: [StartWithItem]?
+    var editStartWith: () -> Void = {}
     /// The branch this project has checked out. It is on the board like any other — a branch with unmerged
     /// commits is In Progress by git's rule (ADR 0011) — but git will not let it be deleted, so it says so
     /// rather than offering an action that can only fail.
@@ -93,6 +105,7 @@ struct TaskCard: View {
         if let localActions {
             Menu {
                 runEntries
+                startWithEntries
                 // A local card carries a stage like any issue card (ADR 0035): without this, a
                 // docs/backlog/ entry could never reach Ready for dev.
                 if let moves {
@@ -135,6 +148,7 @@ struct TaskCard: View {
         } else if let moves {
             Menu {
                 runEntries
+                startWithEntries
                 lifecycleEntry(moves)
                 if let cancel = moves.cancel {
                     Button("Cancel…") { cancel() }
@@ -210,6 +224,20 @@ struct TaskCard: View {
     }
 
     /// Stop what is live; continue what is not. Shown first, because it is the only entry about right now.
+    @ViewBuilder private var startWithEntries: some View {
+        if let startWith {
+            Menu("Start with") {
+                ForEach(startWith) { item in
+                    Button(item.name) { item.start() }
+                        .disabled(!item.isAvailable)
+                }
+                if !startWith.isEmpty { Divider() }
+                Button("Edit this list…") { editStartWith() }
+            }
+            Divider()
+        }
+    }
+
     @ViewBuilder private var runEntries: some View {
         if let runControls {
             if runControls.isLive {

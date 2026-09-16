@@ -9,11 +9,13 @@ struct StartTaskSheetHost: View {
     @Bindable var model: ProjectWindowModel
     let taskID: String
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
+    @AppStorage(PreferenceKey.startWith) private var startWithData = Data()
 
     var body: some View {
         if let task = model.task(taskID), let launch = model.taskLaunch(for: task, agent: defaultConnection) {
             StartSheet(launch: launch,
                        choices: StartRunners.choices(connections: model.snapshot?.connections ?? [],
+                                                     handoff: StartWithRows.options(StartWithList.decode(startWithData)),
                                                      terminalAgents: model.snapshot?.terminalAgents ?? [],
                                                      hasFreeSlot: AgentSlots.free > 0),
                        prompt: launch.prompt(home: NSHomeDirectory()) ?? "",
@@ -30,10 +32,14 @@ struct StartTaskSheetHost: View {
     }
 
     /// A `.here` row runs the task in this window: Claude or Codex through its launch, any other CLI through the
-    /// command `TerminalAgent` verified. A `.handoff` row is not wired yet — the launchers land with *Continue in ▾*
-    /// (ADR 0036 step 6), and until then the sheet must not pretend one started.
+    /// command `TerminalAgent` verified. A `.handoff` row is an entry from the developer's "Start with" list.
     private func start(_ task: DeskTask, launch: TaskLaunch, with runner: RunnerOption) {
-        guard runner.kind == .here else { return }
+        if runner.kind == .handoff {
+            if let entry = StartWithList.decode(startWithData).first(where: { $0.id == runner.id }) {
+                model.start(task, with: entry, agent: defaultConnection)
+            }
+            return
+        }
         if let other = TerminalAgent(rawValue: runner.id) {
             model.runInTerminal(task, launch: launch, agent: other)
             return

@@ -181,6 +181,7 @@ private struct BoardColumnView: View {
     @Environment(\.terminals) private var terminals
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
+    @AppStorage(PreferenceKey.startWith) private var startWithData = Data()
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
     private var counts: (total: Int, live: Int) { model.counts(in: column) }
@@ -245,6 +246,16 @@ private struct BoardColumnView: View {
             openFile: { NSWorkspace.shared.open(URL(fileURLWithPath: item.path)) },
             // Removal is confirmed in the dialog, where the entry's title is on screen to confirm against.
             remove: { model.openTask(task.id) })
+    }
+
+    /// The "Start with" list, for exactly the cards that offer Start: a card with nothing to start has nothing to
+    /// hand another app either.
+    private func startWithItems(for task: DeskTask) -> [StartWithItem]? {
+        guard start(for: task) != nil else { return nil }
+        return StartWithList.decode(startWithData).map { entry in
+            StartWithItem(id: entry.id, name: entry.name, isAvailable: StartWithRows.isAvailable(entry),
+                          start: { model.start(task, with: entry, agent: defaultConnection) })
+        }
     }
 
     /// A card offers Start only when pressing it would actually run something; the dialog still explains why
@@ -335,6 +346,11 @@ private struct BoardColumnView: View {
                          branchActions: branchActions(for: task),
                          localActions: localActions(for: task),
                          runControls: runControls(for: task),
+                         startWith: startWithItems(for: task),
+                         editStartWith: {
+                             model.settingsSection = .startWith
+                             model.present(.settings)
+                         },
                          isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch)
             }
             // Only where a new task could land: everything past Ready for dev is reached by moves and

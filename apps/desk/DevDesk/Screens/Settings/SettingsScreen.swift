@@ -53,6 +53,7 @@ struct SettingsScreen: View {
         case .general: GeneralPane(model: model)
         case .appearance: AppearancePane()
         case .agentsAndDefaults: AgentsAndDefaultsPane(model: model)
+        case .startWith: StartWithPane()
         case .accountsAndConnections: AccountsPane(model: model)
         case .notifications: NotificationsPane()
         case .execution: ExecutionPane()

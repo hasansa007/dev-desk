@@ -56,13 +56,14 @@ public enum TaskActivity: String, Hashable {
 }
 
 public enum SettingsSection: String, CaseIterable, Codable, Hashable {
-    case general, appearance, agentsAndDefaults, accountsAndConnections, notifications, execution, projectOverrides, runProject
+    case general, appearance, agentsAndDefaults, startWith, accountsAndConnections, notifications, execution, projectOverrides, runProject
 
     public var title: String {
         switch self {
         case .general: return "General"
         case .appearance: return "Appearance"
         case .agentsAndDefaults: return "Agents and defaults"
+        case .startWith: return "Start with"
         case .accountsAndConnections: return "Accounts and connections"
         case .notifications: return "Notifications"
         case .execution: return "Execution"
