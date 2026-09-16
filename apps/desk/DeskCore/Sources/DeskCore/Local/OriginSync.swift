@@ -19,6 +19,9 @@ public struct OriginSync {
         public var failure: String?
     }
 
+    /// Production is never moved by an action: what lands on it is a release, and a release is decided, not synced.
+    static let neverMoved: Set<String> = ["main", "master"]
+
     /// A local branch and the origin branch it can follow: its upstream, or origin's branch of the same name.
     struct Candidate: Equatable {
         let name: String
@@ -49,7 +52,7 @@ public struct OriginSync {
     static func candidates(_ refs: String, remoteRefs: Set<String>) -> [Candidate] {
         GitOutput.lines(refs).compactMap { line in
             let parts = line.components(separatedBy: "\t")
-            guard let name = parts.first, !name.isEmpty, !name.hasPrefix("-") else { return nil }
+            guard let name = parts.first, !name.isEmpty, !name.hasPrefix("-"), !neverMoved.contains(name) else { return nil }
             let upstream = parts.count > 1 ? parts[1] : ""
             let remote = upstream.hasPrefix("refs/remotes/origin/") ? upstream : "refs/remotes/origin/\(name)"
             guard remoteRefs.contains(remote) else { return nil }

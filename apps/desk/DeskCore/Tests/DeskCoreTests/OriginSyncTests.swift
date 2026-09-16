@@ -29,18 +29,20 @@ final class OriginSyncTests: XCTestCase {
         main\trefs/remotes/origin/main\t/tmp/repo
         local-only\t\t
         """
-        // staging is behind (moved), feature has its own commit (kept), main is checked out here and clean (merged ff-only).
-        let sync = await OriginSync(root: root, runner: runner(refs: refs, counts: ["staging": "0\t44", "feature": "1\t3", "main": "0\t2"])).run()
+        // staging is behind (moved), feature has its own commit (kept), main is production and never moved.
+        let fake = runner(refs: refs, counts: ["staging": "0\t44", "feature": "1\t3", "main": "0\t2"])
+        let sync = await OriginSync(root: root, runner: fake).run()
         XCTAssertTrue(sync.fetched)
-        XCTAssertEqual(sync.fastForwarded, ["staging", "main"])
+        XCTAssertEqual(sync.fastForwarded, ["staging"])
+        XCTAssertFalse(fake.keys.contains { $0.contains("refs/heads/main") })
     }
 
     func testACheckoutWithUncommittedChangesOrInAnotherWorktreeIsNeverMoved() async {
-        let dirty = runner(refs: "main\trefs/remotes/origin/main\t/tmp/repo\n", counts: ["main": "0\t2"], status: " M a.swift")
+        let dirty = runner(refs: "feature\trefs/remotes/origin/feature\t/tmp/repo\n", counts: ["feature": "0\t2"], status: " M a.swift")
         let dirtyResult = await OriginSync(root: root, runner: dirty).run()
         XCTAssertEqual(dirtyResult.fastForwarded, [])
-        XCTAssertFalse(dirty.keys.contains(FakeRunner.gitRead("merge --ff-only --no-edit refs/remotes/origin/main")))
-        let elsewhere = runner(refs: "main\trefs/remotes/origin/main\t/tmp/agent-worktree\n", counts: ["main": "0\t2"])
+        XCTAssertFalse(dirty.keys.contains(FakeRunner.gitRead("merge --ff-only --no-edit refs/remotes/origin/feature")))
+        let elsewhere = runner(refs: "feature\trefs/remotes/origin/feature\t/tmp/agent-worktree\n", counts: ["feature": "0\t2"])
         let elsewhereResult = await OriginSync(root: root, runner: elsewhere).run()
         XCTAssertEqual(elsewhereResult.fastForwarded, [])
     }
