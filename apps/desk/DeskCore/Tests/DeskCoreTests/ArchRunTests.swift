@@ -8,13 +8,24 @@ final class ArchRunTests: XCTestCase {
     func testThePromptCarriesTheTargetThenTheKind() {
         let prompt = ArchRun.prompt(agent: "Codex", kind: "dataflow", target: "the auth flow", home: home)
         XCTAssertEqual(prompt?.hasPrefix("Read /Users/tester/.codex/skills/dev/skills/arch/SKILL.md"), true)
-        XCTAssertEqual(prompt?.hasSuffix("Arguments: the auth flow dataflow"), true)
+        XCTAssertEqual(prompt?.contains("Arguments: the auth flow dataflow "), true)
     }
 
     /// An empty target draws the whole project: only the kind is passed.
     func testAnEmptyTargetPassesOnlyTheKind() {
         let prompt = ArchRun.prompt(agent: "Claude", kind: "architecture", target: "  ", home: home)
-        XCTAssertEqual(prompt?.hasSuffix("Arguments: architecture"), true)
+        XCTAssertEqual(prompt?.contains("Arguments: architecture "), true)
+    }
+
+    /// A question in a headless run is printed and the process exits 0 with nothing drawn, so every run is
+    /// told not to ask, what an empty target means, and not to cut a branch over the developer's work.
+    func testTheRunIsToldItCannotAsk() throws {
+        for agent in ["Codex", "Claude"] {
+            let prompt = try XCTUnwrap(ArchRun.prompt(agent: agent, kind: "workflow", target: "", home: home))
+            XCTAssertTrue(prompt.hasSuffix(ArchRun.headlessInstruction))
+            XCTAssertTrue(prompt.contains("never stop to ask"))
+            XCTAssertTrue(prompt.contains("Do not cut a branch"))
+        }
     }
 
     /// The headless argv is the verified `exec`/`-p` form. Codex's flags each take one value, so its prompt

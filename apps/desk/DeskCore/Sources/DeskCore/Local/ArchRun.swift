@@ -14,8 +14,18 @@ public enum ArchRun {
         let trimmed = target.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { arguments.append(trimmed) }
         arguments.append(kind)
-        return DoorCommand.prompt(door: "arch", agent: name, arguments: arguments, home: home)
+        guard let door = DoorCommand.prompt(door: "arch", agent: name, arguments: arguments, home: home) else { return nil }
+        return door + " " + headlessInstruction
     }
+
+    /// Nobody can answer a headless run: a question it asks is printed, the process exits 0, and the screen
+    /// reads that as a finished diagram that was never drawn. So the run is told the answers the door would
+    /// have asked for (SKILL.md's "Headless runs").
+    public static let headlessInstruction =
+        "This is a headless run and nobody can answer a question: never stop to ask. With no target, draw the "
+        + "whole project. Do not cut a branch or stash; write only the new docs/arch/<name>.* files on the current "
+        + "branch, leaving every other change in the tree untouched. If something truly blocks the diagram, fail "
+        + "with the reason instead of asking."
 
     /// The argv a headless `dev:arch` run execs — each word its own element, never shell-quoted into a string,
     /// built through `HeadlessArgv` so the prompt sits where no flag can consume it. Verified against the
