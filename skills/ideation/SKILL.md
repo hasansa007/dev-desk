@@ -145,7 +145,7 @@ the one with the best ratio, and this phase exists to make that visible rather t
 `docs/ideation/` if the repo has no `docs/`, and say that you did.
 
 **Writing the report is a write, and the write boundary applies** (`shared/entry.md` rule 3): name
-`owner/repo`, and **cut a branch before creating the file** rather than dropping a tracked file onto
+`owner/repo`, and **cut a branch in a worktree of its own before creating the file** (`shared/entry.md` rules 3–4) rather than dropping a tracked file onto
 whatever branch the developer is standing on. Check `git check-ignore -q docs/` and say which answer
 you got — if `docs/` is ignored the report is a local working file and a reader should not be sent
 looking for it in the clone.

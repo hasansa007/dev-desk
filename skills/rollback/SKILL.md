@@ -162,7 +162,8 @@ Upon developer approval:
 1. **Cut Isolated Rollback Branch:**
    ```bash
    git fetch origin
-   git switch -c rollback/<short-sha> --no-track origin/<prod>
+   git worktree add --no-track -b rollback/<short-sha> ~/.devdesk/wt/<repo>-rollback-<short-sha> origin/<prod>
+   cd ~/.devdesk/wt/<repo>-rollback-<short-sha>    # a worktree of its own — the project folder is never switched (entry.md rule 4)
    ```
 2. **Apply Revert:**
    ```bash
@@ -191,7 +192,8 @@ Upon developer approval:
    - In a two-stage repository, immediately open a synchronization PR or cherry-pick the revert commit onto `<pre-prod>`:
      ```bash
      git fetch origin
-     git switch -c sync-rollback/<short-sha> --no-track origin/<pre-prod>
+     git worktree add --no-track -b sync-rollback/<short-sha> ~/.devdesk/wt/<repo>-sync-rollback-<short-sha> origin/<pre-prod>
+     cd ~/.devdesk/wt/<repo>-sync-rollback-<short-sha>
      git cherry-pick <REVERT_COMMIT_SHA>
      git push -u origin sync-rollback/<short-sha>
      gh pr create --base <pre-prod> --title "chore(sync): carry rollback of <short-sha> to pre-prod"

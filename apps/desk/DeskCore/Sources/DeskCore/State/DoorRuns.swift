@@ -11,10 +11,14 @@ public struct DoorRun: Identifiable, Hashable {
     public var folderNote: String
     /// True for a report door: its shell opens, then moves into a fresh worktree on origin's base before the command.
     public var freshBase: Bool
+    /// A task's run: its shell moves into the task's own worktree (its gh-<N>- branch, or a fresh one) before the command.
+    public var taskNumber: Int?
 
-    public init(id: String, title: String, agent: String, command: String, folderNote: String, freshBase: Bool = false) {
+    public init(id: String, title: String, agent: String, command: String, folderNote: String, freshBase: Bool = false,
+                taskNumber: Int? = nil) {
         self.id = id
         self.freshBase = freshBase
+        self.taskNumber = taskNumber
         self.title = title
         self.agent = agent
         self.command = command

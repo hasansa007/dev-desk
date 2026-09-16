@@ -31,7 +31,7 @@ extension ProjectWindowModel {
     /// `command` is typed as given, for a line built elsewhere — a "Start with" command.
     func prepareRun(door: String, title: String, agent: String, arguments: [String] = [],
                     id: String? = nil, folderNote: String? = nil, mode: RunMode? = nil,
-                    command prebuilt: String? = nil) -> Bool {
+                    command prebuilt: String? = nil, taskNumber: Int? = nil) -> Bool {
         let runID = id ?? DoorRuns.id(door: door)
         // One run per door, and per task: a second start would give the same id two shells and the panel one row.
         guard canRunDoors, !isRunLive(runID),
@@ -54,7 +54,9 @@ extension ProjectWindowModel {
                          folderNote: folderNote ?? (FreshBaseWorktree.doors.contains(door)
                             ? "a report door runs in a new worktree on origin's freshly fetched base branch."
                             : "a door reads the whole project, not one task's branch."),
-                         freshBase: prebuilt == nil && FreshBaseWorktree.doors.contains(door)))
+                         // A local backlog entry has no number, so it takes a fresh base worktree like a report door.
+                         freshBase: prebuilt == nil && (FreshBaseWorktree.doors.contains(door) || (door == "dev" && taskNumber == nil)),
+                         taskNumber: prebuilt == nil ? taskNumber : nil))
         // Land on the run that was just started, the way starting an agent does. Without this the accordion
         // opened whatever was already live and the new row sat collapsed below it — a start with nothing to see.
         selectedSessionID = runID
@@ -188,7 +190,7 @@ extension ProjectWindowModel {
             if prepareRun(door: "dev", title: task.title, agent: agent,
                           arguments: ["\(task.title) — described in \(LocalBacklog.folder)/\(entry).md"],
                           id: DoorRuns.id(local: entry),
-                          folderNote: "this has no issue yet; /dev cuts a branch at its first write.",
+                          folderNote: "this has no issue yet; it runs in a fresh worktree on origin's base, where /dev cuts its branch.",
                           mode: mode) {
                 // A start is the move to In progress (ADR 0035), recorded only when something was dispatched.
                 Task { await recordStarted(task) }
@@ -198,8 +200,8 @@ extension ProjectWindowModel {
         guard let number = task.taskNumber else { return }
         if prepareRun(door: "dev", title: "Task #\(number)", agent: agent,
                       arguments: ["#\(number)"], id: DoorRuns.id(task: number),
-                      folderNote: "#\(number) has no branch yet; /dev cuts one at its first write.",
-                      mode: mode) {
+                      folderNote: "#\(number) runs in its own worktree — its gh-\(number)- branch, or a fresh one on origin's base.",
+                      mode: mode, taskNumber: number) {
             Task { await recordStarted(task) }
         }
     }

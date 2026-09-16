@@ -111,7 +111,7 @@ Gates:   <what each gate caught; "clean" is a result>
 
 ### Setup
 ```bash
-git checkout <branch> && <install/run> && <test command>   # expect: <counts>
+git worktree add ../<repo>-review <branch> && cd ../<repo>-review && <install/run> && <test command>   # expect: <counts>
 ```
 
 ### 1. <scenario name>

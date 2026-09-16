@@ -71,6 +71,12 @@ commit, branch, push, PR or merge:
 3. **Work on a NEW BRANCH, never directly on the main line**, so there is a reviewable object before
    anything lands — and **cut it from the pre-prod branch resolved above, not from whatever is
    checked out.**
+4. **Cut it in a WORKTREE of its own, and never switch the project folder's branch.** Every task and
+   every process — a `/dev` task, a findings or ideation run, a rollback — gets its own branch in its
+   own folder. The project folder stays on its base: it is what the board, the reports and every new
+   worktree read as "the project", and whatever else is open in it (a person, another agent) is working
+   on the branch it was left on. `git switch`, `git checkout <branch>` and `gh pr checkout` in a project
+   folder are blocked by a hook where one is installed; in a linked worktree they are fine.
 
 A branch cut from another unmerged branch inherits that branch's commits, and they become part of
 your diff, your PR and your review. Nothing warns you: the name is right, the tests pass, and
@@ -78,9 +84,21 @@ your diff, your PR and your review. Nothing warns you: the name is right, the te
 
 ```bash
 git fetch origin
+git worktree add --no-track -b <name> ~/.devdesk/wt/<repo>-<task> origin/<pre-prod>   # --no-track matters, see below
+cd ~/.devdesk/wt/<repo>-<task>                     # and work here, not in the project folder
 git log --oneline origin/<pre-prod>..HEAD          # empty = you are AT the base; anything = you are not
-git switch -c <name> --no-track origin/<pre-prod>  # --no-track matters, see below
 ```
+
+A branch that already exists gets its worktree the same way — `git worktree add ~/.devdesk/wt/<repo>-<task>
+<name>` — or is used where it is already checked out (`git worktree list`). The folder's untracked env
+files (`.env.local` and the like) are not carried by git; copy them in before running the app.
+
+> **2026-09-17 — one folder, three owners.** A task's branch was switched into the project folder and its
+> work left uncommitted there for days; a findings run then switched the same folder to its own branch
+> and back to cut a report; later something switched it to production's branch, and a "behind base"
+> banner offered to merge the base into it. Every screen that reads the folder — the report list, the
+> board's base comparison — showed whichever branch happened to be checked out. A branch per task in a
+> worktree per task, and a folder that never moves, removes the whole class.
 
 **`--no-track` is not optional.** Without it the new branch's upstream is the *base*, and git's first
 suggestion for a bare `git push` becomes `git push origin HEAD:<pre-prod>` — which lands your commits

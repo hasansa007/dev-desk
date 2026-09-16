@@ -70,13 +70,12 @@ public struct LocalGitDataSource: ProjectDataSource {
                                                              pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL),
                                                              localBacklog: localBacklog, stages: stages.stages)))
         }
-        var behind: CheckoutBehind?
+        var offBase: FolderOffBase?
         if refusal == nil, let base = facts.base, let baseRef = facts.baseRef, baseRef.hasPrefix("refs/remotes/origin/"),
-           !project.branch.isEmpty, project.branch != "HEAD", project.branch != base,
-           // Production takes a release, never a merge of the base offered by a banner.
-           !OriginSync.neverMoved.contains(project.branch),
-           let count = await git(["rev-list", "--count", "HEAD..\(baseRef)"]).flatMap(Int.init), count > 0 {
-            behind = CheckoutBehind(branch: project.branch, base: base, count: count)
+           !project.branch.isEmpty, project.branch != base {
+            let status = try? await runner.run("git", GitCommand.read(["status", "--porcelain", "--untracked-files=no"]), in: root, timeout: CommandTimeout.git)
+            let dirty = status.map { !$0.succeeded || !$0.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty } ?? true
+            offBase = FolderOffBase(branch: project.branch, base: base, isDirty: dirty)
         }
         var snapshot = ProjectSnapshot(
             project: project, isDemo: false, board: board,
@@ -90,7 +89,7 @@ public struct LocalGitDataSource: ProjectDataSource {
             slug: github.data?.slug, activeMilestone: active.title,
             localBacklog: localBacklog, filedBacklogKeys: LocalBacklog.filedKeys(projectPath: top), repositoryRoot: top,
             terminalAgents: await terminalCLIs)
-        snapshot.checkoutBehind = behind
+        snapshot.folderOffBase = offBase
         return snapshot
     }
 

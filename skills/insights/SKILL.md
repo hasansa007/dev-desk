@@ -138,7 +138,7 @@ cover an area.
 ### Writing it is a write
 
 `PROJECT_MAP.md` is a tracked file at the repo root, so `shared/entry.md` rule 3 applies in full:
-**name `owner/repo`, and cut a branch** rather than dropping the change onto whatever branch the
+**name `owner/repo`, and cut a branch in a worktree of its own** rather than dropping the change onto whatever branch the
 developer is standing on. Ask before writing. This is the only file this door ever writes.
 
 ### `map` — audit instead of append

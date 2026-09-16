@@ -20,6 +20,35 @@ public struct FreshBaseWorktree {
         self.homeDirectory = homeDirectory
     }
 
+    /// The folder a task's run works in, never the project folder: the task's own `gh-<N>-…` branch — where it is already
+    /// checked out, or in a new worktree for it — else a fresh worktree on origin's base, where `/dev` cuts that branch.
+    public func prepareTask(number: Int, now: Date = Date()) async -> TaskFolder {
+        let listing = try? await git(["for-each-ref", "--format=%(refname:short)%09%(worktreepath)", "refs/heads/gh-\(number)-*"],
+                                     in: projectRoot, timeout: CommandTimeout.git)
+        let branches = GitOutput.lines(listing?.stdout ?? "").map { $0.components(separatedBy: "\t") }
+            .filter { ($0.first ?? "").hasPrefix("gh-\(number)-") }
+        guard let found = branches.first, let branch = found.first else {
+            return await prepare(door: String(number), now: now)
+        }
+        let checkedOut = found.count > 1 ? found[1] : ""
+        if !checkedOut.isEmpty {
+            let path = URL(fileURLWithPath: checkedOut, isDirectory: true)
+            guard path.standardizedFileURL != projectRoot.standardizedFileURL else {
+                return atRoot("\(branch) is checked out in the project folder itself; move it to a worktree first")
+            }
+            return TaskFolder(url: path, note: nil, created: false)
+        }
+        guard let location = expandedLocation else { return atRoot("the worktree location is not an absolute folder") }
+        let path = location.appendingPathComponent(Self.folderName(project: projectRoot.lastPathComponent, door: String(number), at: now), isDirectory: true)
+        try? FileManager.default.createDirectory(at: location, withIntermediateDirectories: true)
+        let add = try? await git(["worktree", "add", "--", path.path, branch], in: projectRoot, timeout: CommandTimeout.worktreeAdd)
+        guard let add, add.succeeded else {
+            return atRoot("git could not add a worktree for \(branch)" + (add.flatMap { GitOutput.lastNonEmptyLine($0.stderr) }.map { ": \($0)" } ?? ""))
+        }
+        await EnvFiles.copy(from: projectRoot, to: path, runner: runner)
+        return TaskFolder(url: path, note: nil, created: true)
+    }
+
     /// The folder to run in. Anything that stops the worktree — no origin, no base, a failed fetch or add — runs the door
     /// at the project root instead, with the reason, rather than not at all.
     public func prepare(door: String, now: Date = Date()) async -> TaskFolder {
@@ -56,13 +85,15 @@ public struct FreshBaseWorktree {
     }
 
     private func atRoot(_ reason: String) -> TaskFolder {
-        TaskFolder(url: projectRoot, note: "This run opens at the project root, not on a fresh origin base: \(reason).", created: false)
+        TaskFolder(url: projectRoot, note: "This run opens at the project root, not in a worktree of its own: \(reason).", created: false)
     }
 
-    private var expandedLocation: URL? {
-        if worktreeLocation == "~" { return homeDirectory }
-        if worktreeLocation.hasPrefix("~/") { return homeDirectory.appendingPathComponent(String(worktreeLocation.dropFirst(2)), isDirectory: true) }
-        return worktreeLocation.hasPrefix("/") ? URL(fileURLWithPath: worktreeLocation, isDirectory: true) : nil
+    private var expandedLocation: URL? { Self.expand(worktreeLocation, home: homeDirectory) }
+
+    public static func expand(_ location: String, home: URL = FileManager.default.homeDirectoryForCurrentUser) -> URL? {
+        if location == "~" { return home }
+        if location.hasPrefix("~/") { return home.appendingPathComponent(String(location.dropFirst(2)), isDirectory: true) }
+        return location.hasPrefix("/") ? URL(fileURLWithPath: location, isDirectory: true) : nil
     }
 
     private func git(_ arguments: [String], in folder: URL, timeout: TimeInterval) async throws -> CommandResult {

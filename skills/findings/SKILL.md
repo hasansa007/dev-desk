@@ -309,7 +309,7 @@ filed, but not in the clone, so the branch-cutting rule above does not apply to 
 should not be sent looking for it in the repo.
 
 **Writing the report is a write, and the write boundary applies** (`shared/entry.md` rule 3): name
-`owner/repo`, and **cut a branch before creating the file** rather than dropping a tracked file onto
+`owner/repo`, and **cut a branch in a worktree of its own before creating the file** (`shared/entry.md` rules 3–4) rather than dropping a tracked file onto
 whatever branch the developer is standing on. This is the one phase that is not read-only, and it
 must not be described as if it were.
 

@@ -2,6 +2,7 @@ import DeskCore
 import SwiftUI
 
 struct ContentRouter: View {
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Bindable var model: ProjectWindowModel
     @Environment(\.deskWindowSize) private var window
     /// The viewer filling the window is a way of looking at one file, not a state of the project: it belongs
@@ -14,12 +15,20 @@ struct ContentRouter: View {
                 NoticeBanner(tone: .failed, title: "Reload failed", message: Markdown.escape(reloadError))
                     .padding([.horizontal, .top], 12)
             }
-            if let behind = model.snapshot?.checkoutBehind {
-                NoticeBanner(tone: .waiting, title: "\(behind.branch) is \(behind.count) commit\(behind.count == 1 ? "" : "s") behind origin/\(behind.base)",
-                             message: "Nothing is merged on its own: this checkout may hold uncommitted work, or an agent working in it. Update merges origin/\(behind.base) in, and stops without changing anything if git refuses.") {
-                    Button("Update") { Task { await model.updateCheckout() } }
+            if let offBase = model.snapshot?.folderOffBase {
+                NoticeBanner(tone: .waiting, title: "This folder is on \(offBase.branch == "HEAD" ? "a detached commit" : offBase.branch), not \(offBase.base)",
+                             message: offBase.isDirty
+                                ? "Work belongs in worktrees, one branch per task. It has uncommitted changes: Move to a worktree carries them to \(offBase.branch)'s own worktree and puts this folder back on \(offBase.base)."
+                                : "Work belongs in worktrees, one branch per task, and this folder stays on \(offBase.base) — it is what Findings, the board and every new worktree read.") {
+                    if offBase.canMoveToWorktree {
+                        Button("Move to a worktree") { Task { await model.moveFolderBranchToWorktree(worktreeLocation: worktreeLocation) } }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                            .disabled(model.isWritingTracker)
+                    }
+                    Button("Switch back to \(offBase.base)") { Task { await model.switchFolderToBase() } }
                         .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                        .disabled(model.isWritingTracker)
+                        .disabled(model.isWritingTracker || offBase.isDirty)
+                        .help(offBase.isDirty ? "Commit or move the uncommitted changes first" : "git switch \(offBase.base)")
                 }
                 .padding([.horizontal, .top], 12)
             }

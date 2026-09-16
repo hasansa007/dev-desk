@@ -34,7 +34,7 @@ public struct WriteFailure: Equatable {
     static func branch(_ message: String) -> WriteFailure { WriteFailure(title: "The branch was not deleted", message: message) }
     static func backlog(_ message: String) -> WriteFailure { WriteFailure(title: "docs/backlog/ was not changed", message: message) }
     static func merge(_ message: String) -> WriteFailure { WriteFailure(title: "The report was not merged", message: message) }
-    static func update(_ message: String) -> WriteFailure { WriteFailure(title: "The checkout was not updated", message: message) }
+    static func update(_ message: String) -> WriteFailure { WriteFailure(title: "The project folder was not moved back to its base", message: message) }
     static func stage(_ message: String) -> WriteFailure { WriteFailure(title: "The board was not changed", message: message) }
     static func openFailed(_ message: String) -> WriteFailure { WriteFailure(title: "The file was not opened", message: message) }
 }
@@ -1010,29 +1010,34 @@ public final class ProjectWindowModel {
         await sync()
     }
 
-    /// Brings origin's base into the checked-out branch, only when asked. git refuses when uncommitted changes would be
-    /// overwritten, and that refusal is shown as it is; a merge that stops on a conflict is aborted, so the checkout is
-    /// left exactly as it was rather than half-merged under whatever is working in it.
-    public func updateCheckout() async {
-        guard !isWritingTracker, case .local(let path) = ref, let behind = snapshot?.checkoutBehind,
-              !OriginSync.neverMoved.contains(behind.branch) else { return }
+    /// Puts the project folder back on its base: `git switch`, which git refuses over uncommitted changes.
+    public func switchFolderToBase() async {
+        guard !isWritingTracker, case .local(let path) = ref, let offBase = snapshot?.folderOffBase else { return }
+        isWritingTracker = true
+        defer { isWritingTracker = false }
+        do {
+            try await FolderRestore(root: URL(fileURLWithPath: path, isDirectory: true), runner: runner).switchToBase(offBase.base)
+            writeFailure = nil
+        } catch {
+            writeFailure = .update(Markdown.escape(error.localizedDescription))
+        }
+        await sync()
+    }
+
+    /// Moves the folder's branch, with its uncommitted tracked changes, into a worktree of its own, and the folder back to base.
+    public func moveFolderBranchToWorktree(worktreeLocation: String) async {
+        guard !isWritingTracker, case .local(let path) = ref, let offBase = snapshot?.folderOffBase, offBase.canMoveToWorktree,
+              let location = FreshBaseWorktree.expand(worktreeLocation) else { return }
         isWritingTracker = true
         defer { isWritingTracker = false }
         let root = URL(fileURLWithPath: path, isDirectory: true)
-        // With uncommitted changes a conflicted merge cannot be backed out cleanly (`merge --abort` may lose them), so it is not started.
-        let status = try? await runner.run("git", GitCommand.read(["status", "--porcelain", "--untracked-files=no"]), in: root, timeout: CommandTimeout.git)
-        guard let status, status.succeeded, status.stdout.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            writeFailure = .update(Markdown.escape("\(behind.branch) has uncommitted changes. Commit them first, then Update merges origin/\(behind.base) in."))
-            return
-        }
-        let merge = try? await runner.run("git", GitCommand.commit(["merge", "--no-edit", "refs/remotes/origin/\(behind.base)"]),
-                                          in: root, timeout: CommandTimeout.worktreeAdd)
-        if let merge, merge.succeeded {
+        let name = FreshBaseWorktree.folderName(project: root.lastPathComponent, door: offBase.branch, at: Date())
+        do {
+            try await FolderRestore(root: root, runner: runner).moveToWorktree(branch: offBase.branch, base: offBase.base,
+                                                                              worktree: location.appendingPathComponent(name, isDirectory: true))
             writeFailure = nil
-        } else {
-            let reason = merge.flatMap { GitOutput.lastNonEmptyLine($0.stderr) ?? GitOutput.lastNonEmptyLine($0.stdout) } ?? "git merge did not finish"
-            _ = try? await runner.run("git", GitCommand.read(["merge", "--abort"]), in: root, timeout: CommandTimeout.git)
-            writeFailure = .update(Markdown.escape("origin/\(behind.base) was not merged into \(behind.branch): \(reason)"))
+        } catch {
+            writeFailure = .update(Markdown.escape(error.localizedDescription))
         }
         await sync()
     }
