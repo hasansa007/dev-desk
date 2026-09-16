@@ -43,5 +43,6 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0032](0032-a-tapped-file-opens-beside-the-work-or-floats-over-it.md) | A tapped file opens beside the work, or floats over it | Accepted |
 | [0033](0033-every-diagram-type-lands-in-docs-arch.md) | Every diagram type lands in `docs/arch/`, labelled rather than hidden | Accepted |
 | [0034](0034-a-failed-headless-run-keeps-its-evidence.md) | A failed headless run keeps its evidence, and one rule places every prompt | Accepted |
-| [0035](0035-the-board-stores-what-git-cannot-see.md) | The board stores what git cannot see (`.devdesk/board.json`) | Accepted |
+| [0035](0035-the-board-stores-what-git-cannot-see.md) | The board stores what git cannot see (`.devdesk/board.json`) | Accepted, amended by 0037 |
 | [0036](0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md) | Agents run over a protocol (ACP), and the terminal leaves the app | Accepted |
+| [0037](0037-a-local-card-carries-its-own-done.md) | A `docs/backlog/` card's Done comes from its own file, not `board.json` | Accepted |

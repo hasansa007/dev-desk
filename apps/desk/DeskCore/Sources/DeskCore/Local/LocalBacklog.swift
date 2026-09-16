@@ -21,11 +21,23 @@ public struct BacklogItem: Identifiable, Hashable {
     public var source: String?
     /// The issue it became, once a tracker existed and it was promoted. Never filed twice.
     public var issue: Int?
+    /// `done` once the work is finished. A local card has no branch and no pull request, so git can never
+    /// say this for it (ADR 0035 amendment): the card's own file is the only place the fact can live, and
+    /// it travels with the clone the way `board.json` does not.
+    public var status: String?
+    /// What finished it, as the card records it — "2026-09-15 · 99564f1". Free text on purpose: a local card
+    /// can be closed by a commit, by a decision, or by the work turning out to be unnecessary.
+    public var resolved: String?
     public var body: String
     public var path: String
 
+    /// Finished work. Compared case-insensitively against the one spelling the doors write, so a card a
+    /// person typed `Done` into reads the same as one a run wrote.
+    public var isDone: Bool { status == "done" }
+
     public init(id: String, key: String, title: String, area: String? = nil, impact: String? = nil,
-                complexity: String? = nil, source: String? = nil, issue: Int? = nil, body: String, path: String) {
+                complexity: String? = nil, source: String? = nil, issue: Int? = nil, status: String? = nil,
+                resolved: String? = nil, body: String, path: String) {
         self.id = id
         self.key = key
         self.title = title
@@ -34,6 +46,8 @@ public struct BacklogItem: Identifiable, Hashable {
         self.complexity = complexity
         self.source = source
         self.issue = issue
+        self.status = status
+        self.resolved = resolved
         self.body = body
         self.path = path
     }
@@ -141,6 +155,7 @@ public enum LocalBacklog {
         return BacklogItem(id: id, key: fields["key"] ?? "", title: fields["title"] ?? id,
                            area: fields["area"], impact: fields["impact"], complexity: fields["complexity"],
                            source: fields["source"], issue: fields["issue"].flatMap(issueNumber),
+                           status: fields["status"]?.lowercased(), resolved: fields["resolved"],
                            body: body, path: path)
     }
 

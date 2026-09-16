@@ -567,6 +567,48 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(card?.headerBadge, StatusBadge(.info, "Local backlog"))
     }
 
+    /// Finished local work reaches Done. Git owns Done for an issue card (a merged pull request), and for a
+    /// local card that rule can never fire — no branch, no pull request — so the card's own file says it.
+    func testALocalBacklogEntryMarkedDoneIsADoneCard() {
+        let item = BacklogItem(id: "c1-callback", key: "C1", title: "Callback fetch returns 0", area: "Logic",
+                               status: "done", resolved: "2026-09-15 · 99564f1", body: "",
+                               path: "/p/docs/backlog/c1-callback.md")
+        let card = BoardBuilder.build(BoardInput(localBacklog: [item])).first { $0.isLocalBacklog }
+        XCTAssertEqual(card?.column, .done)
+        XCTAssertEqual(card?.branchLine, "Done · 2026-09-15 · 99564f1", "there is no branch, so the line carries what closed it")
+        XCTAssertFalse(card?.isMerged ?? true, "done is not merged: nothing was ever pushed")
+    }
+
+    /// The case this was written for: a run that was interrupted left `inProgress` in board.json, and the
+    /// work got finished anyway. The file outranks the leftover stage, or the card is stuck forever.
+    func testACardMarkedDoneBeatsALeftoverInProgressStage() {
+        let item = BacklogItem(id: "c1-callback", key: "C1", title: "Callback fetch returns 0",
+                               status: "done", body: "", path: "/p/docs/backlog/c1-callback.md")
+        let card = BoardBuilder.build(BoardInput(localBacklog: [item], stages: ["local:c1-callback": .inProgress]))
+            .first { $0.isLocalBacklog }
+        XCTAssertEqual(card?.column, .done)
+    }
+
+    /// `status:` is read case-insensitively, and anything that is not done changes nothing.
+    func testOnlyDoneMovesTheCardAndTheSpellingDoesNotMatter() {
+        func column(_ status: String?) -> BoardColumn? {
+            let item = BacklogItem(id: "c1", key: "C1", title: "t", status: status, body: "", path: "/p/docs/backlog/c1.md")
+            return BoardBuilder.build(BoardInput(localBacklog: [item])).first { $0.isLocalBacklog }?.column
+        }
+        XCTAssertEqual(column("done"), .done)
+        XCTAssertEqual(column(nil), .backlog)
+        XCTAssertEqual(column("blocked"), .backlog, "an unknown status is not a column")
+        // The parser lowercases what it reads, which is where a hand-typed `Done` is normalised.
+        XCTAssertEqual(LocalBacklog.parse("---\nkey: C1\ntitle: t\nstatus: Done\n---\n", id: "c1", path: "/p").status, "done")
+    }
+
+    /// A done card records no commit when the card does not name one — and says so rather than inventing one.
+    func testADoneCardWithNoResolvedLineSaysSo() {
+        let item = BacklogItem(id: "c1", key: "C1", title: "t", status: "done", body: "", path: "/p/docs/backlog/c1.md")
+        let card = BoardBuilder.build(BoardInput(localBacklog: [item])).first { $0.isLocalBacklog }
+        XCTAssertEqual(card?.branchLine, "Done — the card records no commit")
+    }
+
     /// An entry that already names its issue is on its way to filed/; the issue is the card, not both.
     func testAPromotedEntryIsNotASecondCard() {
         let item = BacklogItem(id: "c1", key: "C1", title: "Filed", issue: 87, body: "", path: "/p/docs/backlog/c1.md")
