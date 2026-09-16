@@ -35,6 +35,12 @@ public enum AgentLaunch {
         NSString(string: "~/.\(agent.rawValue)/skills/dev").expandingTildeInPath
     }
 
+    /// The name a connection and `DoorCommand` know this agent by — "Claude", not the longer display name.
+    /// The inverse of `agent(forConnectionName:)`, and the string every start path passes around.
+    public static func connectionName(_ agent: AgentKind) -> String {
+        DoorCommand.agents.first { $0.executable == agent.rawValue }?.name ?? agent.rawValue
+    }
+
     public static func displayName(_ agent: AgentKind) -> String {
         switch agent {
         case .claude: return "Claude Code"

@@ -218,6 +218,7 @@ private struct BoardContext {
         return (active + pullRequestTasks + branchTasks + orderNext(backlog) + local + deferred + merged).map { task in
             var task = task
             task.baseRef = input.git?.baseRef
+            task.baseShort = input.git?.baseShort
             return task
         }
     }

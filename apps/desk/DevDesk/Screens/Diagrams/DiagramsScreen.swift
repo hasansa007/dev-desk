@@ -10,7 +10,7 @@ struct DiagramsScreen: View {
     @Bindable var model: ProjectWindowModel
     /// Read so a change to the default connection re-resolves the agent, the same way the starter's composer does.
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
-    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(\.terminals) private var terminals
     @State private var selectedKind = ArchDiagrams.kinds.first ?? "architecture"
     @State private var target = ""

@@ -179,7 +179,7 @@ private struct BoardColumnView: View {
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @Environment(\.terminals) private var terminals
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
-    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
     private var counts: (total: Int, live: Int) { model.counts(in: column) }

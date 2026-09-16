@@ -57,7 +57,7 @@ extension ProjectWindowModel {
 struct RunProjectControl: View {
     let model: ProjectWindowModel
     let terminals: ShellTerminalRegistry?
-    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(\.deskWindowSize) private var windowSize
 
     private var runs: ProjectRuns { model.projectRuns }

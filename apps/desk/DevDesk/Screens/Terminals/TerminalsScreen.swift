@@ -19,7 +19,7 @@ struct TerminalsScreen: View {
     /// What was live when the app was last killed (ADR 0031). Records, not sessions: nothing here is running.
     @State private var recovered: [JournalRecord] = []
     /// Where a new terminal's worktree would go, read here because opening one starts its shell at once.
-    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @Environment(\.terminals) private var terminals
 
@@ -482,7 +482,7 @@ private struct SessionPane: View {
     let row: SessionRow
     @Environment(\.terminals) private var terminals
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
-    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @State private var answer = ""
 
     /// A scratch session is its body alone. Its terminal started the moment it was opened, so a header would

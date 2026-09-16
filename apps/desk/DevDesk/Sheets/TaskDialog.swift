@@ -7,7 +7,7 @@ struct TaskDialog: View {
     @Bindable var model: ProjectWindowModel
     let task: DeskTask
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
-    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(\.terminals) private var terminals
     @Environment(\.openURL) private var openURL
     @Environment(JobRegistry.self) private var jobs: JobRegistry?

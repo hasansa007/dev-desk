@@ -379,7 +379,7 @@ struct NotificationsPane: View {
 }
 
 struct ExecutionPane: View {
-    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @AppStorage(PreferenceKey.agentLimit) private var agentLimit = AgentLimit.defaultValue
     @AppStorage(PreferenceKey.confirmQuit) private var confirmQuit = true
 

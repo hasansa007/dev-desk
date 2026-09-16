@@ -51,6 +51,14 @@ public final class DoorRuns {
     public static func id(task number: Int) -> String { "task:\(number)" }
     /// A run for work that exists only in `docs/backlog/`, which has no number to name it by.
     public static func id(local entry: String) -> String { "local:\(entry)" }
+
+    /// The id a task's `/dev` start runs under, by the one rule: a local entry names itself, an issue names
+    /// its number. nil for a card `/dev` has nothing to open. Here so the Start, the queue and the parked
+    /// launch cannot disagree about which run a card is.
+    public static func id(for task: DeskTask) -> String? {
+        if let entry = task.localBacklogID { return id(local: entry) }
+        return task.taskNumber.map { id(task: $0) }
+    }
 }
 
 /// Builds what a door is started with: the prompt form `scripts/dev.py` builds, so one string works in either CLI.

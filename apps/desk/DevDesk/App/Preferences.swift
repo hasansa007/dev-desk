@@ -28,6 +28,10 @@ enum PreferenceKey {
 enum AgentDefaults {
     static let connection = "Codex"
     static let runMode: RunMode = .standard
+    /// Repeated at eleven @AppStorage sites before this existed. A launch is built outside a view and
+    /// has to read the same default, and a default that disagrees with itself is how a queued card
+    /// starts somewhere its Start never named.
+    static let worktreeLocation = "~/.devdesk/wt"
 }
 
 /// How many agents may run at once, across every window.

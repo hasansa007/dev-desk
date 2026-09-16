@@ -68,7 +68,7 @@ final class AutoAgents {
                                                 alreadyStarted: started, runningAgentsAcrossApp: LiveShells.shared.agentCount,
                                                 limit: AgentLimit.current).compactMap(model.task)
         guard !picked.isEmpty else { return }
-        let location = UserDefaults.standard.string(forKey: PreferenceKey.worktreeLocation) ?? "~/.devdesk/wt"
+        let location = UserDefaults.standard.string(forKey: PreferenceKey.worktreeLocation) ?? AgentDefaults.worktreeLocation
         inFlight = true
         // Auto's starts refuse the project root, and launch nothing if Auto is turned off before the folder is ready.
         let starts = picked.map { task in
@@ -118,7 +118,7 @@ struct AutoAgentsHook: View {
     let auto: AutoAgents
     @AppStorage private var autoMode: Bool
     @AppStorage(PreferenceKey.agentLimit) private var limit = AgentLimit.defaultValue
-    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = "~/.devdesk/wt"
+    @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
 
     init(auto: AutoAgents, ref: ProjectRef) {
         self.auto = auto

@@ -358,6 +358,9 @@ public struct DeskTask: Identifiable, Hashable {
     public var noBranchNote: String?
     /// The ref a detached agent worktree starts from, e.g. "refs/remotes/origin/main"; nil for samples.
     public var baseRef: String?
+    /// What `baseRef` pointed at when the board was built, short — the half a `TaskLaunch` pins so two runs
+    /// of one launch cannot silently sit on different code (ADR 0036).
+    public var baseShort: String?
     public var nextAction: NextAction?
     public var notice: TaskNotice?
     public var pipeline: PipelineProgress?

@@ -37,7 +37,9 @@ public struct TaskLaunch: Codable, Hashable, Identifiable {
         self.mode = mode
         self.worktreeLocation = worktreeLocation
         self.base = base
-        self.createdAt = createdAt
+        // Whole seconds, because the file stores ISO 8601 and a launch read back must equal the one written.
+        // Sub-second precision buys nothing here and silently made a value unequal to itself after a round trip.
+        self.createdAt = Date(timeIntervalSince1970: createdAt.timeIntervalSince1970.rounded())
     }
 
     /// The one prompt builder. `DoorCommand` resolves the skill root per agent — `.claude/skills/dev` against

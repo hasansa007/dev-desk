@@ -58,20 +58,30 @@ final class StartQueueRunner {
         releasedNotYetLive = releasedNotYetLive.filter { id, releasedAt in
             !running.contains(id) && now.timeIntervalSince(releasedAt) < releaseExpiry
         }
-        let connection = UserDefaults.standard.string(forKey: PreferenceKey.defaultConnection) ?? AgentDefaults.connection
+        let fallback = UserDefaults.standard.string(forKey: PreferenceKey.defaultConnection) ?? AgentDefaults.connection
+        let store = model.launchStore
         let released = StartQueue.tasksToRelease(board: model.tasks,
                                                  freeSlots: StartQueue.spendableSlots(appFree: AgentSlots.free,
                                                                                       releasedNotYetLive: releasedNotYetLive.count),
                                                  runningTaskIDs: running)
             .compactMap(model.task)
+            // The launch this card was parked with (ADR 0036). Without it the preferences AT RELEASE decided
+            // what ran, so a card queued under Codex in Delegate started under whatever was current when a
+            // slot freed. nil only for a card parked before this existed, which falls back to today's values.
+            .map { task in (task: task, launch: DoorRuns.id(for: task).flatMap { store?.read(id: $0) }) }
             // A card that cannot start stays in Queued rather than being retried in a loop.
-            .filter { model.startBlockedReason(for: $0, agent: connection) == nil }
+            .filter { model.startBlockedReason(for: $0.task, agent: connection(for: $0.launch, fallback: fallback)) == nil }
         // startTask records In progress when it dispatches, so a released card leaves Queued on its own
         // and the next pass sees a shorter queue — nothing extra to record here.
-        for task in released {
+        for (task, launch) in released {
             releasedNotYetLive[task.id] = now
-            model.startTask(task, agent: connection)
+            model.startTask(task, agent: connection(for: launch, fallback: fallback), using: launch)
         }
+    }
+
+    /// The parked launch's agent, or the app default for a card parked before launches were stored.
+    private func connection(for launch: TaskLaunch?, fallback: String) -> String {
+        launch.map { AgentLaunch.connectionName($0.agent) } ?? fallback
     }
 }
 

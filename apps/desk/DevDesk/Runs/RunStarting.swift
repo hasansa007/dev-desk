@@ -28,12 +28,12 @@ extension ProjectWindowModel {
     /// Returns whether the run was actually dispatched, so a caller recording a stage records only real starts.
     @discardableResult
     func prepareRun(door: String, title: String, agent: String, arguments: [String] = [],
-                    id: String? = nil, folderNote: String? = nil) -> Bool {
+                    id: String? = nil, folderNote: String? = nil, mode: RunMode? = nil) -> Bool {
         let runID = id ?? DoorRuns.id(door: door)
         // One run per door, and per task: a second start would give the same id two shells and the panel one row.
         guard canRunDoors, !isRunLive(runID),
               let command = DoorCommand.build(door: door, agent: agent, arguments: arguments, home: NSHomeDirectory(),
-                                              mode: RunModeChoice.current(for: ref))
+                                              mode: mode ?? RunModeChoice.current(for: ref))
         else {
             if isRunLive(runID) {
                 selectedSessionID = runID
@@ -166,20 +166,27 @@ extension ProjectWindowModel {
 
     /// Starts `/dev` for a task. The card and the dialog both call this, so they cannot disagree about what
     /// starting means, and the one-run-per-task rule in `prepareRun` still holds across both.
-    func startTask(_ task: DeskTask, agent: String) {
+    func startTask(_ task: DeskTask, agent: String, using launch: TaskLaunch? = nil) {
         if task.isMerged { return }
+        // A released card runs what was decided when it was parked, not what the preferences say now.
+        let agent = launch.map { AgentLaunch.connectionName($0.agent) } ?? agent
+        let mode = launch?.mode
         // "In queue if the limit is hit" (ADR 0035): with every agent slot busy, the Start parks the card
         // in Queued rather than running past the limit — StartQueueRunner releases it as slots free.
         if StartQueue.queuesInsteadOfStarting(task, freeSlots: AgentSlots.free) {
+            if let parked = taskLaunch(for: task, agent: agent) { launchStore?.write(parked) }
             Task { await queueForStart(task) }
             return
         }
+        // Dispatched, so the parked copy has done its job; the run's own record takes over.
+        if let launch { launchStore?.clear(id: launch.id) }
         if let entry = task.localBacklogID {
             // No issue to name. `/dev` takes a description as readily as a number, and the file is the description.
             if prepareRun(door: "dev", title: task.title, agent: agent,
                           arguments: ["\(task.title) — described in \(LocalBacklog.folder)/\(entry).md"],
                           id: DoorRuns.id(local: entry),
-                          folderNote: "this has no issue yet; /dev cuts a branch at its first write.") {
+                          folderNote: "this has no issue yet; /dev cuts a branch at its first write.",
+                          mode: mode) {
                 // A start is the move to In progress (ADR 0035), recorded only when something was dispatched.
                 Task { await recordStarted(task) }
             }
@@ -188,9 +195,30 @@ extension ProjectWindowModel {
         guard let number = task.taskNumber else { return }
         if prepareRun(door: "dev", title: "Task #\(number)", agent: agent,
                       arguments: ["#\(number)"], id: DoorRuns.id(task: number),
-                      folderNote: "#\(number) has no branch yet; /dev cuts one at its first write.") {
+                      folderNote: "#\(number) has no branch yet; /dev cuts one at its first write.",
+                      mode: mode) {
             Task { await recordStarted(task) }
         }
+    }
+
+    /// This project's parked launches, or nil for a project with no folder to keep them in.
+    var launchStore: TaskLaunchStore? { projectRoot.map(TaskLaunchStore.init(projectRoot:)) }
+
+    /// Everything this Start decided, as one value (ADR 0036 decision 1): the door and its arguments, the
+    /// agent and mode chosen now, where a worktree may go, and the base pinned to the commit it names.
+    /// nil for a card `/dev` has nothing to open — the same cards `startBlockedReason` already refuses.
+    func taskLaunch(for task: DeskTask, agent: String) -> TaskLaunch? {
+        guard let kind = AgentLaunch.agent(forConnectionName: agent) else { return nil }
+        guard let id = DoorRuns.id(for: task) else { return nil }
+        // The same arguments `startTask` dispatches with: a local entry is described by its file, an issue by its number.
+        let arguments = task.localBacklogID
+            .map { ["\(task.title) — described in \(LocalBacklog.folder)/\($0).md"] }
+            ?? task.taskNumber.map { ["#\($0)"] } ?? []
+        return TaskLaunch(id: id, task: task.id, title: task.title, door: "dev", arguments: arguments,
+                          agent: kind, mode: RunModeChoice.current(for: ref),
+                          worktreeLocation: UserDefaults.standard.string(forKey: PreferenceKey.worktreeLocation)
+                              ?? AgentDefaults.worktreeLocation,
+                          base: task.baseRef.map { LaunchBase(ref: $0, short: task.baseShort) })
     }
 
     /// Why this task cannot be started, or nil when it can.

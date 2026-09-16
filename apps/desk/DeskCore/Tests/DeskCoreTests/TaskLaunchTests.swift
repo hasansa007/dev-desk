@@ -59,7 +59,7 @@ final class TaskLaunchTests: XCTestCase {
         let data = try JSONEncoder().encode(queued)
         let released = try JSONDecoder().decode(TaskLaunch.self, from: data)
 
-        XCTAssertEqual(released, queued)
+        XCTAssertEqual(released, queued, "a launch must equal itself after a round trip, timestamp included")
         XCTAssertEqual(released.agent, .codex)
         XCTAssertEqual(released.mode, .delegate)
         XCTAssertEqual(released.worktreeLocation, "~/.devdesk/wt")
