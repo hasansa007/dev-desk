@@ -25,8 +25,9 @@ survey had put on the board, and those are what actually build up.
   not planned with one shared reason (the same bounded write as Cancel task, ADR 0014). Started cards are
   listed with a warning to close them from their own card; a reset never closes work in progress
   (developer: *"no, but warn user"*). A card only in `docs/backlog/` is shown and kept.
-- **The survey's source column names files** (`ContactDetailView.swift +1`), not a head-truncated path
-  that had only line numbers left. Lines are in the tooltip, and By file still shows lines under the file.
+- **The survey's source column is one label per file a finding names** (developer: *"for each issued file
+  can have multi labels"*): as many as fit, then `+N`; each label's tooltip holds that file's lines. It was
+  a head-truncated path with only line numbers left. By file still shows lines under the file header.
 
 ## Rejected
 

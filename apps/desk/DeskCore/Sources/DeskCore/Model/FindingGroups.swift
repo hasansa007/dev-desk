@@ -91,16 +91,27 @@ public enum FindingGroups {
         return groups
     }
 
-    /// The files a finding names, by file name, for a column too narrow for paths: `List.swift +2`. Line ranges
-    /// are left to the tooltip — a head-truncated `…re.swift:103` showed where in a file, not which file.
-    public static func fileSummary(_ locations: [String]) -> String {
+    /// The files a finding names, once each by file name, in the order the report cites them — the labels a row
+    /// carries. Line ranges are left to the tooltip: a head-truncated `…re.swift:103` said where, not which file.
+    public static func fileNames(_ locations: [String]) -> [String] {
         var files: [String] = []
         for location in locations {
             let file = (split(location).file as NSString).lastPathComponent
-            if !file.isEmpty, !files.contains(file) { files.append(file) }
+            if isFileName(file), !files.contains(file) { files.append(file) }
         }
-        guard let first = files.first else { return "—" }
-        return files.count > 1 ? "\(first) +\(files.count - 1)" : first
+        return files
+    }
+
+    /// `List.swift`, not `and whatever each seam needs`: a report's `touches:` line is prose split on commas, and
+    /// a word from it is not a file to label.
+    static func isFileName(_ name: String) -> Bool {
+        guard !name.contains(where: \.isWhitespace), let dot = name.lastIndex(of: "."), dot != name.startIndex else { return false }
+        return name.index(after: dot) != name.endIndex
+    }
+
+    /// The locations of one file among a finding's, for that file's label tooltip.
+    public static func locations(_ locations: [String], inFile name: String) -> [String] {
+        locations.filter { (split($0).file as NSString).lastPathComponent == name }
     }
 
     static func primary(_ finding: Finding) -> FindingCategory? {

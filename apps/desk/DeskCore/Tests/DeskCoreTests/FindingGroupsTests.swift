@@ -65,11 +65,13 @@ final class FindingGroupsTests: XCTestCase {
         XCTAssertEqual(FindingGroups.split("C:thing").file, "C:thing")
     }
 
-    /// The source column names files; line ranges were all a head-truncated path had left to show.
-    func testFileSummaryNamesFilesNotLines() {
-        XCTAssertEqual(FindingGroups.fileSummary(["App/ContactDetailView.swift:104-115", "App/Store.swift:68"]),
-                       "ContactDetailView.swift +1")
-        XCTAssertEqual(FindingGroups.fileSummary(["A/List.swift:1", "List.swift:9-12"]), "List.swift")
-        XCTAssertEqual(FindingGroups.fileSummary([]), "—")
+    /// A row labels each file once; line ranges were all a head-truncated path had left to show.
+    func testFileNamesAreOneLabelPerFile() {
+        let locations = ["App/ContactDetailView.swift:104-115", "App/Store.swift:68", "ContactDetailView.swift:9"]
+        XCTAssertEqual(FindingGroups.fileNames(locations), ["ContactDetailView.swift", "Store.swift"])
+        XCTAssertEqual(FindingGroups.locations(locations, inFile: "ContactDetailView.swift"),
+                       ["App/ContactDetailView.swift:104-115", "ContactDetailView.swift:9"])
+        XCTAssertEqual(FindingGroups.fileNames([]), [])
+        XCTAssertEqual(FindingGroups.fileNames(["Tests.swift", "and whatever each testable seam needs", "and"]), ["Tests.swift"])
     }
 }

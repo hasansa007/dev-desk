@@ -18,7 +18,7 @@ struct FindingRow: View {
         static let check: CGFloat = 18
         static let kind: CGFloat = 86
         static let area: CGFloat = 52
-        static let source: CGFloat = 190
+        static let source: CGFloat = 260
         static let action: CGFloat = 118
     }
 
@@ -97,18 +97,17 @@ struct FindingRow: View {
                 .foregroundStyle(DeskColor.tone(.failed).dot)
                 .lineLimit(1)
                 .help(note.text)
-        } else {
-            Text(lines ?? sourceLine)
+        } else if let lines {
+            Text(lines)
                 .font(DeskFont.mono(11))
                 .foregroundStyle(DeskColor.faintInk)
                 .lineLimit(1)
-                .truncationMode(lines == nil ? .middle : .head)
+                .truncationMode(.head)
                 .help(finding.locations.joined(separator: "\n"))
+        } else {
+            FileLabels(locations: finding.locations)
         }
     }
-
-    /// The file, not the line: the full locations are the tooltip.
-    private var sourceLine: String { FindingGroups.fileSummary(finding.locations) }
 
     /// A state that has something to say is always shown; the Backlog button and the menu only on hover, so
     /// 26 rows are not 26 identical buttons.
@@ -220,5 +219,52 @@ struct FindingRow: View {
     private var filingNote: (text: String, isWarning: Bool)? {
         guard let filing, case .ended(let text, true) = filing.state else { return nil }
         return ("Filing failed: \(text)", true)
+    }
+}
+
+/// One label per file a finding names — a finding in three files carries three, the way an issue carries its
+/// labels. As many as fit are shown, and the rest are a count whose tooltip names them.
+struct FileLabels: View {
+    let locations: [String]
+
+    private var files: [String] { FindingGroups.fileNames(locations) }
+
+    var body: some View {
+        if files.isEmpty {
+            Text("—")
+                .font(DeskFont.mono(11))
+                .foregroundStyle(DeskColor.faintInk)
+        } else {
+            ViewThatFits(in: .horizontal) {
+                ForEach((1...files.count).reversed(), id: \.self) { shown in
+                    labels(shown)
+                }
+            }
+        }
+    }
+
+    private func labels(_ shown: Int) -> some View {
+        HStack(spacing: 4) {
+            ForEach(files.prefix(shown), id: \.self) { file in
+                Text(file)
+                    .font(DeskFont.mono(10.5))
+                    .foregroundStyle(DeskColor.secondaryInk)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .padding(.vertical, 1)
+                    .padding(.horizontal, 6)
+                    .background(DeskColor.neutralChipFill2, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
+                    .overlay(RoundedRectangle(cornerRadius: DeskMetric.pillRadius).strokeBorder(DeskColor.border))
+                    .fixedSize(horizontal: shown > 1, vertical: false)
+                    .help(FindingGroups.locations(locations, inFile: file).joined(separator: "\n"))
+            }
+            if shown < files.count {
+                Text("+\(files.count - shown)")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .fixedSize()
+                    .help(files.dropFirst(shown).joined(separator: "\n"))
+            }
+        }
     }
 }
