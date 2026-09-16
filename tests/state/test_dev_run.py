@@ -6,6 +6,7 @@ import shutil
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 # Add repo root to import path
 REPO_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../.."))
@@ -13,11 +14,13 @@ sys.path.insert(0, REPO_ROOT)
 
 from scripts.dev import (  # noqa: E402
     AGENTS,
+    ROOTS,
     UNSUPPORTED,
     build_command,
     build_prompt,
     list_doors,
     resolve_door,
+    skill_root,
 )
 
 
@@ -137,6 +140,28 @@ class AgentSupport(unittest.TestCase):
 
     def test_no_agent_appears_in_both_tables(self):
         self.assertEqual(set(AGENTS) & set(UNSUPPORTED), set())
+
+
+class SkillRootPerAgent(unittest.TestCase):
+    """install.sh writes one copy per agent, so a run must read the root of the agent it dispatches to."""
+
+    def test_every_supported_agent_has_a_root(self):
+        self.assertEqual(sorted(ROOTS), sorted(AGENTS))
+
+    def test_each_agent_reads_its_own_root(self):
+        self.assertTrue(skill_root("codex").endswith("/.codex/skills/dev"))
+        self.assertTrue(skill_root("claude").endswith("/.claude/skills/dev"))
+        self.assertNotEqual(skill_root("codex"), skill_root("claude"))
+
+    def test_an_unnamed_agent_takes_an_installed_root(self):
+        with FakeRoot() as fake:
+            with mock.patch.dict(ROOTS, {"claude": "/nonexistent/.claude/skills/dev",
+                                         "codex": fake.dir}, clear=True):
+                self.assertEqual(skill_root(), fake.dir)
+
+    def test_an_unknown_agent_does_not_silently_borrow_anothers_root(self):
+        # gemini is unsupported; it must not resolve to Claude's copy just because that one exists.
+        self.assertNotIn("gemini", ROOTS)
 
 
 if __name__ == "__main__":

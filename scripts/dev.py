@@ -569,9 +569,27 @@ UNSUPPORTED = {
 }
 
 
-def skill_root() -> str:
-    """Where the family is installed, not where it was cloned — see SKILL.md."""
-    return os.path.expanduser("~/.claude/skills/dev")
+# install.sh writes one copy of the family per agent, and an agent can only read its own root.
+ROOTS = {
+    "claude": "~/.claude/skills/dev",
+    "codex": "~/.codex/skills/dev",
+}
+
+
+def skill_root(agent: Optional[str] = None) -> str:
+    """Where the family is installed for this agent, not where it was cloned — see SKILL.md.
+
+    Named agent wins: pointing Codex at ~/.claude/skills/dev asks it to read a door it may not have,
+    and reports "not installed" on a machine where its own copy is sitting there. With no agent, the
+    first installed root wins, so doctor and the door list still work with either CLI alone.
+    """
+    if agent in ROOTS:
+        return os.path.expanduser(ROOTS[agent])
+    for path in ROOTS.values():
+        expanded = os.path.expanduser(path)
+        if os.path.isdir(expanded):
+            return expanded
+    return os.path.expanduser(ROOTS["claude"])
 
 
 def resolve_door(root: str, door: Optional[str]) -> Optional[str]:
@@ -615,16 +633,8 @@ def origin_ref(base: Optional[str], cwd: Optional[str] = None) -> Optional[str]:
 
 
 def cmd_run(args) -> int:
-    root = skill_root()
-    if not os.path.isdir(root):
-        print("skill root not found at %s — run install.sh" % root, file=sys.stderr)
-        return 2
-    door_path = resolve_door(root, args.door)
-    if not door_path:
-        print("no such door: %s\navailable: dev, %s" % (args.door, ", ".join(list_doors(root))),
-              file=sys.stderr)
-        return 2
-
+    # The agent is resolved first because it decides which root to read: the door path goes into the
+    # prompt, and the agent is the one that has to be able to open it.
     agent = args.agent
     if agent in UNSUPPORTED:
         print("%s is not supported: %s" % (agent, UNSUPPORTED[agent]), file=sys.stderr)
@@ -635,6 +645,16 @@ def cmd_run(args) -> int:
             print("no supported agent CLI on PATH (%s)" % ", ".join(sorted(AGENTS)), file=sys.stderr)
             return 2
         agent = found[0]
+
+    root = skill_root(agent)
+    if not os.path.isdir(root):
+        print("skill root not found at %s — run install.sh" % root, file=sys.stderr)
+        return 2
+    door_path = resolve_door(root, args.door)
+    if not door_path:
+        print("no such door: %s\navailable: dev, %s" % (args.door, ", ".join(list_doors(root))),
+              file=sys.stderr)
+        return 2
 
     cmd = build_command(agent, build_prompt(door_path, args.door or "dev", args.args))
     printable = " ".join(cmd[:-1] + ['"%s"' % cmd[-1]])
@@ -676,10 +696,12 @@ def cmd_doctor(args) -> int:
     ok_py = sys.version_info >= (3, 8)
     rows.append(("python", ok_py, sys.version.split()[0]))
 
-    root_dir = skill_root()
-    have_skill = os.path.isdir(root_dir)
-    rows.append(("skill root", have_skill,
-                 root_dir if have_skill else "not installed — run install.sh"))
+    # Per agent, because install.sh writes one copy each and a run reads the root of the agent it
+    # dispatches to. Failing only when NO agent has it: one CLI installed is a whole setup, not half of one.
+    installed = [name for name, path in ROOTS.items() if os.path.isdir(os.path.expanduser(path))]
+    rows.append(("skill root", bool(installed),
+                 ", ".join("%s at %s" % (n, os.path.expanduser(ROOTS[n])) for n in installed)
+                 if installed else "no agent has it — run install.sh"))
 
     failed = 0
     for name, ok, detail in rows:
@@ -689,6 +711,12 @@ def cmd_doctor(args) -> int:
 
     # Optional capabilities are REPORTED, never counted as failures — the family works without
     # every one of them, and a doctor that fails on an unused extra is a doctor people stop running.
+    missing = [name for name in ROOTS if name not in installed]
+    if installed and missing:
+        print("%-15s %-4s %s" % ("skill root", "--",
+                                 "%s has no copy — `dev run --agent %s` cannot read a door"
+                                 % (", ".join(missing), missing[0])))
+
     owner = (remote_slug() or "/").split("/")[0]
     has_projects = owner and run(["gh", "project", "list", "--owner", owner,
                                   "--format", "json"])[0] == 0
