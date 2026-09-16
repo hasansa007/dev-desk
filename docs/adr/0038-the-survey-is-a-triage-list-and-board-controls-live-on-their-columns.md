@@ -37,9 +37,15 @@ What the screenshots showed:
 
 **Survey.**
 - One row per finding: checkbox, full-width title, kind, area, source, and an action slot that shows a
-  state (Filing…, Filed, In backlog, Ignored) always and the Backlog button and ⋯ menu on hover.
+  state (Filing…, Ignored, or where a filed finding's card is) always and the Backlog button and ⋯ menu
+  on hover.
+- **A filed finding shows its card's current column** — Ready for dev, In progress, Done — read from the
+  board, and clicking it opens the task. It said "In backlog", which stayed on findings whose tasks had
+  moved on (developer, 2026-09-16: *"some of them may be in progress or done or any different status"*).
+  One filed with no card on this board to point at says "Filed".
 - Rows are sectioned **By status** (New, Known · new evidence, Needs a decision, Closed or declined —
-  a finding with two categories under the first) or **By file** (busiest file first; a finding appears
+  a finding with two categories under the first — and **Filed** last, so "New · not filed yet" is never
+  a header over a finding already on the board) or **By file** (busiest file first; a finding appears
   under every file it names; bare names and paths to the same file are one section). The choice is
   remembered in `desk.surveyGrouping`. Grouping lives in `DeskCore` (`FindingGroups`) and is tested.
 - A section header says what the section means and, when every row agrees, how far it was verified —
@@ -58,6 +64,8 @@ What the screenshots showed:
 - **Survey: list with a detail pane and keyboard triage.** The evidence beside every decision; but the
   reading pane is what the card grid had replaced, for making a finding something read rather than
   acted on, and the dialog already carries the evidence one click away.
+- **Filed findings: no label at all.** Nothing stale, but a filed finding then looks unfiled and stays
+  under "New · not filed yet".
 - **Survey: triage columns** (New / Needs a decision / In backlog / Ignored) with drag to file. Matches
   the board; sixteen drags to file sixteen findings, and four columns truncate titles again.
 - **Keep the card grid, trim the card.** Removes the repetition but not the truncation, and still fits

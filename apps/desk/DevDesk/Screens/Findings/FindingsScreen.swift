@@ -67,7 +67,21 @@ private struct FindingsBoard: View {
         return "\(total) finding\(total == 1 ? "" : "s")" + (ignoredCount > 0 ? " · \(ignoredCount) ignored" : "")
     }
 
-    private var groups: [FindingGroup] { FindingGroups.group(visibleFindings, by: grouping) }
+    private var groups: [FindingGroup] {
+        FindingGroups.group(visibleFindings, by: grouping, filed: Set(visibleFindings.filter(isFiled).map(\.id)))
+    }
+
+    private func filingJob(for finding: Finding) -> BackgroundJob? {
+        guard let jobs, case .local(let path) = model.ref else { return nil }
+        return jobs.job(subject: finding.id, in: path)
+    }
+
+    /// On the board, or handed to the tracker by a run that finished cleanly.
+    private func isFiled(_ finding: Finding) -> Bool {
+        if model.isInLocalBacklog(finding.id) { return true }
+        if let job = filingJob(for: finding), case .ended(_, false) = job.state { return true }
+        return false
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -305,7 +319,7 @@ private struct FindingsBoard: View {
         case .knownNewEvidence: meaning = "an issue already covers these"
         case .needsDecision: meaning = "not confirmed — filed only if you choose to"
         case .closedOrDeclined: meaning = "decided against before"
-        case nil: meaning = nil
+        case nil: meaning = group.id == "filed" ? "each row says where its card is now" : nil
         }
         let parts = [meaning, group.sharedVerification].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")
@@ -321,12 +335,8 @@ private struct FindingsBoard: View {
     /// Only the checked findings that can be filed right now: one already filing, filed or in the backlog is
     /// left alone rather than drafted a second time.
     private var fileable: [Finding] {
-        checkedFindings.filter { finding in
-            let job: BackgroundJob? = {
-                guard let jobs, case .local(let path) = model.ref else { return nil }
-                return jobs.job(subject: finding.id, in: path)
-            }()
-            return model.fileBlockedReason(key: finding.id, job: job, agent: defaultConnection) == nil
+        checkedFindings.filter {
+            model.fileBlockedReason(key: $0.id, job: filingJob(for: $0), agent: defaultConnection) == nil
         }
     }
 

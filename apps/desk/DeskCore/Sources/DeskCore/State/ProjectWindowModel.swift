@@ -510,6 +510,13 @@ public final class ProjectWindowModel {
         return snapshot.localBacklog.contains { $0.key == key } || snapshot.filedBacklogKeys.contains(key)
     }
 
+    /// The board card a finding became. A filed finding is not "in backlog" for long — its card moves on to
+    /// In progress and Done — so the survey asks the board where it is rather than remembering where it went.
+    public func boardTask(forFinding key: String) -> DeskTask? {
+        guard !key.isEmpty, let item = snapshot?.localBacklog.first(where: { $0.key == key }) else { return nil }
+        return tasks.first { $0.localBacklogID == item.id }
+    }
+
     public func localBacklogItem(for task: DeskTask) -> BacklogItem? {
         guard let id = task.localBacklogID else { return nil }
         return snapshot?.localBacklog.first { $0.id == id }

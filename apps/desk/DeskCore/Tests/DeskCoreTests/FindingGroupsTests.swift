@@ -18,6 +18,17 @@ final class FindingGroupsTests: XCTestCase {
         XCTAssertEqual(groups[0].findings.map(\.id), ["b"])
     }
 
+    func testFiledFindingsLeaveTheirCategoryForAFiledSection() {
+        let groups = FindingGroups.byStatus([
+            finding("a", [.new], []),
+            finding("b", [.new], []),
+            finding("c", [.needsDecision], []),
+        ], filed: ["b", "c"])
+        XCTAssertEqual(groups.map(\.title), ["New", "Filed"])
+        XCTAssertEqual(groups[1].findings.map(\.id), ["b", "c"])
+        XCTAssertNil(groups[1].category)
+    }
+
     func testVerificationIsSharedOnlyWhenEveryRowSaysIt() {
         let same = FindingGroups.byStatus([finding("a", [.new], []), finding("b", [.new], [])])
         XCTAssertEqual(same[0].sharedVerification, "Code-inspected")

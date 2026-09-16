@@ -123,12 +123,18 @@ struct FindingRow: View {
                 Button("Answer…") { showRun(filing) }
                     .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
                     .help("The run stopped to ask something; it is waiting in Terminals")
-            } else if let filing, case .ended(_, false) = filing.state {
-                StatusPill(badge: StatusBadge(.info, "Filed"))
-                    .help("Filed — see the board")
-            } else if isInLocalBacklog {
-                StatusPill(badge: StatusBadge(.info, "In backlog"))
-                    .help("Filed to docs/backlog/ — it is on the board")
+            } else if let task = model.boardTask(forFinding: finding.id) {
+                // Where its card is now, not where it was filed: "In backlog" stayed on a finding whose task
+                // had long since moved to In progress or Done.
+                Button { model.openTask(task.id) } label: {
+                    StatusPill(badge: StatusBadge(Self.tone(of: task.column), task.column.title))
+                }
+                .buttonStyle(.plain)
+                .help("Its card is in \(task.column.title) — click to open it")
+            } else if isInLocalBacklog || isFiledByRun {
+                // Filed, but with no card on this board to point at — promoted to the tracker, say.
+                StatusPill(badge: StatusBadge(.neutral, "Filed"))
+                    .help("Filed as an issue")
             } else if isIgnored {
                 StatusPill(badge: StatusBadge(.neutral, "Ignored"))
             } else if isHovered {
@@ -142,6 +148,20 @@ struct FindingRow: View {
             }
             menu
                 .opacity(isHovered ? 1 : 0)
+        }
+    }
+
+    private var isFiledByRun: Bool {
+        if let filing, case .ended(_, false) = filing.state { return true }
+        return false
+    }
+
+    static func tone(of column: BoardColumn) -> StatusTone {
+        switch column {
+        case .queued, .inProgress: return .running
+        case .review: return .waiting
+        case .done: return .ended
+        case .backlog, .readyForDev: return .neutral
         }
     }
 

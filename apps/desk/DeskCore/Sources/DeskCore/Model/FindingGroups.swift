@@ -34,21 +34,25 @@ public enum FindingGroups {
     /// The order a finding's categories are read in: a finding carrying two is shown under the first.
     static let statusOrder: [FindingCategory] = [.new, .knownNewEvidence, .needsDecision, .closedOrDeclined]
 
-    public static func group(_ findings: [Finding], by grouping: FindingGrouping) -> [FindingGroup] {
+    public static func group(_ findings: [Finding], by grouping: FindingGrouping, filed: Set<String> = []) -> [FindingGroup] {
         switch grouping {
-        case .status: return byStatus(findings)
+        case .status: return byStatus(findings, filed: filed)
         case .file: return byFile(findings)
         }
     }
 
     /// Empty sections are left out, and a finding with no category lands last rather than disappearing.
-    public static func byStatus(_ findings: [Finding]) -> [FindingGroup] {
+    /// Findings already filed — ids in `filed` — leave their category for a Filed section at the end: "New ·
+    /// not filed yet" over a finding that is on the board is a header saying something untrue.
+    public static func byStatus(_ findings: [Finding], filed: Set<String> = []) -> [FindingGroup] {
+        let open = findings.filter { !filed.contains($0.id) }
         var groups = statusOrder.map { category in
             FindingGroup(id: category.rawValue, title: category.rawValue, category: category,
-                         findings: findings.filter { primary($0) == category })
+                         findings: open.filter { primary($0) == category })
         }
-        let rest = findings.filter { primary($0) == nil }
+        let rest = open.filter { primary($0) == nil }
         if !rest.isEmpty { groups.append(FindingGroup(id: "uncategorised", title: "Uncategorised", findings: rest)) }
+        groups.append(FindingGroup(id: "filed", title: "Filed", findings: findings.filter { filed.contains($0.id) }))
         return groups.filter { !$0.findings.isEmpty }
     }
 
