@@ -7,6 +7,10 @@ enum ToolDetection {
     static let tools: [(id: String, name: String)] = [("codex", "Codex"), ("claude", "Claude"),
                                                       ("gemini", "Gemini"), ("opencode", "opencode")]
     static let note = "Detected on this Mac. Dev Desk never stores credentials: signing in runs the tool's own command in your terminal, where you can watch it."
+    /// Shown on Gemini's row rather than in a tooltip: its own menu pre-selects "Sign in with Google", which Google
+    /// stopped serving to individual accounts on 2026-06-18, so the default choice is the one that fails.
+    static let geminiNote = "Sign in with Google no longer works for individual accounts. In Gemini's menu, choose "
+        + "Use Gemini API Key or Vertex AI — or use Antigravity instead."
 
     /// The commands each CLI publishes for this, verified against their own `--help` rather than assumed
     /// (checked again 2026-09-16). `status` is nil for a CLI that publishes no non-interactive check, and
@@ -53,7 +57,8 @@ enum ToolDetection {
                 // No status verb to ask, so the app does not know and must not claim. `isSignedOut` stays
                 // false: refusing to start a CLI that may be perfectly signed in would be the worse guess.
                 return Connection(id: tool.id, name: tool.name, state: .detected, label: "found · sign-in not readable",
-                                  detail: "\(tool.name) publishes no way to check its sign-in, so Dev Desk can't tell. "
+                                  detail: tool.id == "gemini" ? geminiNote
+                                      : "\(tool.name) publishes no way to check its sign-in, so Dev Desk can't tell. "
                                       + "Opening it shows you.",
                                   auth: ConnectionAuth(signIn: auth.signIn, signOut: auth.signOut,
                                                        isInteractive: auth.interactive))
