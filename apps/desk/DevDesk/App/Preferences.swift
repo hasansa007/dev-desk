@@ -55,18 +55,15 @@ enum AgentChoice: Equatable {
 
     static func resolve(override: String, defaultConnection: String, connections: [Connection]) -> AgentChoice {
         let name = override.isEmpty ? defaultConnection : override
-        guard let agent = AgentLaunch.agent(forConnectionName: name) else {
-            return .unavailable(reason: name == "Gemini"
-                                ? "Gemini has no confirmed way to run the dev pipeline, so Dev Desk doesn't start it."
-                                : "\(name) isn't installed here, so Dev Desk can't start it.")
+        // The rule itself lives in DeskCore, where it is tested; this reads the preferences it needs.
+        // A Debug build's stand-in runs in place of the CLI, so the CLI needs neither install nor sign-in.
+        switch AgentAvailability.resolve(connectionName: name, connections: connections,
+                                         hasStandIn: DebugLaunch.agentExecutable != nil) {
+        case .unavailable(let reason): return .unavailable(reason: reason)
+        case .ready(let agent):
+            if let reason = LoginShell.unsupportedReason { return .unavailable(reason: reason) }
+            return .ready(agent)
         }
-        // A Debug build's stand-in runs in place of the CLI, so the CLI itself needn't be there.
-        let installed = connections.contains { $0.id == agent.rawValue && $0.state == .detected }
-        guard installed || DebugLaunch.agentExecutable != nil else {
-            return .unavailable(reason: "\(AgentLaunch.displayName(agent)) isn't installed here, so Dev Desk can't start it.")
-        }
-        if let reason = LoginShell.unsupportedReason { return .unavailable(reason: reason) }
-        return .ready(agent)
     }
 
     /// What the saved preferences choose for `ref` now: the app default, which every project shares.
