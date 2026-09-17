@@ -13,6 +13,8 @@ struct LauncherView: View {
     @Environment(\.dismiss) private var dismissWindow
     @AppStorage(PreferenceKey.showSamples) private var showSamples = true
     @State private var selectedID: String?
+    /// The recents live in UserDefaults, which SwiftUI does not observe; a removal bumps this so the list redraws.
+    @State private var recentsRevision = 0
     @State private var activeSubSheet: SubSheet?
     @FocusState private var listFocused: Bool
 
@@ -81,7 +83,15 @@ struct LauncherView: View {
 
     private var recentsColumn: some View {
         VStack(alignment: .leading, spacing: 9) {
-            SectionLabel("Recent projects")
+            HStack {
+                SectionLabel("Recent projects")
+                Spacer()
+                if !AppServices.recents.entries.isEmpty {
+                    Button("Clear") { clearRecents() }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                        .help("Removes every project from this list. No folder is touched.")
+                }
+            }
             recentList
             Text("Opening a project opens its own window and restores its last selected task and pane layout. Opening a project that is already open focuses that window instead of starting anything.")
                 .font(DeskFont.secondary)
@@ -133,6 +143,11 @@ struct LauncherView: View {
             openSelected()
             return .handled
         }
+        .onKeyPress(.delete) {
+            guard let item = rows.first(where: { $0.id == selectedID }), !item.isSample else { return .ignored }
+            removeRecent(item)
+            return .handled
+        }
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Recent projects")
     }
@@ -166,6 +181,11 @@ struct LauncherView: View {
         .opacity(item.isMissing ? 0.6 : 1)
         .onTapGesture(count: 2) { if !item.isMissing { open(item.ref) } }
         .onTapGesture(count: 1) { select(item) }
+        .contextMenu {
+            if !item.isSample {
+                Button("Remove from Recent Projects") { removeRecent(item) }
+            }
+        }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
         .accessibilityAction { select(item) }
@@ -202,6 +222,7 @@ struct LauncherView: View {
                 LauncherRow(ref: .sample($0), name: $0.title, path: $0.displayPath, isSample: true, isMissing: false)
             }
         }
+        _ = recentsRevision
         list += AppServices.recents.entries.map { entry in
             LauncherRow(ref: entry.ref, name: entry.name, path: entry.displayPath, isSample: false, isMissing: !isAvailable(entry.ref))
         }
@@ -214,6 +235,19 @@ struct LauncherView: View {
     }
 
     private var selectedRef: ProjectRef? { rows.first { $0.id == selectedID && !$0.isMissing }?.ref }
+
+    /// Off the list only: the folder, its worktrees and anything open in it stay as they are.
+    private func removeRecent(_ item: LauncherRow) {
+        AppServices.recents.remove(item.ref)
+        if selectedID == item.id { selectedID = nil }
+        recentsRevision += 1
+    }
+
+    private func clearRecents() {
+        AppServices.recents.entries.forEach { AppServices.recents.remove($0.ref) }
+        selectedID = nil
+        recentsRevision += 1
+    }
 
     private func select(_ item: LauncherRow) {
         listFocused = true
