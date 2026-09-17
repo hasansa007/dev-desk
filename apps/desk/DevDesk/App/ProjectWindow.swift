@@ -102,7 +102,12 @@ struct ProjectWindow: View {
             registry.windowOpened(ref)
             terminals.onEvent = { [model, ref, terminals] id, event in
                 guard case .local(let path) = ref else { return }
-                if event == .turnFinished, model.closingOnDone.contains(id) { Self.closeDone(model: model, terminals: terminals) }
+                if event == .turnFinished {
+                    // A turn is when an agent commits, opens a PR or merges; without auto-reload nothing else would show it,
+                    // and a task merged in that turn would never be seen reaching Done.
+                    if model.closingOnDone.contains(id) { Self.closeDone(model: model, terminals: terminals) }
+                    Task { await model.sync() }
+                }
                 let onScreen = NSApp.isActive && model.destination == .terminals && model.selectedSessionID == id
                 RunNotifications.post(event, session: id, name: model.sessionName(id), directory: path, isOnScreen: onScreen)
             }
