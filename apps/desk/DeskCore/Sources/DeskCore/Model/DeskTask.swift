@@ -387,6 +387,8 @@ public struct DeskTask: Identifiable, Hashable {
     public var pullRequestNumber: Int?
     /// A branch whose commits are only a door's report: in Review until approved, which merges it, then Done.
     public var isFinishedReport: Bool = false
+    /// A Done card's leftover worktree: its branch is merged and still checked out in a folder of its own.
+    public var worktreePath: String?
 
     /// A local branch with no issue and no pull request behind it — the only card whose branch this app may delete.
     public var isBranchCard: Bool { id.hasPrefix("branch:") }

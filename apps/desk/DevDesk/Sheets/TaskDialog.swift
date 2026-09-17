@@ -18,6 +18,7 @@ struct TaskDialog: View {
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @State private var confirmsRemoval = false
     @State private var confirmsApproval = false
+    @State private var confirmsWorktreeRemoval = false
 
     private var activity: TaskActivity? { model.activity(of: task) }
 
@@ -147,6 +148,23 @@ struct TaskDialog: View {
                         Text(ReportMerge.confirmation(branch: branch, base: ReportMerge.originBase(task.baseRef) ?? "the base branch",
                                                       commits: task.unmergedCount, files: changedFileCount))
                     }
+            }
+            if task.column == .done, let worktree = task.worktreePath {
+                Button { confirmsWorktreeRemoval = true } label: {
+                    Label("Remove worktree", systemImage: "folder.badge.minus")
+                }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                .disabled(model.isWritingTracker)
+                .help("Removes \(worktree) and the merged local branch; git refuses if the folder has changes")
+                .confirmationDialog("Remove this worktree?", isPresented: $confirmsWorktreeRemoval, titleVisibility: .visible) {
+                    Button("Remove", role: .destructive) {
+                        model.dismissSheet()
+                        Task { await model.removeWorktree(task) }
+                    }
+                    Button("Cancel", role: .cancel) {}
+                } message: {
+                    Text("\(worktree) and the local branch \(task.branch ?? ""). Its work is merged. git keeps both if the folder has uncommitted or untracked files, or the branch has commits the base lacks.")
+                }
             }
             if let delete = deleteBranch {
                 Button(role: .destructive) { delete() } label: {

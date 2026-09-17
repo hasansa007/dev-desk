@@ -232,6 +232,7 @@ private struct BoardContext {
             var task = task
             task.baseRef = input.git?.baseRef
             task.baseShort = input.git?.baseShort
+            if task.column == .done, let branch = task.branch { task.worktreePath = branchByName[branch]?.worktree }
             return task
         }
     }
@@ -428,6 +429,7 @@ private struct BoardContext {
             evidence: .unavailable(reason),
             parallel: .none("Merged"))
         task.isFinishedReport = true
+        task.branch = record.branch
         return task
     }
 

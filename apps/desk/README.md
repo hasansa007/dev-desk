@@ -74,7 +74,7 @@ open "/tmp/devdesk-dd/Build/Products/Debug/Dev Desk.app"
   - At most 3 run at once across all windows. You can set the limit from 1 to 6 in Settings → Execution.
   - A **Start** pressed while the limit is reached queues the card (the board's Queued column) instead of refusing it, and the queue drains in board order as slots free — whether or not Auto is on.
   - Turning Auto on shows a token warning first: every agent spends tokens on your Claude or Codex plan, and Dev Desk can't see your usage.
-- **Worktrees Dev Desk creates are kept** until you remove them with `git worktree remove <path>`.
+- **Worktrees Dev Desk creates are kept** until you remove them: a Done card whose merged branch still has a worktree offers **Remove worktree**, which removes the folder and the local branch with git's safe forms (it refuses a folder with changes, or a branch the base lacks).
 - **The window** fits 920 × 620 and up, and the sidebar becomes an icon rail below 1100 pt or on ⇧⌘S ([ADR 0028](../../docs/adr/0028-the-window-fits-an-ipad-and-a-dialog-clamps-to-it.md)) — an 11" iPad as a display, or half a MacBook screen, works.
 - **Quitting asks** while a session or a background run is live; the question is in Settings → Execution.
 - **Reset findings** — the Findings header's menu, or Settings → Project overrides → Cleanup — brings back ignored findings, resets the screen, and moves older reports to the Trash, keeping the newest ([ADR 0029](../../docs/adr/0029-a-survey-reset-trashes-older-reports.md)). It can end by starting a new run.

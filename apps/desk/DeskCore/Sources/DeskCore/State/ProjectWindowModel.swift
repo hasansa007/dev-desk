@@ -33,6 +33,7 @@ public struct WriteFailure: Equatable {
     static func tracker(_ message: String) -> WriteFailure { WriteFailure(title: "The tracker was not changed", message: message) }
     static func branch(_ message: String) -> WriteFailure { WriteFailure(title: "The branch was not deleted", message: message) }
     static func backlog(_ message: String) -> WriteFailure { WriteFailure(title: "docs/backlog/ was not changed", message: message) }
+    static func worktree(_ message: String) -> WriteFailure { WriteFailure(title: "The worktree was not removed", message: message) }
     static func merge(_ message: String) -> WriteFailure { WriteFailure(title: "The report was not merged", message: message) }
     static func update(_ message: String) -> WriteFailure { WriteFailure(title: "The project folder was not moved back to its base", message: message) }
     static func stage(_ message: String) -> WriteFailure { WriteFailure(title: "The board was not changed", message: message) }
@@ -1038,6 +1039,33 @@ public final class ProjectWindowModel {
             writeFailure = nil
         } catch {
             writeFailure = .update(Markdown.escape(error.localizedDescription))
+        }
+        await sync()
+    }
+
+    /// Removes a Done card's worktree, then its local branch. Both are git's safe forms: `worktree remove` refuses a
+    /// folder with changes or untracked files, and `branch -d` refuses a branch whose commits are not merged — a
+    /// squash-merged branch is kept, and said so, rather than forced away.
+    public func removeWorktree(_ task: DeskTask) async {
+        guard !isWritingTracker, case .local(let path) = ref, task.column == .done,
+              let worktree = task.worktreePath, let branch = task.branch else { return }
+        isWritingTracker = true
+        defer { isWritingTracker = false }
+        let root = URL(fileURLWithPath: path, isDirectory: true)
+        let removed = try? await runner.run("git", GitCommand.read(["worktree", "remove", "--", worktree]), in: root, timeout: CommandTimeout.git)
+        guard let removed, removed.succeeded else {
+            let reason = removed.flatMap { GitOutput.lastNonEmptyLine($0.stderr) } ?? "git worktree remove did not finish"
+            writeFailure = .worktree(Markdown.escape("\(worktree): \(reason)"))
+            return
+        }
+        if let arguments = BranchWrite.arguments(branch: branch, force: false) {
+            let deleted = try? await runner.run("git", GitCommand.read(arguments), in: root, timeout: CommandTimeout.git)
+            if deleted?.succeeded != true {
+                writeFailure = .worktree(Markdown.escape("The folder is removed, but the local branch \(branch) was kept: "
+                    + (deleted.flatMap { GitOutput.lastNonEmptyLine($0.stderr) } ?? "git branch -d did not finish")))
+            } else {
+                writeFailure = nil
+            }
         }
         await sync()
     }

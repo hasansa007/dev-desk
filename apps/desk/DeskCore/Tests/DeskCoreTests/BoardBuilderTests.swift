@@ -261,6 +261,17 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(tasks(input)["report:findings/2026-09-17"])
     }
 
+    func testADoneCardCarriesTheWorktreeItsMergedBranchIsStillCheckedOutIn() throws {
+        var input = fixture
+        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 0, counted: true, worktree: "/wt/app-onboarding"))
+        input.git?.reportMerges = [ReportMergeRecord(branch: "findings/2026-09-17", date: "2026-09-17T01:10:00Z")]
+        input.git?.branches.append(BranchFacts(name: "findings/2026-09-17", unmerged: 0, counted: true, worktree: "/wt/app-findings"))
+        let built = tasks(input)
+        XCTAssertEqual(built["merged:9"]?.worktreePath, "/wt/app-onboarding")
+        XCTAssertEqual(built["report:findings/2026-09-17"]?.worktreePath, "/wt/app-findings")
+        XCTAssertNil(built["branch:spike/z"]?.worktreePath, "only a Done card offers removal")
+    }
+
     func testMergedPullRequestIsDimmedDone() throws {
         let task = try XCTUnwrap(tasks()["merged:9"])
         XCTAssertEqual(task.issueNumber, 9)
