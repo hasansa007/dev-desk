@@ -1,6 +1,7 @@
 import AppKit
 import DeskCore
 import SwiftUI
+import UserNotifications
 
 /// A form row with a 200-wide right-aligned label, matching D:715's field rows.
 private struct SettingsRow<Content: View>: View {
@@ -399,14 +400,53 @@ struct AccountsPane: View {
 }
 
 struct NotificationsPane: View {
+    private var permissionLabel: String {
+        switch permission {
+        case .authorized, .provisional, .ephemeral: return "Allowed"
+        case .denied: return "Off for Dev Desk in System Settings"
+        case .notDetermined: return "Not asked yet"
+        default: return "Checking…"
+        }
+    }
+
+    @MainActor private func readPermission() async {
+        permission = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    }
+
     @AppStorage(PreferenceKey.notifyDecisions) private var notifyDecisions = true
     @AppStorage(PreferenceKey.notifyCompletion) private var notifyCompletion = true
     @AppStorage(PreferenceKey.notifyFailures) private var notifyFailures = true
     @AppStorage(PreferenceKey.notifySound) private var sound = NotificationSound.defaultName
+    @State private var permission: UNAuthorizationStatus?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             PaneTitle("Notifications", scope: .everyProject)
+            // macOS asks once; a denial is never asked again, so the pane says where it is changed.
+            SettingsRow("Permission") {
+                HStack(spacing: 8) {
+                    Text(permissionLabel).foregroundStyle(DeskColor.secondaryInk)
+                    if permission == .notDetermined {
+                        Button("Allow…") {
+                            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in
+                                Task { @MainActor in await readPermission() }
+                            }
+                        }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    } else if permission == .denied {
+                        Button("Open System Settings") {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(Bundle.main.bundleIdentifier ?? "")") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    }
+                }
+            }
+            .task { await readPermission() }
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                Task { await readPermission() }
+            }
             VStack(alignment: .leading, spacing: 10) {
                 Toggle("Decisions that need you", isOn: $notifyDecisions)
                 Toggle("Completed work", isOn: $notifyCompletion)

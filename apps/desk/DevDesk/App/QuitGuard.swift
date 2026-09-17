@@ -30,6 +30,7 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
+        RunNotifications.requestPermission()
         // Re-assert the chosen icon on every launch: a reinstall dittos a fresh bundle over this one
         // and wipes any custom icon, so a launch is the only moment the preference can restore it.
         // This is the earliest the preference can speak, not the last word on it — see

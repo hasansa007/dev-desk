@@ -20,6 +20,10 @@ enum RunNotifications {
 
     static func attach(to jobs: JobRegistry) {
         jobs.onSettled = { job in post(for: job) }
+    }
+
+    /// Asked at launch, not when a project window opens: the app opens on its launcher, so the ask never came.
+    static func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in }
     }
 
