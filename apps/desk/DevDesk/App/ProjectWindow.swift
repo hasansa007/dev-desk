@@ -102,12 +102,17 @@ struct ProjectWindow: View {
             registry.windowOpened(ref)
             terminals.onEvent = { [model, ref, terminals] id, event in
                 guard case .local(let path) = ref else { return }
-                if event == .turnFinished, model.liveSessionsOfDoneTasks.contains(id) { Self.closeDone(model: model, terminals: terminals) }
+                if event == .turnFinished, model.closingOnDone.contains(id) { Self.closeDone(model: model, terminals: terminals) }
                 let onScreen = NSApp.isActive && model.destination == .terminals && model.selectedSessionID == id
                 RunNotifications.post(event, session: id, name: model.sessionName(id), directory: path, isOnScreen: onScreen)
             }
         }
-        .onChange(of: model.liveSessionsOfDoneTasks) { _, _ in Self.closeDone(model: model, terminals: terminals) }
+        .onChange(of: model.doneTaskIDs) { old, new in
+            // The first load is not an arrival: every merged card would look new.
+            guard !old.isEmpty else { return }
+            model.closingOnDone.formUnion(model.liveSessions(ofDone: new.subtracting(old)))
+            Self.closeDone(model: model, terminals: terminals)
+        }
         .onReceive(NotificationCenter.default.publisher(for: RunNotifications.openSession)) { note in
             guard case .local(let path) = ref, note.userInfo?["directory"] as? String == path else { return }
             if let session = note.userInfo?["session"] as? String { model.selectedSessionID = session }
@@ -128,10 +133,13 @@ struct ProjectWindow: View {
         FiledWorkHook(model: model)
     }
 
-    /// Ends and takes off the list each Done task's session, except an agent still mid-turn: its turn's end calls this again.
+    /// Ends and takes off the list each session whose task just reached Done, except an agent still mid-turn: its
+    /// turn's end calls this again.
     @MainActor
     private static func closeDone(model: ProjectWindowModel, terminals: ShellTerminalRegistry) {
-        for id in model.liveSessionsOfDoneTasks where !terminals.isMidTurn(id) {
+        for id in model.closingOnDone where !terminals.isMidTurn(id) {
+            model.closingOnDone.remove(id)
+            guard model.sessions.state(for: id).isLive else { continue }
             terminals.end(taskID: id)
             model.runs.remove(id)
         }

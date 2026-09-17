@@ -201,11 +201,21 @@ private struct BoardContext {
         var backlog: [(issue: GitHubIssue, task: DeskTask)] = []
         var deferred: [DeskTask] = []
         for issue in input.github?.issues ?? [] {
-            let branch = branches.first { BoardBuilder.branch($0.name, matches: issue.number) }
+            // An issue can have several gh-N- branches. The one with an open pull request speaks for it.
+            let matching = branches.filter { BoardBuilder.branch($0.name, matches: issue.number) }
+            let branch = matching.first { matched in openPullRequests.contains { $0.headRefName == matched.name } } ?? matching.first
             let pullRequest = branch.flatMap { matched in openPullRequests.first { $0.headRefName == matched.name } }
                 ?? openPullRequests.first { closedByPullRequest[$0.number]?.contains(issue.number) == true }
-            if let branch { claimedBranches.insert(branch.name) }
             if let pullRequest { claimedPullRequests.insert(pullRequest.number) }
+            // Merged into the base but still open (it closes on the release): the merged card in Done is this work, and a
+            // leftover gh-N- branch beside it is an abandoned attempt, not new work.
+            if pullRequest == nil, (input.github?.mergedPullRequests ?? []).contains(where: {
+                !$0.isCrossRepository && BoardBuilder.branch($0.headRefName, matches: issue.number)
+            }) {
+                claimedBranches.formUnion(matching.map(\.name))
+                continue
+            }
+            if let branch { claimedBranches.insert(branch.name) }
             let isDeferred = issue.labelNames.contains("epic-leftover")
             let column = column(for: issue, isDeferred: isDeferred, pullRequest: pullRequest, branch: branch)
             if column == .backlog, !isDeferred, BoardBuilder.isDecomposedEpic(issue) { continue }

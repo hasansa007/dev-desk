@@ -272,6 +272,23 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(built["branch:spike/z"]?.worktreePath, "only a Done card offers removal")
     }
 
+    /// #802 on 2026-09-17: merged to staging as #805, still open, with an abandoned gh-802- branch two commits ahead.
+    func testAnOpenIssueWhoseBranchMergedIsItsMergedCardNotInProgress() {
+        let input = BoardInput(
+            git: GitFacts(base: "staging", baseRef: "refs/remotes/origin/staging", baseShort: "f4a6202", branches: [
+                BranchFacts(name: "gh-802-model-band-per-row", unmerged: 2, counted: true, worktree: nil),
+                BranchFacts(name: "gh-802-build-model-bands", unmerged: 0, counted: true, worktree: nil),
+            ]),
+            github: GitHubData(slug: "a/b", account: nil, issues: [GitHubIssue(number: 802, title: "Bands", labels: [], milestone: nil, updatedAt: "", body: "", url: "")],
+                               openPullRequests: [],
+                               mergedPullRequests: [GitHubMergedPullRequest(number: 805, title: "#802: bands", headRefName: "gh-802-build-model-bands")]),
+            activeMilestone: nil)
+        let built = BoardBuilder.build(input)
+        XCTAssertNil(built.first { $0.id == "802" }, "the merged card is the issue's card")
+        XCTAssertEqual(built.first { $0.id == "merged:805" }?.column, .done)
+        XCTAssertNil(built.first { $0.id == "branch:gh-802-model-band-per-row" }, "an abandoned attempt is the issue's, not a card")
+    }
+
     func testMergedPullRequestIsDimmedDone() throws {
         let task = try XCTUnwrap(tasks()["merged:9"])
         XCTAssertEqual(task.issueNumber, 9)

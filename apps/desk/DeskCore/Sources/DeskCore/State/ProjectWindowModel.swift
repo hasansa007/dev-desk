@@ -903,10 +903,16 @@ public final class ProjectWindowModel {
 
     public func isTaskRunning(_ task: DeskTask) -> Bool { activity(of: task) != nil }
 
-    /// The live sessions of tasks git has put in Done — the task's run and its own shell or agent. Its work is merged,
-    /// so the window closes them (once an agent's turn has ended); a door or scratch session is never one of these.
-    public var liveSessionsOfDoneTasks: [String] {
-        tasks.filter { $0.column == .done }
+    /// Sessions waiting to be closed because their task reached Done, held until an agent's turn ends.
+    public var closingOnDone: Set<String> = []
+
+    /// The Done cards, by id — what the window compares between loads to see which just arrived.
+    public var doneTaskIDs: Set<String> { Set(tasks.filter { $0.column == .done }.map(\.id)) }
+
+    /// The live sessions of these Done tasks — each task's run and its own shell or agent. Only a task that has just
+    /// reached Done is passed, so a run started afterwards on already-merged work is never closed under the developer.
+    public func liveSessions(ofDone ids: Set<String>) -> [String] {
+        tasks.filter { $0.column == .done && ids.contains($0.id) }
             // A merged card is numbered by its pull request; its gh-N- branch names the issue the run was started for.
             .flatMap { task in [DoorRuns.id(for: task), task.branch.flatMap(DeskTask.ghNumber).map { DoorRuns.id(task: $0) }, task.id].compactMap { $0 } }
             .filter { sessions.state(for: $0).isLive }
