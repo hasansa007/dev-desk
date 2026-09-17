@@ -135,16 +135,38 @@ def cmd_checkpoint(args) -> int:
     if not 0 <= args.phase <= MAX_PHASE:
         print("phase must be 0-%d" % MAX_PHASE, file=sys.stderr)
         return 2
+    detached = branch == "HEAD"
+    # Keyed by the issue when there is one: a feature's branch is cut only after Phase 5, and a task run starts on
+    # a detached worktree, so a branch key had nowhere to put phases 1-8 — and Dev Desk reads a card by its issue.
+    if args.issue is not None and args.local:
+        print("pass --issue or --local, not both", file=sys.stderr)
+        return 2
+    if args.issue is None and not args.local and detached:
+        print("detached HEAD: pass --issue N (or --local ID) so the state has a key", file=sys.stderr)
+        return 2
+    if args.issue is not None:
+        key = "issue-%d" % args.issue
+    elif args.local:
+        key = "local-" + slugify(args.local)
+    else:
+        key = branch
 
-    data = load_state(root, branch) or {
+    data = load_state(root, key) or {
         "repo": remote_slug(),
-        "branch": branch,
+        "branch": None if detached else branch,
         "base": resolve_base(),
         "tier": None,
         "phase": None,
         "phases_completed": [],
         "attempts": [],
     }
+    if args.issue is not None or args.local:
+        if args.issue is not None:
+            data["issue"] = args.issue
+        else:
+            data["local"] = args.local
+        if not detached:
+            data["branch"] = branch
     data["phase"] = args.phase
     data["phase_group"] = phase_group(args.phase)
     data["head_sha"] = head_sha()
@@ -161,7 +183,7 @@ def cmd_checkpoint(args) -> int:
             "at": data["updated_at"],
         })
 
-    path = save_state(root, branch, data)
+    path = save_state(root, key, data)
     print("%s  phase %d (%s)" % (os.path.relpath(path, root), args.phase, data["phase_group"]))
     return 0
 
@@ -747,6 +769,8 @@ def build_parser() -> argparse.ArgumentParser:
     cp.add_argument("--tier", choices=["light", "standard", "deep"])
     cp.add_argument("--attempt", help="what was tried, recorded in attempts[]")
     cp.add_argument("--outcome", choices=["success", "failure"])
+    cp.add_argument("--issue", type=int, help="the task's issue number; keys the state as .dev/issue-N.json")
+    cp.add_argument("--local", help="a docs/backlog/ entry's id, for a task with no issue; keys .dev/local-ID.json")
     cp.set_defaults(func=cmd_checkpoint)
 
     rd = ssub.add_parser("read", help="print the state file as JSON")

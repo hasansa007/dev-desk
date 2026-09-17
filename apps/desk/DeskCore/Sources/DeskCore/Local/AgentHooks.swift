@@ -8,6 +8,9 @@ public enum TerminalEvent: Equatable {
     case question(String?)
     /// The agent finished its turn and is waiting for the next message.
     case turnFinished
+    /// A message was sent and the agent is working on it. Never announced: it tells a Done task's session apart
+    /// from one still writing its report, which must not be closed mid-turn.
+    case turnStarted
     /// The session's process ended by itself, with its exit status.
     case exited(Int32)
     /// A program in the terminal rang the bell — the fallback for a CLI with no hooks, and never treated as exact.
@@ -26,12 +29,14 @@ public enum AgentHooks {
             + payload + #" > "$t" && mv "$t" "$DEVDESK_EVENT_DIR/"# + event + #".${t##*.}"; exit 0"#
     }
 
-    /// Claude's Notification hook (a permission prompt, or input waited on) and Stop hook (a finished turn).
+    /// Claude's Notification hook (a permission prompt, or input waited on), Stop hook (a finished turn) and
+    /// UserPromptSubmit hook (a turn begun).
     public static var claudeSettings: String {
         func hook(_ event: String) -> [[String: Any]] {
             [["hooks": [["type": "command", "command": script(event: event, payload: "cat")]]]]
         }
-        let settings: [String: Any] = ["hooks": ["Notification": hook("question"), "Stop": hook("turn")]]
+        let settings: [String: Any] = ["hooks": ["Notification": hook("question"), "Stop": hook("turn"),
+                                                  "UserPromptSubmit": hook("prompt")]]
         let data = (try? JSONSerialization.data(withJSONObject: settings, options: [.sortedKeys])) ?? Data()
         return String(decoding: data, as: UTF8.self)
     }
@@ -78,6 +83,7 @@ public enum AgentHooks {
             return .question(message?.isEmpty == false ? message : nil)
         }
         if fileName.hasPrefix("turn.") { return .turnFinished }
+        if fileName.hasPrefix("prompt.") { return .turnStarted }
         return nil
     }
 }

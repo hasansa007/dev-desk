@@ -105,6 +105,14 @@ is skipped, not the judgment.
   *"this needs you."*
 - **Stepping is available on request, never by default.** "Slow down" / "ask me between phases"
   is honoured for the rest of the run — confirm in one line and carry on. Do not offer it.
+- **Checkpoint every phase that clears.** `python3 ~/.claude/skills/dev/scripts/dev.py state checkpoint
+  --phase <N> --issue <number>` (a `docs/backlog/` task with no issue passes `--local <entry id>` instead). It
+  is what the board reads to move a card: a started terminal moves nothing, a checkpoint does. A
+  failed command costs the card its phase, never the run — say so in one line and carry on.
+- **One task, its own job.** Work only the ticket you were started on. Its relations are the ones
+  already written on it (`blocked by`, `needs`, `shares`, `group:`) — follow those, and do not go
+  looking through other issues, branches or worktrees for more. A relation you discover that is not
+  written down is a finding to report, not work to take on.
 - **Never end a run silently.** Whatever phase you stop at — the last one, a gate, or a blocker —
   name the next phase and ask whether to continue. The full rule, which also governs a run that
   STARTED mid-pipeline, is in `entry.md` → *Never end silently.*

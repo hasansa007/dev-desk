@@ -40,10 +40,19 @@ final class PipelineStateTests: XCTestCase {
 
     func testCardNoteAndEvidenceCheck() {
         let untiered = PipelineState(phase: 9, phaseGroup: "coding")
-        XCTAssertEqual(untiered.cardNote, "Phase 9 · coding · advisory")
+        XCTAssertEqual(untiered.cardNote, "Implementing · phase 9 done")
         XCTAssertEqual(untiered.check, CheckResult(id: "pipeline", name: "Pipeline state", outcome: .passed,
                                                    outcomeLabel: "phase 9 · no tier", revisionLabel: "advisory"))
         XCTAssertEqual(PipelineState(phase: 11, tier: "standard").check.outcomeLabel, "phase 11 · standard")
-        XCTAssertEqual(PipelineState(phase: 2).cardNote, "Phase 2 · advisory")
+        XCTAssertEqual(PipelineState(phase: 2).cardNote, "Planning · phase 2 done")
+        XCTAssertEqual(PipelineState(phase: 13).cardNote, "Opening the PR · phase 13 done")
+    }
+
+    func testTaskStateFileNames() {
+        XCTAssertEqual(PipelineState.issueNumber(fileName: "issue-778.json"), 778)
+        XCTAssertNil(PipelineState.issueNumber(fileName: "gh-778-x.json"))
+        XCTAssertNil(PipelineState.issueNumber(fileName: "issue-x.json"))
+        XCTAssertEqual(PipelineState.localID(fileName: "local-c1-callback.json"), "c1-callback")
+        XCTAssertNil(PipelineState.localID(fileName: "local-.json"))
     }
 }

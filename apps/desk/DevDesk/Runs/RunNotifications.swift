@@ -30,6 +30,8 @@ enum RunNotifications {
     static func post(_ event: TerminalEvent, session id: String, name: String, directory: String, isOnScreen: Bool) {
         let content = UNMutableNotificationContent()
         switch event {
+        case .turnStarted:
+            return
         case .question(let message):
             guard wants(PreferenceKey.notifyDecisions) else { return }
             content.title = "\(name) needs you"

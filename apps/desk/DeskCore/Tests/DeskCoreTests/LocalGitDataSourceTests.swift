@@ -663,7 +663,7 @@ final class LocalGitDataSourceTests: XCTestCase {
         let snapshot = try await LocalGitDataSource(root: folder.url, runner: runner).load()
         let task = try XCTUnwrap(snapshot.board.value?.first { $0.id == "12" })
         XCTAssertEqual(task.column, .inProgress)
-        XCTAssertEqual(task.cardNote, "Phase 9 · coding · advisory")
+        XCTAssertEqual(task.cardNote, "Implementing · phase 9 done")
         XCTAssertEqual(task.changes.value?.files.map(\.id), ["A.swift"])
         XCTAssertEqual(task.changes.value?.diffs["A.swift"]?.hunks.first?.lines, [DiffLine(.addition, "x")])
         XCTAssertEqual(task.branchLine, "feat/12-x · base main@abc1234")

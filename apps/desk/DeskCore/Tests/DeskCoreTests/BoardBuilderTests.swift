@@ -349,7 +349,7 @@ final class BoardBuilderTests: XCTestCase {
 
     func testPipelineStateAddsACardNoteStagesAndAnAdvisoryCheck() throws {
         let task = try XCTUnwrap(tasks()["12"])
-        XCTAssertEqual(task.cardNote, "Phase 9 · coding · advisory")
+        XCTAssertEqual(task.cardNote, "Implementing · phase 9 done")
         XCTAssertEqual(task.pipeline, PipelineState(phase: 9).progress)
         XCTAssertEqual(task.evidence, .available(Evidence(isDemo: false, checks: [
             CheckResult(id: "pipeline", name: "Pipeline state", outcome: .passed, outcomeLabel: "phase 9 · standard", revisionLabel: "advisory"),
@@ -521,11 +521,29 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(built["18"]?.headerBadge, StatusBadge(.neutral, "Queued"), "the fallback badge names its column")
     }
 
-    /// A start records In progress before git has a commit to show for it (ADR 0035).
-    func testAStoredInProgressStageMovesAnIssueWithNoBranch() {
+    /// A leftover `inProgress` from a start says only that the card was started (ADR 0044).
+    func testAStoredInProgressStageNoLongerMovesAnIssue() {
         var input = fixture
         input.stages = ["15": .inProgress]
-        XCTAssertEqual(tasks(input)["15"]?.column, .inProgress)
+        XCTAssertEqual(tasks(input)["15"]?.column, .readyForDev)
+    }
+
+    /// The run's checkpoint is what moves an issue with no commits, and the card names the work after it.
+    func testAnIssueCheckpointMovesTheCardToInProgress() {
+        var input = fixture
+        input.issuePipeline = [15: PipelineState(phase: 4)]
+        let card = tasks(input)["15"]
+        XCTAssertEqual(card?.column, .inProgress)
+        XCTAssertEqual(card?.cardNote, "Planning · phase 4 done")
+        XCTAssertEqual(card?.pipeline, PipelineState(phase: 4).progress)
+    }
+
+    func testALocalCheckpointMovesTheLocalCard() {
+        let item = BacklogItem(id: "c1", key: "C1", title: "t", status: nil, body: "", path: "/p/docs/backlog/c1.md")
+        let card = BoardBuilder.build(BoardInput(localPipeline: ["c1": PipelineState(phase: 10)], localBacklog: [item],
+                                                 stages: ["local:c1": .inProgress])).first { $0.isLocalBacklog }
+        XCTAssertEqual(card?.column, .inProgress)
+        XCTAssertEqual(card?.cardNote, "Verifying · phase 10 done")
     }
 
     /// A queued card says why it is waiting; a pipeline note of the card's own still wins — it describes
@@ -543,7 +561,7 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(built["15"]?.cardNote, "Waiting for a free agent slot")
         XCTAssertEqual(built["local:c1-idle"]?.cardNote, "Waiting for a free agent slot", "a docs/backlog/ card waits the same way")
         XCTAssertEqual(built["18"]?.column, .queued)
-        XCTAssertEqual(built["18"]?.cardNote, "Phase 5 · planning · advisory", "the pipeline's note wins")
+        XCTAssertEqual(built["18"]?.cardNote, "Planning · phase 5 done", "the pipeline's note wins")
     }
 
     /// git wins once commits exist: clearing or downgrading the stage cannot pull a branch's card back.

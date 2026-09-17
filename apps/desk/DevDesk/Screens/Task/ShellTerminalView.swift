@@ -133,15 +133,20 @@ final class ShellTerminalRegistry {
         terminal.start(in: folder, generation: sessions.generation(for: taskID), command: AgentHooks.inject(into: command))
     }
 
-    /// A door's command, typed into its shell with the agent's hooks added.
-    func sendCommand(_ line: String, to taskID: String) {
+    /// A door's command, typed into its shell with the agent's hooks added. `preamble` (a `cd … && `) goes in front
+    /// after the hooks are added: the agent is found by the line starting with it.
+    func sendCommand(_ line: String, to taskID: String, preamble: String = "") {
         if AgentHooks.reports(line.split(separator: " ").first.map(String.init)) { reportsThroughHooks[taskID] = true }
-        send(AgentHooks.inject(into: line) + "\n", to: taskID)
+        send(preamble + AgentHooks.inject(into: line) + "\n", to: taskID)
     }
 
     /// What each session reports — a question, a finished turn, its own exit, a bell. Set by the window, which knows
     /// whether the session is on screen.
     var onEvent: ((String, TerminalEvent) -> Void)?
+    /// Sessions whose agent is working on a message right now, by its own hooks. A Done task's session waits for
+    /// its turn to end before it is closed, so the run's closing report is not cut off.
+    private var midTurn: Set<String> = []
+    func isMidTurn(_ taskID: String) -> Bool { midTurn.contains(taskID) }
     /// Sessions whose agent reports through hooks: their bell is not also read as a question.
     private var reportsThroughHooks: [String: Bool] = [:]
     /// Sessions started with a command, whose exit is the run ending. A plain shell exiting is the developer typing `exit`.
@@ -213,6 +218,7 @@ final class ShellTerminalRegistry {
         // failed headless run's one-line error was being dropped with it.
         let terminal = ShellTerminal { [weak self] terminal, status in
             guard let self else { return }
+            midTurn.remove(taskID)
             if runsCommand[taskID] == true, !terminal.wasEnded, let status { onEvent?(taskID, .exited(status)) }
             sessions.markEnded(taskID: taskID, status: status, generation: terminal.generation,
                                outputTail: terminal.transcriptTail())
@@ -220,6 +226,11 @@ final class ShellTerminalRegistry {
         }
         terminal.onEvent = { [weak self] event in
             guard let self else { return }
+            switch event {
+            case .turnStarted: midTurn.insert(taskID)
+            case .turnFinished, .question, .exited: midTurn.remove(taskID)
+            case .bell: break
+            }
             if event == .bell, reportsThroughHooks[taskID] == true { return }
             onEvent?(taskID, event)
         }

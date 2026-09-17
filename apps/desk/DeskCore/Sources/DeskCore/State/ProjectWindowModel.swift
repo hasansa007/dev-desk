@@ -448,11 +448,9 @@ public final class ProjectWindowModel {
         return nil
     }
 
-    /// The board's tasks, with anything live in this window promoted out of the unstarted columns: a card
-    /// with a run, shell or agent going is being worked on whatever git has seen, so Backlog with a pulsing
-    /// "Running" pill — the report that led to ADR 0035 — cannot happen. The promotion is this window's own
-    /// view, never written anywhere: the next load recomputes it from the same facts.
-    public var tasks: [DeskTask] { (snapshot?.board.value ?? []).map(promotingRunning) }
+    /// The board's tasks as built. A live terminal moves no card (ADR 0044): the card says it is running, and its
+    /// column comes from the run's checkpoints and git.
+    public var tasks: [DeskTask] { snapshot?.board.value ?? [] }
     public var selectedTask: DeskTask? { selectedTaskID.flatMap(task) }
     public func task(_ id: String) -> DeskTask? { tasks.first { $0.id == id } }
 
@@ -644,19 +642,6 @@ public final class ProjectWindowModel {
 
     // MARK: - Board stages (ADR 0035)
 
-    /// A task in an unstarted column with something live here is shown In progress; everything else about
-    /// it stays as built. Kept pure and static so the rule is testable without a live shell.
-    private func promotingRunning(_ task: DeskTask) -> DeskTask {
-        Self.promoted(task, isRunning: activity(of: task) != nil)
-    }
-
-    static func promoted(_ task: DeskTask, isRunning: Bool) -> DeskTask {
-        guard isRunning, task.column == .backlog || task.column == .readyForDev || task.column == .queued else { return task }
-        var task = task
-        task.column = .inProgress
-        return task
-    }
-
     /// Backlog → Ready for dev: the explicit "this can be picked up" judgement git has no fact for.
     public func moveToReadyForDev(_ task: DeskTask) async { await setStage(.readyForDev, for: task) }
 
@@ -671,9 +656,9 @@ public final class ProjectWindowModel {
         await setStage(.readyForDev, for: task)
     }
 
-    /// A start moves the card to In progress at once, instead of leaving it unstarted until the first
-    /// commit finally gives git something to say.
-    public func recordStarted(_ task: DeskTask) async { await setStage(.inProgress, for: task) }
+    /// A start takes the card out of Queued and no further: In progress is the run's first checkpoint, or git's
+    /// first commit, never the terminal opening (ADR 0044).
+    public func recordStarted(_ task: DeskTask) async { await setStage(.readyForDev, for: task) }
 
     /// A Start made with every slot busy: the card goes to Queued rather than nowhere, and the queue releases
     /// it when one frees.
@@ -682,6 +667,9 @@ public final class ProjectWindowModel {
     /// Why a card cannot be moved back a column, or nil when it can. git owns In progress once commits exist
     /// (ADR 0011), so clearing the stage would leave the card exactly where it is.
     public func stageBackBlockedReason(for task: DeskTask) -> String? {
+        if task.column == .inProgress, task.pipeline != nil, (task.unmergedCount ?? 0) == 0 {
+            return "Its run has checkpointed a phase — the checkpoint decides In progress, so this would not move it."
+        }
         guard let branch = task.branch, let count = task.unmergedCount, count > 0 else { return nil }
         return "It has \(count) commit\(count == 1 ? "" : "s") on \(branch) — git decides In progress, so this would not move it."
     }
@@ -914,6 +902,15 @@ public final class ProjectWindowModel {
     }
 
     public func isTaskRunning(_ task: DeskTask) -> Bool { activity(of: task) != nil }
+
+    /// The live sessions of tasks git has put in Done — the task's run and its own shell or agent. Its work is merged,
+    /// so the window closes them (once an agent's turn has ended); a door or scratch session is never one of these.
+    public var liveSessionsOfDoneTasks: [String] {
+        tasks.filter { $0.column == .done }
+            // A merged card is numbered by its pull request; its gh-N- branch names the issue the run was started for.
+            .flatMap { task in [DoorRuns.id(for: task), task.branch.flatMap(DeskTask.ghNumber).map { DoorRuns.id(task: $0) }, task.id].compactMap { $0 } }
+            .filter { sessions.state(for: $0).isLive }
+    }
 
     /// A header describes its column, not the search box, so both numbers count every card in it.
     public func counts(in column: BoardColumn) -> (total: Int, live: Int) {

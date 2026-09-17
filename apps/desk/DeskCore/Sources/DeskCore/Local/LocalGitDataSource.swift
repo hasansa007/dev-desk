@@ -60,6 +60,7 @@ public struct LocalGitDataSource: ProjectDataSource {
         let localBacklog = LocalBacklog.read(projectPath: top)
         // The stages the app itself stored (ADR 0035); a sample has no folder, so it keeps none.
         let stages = BoardStages.read(projectRoot: topURL)
+        let checkpoints = Self.taskStates(facts: facts, toplevel: topURL)
         let detected = await tools
         let board: Surface<[DeskTask]>
         if let refusal {
@@ -68,6 +69,7 @@ public struct LocalGitDataSource: ProjectDataSource {
             board = .available(BoardBuilder.build(BoardInput(git: facts, currentBranch: project.branch,
                                                              github: github.data, activeMilestone: active.title,
                                                              pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL),
+                                                             issuePipeline: checkpoints.issues, localPipeline: checkpoints.local,
                                                              localBacklog: localBacklog, stages: stages.stages)))
         }
         var offBase: FolderOffBase?
@@ -229,6 +231,30 @@ public struct LocalGitDataSource: ProjectDataSource {
                 .first
         }
         return states
+    }
+
+    /// `.dev/issue-N.json`, which `/dev` checkpoints under the issue rather than the branch: a feature's branch is cut
+    /// after Phase 5 and a task run starts detached, so these are the only record of phases 1–8. Every worktree is
+    /// read, and the furthest phase wins where two folders hold one task. `.dev/local-ID.json` is the same for a
+    /// `docs/backlog/` entry, which has no issue number.
+    static func taskStates(facts: GitFacts, toplevel: URL) -> (issues: [Int: PipelineState], local: [String: PipelineState]) {
+        var states: [Int: PipelineState] = [:]
+        var local: [String: PipelineState] = [:]
+        let folders = [toplevel] + facts.worktreePaths.map { URL(fileURLWithPath: $0, isDirectory: true) }
+        for folder in folders {
+            let dev = folder.appendingPathComponent(".dev", isDirectory: true)
+            guard let names = try? FileManager.default.contentsOfDirectory(atPath: dev.path) else { continue }
+            for name in names {
+                let number = PipelineState.issueNumber(fileName: name)
+                let entry = PipelineState.localID(fileName: name)
+                guard number != nil || entry != nil,
+                      case .text(let text) = SafeFile.read(dev.appendingPathComponent(name), maxBytes: maxStateBytes, within: folder),
+                      let state = PipelineState.parse(Data(text.utf8)) else { continue }
+                if let number, state.phase >= (states[number]?.phase ?? -1) { states[number] = state }
+                if let entry, state.phase >= (local[entry]?.phase ?? -1) { local[entry] = state }
+            }
+        }
+        return (states, local)
     }
 
     /// Origin's base, then every branch holding only a report, newest first.

@@ -92,6 +92,29 @@ class CheckpointTests(unittest.TestCase):
                 data = json.load(fh)
             self.assertEqual(data["phases_completed"], [4, 9])
 
+    def test_issue_checkpoint_is_keyed_by_the_issue_and_records_the_branch(self):
+        with TempRepo() as r:
+            self.assertEqual(main(["state", "checkpoint", "--phase", "5", "--issue", "42"]), 0)
+            with open(os.path.join(r.dir, ".dev", "issue-42.json")) as fh:
+                data = json.load(fh)
+            self.assertEqual((data["issue"], data["phase"], data["branch"]), (42, 5, "main"))
+            self.assertFalse(os.path.exists(os.path.join(r.dir, ".dev", "main.json")))
+
+    def test_local_checkpoint_is_keyed_by_the_backlog_entry(self):
+        with TempRepo() as r:
+            self.assertEqual(main(["state", "checkpoint", "--phase", "4", "--local", "2026-09-17-c1-callback"]), 0)
+            with open(os.path.join(r.dir, ".dev", "local-2026-09-17-c1-callback.json")) as fh:
+                self.assertEqual(json.load(fh)["local"], "2026-09-17-c1-callback")
+            self.assertEqual(main(["state", "checkpoint", "--phase", "4", "--local", "x", "--issue", "1"]), 2)
+
+    def test_detached_head_needs_an_issue_and_leaves_branch_empty(self):
+        with TempRepo() as r:
+            git(["checkout", "-q", "--detach"], r.dir)
+            self.assertEqual(main(["state", "checkpoint", "--phase", "2"]), 2)
+            self.assertEqual(main(["state", "checkpoint", "--phase", "2", "--issue", "7"]), 0)
+            with open(os.path.join(r.dir, ".dev", "issue-7.json")) as fh:
+                self.assertIsNone(json.load(fh)["branch"])
+
     def test_out_of_range_phase_is_refused(self):
         with TempRepo():
             self.assertEqual(main(["state", "checkpoint", "--phase", "17"]), 2)

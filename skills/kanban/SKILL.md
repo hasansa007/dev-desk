@@ -188,7 +188,7 @@ on refs.
 
 ### 4.4 — The phase column is ADVISORY
 
-When `.dev/<branch>.json` exists, a card may also show `planning` · `coding` · `validation`.
+When `.dev/<branch>.json` or `.dev/issue-N.json` exists, a card may also show `planning` · `coding` · `validation`.
 
 > **Git is authoritative; phase state is advisory.** Every column above is recomputed from `git` and
 > `gh` and cannot be stale. The phase comes from a file that *can* lie. Where they disagree, **git

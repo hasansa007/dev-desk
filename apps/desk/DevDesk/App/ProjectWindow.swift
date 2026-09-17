@@ -100,12 +100,14 @@ struct ProjectWindow: View {
         }
         .onAppear {
             registry.windowOpened(ref)
-            terminals.onEvent = { [model, ref] id, event in
+            terminals.onEvent = { [model, ref, terminals] id, event in
                 guard case .local(let path) = ref else { return }
+                if event == .turnFinished, model.liveSessionsOfDoneTasks.contains(id) { Self.closeDone(model: model, terminals: terminals) }
                 let onScreen = NSApp.isActive && model.destination == .terminals && model.selectedSessionID == id
                 RunNotifications.post(event, session: id, name: model.sessionName(id), directory: path, isOnScreen: onScreen)
             }
         }
+        .onChange(of: model.liveSessionsOfDoneTasks) { _, _ in Self.closeDone(model: model, terminals: terminals) }
         .onReceive(NotificationCenter.default.publisher(for: RunNotifications.openSession)) { note in
             guard case .local(let path) = ref, note.userInfo?["directory"] as? String == path else { return }
             if let session = note.userInfo?["session"] as? String { model.selectedSessionID = session }
@@ -124,6 +126,15 @@ struct ProjectWindow: View {
         AutoAgentsHook(auto: auto, ref: ref)
         StartQueueHook(queue: queue)
         FiledWorkHook(model: model)
+    }
+
+    /// Ends and takes off the list each Done task's session, except an agent still mid-turn: its turn's end calls this again.
+    @MainActor
+    private static func closeDone(model: ProjectWindowModel, terminals: ShellTerminalRegistry) {
+        for id in model.liveSessionsOfDoneTasks where !terminals.isMidTurn(id) {
+            terminals.end(taskID: id)
+            model.runs.remove(id)
+        }
     }
 
     private var subtitle: String {

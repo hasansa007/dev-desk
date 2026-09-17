@@ -72,12 +72,13 @@ final class BoardStageModelTests: XCTestCase {
         XCTAssertEqual(BoardStages.read(projectRoot: root).stages, [:], "Backlog is the absence of a stage, not a stage")
     }
 
-    /// A start moves the card at once, instead of waiting for git to see a commit.
-    func testRecordStartedMovesTheCardToInProgress() async throws {
+    /// A start is not progress (ADR 0044): it takes a queued card out of Queued and no further.
+    func testRecordStartedLeavesTheCardInReadyForDev() async throws {
         let model = await makeModel()
+        await model.queueForStart(try card(model))
         await model.recordStarted(try card(model))
-        XCTAssertEqual(try card(model).column, .inProgress)
-        XCTAssertEqual(BoardStages.read(projectRoot: root).stages, ["42": .inProgress])
+        XCTAssertEqual(try card(model).column, .readyForDev)
+        XCTAssertEqual(BoardStages.read(projectRoot: root).stages, ["42": .readyForDev])
     }
 
     /// A Start with every agent slot busy parks the card (ADR 0035): the stage is the queue.
@@ -88,9 +89,9 @@ final class BoardStageModelTests: XCTestCase {
         XCTAssertEqual(BoardStages.read(projectRoot: root).stages, ["42": .queued])
     }
 
-    func testCancelToReadyForDevStepsAStartedCardBack() async throws {
+    func testCancelToReadyForDevStepsAQueuedCardBack() async throws {
         let model = await makeModel()
-        await model.recordStarted(try card(model))
+        await model.queueForStart(try card(model))
 
         await model.cancelToReadyForDev(try card(model))
 
@@ -122,20 +123,11 @@ final class BoardStageModelTests: XCTestCase {
         XCTAssertEqual(BoardStages.read(projectRoot: root).stages, [:])
     }
 
-    /// The rule that answers the original report: a task with something live in this window is never shown
-    /// as unstarted — Backlog with a pulsing "Running" pill cannot happen.
-    func testARunningTaskIsNeverShownInAnUnstartedColumn() {
-        for column in [BoardColumn.backlog, .readyForDev, .queued] {
-            var task = branchedTask(unmerged: 0)
-            task.column = column
-            XCTAssertEqual(ProjectWindowModel.promoted(task, isRunning: true).column, .inProgress, "\(column)")
-            XCTAssertEqual(ProjectWindowModel.promoted(task, isRunning: false).column, column, "an idle card stays put")
-        }
-        // The columns git owns are never touched: the promotion only fills, it never contradicts.
-        for column in [BoardColumn.inProgress, .review, .done] {
-            var task = branchedTask(unmerged: 0)
-            task.column = column
-            XCTAssertEqual(ProjectWindowModel.promoted(task, isRunning: true).column, column, "\(column)")
-        }
+    /// A checkpointed card with no commits is In progress because of its run; stepping it back would change nothing.
+    func testACheckpointedCardCannotBeSteppedBack() async {
+        let model = await makeModel()
+        var task = branchedTask(unmerged: 0)
+        task.pipeline = PipelineState(phase: 4).progress
+        XCTAssertNotNil(model.stageBackBlockedReason(for: task))
     }
 }

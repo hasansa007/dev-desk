@@ -18,6 +18,19 @@ struct PipelineState: Equatable {
         String(branch.unicodeScalars.map { safeScalars.contains($0) ? Character($0) : "-" })
     }
 
+    /// The issue a `.dev/issue-N.json` file belongs to; nil for a branch's file or anything else.
+    static func issueNumber(fileName: String) -> Int? {
+        guard fileName.hasPrefix("issue-"), fileName.hasSuffix(".json") else { return nil }
+        return Int(fileName.dropFirst("issue-".count).dropLast(".json".count))
+    }
+
+    /// The `docs/backlog/` entry a `.dev/local-ID.json` file belongs to (dev.py slugs the id; entry ids are already safe).
+    static func localID(fileName: String) -> String? {
+        guard fileName.hasPrefix("local-"), fileName.hasSuffix(".json") else { return nil }
+        let id = String(fileName.dropFirst("local-".count).dropLast(".json".count))
+        return id.isEmpty ? nil : id
+    }
+
     static func parse(_ data: Data) -> PipelineState? {
         guard let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let phase = object["phase"] as? Int else { return nil }
@@ -32,8 +45,11 @@ struct PipelineState: Equatable {
         return PipelineProgress(stages: stages, note: "Advisory — read from .dev state; git wins any disagreement.")
     }
 
+    /// A checkpoint records the phase that CLEARED, so the card names the work after it: phase 4 done is Planning.
     var cardNote: String {
-        ["Phase \(phase)", phaseGroup, "advisory"].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+        let working = phase + 1
+        let label = working <= 8 ? "Planning" : working <= 10 ? "Implementing" : working <= 13 ? "Verifying" : "Opening the PR"
+        return "\(label) · phase \(phase) done"
     }
 
     var check: CheckResult {

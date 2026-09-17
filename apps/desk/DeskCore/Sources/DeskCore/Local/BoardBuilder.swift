@@ -9,6 +9,11 @@ struct BoardInput {
     var github: GitHubData?
     var activeMilestone: String?
     var pipeline: [String: PipelineState] = [:]
+    /// `/dev`'s checkpoints keyed by issue (`.dev/issue-N.json`). A checkpoint is what moves an issue's card to In
+    /// progress before git has a commit to say so; opening a terminal moves nothing.
+    var issuePipeline: [Int: PipelineState] = [:]
+    /// The same for a `docs/backlog/` entry (`.dev/local-ID.json`), keyed by the entry's id.
+    var localPipeline: [String: PipelineState] = [:]
     /// Entries in `docs/backlog/`. They sit in Backlog after the tracker's own, marked as local (ADR 0027).
     var localBacklog: [BacklogItem] = []
     /// Stored stages from `.devdesk/board.json`, keyed by `DeskTask.id` (ADR 0035). Consulted only
@@ -245,11 +250,13 @@ private struct BoardContext {
         // real move: converting the PR back to a draft puts the card back where the work is.
         if let pullRequest { return pullRequest.isDraft ? .inProgress : .review }
         if (branch?.unmerged ?? 0) > 0 { return .inProgress }
+        if input.issuePipeline[issue.number] != nil { return .inProgress }
         if let stage = stage(for: String(issue.number)) {
             switch stage {
-            case .inProgress: return .inProgress
+            // A start no longer means In progress — the run's checkpoints do. A leftover `inProgress` from before
+            // says only that the card was started, which is what Ready for dev already says.
+            case .inProgress, .readyForDev: return .readyForDev
             case .queued: return .queued
-            case .readyForDev: return .readyForDev
             }
         }
         // The active milestone means "ready for dev" now, not "queued": Queued is the wait for a free
@@ -279,7 +286,7 @@ private struct BoardContext {
         let head = local?.name ?? pullRequest?.headRefName
         // A fork's head names a branch of someone else's repository; a branch here with that name is a different one.
         let fromFork = branch == nil && pullRequest?.isCrossRepository == true
-        let state = head.flatMap { input.pipeline[$0] }
+        let state = head.flatMap { input.pipeline[$0] } ?? input.issuePipeline[issue.number]
         let badge: StatusBadge?
         // The ahead count is a field on every card now, so the pill that repeated it stays out of the card and
         // keeps only the dialog's header, where nothing else says how far ahead the branch is.
@@ -392,20 +399,23 @@ private struct BoardContext {
             // Ahead of the stage switch on purpose: a card left `inProgress` by an interrupted run is exactly
             // the case this fixes, so the file must outrank the leftover stage rather than lose to it.
             column = .done
+        } else if input.localPipeline[item.id] != nil {
+            column = .inProgress
         } else {
             switch stage(for: id) {
-            case .inProgress: column = .inProgress
+            // As for an issue: a start is not In progress, a checkpoint is.
+            case .inProgress, .readyForDev: column = .readyForDev
             case .queued: column = .queued
-            case .readyForDev: column = .readyForDev
             case nil: column = .backlog
             }
         }
         return DeskTask(
             id: id, title: item.title, column: column,
             cardMeta: item.area, cardBadge: StatusBadge(.info, "Local"),
-            cardNote: column == .queued ? BoardBuilder.queuedNote : nil,
+            cardNote: column == .inProgress ? input.localPipeline[item.id]?.cardNote : column == .queued ? BoardBuilder.queuedNote : nil,
             headerBadge: StatusBadge(.info, "Local backlog"),
             branchLine: item.isDone ? Self.resolvedLine(item) : "No branch yet", parallelLine: "",
+            pipeline: item.isDone ? nil : input.localPipeline[item.id]?.progress,
             // The source is rendered as markdown, and a file name is the repository's text — a file called
             // "[open](file:///…).md" would otherwise arrive as a link.
             requirements: .available(BoardBuilder.requirements(body: item.body, title: item.title, source: Markdown.escape(path))),

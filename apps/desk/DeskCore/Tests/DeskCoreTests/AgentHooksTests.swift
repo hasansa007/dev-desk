@@ -18,11 +18,11 @@ final class AgentHooksTests: XCTestCase {
         XCTAssertEqual(AgentHooks.inject(into: "gemini -i 'x'"), "gemini -i 'x'")
     }
 
-    /// Claude's settings are JSON with a Notification and a Stop hook; Codex's TOML literal carries no quote that would end it.
+    /// Claude's settings are JSON with Notification, Stop and UserPromptSubmit hooks; Codex's TOML literal carries no quote that would end it.
     func testTheHookPayloadsAreWellFormed() throws {
         let object = try JSONSerialization.jsonObject(with: Data(AgentHooks.claudeSettings.utf8)) as? [String: Any]
         let hooks = try XCTUnwrap(object?["hooks"] as? [String: Any])
-        XCTAssertEqual(Set(hooks.keys), ["Notification", "Stop"])
+        XCTAssertEqual(Set(hooks.keys), ["Notification", "Stop", "UserPromptSubmit"])
         XCTAssertFalse(AgentHooks.script(event: "turn", payload: #"printf %s "$1""#).contains("'"))
         XCTAssertTrue(AgentHooks.codexNotify.hasPrefix("notify=['sh','-c','"))
     }
@@ -51,6 +51,7 @@ final class AgentHooksTests: XCTestCase {
 
     func testEventFilesAreRead() {
         XCTAssertEqual(AgentHooks.event(fileName: "turn.ab12", contents: Data()), .turnFinished)
+        XCTAssertEqual(AgentHooks.event(fileName: "prompt.ab12", contents: Data()), .turnStarted)
         XCTAssertEqual(AgentHooks.event(fileName: "question.x", contents: Data("nope".utf8)), .question(nil))
         XCTAssertNil(AgentHooks.event(fileName: "question.y", contents: Data(#"{"message":"Claude is waiting for your input"}"#.utf8)),
                      "the idle reminder repeats the finished turn")

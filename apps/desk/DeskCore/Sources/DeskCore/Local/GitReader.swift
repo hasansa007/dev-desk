@@ -48,6 +48,8 @@ struct GitFacts: Equatable {
     var truncatedBranchCount: Int? = nil
     /// Reports approved from the board, read back from the base's merges so an approved card stays in Done.
     var reportMerges: [ReportMergeRecord] = []
+    /// Every worktree's folder, detached ones included: a task run starts detached, and its `.dev/issue-N.json` is there.
+    var worktreePaths: [String] = []
 }
 
 struct ReportMergeRecord: Equatable {
@@ -120,6 +122,10 @@ enum GitOutput {
             }
         }
         return map
+    }
+
+    static func worktreePaths(_ porcelain: String) -> [String] {
+        lines(porcelain).filter { $0.hasPrefix("worktree ") }.map { String($0.dropFirst("worktree ".count)) }
     }
 
     static func commits(_ log: String) -> [GitCommit] {
@@ -316,7 +322,8 @@ struct GitReader {
         let (base, baseRef) = await resolveBase(remote: await remote ?? "", local: localNames, current: currentBranch)
         var baseShort: String?
         if let baseRef { baseShort = trimmed(await output(["rev-parse", "--short", baseRef])) }
-        let worktrees = GitOutput.worktrees(await porcelain ?? "")
+        let porcelainText = await porcelain ?? ""
+        let worktrees = GitOutput.worktrees(porcelainText)
         let here = Self.canonical(toplevel)
         // Cap the fan-out: rev-list, log and two diffs run per branch, and the newest-committed branches matter most.
         let candidates = localNames.filter { $0 != base }
@@ -335,7 +342,7 @@ struct GitReader {
         }
         return GitFacts(base: base, baseRef: baseRef, baseShort: baseShort, branches: branches,
                         truncatedBranchCount: candidates.count > GitOutput.maxBranches ? candidates.count : nil,
-                        reportMerges: reportMerges)
+                        reportMerges: reportMerges, worktreePaths: GitOutput.worktreePaths(porcelainText))
     }
 
     /// A `for-each-ref --format=%(refname) %(objectname) %(committerdate:unix)` line; ref names can't hold spaces,
