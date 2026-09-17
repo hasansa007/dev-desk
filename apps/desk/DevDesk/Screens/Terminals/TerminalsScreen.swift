@@ -609,17 +609,19 @@ private struct SessionPane: View {
                                        noBranchNote: note, worktreeLocation: location, title: title)
             guard case .running(let folder) = model.sessions.state(for: id) else { return }
             terminals.start(taskID: id, folder: folder.url)
-            guard var command else { return }
+            guard let command else { return }
+            var preamble = ""
             if freshBase || runTask != nil, case .local(let path) = model.ref {
                 let worktrees = FreshBaseWorktree(projectRoot: URL(fileURLWithPath: path, isDirectory: true), worktreeLocation: location)
                 let fresh = if let runTask { await worktrees.prepareTask(number: runTask) } else { await worktrees.prepare(door: id) }
                 if fresh.created {
-                    command = "cd \(ShellQuote.single(fresh.url.path)) && " + command
+                    preamble = "cd \(ShellQuote.single(fresh.url.path)) && "
                 } else if let reason = fresh.note {
-                    command = "echo \(ShellQuote.single(reason)); " + command
+                    preamble = "echo \(ShellQuote.single(reason)); "
                 }
             }
-            terminals.send(command + "\n", to: id)
+            // Through sendCommand, not send: a plain send typed the agent without its hooks, so it never notified.
+            terminals.sendCommand(command, to: id, preamble: preamble)
         }
     }
 
