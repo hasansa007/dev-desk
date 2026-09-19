@@ -375,7 +375,8 @@ public final class ProjectWindowModel {
     public var sequenceFlows: [SequenceFlow] {
         guard let root = snapshot?.repositoryRoot else { return [] }
         return SequenceFlows.list(diagrams: ArchDiagrams.list(repositoryRoot: root),
-                                  huntFlows: SequenceFlows.huntFlows(repositoryRoot: root))
+                                  huntFlows: SequenceFlows.huntFlows(repositoryRoot: root),
+                                  catalog: SequenceFlows.catalog(repositoryRoot: root))
     }
 
     /// Whether a diagram can be drawn here, and why not when it can't — read only where it blocks, which is the

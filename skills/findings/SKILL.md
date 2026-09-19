@@ -117,6 +117,11 @@ Find them from what the repo declares, never from imagination —
 | Android | nav graph, `NavHost` composable destinations |
 | Any | HTTP handlers, CLI subcommands, queue consumers, cron entry points |
 
+**Read `docs/flows.md` first when the repo has one** — the project's flow list, shared with `dev:arch` and the
+Diagrams screen (ADR 0047): one bullet per flow, `- <Name> — also: <other names>`. Keep the flow ids in your
+*Per flow* table (`build-create`), and make sure each one is on the list — as a flow's name or in its `also:` —
+adding it where it belongs. That is what keeps the same flow from being three rows under three names.
+
 **Print the flow list and its source before reading any of it.** A flow you cannot point at a declaration
 for is one you invented, and every finding under it inherits that.
 

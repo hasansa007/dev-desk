@@ -4,7 +4,8 @@ import Foundation
 public struct SequenceFlow: Identifiable, Hashable {
     /// Where the flow was named. Every source counts the same; a flow two sources name is listed once.
     public enum Source: String, Hashable, CaseIterable, Comparable {
-        case architecture = "Architecture", dataflow = "Data flow", hunt = "Findings hunt", drawn = "Drawn earlier"
+        case architecture = "Architecture", dataflow = "Data flow", hunt = "Findings hunt", drawn = "Drawn earlier",
+             catalog = "Flow list"
         public static func < (a: Source, b: Source) -> Bool {
             allCases.firstIndex(of: a)! < allCases.firstIndex(of: b)!
         }
@@ -50,11 +51,24 @@ public enum SequenceFlows {
     /// Every flow the project has named, whichever source is ready: the named views of the newest Architecture
     /// and Data flow drawings, and the flows the newest findings hunt read. None is required. A sequence drawn
     /// for a flow no source names any more stays listed, as Drawn earlier, so a drawing never goes missing.
-    public static func list(diagrams: [ArchDiagram], huntFlows: [String]) -> [SequenceFlow] {
+    ///
+    /// `catalog` is the project's own flow list (`docs/flows.md`): each flow once, with the other names sources
+    /// give it. Those names fold into its row, so "Build path", "Build a course" and "build-create" are one flow.
+    public static func list(diagrams: [ArchDiagram], huntFlows: [String],
+                            catalog: [FlowCatalogEntry] = []) -> [SequenceFlow] {
         var flows: [String: SequenceFlow] = [:]
         var order: [String] = []
+        var canonical: [String: String] = [:]
+        for entry in catalog {
+            let key = slug(entry.name)
+            guard !key.isEmpty, flows[key] == nil else { continue }
+            flows[key] = SequenceFlow(name: entry.name, slug: key, sources: [])
+            order.append(key)
+            for alias in entry.aliases { canonical[slug(alias)] = key }
+        }
+        func resolve(_ raw: String) -> String { canonical[raw] ?? raw }
         func add(_ name: String, _ source: SequenceFlow.Source) {
-            let slug = slug(name)
+            let slug = resolve(slug(name))
             guard !slug.isEmpty else { return }
             if flows[slug] == nil {
                 flows[slug] = SequenceFlow(name: name, slug: slug, sources: [])
@@ -69,14 +83,42 @@ public enum SequenceFlows {
         for flow in huntFlows { add(ArchDiagrams.readableName(flow), .hunt) }
         let sequences = diagrams.filter { $0.kind == "sequence" }.sorted { $0.modifiedAt > $1.modifiedAt }
         for sequence in sequences {
-            let slug = sequence.flowSlug ?? slug(sequence.title)
+            let slug = resolve(sequence.flowSlug ?? slug(sequence.title))
             if flows[slug] == nil {
                 flows[slug] = SequenceFlow(name: sequence.title, slug: slug, sources: [.drawn])
                 order.append(slug)
             }
             if flows[slug]?.drawing == nil { flows[slug]?.drawing = sequence }
         }
+        // A listed flow no source has named yet still says where it came from.
+        for key in order where flows[key]?.sources.isEmpty == true { flows[key]?.sources.insert(.catalog) }
         return order.compactMap { flows[$0] }
+    }
+
+    public static let catalogPath = "docs/flows.md"
+
+    /// `docs/flows.md`: one bullet per flow — `- Build a course — also: Build path, build-create` — and nothing
+    /// else is read. The name is how every screen and door calls the flow; `also:` lists what other sources call it.
+    public static func catalog(in markdown: String) -> [FlowCatalogEntry] {
+        markdown.components(separatedBy: .newlines).compactMap { line in
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            guard trimmed.hasPrefix("- ") || trimmed.hasPrefix("* ") else { return nil }
+            let body = String(trimmed.dropFirst(2))
+            let parts = body.components(separatedBy: "also:")
+            let name = parts[0].trimmingCharacters(in: CharacterSet(charactersIn: " —–-:·"))
+            guard !name.isEmpty else { return nil }
+            let aliases = parts.count > 1
+                ? parts[1].split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                : []
+            return FlowCatalogEntry(name: name, aliases: aliases)
+        }
+    }
+
+    public static func catalog(repositoryRoot: String) -> [FlowCatalogEntry] {
+        let root = URL(fileURLWithPath: repositoryRoot, isDirectory: true)
+        guard case .text(let text) = SafeFile.read(root.appendingPathComponent(catalogPath), maxBytes: 262_144, within: root)
+        else { return [] }
+        return catalog(in: text)
     }
 
     /// The flows a findings report says its hunt read: the ids in its "Per flow" table (`dev:findings` Phase 7),
@@ -108,5 +150,15 @@ public enum SequenceFlows {
             return huntFlows(in: text)
         }
         return []
+    }
+}
+
+/// One line of `docs/flows.md`: a flow's name, and what else it is called.
+public struct FlowCatalogEntry: Hashable {
+    public var name: String
+    public var aliases: [String]
+    public init(name: String, aliases: [String] = []) {
+        self.name = name
+        self.aliases = aliases
     }
 }

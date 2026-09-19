@@ -38,6 +38,13 @@ drawings for three kinds, one data flow saved under an architecture file name.
 7. **`dev:arch` names the flows** in every Architecture and Data flow drawing, as `meta.views` labelled the
    way a user says them — so the next drawing feeds the list.
 
+8. **One flow list per project, `docs/flows.md`** (added the same day, after the first render listed 19 flows
+   for about 8). One bullet per flow — `- Build a course — also: Build path, build-create` — and the app folds
+   every `also:` name into that flow's row, drawings included. `dev:arch` uses the list's names for its views
+   and sequences; `dev:findings` puts every flow id it hunts on it. Either door adds a line for a flow it names
+   first. The list is optional: without it, rows merge only on identical words. studyhub-deploy's list took its
+   Sequence menu from 19 rows to 9.
+
 ## Alternatives rejected
 
 - **Require an Architecture drawing before Sequence.** Most projects have never drawn one; a hunt, or a
@@ -49,9 +56,6 @@ drawings for three kinds, one data flow saved under an architecture file name.
 
 ## Consequences
 
-- **Different words for the same flow are not merged.** studyhub-deploy's first render listed 19 flows: the
-  Architecture drawing says *Build path*, the Data flow *Build a course*, the hunt *build-create*, *build-grow*
-  and *build-rework*. Matching is by exact words (as a slug), because a guessed merge would hide a real flow.
-  The fix is upstream — one flow list per project that `dev:arch` and `dev:findings` both read and write — and
-  is left open until the developer decides it.
+- **Different words for the same flow are merged only by `docs/flows.md`**, never guessed: a guessed merge
+  would hide a real flow. A project without the list sees one row per distinct name until one is written.
 - A sequence drawn before this ADR (`studyhub-build-sequence`) keeps showing, as *Drawn earlier*.

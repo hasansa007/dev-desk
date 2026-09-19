@@ -1,7 +1,7 @@
 import DeskCore
 import SwiftUI
 
-/// Work's filter row (ADR 0046): priority, type and tag. The milestone is chosen in Work's list, not here.
+/// Work's filter row (ADR 0046): type, priority and tag. The milestone is chosen in Work's list, not here.
 struct TaskFilterBar: View {
     @Bindable var model: ProjectWindowModel
 
@@ -9,6 +9,14 @@ struct TaskFilterBar: View {
         // No milestone picker: Work's list on the left is the milestone choice (ADR 0046 decision 13).
         // The shared second row and its one chip (ADR 0046 decisions 14, 15): filter groups, any or none on.
         ScreenBar {
+            // Type first: every task has one whatever its priority, so it is the broadest cut.
+            ChipGroupLabel("Type")
+            ForEach(TaskKind.allCases, id: \.self) { kind in
+                FilterChip(kind.rawValue, isOn: model.taskFilter.kinds.contains(kind), count: count { $0.kind == kind }) {
+                    toggle(&model.taskFilter.kinds, kind)
+                }
+            }
+            ChipSeparator()
             ChipGroupLabel("Priority")
             ForEach(TaskFilter.priorityOrder, id: \.self) { p in
                 FilterChip(p, isOn: model.taskFilter.priorities.contains(p), tone: TaskFilterBar.tone(p),
@@ -19,13 +27,6 @@ struct TaskFilterBar: View {
             FilterChip("None", isOn: model.taskFilter.priorities.contains(TaskFilter.unprioritised),
                        count: count { $0.priority == nil }) {
                 toggle(&model.taskFilter.priorities, TaskFilter.unprioritised)
-            }
-            ChipSeparator()
-            ChipGroupLabel("Type")
-            ForEach(TaskKind.allCases, id: \.self) { kind in
-                FilterChip(kind.rawValue, isOn: model.taskFilter.kinds.contains(kind), count: count { $0.kind == kind }) {
-                    toggle(&model.taskFilter.kinds, kind)
-                }
             }
             ChipSeparator()
             ChipGroupLabel("Tag")

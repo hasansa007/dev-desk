@@ -57,4 +57,24 @@ final class SequenceFlowsTests: XCTestCase {
         """
         XCTAssertEqual(SequenceFlows.huntFlows(in: report), ["worker-queue", "auth-session"])
     }
+
+    /// The flow list folds every other name into one row, keeps its own order, and lists a flow no source names yet.
+    func testTheCatalogFoldsAliases() {
+        let catalog = SequenceFlows.catalog(in: """
+        # Flows
+        Some prose that is not a flow.
+        - Build a course — also: Build path, build-create, StudyHub Course Build Sequence
+        - Sign in
+        """)
+        XCTAssertEqual(catalog, [FlowCatalogEntry(name: "Build a course", aliases: ["Build path", "build-create", "StudyHub Course Build Sequence"]),
+                                 FlowCatalogEntry(name: "Sign in")])
+        var orphan = diagram("studyhub-build-sequence", "sequence")
+        orphan.title = "StudyHub Course Build Sequence"
+        let flows = SequenceFlows.list(diagrams: [diagram("a", "architecture", views: ["Build path"]), orphan],
+                                       huntFlows: ["build-create", "checkout-pay"], catalog: catalog)
+        XCTAssertEqual(flows.map(\.name), ["Build a course", "Sign in", "Checkout pay"])
+        XCTAssertEqual(flows[0].sources, [.architecture, .hunt])
+        XCTAssertEqual(flows[0].drawing?.id, "studyhub-build-sequence")
+        XCTAssertEqual(flows[1].sources, [.catalog])
+    }
 }

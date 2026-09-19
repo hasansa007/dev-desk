@@ -108,6 +108,11 @@ flow's sequence is `<repo>-sequence-<flow>`, and the name is how the screen puts
 flow's row. **Name the flows.** An `architecture` or `dataflow` drawing lists the project's flows as its
 `meta.views`, labelled the way a user would say them (*Build a course*, *Pay for a build*) — the Diagrams
 screen offers exactly those as Sequence's flows, beside the flows the last `dev:findings` hunt read.
+**Read `docs/flows.md` first when the repo has one** — the project's own flow list (ADR 0047): one bullet per
+flow, `- <Name> — also: <other names>`. Use its names for `meta.views` and for a sequence's title, never a new
+wording for a flow it already lists. A flow you name that is not on it: add a bullet. A view you would have
+called something else: add that word to the flow's `also:` rather than renaming it. The Diagrams screen folds
+every `also:` name into its flow's row, so the list is what keeps one flow from showing up three times.
 
 ## Phase 2 — Resolve the renderer
 
