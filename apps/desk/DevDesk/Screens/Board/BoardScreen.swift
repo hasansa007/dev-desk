@@ -9,6 +9,7 @@ struct BoardScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             header
+            TaskFilterBar(model: model)
             boardArea
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -99,8 +100,8 @@ struct BoardScreen: View {
                 ColumnEntry(column: column,
                             tasks: BoardOrder.inColumn(column, tasks.filter { Self.shows($0, in: column) && matches($0) }))
             }
-            if !model.searchText.isEmpty && columns.allSatisfy({ $0.tasks.isEmpty }) {
-                Text("No tasks match “\(model.searchText)”.")
+            if (!model.searchText.isEmpty || model.taskFilter.isActive) && columns.allSatisfy({ $0.tasks.isEmpty }) {
+                Text(model.searchText.isEmpty ? "No tasks match these filters." : "No tasks match “\(model.searchText)”.")
                     .font(DeskFont.body)
                     .foregroundStyle(DeskColor.mutedInk)
                     .padding(16)
@@ -155,6 +156,7 @@ struct BoardScreen: View {
     }
 
     private func matches(_ task: DeskTask) -> Bool {
+        guard model.taskFilter.matches(task) else { return false }
         guard !model.searchText.isEmpty else { return true }
         let query = model.searchText.lowercased()
         if task.title.lowercased().contains(query) { return true }

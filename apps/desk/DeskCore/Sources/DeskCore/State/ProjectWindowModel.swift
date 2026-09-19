@@ -379,6 +379,8 @@ public final class ProjectWindowModel {
     public var mode: ViewMode = .focus
     public var showBacklog = false
     public var searchText = ""
+    /// Shared by the Board and the Plan (ADR 0046): a filter set on one holds on the other.
+    public var taskFilter = TaskFilter()
     /// How deep the Runs edge is and how wide the Files edge is. An edge you cannot resize is a decision made
     /// once for every project and every screen size.
     public var runsHeight: Double = 300

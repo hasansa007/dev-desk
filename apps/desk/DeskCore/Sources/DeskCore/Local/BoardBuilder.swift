@@ -325,7 +325,7 @@ private struct BoardContext {
         } else {
             badge = nil
         }
-        return DeskTask(
+        var task = DeskTask(
             id: String(issue.number), issueNumber: issue.number, title: issue.title, column: column,
             cardBadge: saysAheadOnly ? nil : badge,
             cardNote: state?.cardNote ?? (column == .queued ? BoardBuilder.queuedNote
@@ -347,6 +347,9 @@ private struct BoardContext {
             complexity: DeskTask.rating("complexity", in: issue.labelNames),
             lastCommit: fromFork ? nil : local?.lastCommit, unmergedCount: fromFork ? nil : local?.countedUnmerged,
             pullRequestNumber: pullRequest?.number)
+        task.labels = issue.labelNames
+        task.milestone = issue.milestone?.title
+        return task
     }
 
     private func pullRequestTask(_ pullRequest: GitHubPullRequest) -> DeskTask {

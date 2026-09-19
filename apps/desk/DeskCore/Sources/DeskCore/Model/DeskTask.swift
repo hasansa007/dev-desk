@@ -378,6 +378,9 @@ public struct DeskTask: Identifiable, Hashable {
     /// "High", "Medium" or "Low" from the issue's `impact:` label; nil when nobody has rated it (ADR 0020).
     public var impact: String?
     public var complexity: String?
+    /// The issue's labels and milestone, so a filter can narrow the board without reading GitHub again (ADR 0046).
+    public var labels: [String] = []
+    public var milestone: String? = nil
     /// When this task's branch was last committed to; nil for a card with no branch. What tells a finished
     /// branch from live work, since git's In Progress rule cannot.
     public var lastCommit: Date?
