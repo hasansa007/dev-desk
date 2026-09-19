@@ -25,6 +25,32 @@ public struct TaskFilter: Equatable {
 
     public var isActive: Bool { milestone != nil || !priorities.isEmpty || !kinds.isEmpty || !tags.isEmpty }
 
+    /// One section of Work's filter list (ADR 0046 decision 16).
+    public enum Group: CaseIterable, Hashable { case priority, kind, tag }
+
+    /// How many values are on, across every group — the "2" on Clear all and on the collapsed list.
+    public var activeCount: Int { priorities.count + kinds.count + tags.count }
+
+    /// What is on, in list order, for the header: "P0, Bug, Security".
+    public var summary: String {
+        let p = Self.priorityOrder.filter(priorities.contains) + (priorities.contains(Self.unprioritised) ? ["No priority"] : [])
+        let k = TaskKind.allCases.filter(kinds.contains).map(\.rawValue)
+        let t = Self.tagLabels.filter(tags.contains).map(\.capitalized)
+        return (p + k + t).joined(separator: ", ")
+    }
+
+    /// The filter with one group switched off: a count beside an option says what turning it on gives with the
+    /// OTHER groups applied, so it is computed against this.
+    public func ignoring(_ group: Group) -> TaskFilter {
+        var copy = self
+        switch group {
+        case .priority: copy.priorities = []
+        case .kind: copy.kinds = []
+        case .tag: copy.tags = []
+        }
+        return copy
+    }
+
     /// Cards with no issue behind them — a branch, a pull request, a report — have no milestone, priority or label,
     /// so any active filter leaves them out rather than guessing.
     public func matches(_ task: DeskTask) -> Bool {
@@ -65,4 +91,9 @@ public enum WorkScope: Hashable {
     case all
     case milestone(String)
     case noMilestone
+}
+
+/// Which milestones Work's list shows (ADR 0046 decision 16). Open is the default: finished ones fold away.
+public enum MilestoneStage: String, CaseIterable, Hashable {
+    case all = "All", open = "Open", workingNow = "Working now"
 }

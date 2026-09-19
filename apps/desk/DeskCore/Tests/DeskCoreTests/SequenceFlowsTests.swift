@@ -78,3 +78,13 @@ final class SequenceFlowsTests: XCTestCase {
         XCTAssertEqual(flows[1].sources, [.catalog])
     }
 }
+
+final class TaskFilterSummaryTests: XCTestCase {
+    func testSummaryCountAndIgnoring() {
+        let filter = TaskFilter(priorities: ["P1", "P0", TaskFilter.unprioritised], kinds: [.bug], tags: ["security"])
+        XCTAssertEqual(filter.summary, "P0, P1, No priority, Bug, Security")
+        XCTAssertEqual(filter.activeCount, 5)
+        XCTAssertTrue(filter.ignoring(.priority).priorities.isEmpty)
+        XCTAssertEqual(filter.ignoring(.priority).kinds, [.bug])
+    }
+}

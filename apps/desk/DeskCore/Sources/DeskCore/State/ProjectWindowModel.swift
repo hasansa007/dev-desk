@@ -803,6 +803,49 @@ public final class ProjectWindowModel {
                                 matches: { query.isEmpty || $0.title.lowercased().contains(query) || $0.issueLabel.contains(query) })
     }
 
+    /// Work's milestone list (ADR 0046 decision 16): every milestone, unfiltered — a filter narrows the Board, never
+    /// the list you choose a milestone from, or the one selected would vanish under it.
+    public var milestoneRows: [PlanRow] {
+        guard let snapshot, case .available(let roadmap) = snapshot.roadmap else { return [] }
+        return PlanBuilder.rows(milestones: roadmap.milestones, order: PlanOrder(titles: snapshot.planOrder),
+                                active: snapshot.activeMilestone, tasks: tasks)
+    }
+
+    public var milestoneStage: MilestoneStage = .open
+    public var showsFinishedMilestones = false
+
+    /// A milestone whose issues are all closed.
+    public static func isFinished(_ row: PlanRow) -> Bool { row.title != nil && row.tasks.isEmpty && row.total > 0 }
+
+    public var finishedMilestoneCount: Int { milestoneRows.filter(Self.isFinished).count }
+
+    /// The rows the stage switch leaves: Working now alone; Open without the finished ones unless asked; or all.
+    public var visibleMilestoneRows: [PlanRow] {
+        let rows = milestoneRows
+        switch milestoneStage {
+        case .all: return rows
+        case .workingNow: return rows.filter(\.isWorkingNow)
+        case .open: return showsFinishedMilestones ? rows : rows.filter { !Self.isFinished($0) }
+        }
+    }
+
+    /// Open issues in the selected milestone — what Work's filters narrow.
+    private var openWorkIssues: [DeskTask] {
+        tasks.filter { $0.issueNumber != nil && $0.column != .done && inWorkScope($0) }
+    }
+
+    /// What an option's count says: open issues in the selected milestone it would keep, with the other groups' filters on.
+    public func facetCount(_ group: TaskFilter.Group, _ matches: (DeskTask) -> Bool) -> Int {
+        let others = taskFilter.ignoring(group)
+        return openWorkIssues.filter { others.matches($0) && matches($0) }.count
+    }
+
+    /// "1 of 11 shown" in Work's header while a filter is on.
+    public var workFilterTally: (shown: Int, total: Int) {
+        let open = openWorkIssues
+        return (open.filter { taskFilter.matches($0) }.count, open.count)
+    }
+
     /// Puts `title` at the top of the Plan, so it becomes Working now and Next up reads it (ADR 0046). Stored in
     /// `.devdesk/plan.json`; nothing is written to GitHub.
     public func moveToTopOfPlan(_ title: String) async {

@@ -300,7 +300,7 @@ struct TaskCard: View {
             }
             // Priority first, then the tags that change how a fix is reviewed (ADR 0046).
             if let priority = task.priority {
-                PropertyChip(priority, tone: TaskFilterBar.tone(priority), verticalPadding: 0, horizontalPadding: 5)
+                PropertyChip(priority, tone: TaskCard.priorityTone(priority), verticalPadding: 0, horizontalPadding: 5)
             }
             ForEach(task.tags, id: \.self) { tag in
                 PropertyChip(tag, verticalPadding: 0, horizontalPadding: 5)
@@ -408,5 +408,17 @@ struct TaskCard: View {
             .compactMap { $0 }
             .filter { !$0.isEmpty }
             .joined(separator: ", ")
+    }
+}
+
+extension TaskCard {
+    /// Priority is the one strong colour on a card: P0 red, P1 amber, P2 blue, P3 grey.
+    static func priorityTone(_ priority: String) -> StatusTone {
+        switch priority {
+        case "P0": return .failed
+        case "P1": return .waiting
+        case "P2": return .info
+        default: return .neutral
+        }
     }
 }

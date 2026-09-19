@@ -4,17 +4,20 @@ import SwiftUI
 
 struct BoardScreen: View {
     @Bindable var model: ProjectWindowModel
+    /// Done only grows; hiding it gives the other columns the width (ADR 0046 decision 16).
+    @AppStorage("workHidesDone") private var hidesDone = false
 
     var body: some View {
         // Work (ADR 0046 decisions 13, 14): the one header and the filters span the tab; below them the milestones on
         // the left choose what the Board on the right shows.
         VStack(spacing: 0) {
             header
-            TaskFilterBar(model: model)
+            // No filter row: the list on the left holds the milestones and the filters (ADR 0046 decision 16).
             HStack(spacing: 0) {
                 WorkMilestonePane(model: model)
                 VStack(spacing: 0) {
                     if model.p0OutsideWorkScope > 0 { p0Strip }
+                    boardBar
                     boardArea
                 }
             }
@@ -33,8 +36,23 @@ struct BoardScreen: View {
         }
     }
 
+    /// The milestone, then — while any filter is on — what is on and how much it leaves: "P0, Bug · 1 of 11 shown".
     private var scopeStatus: String {
-        let rows = model.planRows
+        guard model.taskFilter.activeCount > 0 else { return milestoneStatus }
+        let tally = model.workFilterTally
+        return "\(milestoneTitle) · \(model.taskFilter.summary) · \(tally.shown) of \(tally.total) shown"
+    }
+
+    private var milestoneTitle: String {
+        switch model.effectiveWorkScope {
+        case .all: return "All milestones"
+        case .noMilestone: return "No milestone"
+        case .milestone(let title): return title
+        }
+    }
+
+    private var milestoneStatus: String {
+        let rows = model.milestoneRows
         switch model.effectiveWorkScope {
         case .all:
             return "All milestones · \(rows.reduce(0) { $0 + $1.tasks.count }) open"
@@ -147,7 +165,22 @@ struct BoardScreen: View {
 
     private var visibleColumns: [BoardColumn] {
         // No Backlog column: Work's milestone list is the backlog; Queued rides in the first column (ADR 0046).
-        ProjectWindowModel.workColumns
+        ProjectWindowModel.workColumns.filter { !(hidesDone && $0 == .done) }
+    }
+
+    /// Above the columns: Hide Done, the one switch about the Board itself rather than what it holds.
+    private var boardBar: some View {
+        HStack {
+            Spacer()
+            Toggle("Hide Done", isOn: $hidesDone)
+                .toggleStyle(.switch)
+                .controlSize(.mini)
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.secondaryInk)
+                .help("Done only grows; hiding it gives the other columns the width")
+        }
+        .padding(.horizontal, 16)
+        .padding(.top, 8)
     }
 
     /// A narrowed Board still says a P0 exists elsewhere, and one click shows everything (ADR 0046 decision 13).

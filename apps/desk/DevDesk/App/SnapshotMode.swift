@@ -128,6 +128,7 @@ final class SnapshotMode {
         Capture(name: "01-board") { $0.go(.board) },
         // A real repo's own docs/arch/, so the Diagrams header shows its populated controls, not the empty state.
         Capture(name: "01b-insights") { $0.go(.diagrams) },
+        Capture(name: "01d-work-filtered") { $0.taskFilter = TaskFilter(priorities: ["P1"], kinds: [.bug]); $0.go(.board) },
         Capture(name: "01c-diagrams-sequence") { $0.diagramKind = "sequence"; $0.go(.diagrams) },
         Capture(name: "02-first-task-changes") { model in
             if let id = firstTaskID(model) { model.openTask(id) }

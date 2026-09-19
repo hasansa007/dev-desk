@@ -118,6 +118,15 @@ answering one question, with one filter bar.**
     chip; its trailing group stays pinned right. Diagrams' Sequence picks its flow from a menu in the same row,
     not a list on the left, so every kind draws full width (ADR 0047 decision 4 amended). The header's
     button on Diagrams is Redraw, to match Draw.
+16. **Work's filters live in its left list, not a row** (option C of four mocked 2026-09-19 — three lines, a
+    popover, this, and a fold-away row — chosen by the developer). The list is everything that narrows the Board:
+    Milestones, with a stage switch (All · Open · Working now; Open, the default, folds finished milestones into
+    "Show N finished"), then Priority, Type and Tag as checkboxes. Each section folds, remembered; its header says
+    "1 on" in blue while it filters. Counts take the other groups into account and 0 is dimmed. Filters never
+    hide: the header reads "P1, Bug · 3 of 11 shown", Clear all (n) heads the list, and the collapsed rail
+    carries the count. The milestone list itself is never filtered — the selected one cannot vanish. A Hide Done
+    switch sits above the columns. Work is the one tab with no chip row: its list does that job. Run roadmap
+    heads the list rather than footing it.
 
 ## Names considered for the Findings screen, and why each lost
 
