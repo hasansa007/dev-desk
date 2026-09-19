@@ -6,7 +6,6 @@ struct ProjectToolbar: ToolbarContent {
     /// Handed in rather than read from the environment: a toolbar item that silently found nil would be a
     /// play button that does nothing, which is the one failure this control must not have.
     let terminals: ShellTerminalRegistry?
-    @Binding var columns: NavigationSplitViewVisibility
 
     /// Counts only what is actually live, so the dot never claims a finished run is still going.
     private var liveRuns: Int {
@@ -60,13 +59,9 @@ struct ProjectToolbar: ToolbarContent {
         panelToggles
     }
 
-    /// The panel cluster, top right, one glyph per edge — where Xcode and every other Mac app keeps it.
+    /// The Files edge, top right. The sidebar's own toggle sits beside the traffic lights, so a second one here was a duplicate.
     private var panelToggles: some ToolbarContent {
         ToolbarItemGroup(placement: .primaryAction) {
-            PanelToggle(symbol: "sidebar.leading", isOn: columns != .detailOnly,
-                        label: "Sidebar", help: "Hide or show the project sidebar") {
-                columns = columns == .detailOnly ? .all : .detailOnly
-            }
             PanelToggle(symbol: "sidebar.trailing", isOn: model.filesOpen,
                         label: "Files", help: "Hide or show this project's files") {
                 model.toggleFiles()

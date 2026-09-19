@@ -50,7 +50,7 @@ struct ProjectWindow: View {
         } detail: {
             ContentRouter(model: model)
         }
-        .toolbar { ProjectToolbar(model: model, terminals: terminals, columns: $columns) }
+        .toolbar { ProjectToolbar(model: model, terminals: terminals) }
         .navigationTitle(model.snapshot?.project.name ?? ref.displayName)
         .navigationSubtitle(subtitle)
         .sheet(item: $model.sheet) { kind in
