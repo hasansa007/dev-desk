@@ -24,6 +24,9 @@ enum DeskColor {
     static let accentHover = Color.desk(0x2A63D2, 0x2A63D2)
     static let surface = Color.desk(0xFFFFFF, 0x1E2025)
     static let canvas = Color.desk(0xFBFBFC, 0x17191D)
+    /// Three layers, one colour each (2026-09-19, after five near-identical greys sat side by side):
+    /// navigation (title bar, sidebars, the milestone pane) · content (headers, filter bars, the board) ·
+    /// objects (columns, cards, lists). Anything else here is a state or a detail, never a fourth ground.
     static let sidebar = Color.desk(0xF1F2F5, 0x202329)
     static let inspector = Color.desk(0xF7F8F9, 0x1B1D22)
     static let headerFill = Color.desk(0xF4F5F7, 0x23262C)

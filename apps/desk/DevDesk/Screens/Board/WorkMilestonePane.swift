@@ -14,7 +14,7 @@ struct WorkMilestonePane: View {
         Group {
             if isCollapsed { rail } else { list }
         }
-        .background(DeskColor.headerFill)
+        .background(DeskColor.sidebar)   // navigation layer, like the app sidebar beside it
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
     }
 

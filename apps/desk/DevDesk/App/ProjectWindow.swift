@@ -60,6 +60,9 @@ struct ProjectWindow: View {
         .environment(\.terminals, terminals)
         .focusedSceneValue(\.projectModel, model)
         .modifier(AppliesAppearance(override: SnapshotMode.shared.colorScheme))
+        // The title bar is navigation: macOS painted its own grey there, a fourth one beside the sidebar.
+        .toolbarBackground(DeskColor.sidebar, for: .windowToolbar)
+        .toolbarBackground(.visible, for: .windowToolbar)
         .background { windowHooks }
         .task { await model.sync() }
         .onChange(of: model.windowCommand) { _, request in

@@ -53,6 +53,10 @@ struct LauncherView: View {
             // chrome was counted. It is a starting size now, not a rule.
             .frame(minWidth: 360, idealWidth: 1000, maxWidth: .infinity,
                    minHeight: 360, idealHeight: 540, maxHeight: .infinity)
+            // Dev Desk's layers, not the system window grey (2026-09-19): content ground, navigation title bar.
+            .background(DeskColor.canvas)
+            .toolbarBackground(DeskColor.sidebar, for: .windowToolbar)
+            .toolbarBackground(.visible, for: .windowToolbar)
         }
     }
 

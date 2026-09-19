@@ -42,7 +42,7 @@ struct TaskFilterBar: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
-        .background(DeskColor.headerFill)
+        .background(DeskColor.canvas)   // content layer, like the header above it
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 

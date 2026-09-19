@@ -89,10 +89,12 @@ struct PropertyChip: View {
 
 extension View {
     /// The bar a screen's title sits in: one surface, one rule under it, and it never scrolls away with the work.
+    /// Every screen's header sits on the content layer, not the object layer (ADR 0046, three layers): navigation
+    /// is `sidebar`, content is `canvas`, the things you act on are `surface`.
     func screenHeaderBar() -> some View {
         padding(.horizontal, 16)
             .padding(.vertical, 12)
-            .background(DeskColor.surface)
+            .background(DeskColor.canvas)
             .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 }
