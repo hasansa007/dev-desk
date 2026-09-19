@@ -202,6 +202,18 @@ class ActiveMilestone(unittest.TestCase):
         self.assertEqual(title, "chosen")
         self.assertIn("top of Plan", why)
 
+    def test_work_settings_can_make_the_due_date_decide(self):
+        import json, os, tempfile
+        plan_order = _dev.plan_order
+        with tempfile.TemporaryDirectory() as root:
+            os.makedirs(os.path.join(root, ".devdesk"))
+            with open(os.path.join(root, ".devdesk", "plan.json"), "w") as fh:
+                json.dump({"titles": ["chosen"]}, fh)
+            self.assertEqual(plan_order(root), ["chosen"])
+            with open(os.path.join(root, ".devdesk", "work.json"), "w") as fh:
+                json.dump({"nextUpFollows": "dueDate"}, fh)
+            self.assertEqual(plan_order(root), [])
+
     def test_p0_ranks_before_p1(self):
         self.assertLess(priority_rank(issue(1, labels=["P0"])), priority_rank(issue(2, labels=["P1"])))
 

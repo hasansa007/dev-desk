@@ -143,3 +143,16 @@ final class WorkScopeTests: XCTestCase {
         XCTAssertEqual(Destination.roadmap.title, "Work")
     }
 }
+
+/// Settings › Work (ADR 0046): stored per project, tolerant of old files, and honoured by Work.
+final class WorkSettingsTests: XCTestCase {
+    func testDefaultsRoundTripAndAMissingKeyKeepsTheOthers() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent("work-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        XCTAssertEqual(WorkSettings.read(projectRoot: root), WorkSettings(), "missing reads as the defaults")
+        WorkSettings(nextUpFollows: .dueDate, doneLimit: 5, showsPullRequestsWithoutIssue: false).write(projectRoot: root)
+        XCTAssertEqual(WorkSettings.read(projectRoot: root), WorkSettings(nextUpFollows: .dueDate, doneLimit: 5, showsPullRequestsWithoutIssue: false))
+        let partial = try JSONDecoder().decode(WorkSettings.self, from: Data(#"{"doneLimit": -3}"#.utf8))
+        XCTAssertEqual(partial, WorkSettings(nextUpFollows: .plan, doneLimit: 0, showsPullRequestsWithoutIssue: true))
+    }
+}

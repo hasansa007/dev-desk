@@ -64,6 +64,8 @@ public struct ProjectSnapshot: Hashable {
     public var activeMilestoneReason: String?
     /// The Plan's stored order (`.devdesk/plan.json`), applied to the roadmap's milestones on screen.
     public var planOrder: [String] = []
+    /// Settings › Work for this project (`.devdesk/work.json`).
+    public var workSettings = WorkSettings()
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,

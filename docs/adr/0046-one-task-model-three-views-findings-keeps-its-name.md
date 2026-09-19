@@ -61,9 +61,12 @@ answering one question, with one filter bar.**
 6. **The screen keeps the name Findings. Its action is "Hunt for issues"** (was "Run findings"): the action
    says what happens; the screen names what it holds. The door stays `dev:findings`, the folder
    `docs/findings/`.
-7. **Settings gains a project section, "Board and plan"**: what Next up follows (Plan's order / nearest due
-   date), how Next up is sorted, how many Done cards show, whether docs-only pull requests appear in Review.
-   Sections are grouped by scope — *This Mac*, *This project*.
+7. **Settings gains a project section, "Work"** (`.devdesk/work.json`): what Next up follows (the top of the Plan /
+   the nearest due date — `dev.py board` reads the same choice), how many Done cards show before "N more", and
+   whether pull requests with no issue behind them (a report, a docs edit) appear in Review. Sections are grouped
+   by scope — *This Mac*, *This project* — and the list sits on the navigation colour. *Dropped at build time:*
+   "how Next up is sorted" — priority order is what decision 1 rests on, and a second ordering is only a way to
+   bury a P0.
 8. **Diagrams show where the open work is** — each part of a drawing carries a count of the open issues whose
    fix touches its files, and opens the Board filtered to them. **Deferred to its own step:** it needs a
    mapping from a drawing's nodes to the `touches:` of issues, which neither side records yet.

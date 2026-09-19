@@ -145,6 +145,7 @@ final class SnapshotMode {
         },
         Capture(name: "04-roadmap") { $0.go(.roadmap) },
         Capture(name: "06-settings-connections", isSheet: true) { $0.settingsSection = .accountsAndConnections; $0.present(.settings) },
+        Capture(name: "06b-settings-work", isSheet: true) { $0.settingsSection = .work; $0.present(.settings) },
         // Idle, so the capture shows the run with the command it would type; nothing is started.
         Capture(name: "08-runs-panel") { model in
             model.go(.findings)

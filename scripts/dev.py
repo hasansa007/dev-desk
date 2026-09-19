@@ -354,7 +354,14 @@ def _open_milestones() -> Optional[List[Dict]]:
 
 
 def plan_order(root: str) -> List[str]:
-    """Dev Desk's Plan order, `.devdesk/plan.json` (ADR 0046). Missing or unreadable reads as no order."""
+    """Dev Desk's Plan order, `.devdesk/plan.json` (ADR 0046). Missing or unreadable reads as no order — and so
+    does Settings › Work set to follow the nearest due date (`.devdesk/work.json`), which ignores the order."""
+    try:
+        with open(os.path.join(root, ".devdesk", "work.json"), encoding="utf-8") as fh:
+            if json.load(fh).get("nextUpFollows") == "dueDate":
+                return []
+    except (OSError, ValueError, AttributeError):
+        pass
     try:
         with open(os.path.join(root, ".devdesk", "plan.json"), encoding="utf-8") as fh:
             titles = json.load(fh).get("titles", [])

@@ -653,3 +653,67 @@ private struct AutoModeSetting: View {
         }
     }
 }
+
+/// Settings › Work (ADR 0046): this project's choices for the Work tab, kept in `.devdesk/work.json` beside the work.
+struct WorkSettingsPane: View {
+    let model: ProjectWindowModel
+    @State private var settings = WorkSettings()
+    @State private var loaded = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            PaneTitle("Work", scope: .thisProject)
+            SettingsRow("Next up follows") {
+                Picker("", selection: binding(\.nextUpFollows)) {
+                    Text("Top of the Plan").tag(WorkSettings.NextUpSource.plan)
+                    Text("Nearest due date").tag(WorkSettings.NextUpSource.dueDate)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 300)
+            }
+            .padding(.top, 16)
+            note(settings.nextUpFollows == .plan
+                 ? "The milestone at the top of Work's list is Working now; Move to top changes it. With no order set yet, the nearest due date decides. dev:kanban reads the same choice."
+                 : "The open milestone due soonest is Working now, whatever order the list is in. dev:kanban reads the same choice.")
+            SettingsRow("Done shows") {
+                HStack(spacing: 8) {
+                    Stepper(value: binding(\.doneLimit), in: 0...100, step: 5) {
+                        Text(settings.doneLimit == 0 ? "everything" : "the latest \(settings.doneLimit)")
+                            .font(DeskFont.body)
+                    }
+                }
+            }
+            .padding(.top, 16)
+            note("Merged work past this count is summarised as “N more” at the foot of Done. 0 shows all of it.")
+            SettingsRow("Pull requests without an issue") {
+                Toggle("Show in Review", isOn: binding(\.showsPullRequestsWithoutIssue))
+                    .toggleStyle(.checkbox)
+            }
+            .padding(.top, 16)
+            note("A pull request with no issue behind it — a findings report, a docs edit — is not a task. Hide it to keep Review to tasks only.")
+        }
+        .onAppear {
+            guard !loaded else { return }
+            settings = model.snapshot?.workSettings ?? WorkSettings()
+            loaded = true
+        }
+    }
+
+    private func binding<T>(_ key: WritableKeyPath<WorkSettings, T>) -> Binding<T> {
+        Binding(get: { settings[keyPath: key] }, set: { value in
+            settings[keyPath: key] = value
+            let saved = settings
+            Task { await model.setWorkSettings(saved) }
+        })
+    }
+
+    private func note(_ text: String) -> some View {
+        Text(text)
+            .font(DeskFont.secondary)
+            .foregroundStyle(DeskColor.mutedInk)
+            .lineSpacing(4)
+            .frame(maxWidth: 700, alignment: .leading)
+            .padding(.top, 10)
+    }
+}

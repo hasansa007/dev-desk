@@ -236,6 +236,13 @@ private struct BoardColumnView: View {
     let tasks: [DeskTask]
     let model: ProjectWindowModel
     @State private var pending: PendingMove?
+    /// Done keeps only the latest few (Settings › Work); the rest is a count, not a scroll.
+    private var doneLimit: Int { model.snapshot?.workSettings.doneLimit ?? 10 }
+    private var shownTasks: [DeskTask] {
+        column == .done && doneLimit > 0 ? Array(tasks.prefix(doneLimit)) : tasks
+    }
+    private var hiddenCount: Int { tasks.count - shownTasks.count }
+
     /// A Start that would change a function a running task is changing waits here for the developer's answer.
     @State private var overlapAsk: (task: DeskTask, overlap: StartOverlap)?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
@@ -386,7 +393,7 @@ private struct BoardColumnView: View {
     /// disabled, with the reason on it.
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ForEach(tasks) { task in
+            ForEach(shownTasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
                          activity: model.activity(of: task), start: start(for: task),
@@ -400,6 +407,12 @@ private struct BoardColumnView: View {
                              model.present(.settings)
                          },
                          isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch)
+            }
+            if hiddenCount > 0 {
+                Text("\(hiddenCount) more merged — Settings › Work sets how many Done shows")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .padding(.horizontal, 4)
             }
         }
         .padding(.horizontal, 12)

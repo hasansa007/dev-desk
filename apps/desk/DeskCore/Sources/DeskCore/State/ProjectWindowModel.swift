@@ -111,7 +111,10 @@ public enum TaskActivity: String, Hashable {
 }
 
 public enum SettingsSection: String, CaseIterable, Codable, Hashable {
-    case general, appearance, agentsAndDefaults, startWith, accountsAndConnections, notifications, execution, projectOverrides, runProject
+    case general, appearance, agentsAndDefaults, startWith, accountsAndConnections, notifications, execution, work, projectOverrides, runProject
+
+    /// Where a section applies, which is how the Settings list is grouped (ADR 0046): this Mac, or this project.
+    public var isProjectScoped: Bool { self == .work || self == .projectOverrides || self == .runProject }
 
     public var title: String {
         switch self {
@@ -122,6 +125,7 @@ public enum SettingsSection: String, CaseIterable, Codable, Hashable {
         case .accountsAndConnections: return "Accounts and connections"
         case .notifications: return "Notifications"
         case .execution: return "Execution"
+        case .work: return "Work"
         case .projectOverrides: return "Project overrides"
         case .runProject: return "Run project"
         }
@@ -816,6 +820,8 @@ public final class ProjectWindowModel {
 
     public func inWorkColumn(_ task: DeskTask, _ column: BoardColumn) -> Bool {
         guard inWorkScope(task) else { return false }
+        // Settings › Work: a pull request with no issue behind it is not a task, and can be left out of Review.
+        if task.id.hasPrefix("pr:"), snapshot?.workSettings.showsPullRequestsWithoutIssue == false { return false }
         guard column == .readyForDev else { return task.column == column }
         if task.column == .readyForDev || task.column == .queued { return true }
         if case .all = effectiveWorkScope { return false }
@@ -857,6 +863,13 @@ public final class ProjectWindowModel {
         guard let root = snapshot?.repositoryRoot, let number = task.issueNumber else { return }
         let url = URL(fileURLWithPath: root, isDirectory: true)
         LocalWaits.read(projectRoot: url).adding(blocker, to: number).write(projectRoot: url)
+        await load()
+    }
+
+    /// Saves Settings › Work for this project and reloads, so Working now and the Board follow at once.
+    public func setWorkSettings(_ settings: WorkSettings) async {
+        guard let root = snapshot?.repositoryRoot else { return }
+        settings.write(projectRoot: URL(fileURLWithPath: root, isDirectory: true))
         await load()
     }
 

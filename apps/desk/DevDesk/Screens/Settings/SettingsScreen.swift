@@ -18,8 +18,14 @@ struct SettingsScreen: View {
     }
 
     private var sectionList: some View {
-        VStack(spacing: 0) {
-            ForEach(SettingsSection.allCases, id: \.self) { section in
+        // Grouped by where a setting applies (ADR 0046): every project on this Mac, or only this one.
+        VStack(alignment: .leading, spacing: 0) {
+            groupLabel("This Mac")
+            ForEach(SettingsSection.allCases.filter { !$0.isProjectScoped }, id: \.self) { section in
+                sectionRow(section)
+            }
+            groupLabel("This project").padding(.top, 14)
+            ForEach(SettingsSection.allCases.filter(\.isProjectScoped), id: \.self) { section in
                 sectionRow(section)
             }
         }
@@ -27,8 +33,16 @@ struct SettingsScreen: View {
         .padding(.horizontal, 10)
         .frame(width: 230, alignment: .top)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(DeskColor.surface)
+        .background(DeskColor.sidebar)   // navigation layer (the three-layer rule)
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
+    }
+
+    private func groupLabel(_ text: String) -> some View {
+        Text(text)
+            .font(DeskFont.secondary.weight(.semibold))
+            .foregroundStyle(DeskColor.faintInk)
+            .padding(.horizontal, 10)
+            .padding(.bottom, 4)
     }
 
     private func sectionRow(_ section: SettingsSection) -> some View {
@@ -57,6 +71,7 @@ struct SettingsScreen: View {
         case .accountsAndConnections: AccountsPane(model: model)
         case .notifications: NotificationsPane()
         case .execution: ExecutionPane()
+        case .work: WorkSettingsPane(model: model)
         case .projectOverrides: ProjectOverridesPane(model: model)
         case .runProject: RunProjectPane(model: model)
         }
