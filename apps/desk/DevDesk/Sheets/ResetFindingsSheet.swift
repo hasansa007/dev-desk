@@ -71,7 +71,7 @@ struct ResetFindingsSheet: View {
 
                 Toggle(isOn: $runAfterwards) {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Run findings again afterwards").font(DeskFont.body)
+                        Text("Hunt for issues again afterwards").font(DeskFont.body)
                         Text(model.canRunDoors
                              ? "Opens dev:findings in Terminals. Nothing executes until you start it there."
                              : "A sample project has no folder to read.")

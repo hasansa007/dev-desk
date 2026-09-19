@@ -40,6 +40,17 @@ public enum FindingGroups {
     /// The order a finding's categories are read in: a finding carrying two is shown under the first.
     static let statusOrder: [FindingCategory] = [.new, .knownNewEvidence, .needsDecision, .closedOrDeclined]
 
+    /// A section is titled by what it needs from you, not by the report's verdict word (ADR 0046): "New" named a
+    /// state, where the developer's question is "what do I do with these?".
+    public static func needTitle(_ category: FindingCategory) -> String {
+        switch category {
+        case .new: return "Needs your decision"
+        case .needsDecision: return "Not verified yet"
+        case .knownNewEvidence: return "Already tracked"
+        case .closedOrDeclined: return "Closed or declined"
+        }
+    }
+
     public static func group(_ findings: [Finding], by grouping: FindingGrouping, filed: Set<String> = [],
                              groups: [FindingsGroup] = []) -> [FindingGroup] {
         switch grouping {
@@ -55,12 +66,16 @@ public enum FindingGroups {
     public static func byStatus(_ findings: [Finding], filed: Set<String> = []) -> [FindingGroup] {
         let open = findings.filter { !filed.contains($0.id) }
         var groups = statusOrder.map { category in
-            FindingGroup(id: category.rawValue, title: category.rawValue, category: category,
+            FindingGroup(id: category.rawValue, title: needTitle(category), category: category,
                          findings: open.filter { primary($0) == category })
         }
         let rest = open.filter { primary($0) == nil }
         if !rest.isEmpty { groups.append(FindingGroup(id: "uncategorised", title: "Uncategorised", findings: rest)) }
-        groups.append(FindingGroup(id: "filed", title: "Filed", findings: findings.filter { filed.contains($0.id) }))
+        // A merge is not a new issue: it gets its own section so "Filed" counts only what added a number (ADR 0046).
+        let done = findings.filter { filed.contains($0.id) }
+        let merged = done.filter { if case .merged = $0.filing { return true } else { return false } }
+        groups.append(FindingGroup(id: "filed", title: "Filed", findings: done.filter { !merged.contains($0) }))
+        groups.append(FindingGroup(id: "merged", title: "Added to an open issue", findings: merged))
         return groups.filter { !$0.findings.isEmpty }
     }
 

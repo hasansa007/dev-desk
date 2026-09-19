@@ -14,7 +14,7 @@ final class FindingGroupsTests: XCTestCase {
             finding("b", [.new, .needsDecision], []),
             finding("c", [], []),
         ])
-        XCTAssertEqual(groups.map(\.title), ["New", "Needs a decision", "Uncategorised"])
+        XCTAssertEqual(groups.map(\.title), ["Needs your decision", "Not verified yet", "Uncategorised"])
         XCTAssertEqual(groups[0].findings.map(\.id), ["b"])
     }
 
@@ -24,9 +24,20 @@ final class FindingGroupsTests: XCTestCase {
             finding("b", [.new], []),
             finding("c", [.needsDecision], []),
         ], filed: ["b", "c"])
-        XCTAssertEqual(groups.map(\.title), ["New", "Filed"])
+        XCTAssertEqual(groups.map(\.title), ["Needs your decision", "Filed"])
         XCTAssertEqual(groups[1].findings.map(\.id), ["b", "c"])
         XCTAssertNil(groups[1].category)
+    }
+
+    func testAMergedFindingIsNotCountedAsFiled() {
+        var merged = finding("m", [.new], [])
+        merged.filing = .merged(782)
+        var filedOne = finding("f", [.new], [])
+        filedOne.filing = .filed(810)
+        let groups = FindingGroups.byStatus([finding("a", [.new], []), filedOne, merged], filed: ["f", "m"])
+        XCTAssertEqual(groups.map(\.title), ["Needs your decision", "Filed", "Added to an open issue"])
+        XCTAssertEqual(groups[1].findings.map(\.id), ["f"])
+        XCTAssertEqual(groups[2].findings.map(\.id), ["m"])
     }
 
     func testVerificationIsSharedOnlyWhenEveryRowSaysIt() {

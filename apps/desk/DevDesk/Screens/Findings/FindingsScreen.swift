@@ -8,8 +8,8 @@ struct FindingsScreen: View {
         if let snapshot = model.snapshot {
             SurfaceView(snapshot.findings, fillsScreen: true) { report in
                 if report.runs.isEmpty {
-                    EmptyStateView(title: "No findings runs yet",
-                                   message: "A findings run writes its report to `docs/findings/`, and it appears here.") {
+                    EmptyStateView(title: "No hunt yet",
+                                   message: "Hunt for issues to see what's wrong in this codebase: agents read each flow, and every finding is checked twice before it reaches you. The report lands in `docs/findings/`.") {
                         RunFindingsButton(model: model)
                     }
                 } else {
@@ -20,13 +20,14 @@ struct FindingsScreen: View {
     }
 }
 
-/// Starts `dev:findings` as a run; the run's own pane asks for consent before anything executes.
+/// Starts `dev:findings` as a run; the run's own pane asks for consent before anything executes. The action is
+/// named for what it does — a hunt — while the screen keeps the name of what it holds (ADR 0046).
 private struct RunFindingsButton: View {
     let model: ProjectWindowModel
     var size: DeskButtonStyle.Size = .regular
 
     var body: some View {
-        DoorRunControl(model: model, door: "findings", title: "Run findings", size: size)
+        DoorRunControl(model: model, door: "findings", title: "Hunt for issues", size: size)
     }
 }
 
@@ -329,11 +330,12 @@ private struct FindingsBoard: View {
     private func groupNote(_ group: FindingGroup) -> String? {
         let meaning: String?
         switch group.category {
-        case .new: meaning = "not filed yet"
+        case .new: meaning = "confirmed — file it, add it to an open issue, or drop it"
         case .knownNewEvidence: meaning = "an issue already covers these"
-        case .needsDecision: meaning = "not confirmed — filed only if you choose to"
+        case .needsDecision: meaning = "found, but no checker confirmed it — filed only if you choose to"
         case .closedOrDeclined: meaning = "decided against before"
-        case nil: meaning = group.id == "filed" ? "each row says where its card is now" : nil
+        case nil: meaning = group.id == "filed" ? "each is an issue now — the row links it"
+            : group.id == "merged" ? "evidence added to an issue that was already open — no new number" : nil
         }
         let parts = [meaning, group.sharedVerification].compactMap { $0 }
         return parts.isEmpty ? nil : parts.joined(separator: " · ")

@@ -160,9 +160,9 @@ extension SampleData {
                 citation: "useScrollRestore.ts:18 · stackEntry.ts:27 · PROJECT_MAP.md § Navigation"
             ),
             quickActions: [
-                InsightsQuickAction(id: "findings", title: "Run findings", reply: InsightsReply(
+                InsightsQuickAction(id: "findings", title: "Hunt for issues", reply: InsightsReply(
                     text: "Findings is a separate workflow. Opening it with the current revision preselected — this chat will not run it silently.",
-                    citation: "Findings › Run findings")),
+                    citation: "Findings › Hunt for issues")),
                 InsightsQuickAction(id: "roadmap", title: "Explore roadmap", reply: InsightsReply(
                     text: "Continuity is the theme with the most committed work. Two Board tasks are attached to milestone 1.4, and one considered item has no commitment yet.",
                     citation: "Roadmap › Learning continuity")),
