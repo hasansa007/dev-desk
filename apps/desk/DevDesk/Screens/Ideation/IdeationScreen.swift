@@ -6,15 +6,21 @@ struct IdeationScreen: View {
 
     var body: some View {
         if let snapshot = model.snapshot {
-            SurfaceView(snapshot.ideation, fillsScreen: true) { report in
-                if report.runs.isEmpty {
-                    EmptyStateView(title: "No ideation runs yet",
-                                   message: "An ideation run writes its report to `docs/ideation/`, and it appears here.") {
-                        GenerateIdeasButton(model: model)
+            if case .available(let report) = snapshot.ideation, !report.runs.isEmpty {
+                IdeationSplitView(model: model, report: report)
+            } else {
+                // The same header before the first run (ADR 0046 decision 14).
+                VStack(spacing: 0) {
+                    ScreenHeader(.ideation) { EmptyView() } tools: { GenerateIdeasButton(model: model, size: .small) }
+                    SurfaceView(snapshot.ideation, fillsScreen: true) { _ in
+                        EmptyStateView(title: "No ideation runs yet",
+                                       message: "An ideation run writes its report to `docs/ideation/`, and it appears here.") {
+                            GenerateIdeasButton(model: model)
+                        }
                     }
-                } else {
-                    IdeationSplitView(model: model, report: report)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .background(DeskColor.canvas)
             }
         }
     }
@@ -23,10 +29,11 @@ struct IdeationScreen: View {
 /// Starts `dev:ideation` as a run, with the kinds the developer left on; none selected means the door's own default, all three.
 private struct GenerateIdeasButton: View {
     let model: ProjectWindowModel
+    var size: DeskButtonStyle.Size = .regular
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
 
     var body: some View {
-        DoorRunControl(model: model, door: "ideation", title: "Generate ideas")
+        DoorRunControl(model: model, door: "ideation", title: "Generate ideas", size: size)
     }
 }
 
@@ -61,6 +68,38 @@ private struct IdeationSplitView: View {
     }
 
     var body: some View {
+        // The shared header and its controls row span the tab; the idea list and the detail sit below (ADR 0046 decision 14).
+        VStack(spacing: 0) {
+            ScreenHeader(.ideation) {
+                HStack(spacing: 8) {
+                    Text("\(visible.count) idea\(visible.count == 1 ? "" : "s")")
+                    runLine
+                }
+            } tools: {
+                GenerateIdeasButton(model: model, size: .small)
+            }
+            if !verdictCounts.isEmpty {
+                ScreenBar {
+                    Text("Verdict").font(DeskFont.secondary).foregroundStyle(DeskColor.mutedInk)
+                    ForEach(verdictCounts, id: \.verdict) { entry in
+                        ChipToggle(title: "\(entry.verdict.rawValue) \(entry.count)", isOn: model.ideationFilter == entry.verdict, tone: .neutral) {
+                            model.ideationFilter = model.ideationFilter == entry.verdict ? nil : entry.verdict
+                        }
+                    }
+                }
+            }
+            split
+        }
+        .background(DeskColor.canvas)
+    }
+
+    private var verdictCounts: [(verdict: OpportunityVerdict, count: Int)] {
+        OpportunityVerdict.allCases
+            .map { (verdict: $0, count: report.count(of: $0, run: model.selectedIdeationRunID)) }
+            .filter { $0.count > 0 }
+    }
+
+    private var split: some View {
         HStack(spacing: 0) {
             listPane
             Group {
@@ -83,7 +122,6 @@ private struct IdeationSplitView: View {
 
     private var listPane: some View {
         VStack(alignment: .leading, spacing: 0) {
-            header
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(visible) { opportunity in
@@ -95,33 +133,8 @@ private struct IdeationSplitView: View {
             }
         }
         .frame(width: 320, alignment: .leading)
-        .background(DeskColor.surface)
+        .background(DeskColor.sidebar)   // an inner list is navigation, like Work's milestones
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Text("Ideation").font(DeskFont.section)
-                ScreenGuideButton(destination: .ideation)
-                Spacer()
-                GenerateIdeasButton(model: model)
-            }
-            runLine.padding(.top, 8)
-            FlowLayout(spacing: 5) {
-                ForEach(OpportunityVerdict.allCases, id: \.self) { verdict in
-                    let count = report.count(of: verdict, run: model.selectedIdeationRunID)
-                    if count > 0 {
-                        ChipToggle(title: "\(verdict.rawValue) \(count)", isOn: model.ideationFilter == verdict, tone: .neutral) {
-                            model.ideationFilter = model.ideationFilter == verdict ? nil : verdict
-                        }
-                    }
-                }
-            }
-            .padding(.top, 6)
-        }
-        .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 14))
-        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
     @ViewBuilder private var runLine: some View {

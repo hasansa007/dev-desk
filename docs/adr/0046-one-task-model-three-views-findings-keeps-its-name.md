@@ -98,6 +98,17 @@ answering one question, with one filter bar.**
     through). The stored `roadmap` value opens Work. This supersedes decision 4's separate Plan screen; its list lives on as Work's left pane.
     *Rejected:* the switch (order and stage never on screen together); swimlanes (mostly empty cells, Backlog and
     Next up stop existing as words, the largest rebuild).
+14. **Every tab has one header, drawn by one component** (`ScreenHeader`, mocked and approved 2026-09-19). Row one,
+    48 pt: the title and its ⓘ, one muted status line (counts, and the run or milestone on screen), then tools, then
+    at most one primary button, always last — Hunt for issues, New task, New session, Generate ideas, Regenerate.
+    Row two, 36 pt, only when a tab has its own controls (`ScreenBar`): Findings' kind and grouping, Work's filters,
+    the session tabs, Ideation's verdicts. The header spans the tab; an inner list (milestones, diagram kinds,
+    ideas) starts below it and has no title of its own. Before, the title sat in five places: pushed right by
+    Work's milestones, inside Ideation's and Diagrams' lists, and absent from Sessions. The header also shows before
+    the first run, so an empty tab has the same title and button. Sessions' "+" went, since New session is the same action.
+    Findings' "what this report could not check" button uses an eye-slash icon, so the header has only one ⓘ.
+    *Not applied:* Settings. It is a dialog with its own title bar, and a tab header inside it only repeated
+    "Settings".
 
 ## Names considered for the Findings screen, and why each lost
 

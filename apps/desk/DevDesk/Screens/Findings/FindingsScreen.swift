@@ -6,15 +6,21 @@ struct FindingsScreen: View {
 
     var body: some View {
         if let snapshot = model.snapshot {
-            SurfaceView(snapshot.findings, fillsScreen: true) { report in
-                if report.runs.isEmpty {
-                    EmptyStateView(title: "No hunt yet",
-                                   message: "Hunt for issues to see what's wrong in this codebase: agents read each flow, and every finding is checked twice before it reaches you. The report lands in `docs/findings/`.") {
-                        RunFindingsButton(model: model)
+            if case .available(let report) = snapshot.findings, !report.runs.isEmpty {
+                FindingsBoard(model: model, report: report)
+            } else {
+                // The same header before the first hunt, or when the report cannot be read (ADR 0046 decision 14).
+                VStack(spacing: 0) {
+                    ScreenHeader(.findings) { EmptyView() } tools: { RunFindingsButton(model: model, size: .small) }
+                    SurfaceView(snapshot.findings, fillsScreen: true) { _ in
+                        EmptyStateView(title: "No hunt yet",
+                                       message: "Hunt for issues to see what's wrong in this codebase: agents read each flow, and every finding is checked twice before it reaches you. The report lands in `docs/findings/`.") {
+                            RunFindingsButton(model: model)
+                        }
                     }
-                } else {
-                    FindingsBoard(model: model, report: report)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+                .background(DeskColor.canvas)
             }
         }
     }
@@ -113,18 +119,16 @@ private struct FindingsBoard: View {
         .onChange(of: model.showsIgnoredFindings) { checked = [] }
     }
 
+    /// The shared header (ADR 0046 decision 14): the counts and the run, then what this report could not check,
+    /// ··· for resetting, and Hunt for issues last.
     private var header: some View {
-        HStack(spacing: 10) {
-            Text("Findings")
-                .font(DeskFont.section)
-                .foregroundStyle(DeskColor.ink)
-            Text(summary)
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-            ScreenGuideButton(destination: .findings)
-            runControl
+        ScreenHeader(.findings) {
+            HStack(spacing: 8) {
+                Text(summary)
+                runControl
+            }
+        } tools: {
             if report.searchNote != nil { noteButton }
-            Spacer(minLength: 0)
             // What builds up between runs — set-aside findings, and every report ever written — is cleared
             // from here, beside the button that adds to it.
             Menu {
@@ -140,7 +144,6 @@ private struct FindingsBoard: View {
             .accessibilityLabel("Findings actions")
             RunFindingsButton(model: model, size: .small)
         }
-        .screenHeaderBar()
     }
 
     /// A menu, not a Picker. A `.menu` Picker with a long label stretched to the width of the pane and put its
@@ -180,7 +183,8 @@ private struct FindingsBoard: View {
 
     private var noteButton: some View {
         Button { showsNote = true } label: {
-            Image(systemName: "info.circle")
+            // Not an ⓘ: the header's one ⓘ explains the tab (ADR 0046 decision 14); this is the report's blind spots.
+            Image(systemName: "eye.slash")
                 .imageScale(.medium)
                 .foregroundStyle(DeskColor.mutedInk)
                 .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
@@ -203,7 +207,7 @@ private struct FindingsBoard: View {
     /// Defect or architecture on the left, how the list is sectioned on the right. Status was a row of chips
     /// here too, but the sections are the status now, so a chip for each only filtered to one section.
     private var filters: some View {
-        HStack(spacing: 10) {
+        ScreenBar {
             Picker("Kind", selection: $model.findingKindFilter) {
                 Text("All \(runFindings.count - ignoredCount)").tag(FindingKind?.none)
                 ForEach(FindingKind.allCases, id: \.self) { kind in
@@ -227,7 +231,6 @@ private struct FindingsBoard: View {
             .labelsHidden()
             .fixedSize()
         }
-        .padding(EdgeInsets(top: 10, leading: 16, bottom: 10, trailing: 16))
     }
 
     @ViewBuilder private var content: some View {

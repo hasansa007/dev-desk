@@ -31,7 +31,7 @@ struct ScreenGuideButton: View {
                         .foregroundStyle(DeskColor.secondaryInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                Text("Findings → Plan → Board: decide, order, do.")
+                Text("Findings → Work → Sessions: decide, order, do.")
                     .font(.system(size: 11))
                     .foregroundStyle(DeskColor.faintInk)
                     .padding(.top, 2)

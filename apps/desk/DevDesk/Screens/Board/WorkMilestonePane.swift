@@ -47,18 +47,6 @@ struct WorkMilestonePane: View {
 
     private var list: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                Text("Milestones").font(DeskFont.secondary.weight(.semibold)).foregroundStyle(DeskColor.secondaryInk)
-                Spacer()
-                Button { isCollapsed = true } label: {
-                    Image(systemName: "sidebar.left").foregroundStyle(DeskColor.mutedInk)
-                        .frame(width: 24, height: 24).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Hide the milestones, for a wider Board")
-                .accessibilityLabel("Hide the milestones")
-            }
-            .padding(.horizontal, 12).padding(.vertical, 8)
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     item(scope: .all, title: "All milestones", subtitle: "every open issue by stage", p0: 0, row: nil)
@@ -77,10 +65,22 @@ struct WorkMilestonePane: View {
                     }
                 }
                 .padding(.horizontal, 8)
+                .padding(.top, 8)
             }
             Divider()
-            DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
-                .padding(10)
+            // No title row: the tab's header names the milestone (ADR 0046 decision 14); collapsing sits at the foot.
+            HStack {
+                DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
+                Spacer()
+                Button { isCollapsed = true } label: {
+                    Image(systemName: "sidebar.left").foregroundStyle(DeskColor.mutedInk)
+                        .frame(width: 24, height: 24).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Hide the milestones, for a wider Board")
+                .accessibilityLabel("Hide the milestones")
+            }
+            .padding(10)
         }
         .frame(width: 270)
     }

@@ -24,9 +24,8 @@ struct TerminalsScreen: View {
     @Environment(\.terminals) private var terminals
 
     /// What is in front: one of the sessions, or the starter — the pane a session is typed into being in,
-    /// which is what a window with no sessions opens on. The starter has no tab of its own: the "+" at the
-    /// end of the row is a menu that opens a session outright, and the starter is where the screen lands
-    /// when there is no session to show.
+    /// which is what a window with no sessions opens on. The starter has no tab of its own: New session in the
+    /// header opens a session outright, and the starter is where the screen lands when there is no session to show.
     private enum Selection: Hashable {
         case starter
         case session(String)
@@ -45,8 +44,10 @@ struct TerminalsScreen: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // The tabs are the top of the screen: a title row above them said "Sessions" over a bar that already
-            // listed them, and its two buttons are now the "+" at the end of that bar.
+            // The shared header first, like every tab (ADR 0046 decision 14), then the sessions as its second row.
+            // New session is the header's one primary button; the "+" that sat at the end of the tabs was the same
+            // action a second time, so it went.
+            header
             tabBar
             // Above the open session, because it is what happened while the app was gone and the open one is now.
             if !recovered.isEmpty { recoveredSection }
@@ -101,10 +102,23 @@ struct TerminalsScreen: View {
         }
     }
 
+    private var header: some View {
+        let live = rows.filter(\.isLive).count
+        let refusal = model.sessions.startRefusal(for: .shell)
+        return ScreenHeader(.terminals) {
+            Text(rows.isEmpty ? "None open" : "\(live) running · \(rows.count) open")
+        } tools: {
+            Button("New session", action: open)
+                .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                .disabled(refusal != nil)
+                .help(refusal ?? "A login shell at the project root")
+        }
+    }
+
     // MARK: - The tabs
 
-    /// The sessions across the top, in the order the list has always had them, and the "+" that opens a new
-    /// one after them. It scrolls sideways rather than shrinking: a tab narrow enough to fit twelve of them
+    /// The sessions across the top, in the order the list has always had them; New session is in the
+    /// header above. It scrolls sideways rather than shrinking: a tab narrow enough to fit twelve of them
     /// names none of them.
     private var tabBar: some View {
         ScrollView(.horizontal) {
@@ -116,42 +130,15 @@ struct TerminalsScreen: View {
                         selection = .session(row.id)
                     }
                 }
-                newSessionMenu
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 8)
         }
         .scrollIndicators(.hidden)
         // One row, stated: the bar is the list of sessions and never a second pane, however many there are.
-        .frame(height: 32)
-        .background(DeskColor.surface)
+        .frame(height: DeskMetric.screenBarHeight)
+        .background(DeskColor.canvas)   // the header's second row (ADR 0046 decision 14)
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
-    }
-
-    /// The "+" at the end of the row: it opens a terminal, not a tab. It is never in front — it opens a session
-    /// and that session's tab is — so it carries no underline and no selected state, only the height of its
-    /// neighbours so the row stays one line. It is offered under the same guard the header's button had: a
-    /// shell only where the registry would start one.
-    private var newSessionMenu: some View {
-        Button(action: open) {
-            VStack(spacing: 0) {
-                Image(systemName: "plus")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .frame(width: 30, height: 30)
-                // The same two points a tab's underline takes, kept clear: the "+" is level with its neighbours
-                // without ever reading as the one in front.
-                Rectangle()
-                    .fill(Color.clear)
-                    .frame(height: 2)
-            }
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .fixedSize()
-        .disabled(model.sessions.startRefusal(for: .shell) != nil)
-        .help(model.sessions.startRefusal(for: .shell) ?? "A login shell at the project root")
-        .accessibilityLabel("New session")
     }
 
     /// What the × on a tab does: the same action that row's header carried before the tabs, under a smaller

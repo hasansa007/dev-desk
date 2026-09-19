@@ -7,7 +7,8 @@ struct TaskFilterBar: View {
 
     var body: some View {
         // No milestone picker: Work's list on the left is the milestone choice (ADR 0046 decision 13).
-        HStack(spacing: 14) {
+        // The shared second row under the header (ADR 0046 decision 14).
+        ScreenBar {
             group("Priority") {
                 ForEach(TaskFilter.priorityOrder, id: \.self) { p in
                     chip(p, on: model.taskFilter.priorities.contains(p), tone: TaskFilterBar.tone(p)) {
@@ -40,10 +41,6 @@ struct TaskFilterBar: View {
                     .foregroundStyle(DeskColor.accent)
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.vertical, 8)
-        .background(DeskColor.canvas)   // content layer, like the header above it
-        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
     private func group<Content: View>(_ label: String, @ViewBuilder _ content: () -> Content) -> some View {

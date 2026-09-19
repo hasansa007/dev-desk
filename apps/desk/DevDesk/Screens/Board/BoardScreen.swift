@@ -6,35 +6,44 @@ struct BoardScreen: View {
     @Bindable var model: ProjectWindowModel
 
     var body: some View {
-        // Work (ADR 0046 decision 13): the milestones on the left choose what the Board on the right shows.
-        HStack(spacing: 0) {
-            WorkMilestonePane(model: model)
-            VStack(spacing: 0) {
-                header
-                TaskFilterBar(model: model)
-                if model.p0OutsideWorkScope > 0 { p0Strip }
-                boardArea
+        // Work (ADR 0046 decisions 13, 14): the one header and the filters span the tab; below them the milestones on
+        // the left choose what the Board on the right shows.
+        VStack(spacing: 0) {
+            header
+            TaskFilterBar(model: model)
+            HStack(spacing: 0) {
+                WorkMilestonePane(model: model)
+                VStack(spacing: 0) {
+                    if model.p0OutsideWorkScope > 0 { p0Strip }
+                    boardArea
+                }
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
     }
 
-    /// The title and the search, nothing else. Show backlog and Side by side sat up here as a switch styled as a
-    /// button and a button disabled most of the time, both a screen's width from the columns they changed; each
-    /// now lives on its column.
+    /// The shared header (ADR 0046 decision 14): the selected milestone and its progress, then search and New task.
     private var header: some View {
-        HStack(spacing: 10) {
-            Text("Work")
-                .font(DeskFont.section)
-                .foregroundStyle(DeskColor.ink)
-            // One ⓘ, like every screen: the Board's place in the flow, then its own column rules (ADR 0046).
-            ScreenGuideButton(destination: .board, extra: model.snapshot?.boardNote)
-            Spacer(minLength: 0)
+        ScreenHeader(.board, extra: model.snapshot?.boardNote) {
+            Text(scopeStatus)
+        } tools: {
             searchField
             newTaskButton
         }
-        .screenHeaderBar()
+    }
+
+    private var scopeStatus: String {
+        let rows = model.planRows
+        switch model.effectiveWorkScope {
+        case .all:
+            return "All milestones · \(rows.reduce(0) { $0 + $1.tasks.count }) open"
+        case .noMilestone:
+            return "No milestone · \(rows.first { $0.title == nil }?.tasks.count ?? 0) open"
+        case .milestone(let title):
+            guard let row = rows.first(where: { $0.title == title }) else { return title }
+            return "\(title) · \(row.closed) of \(row.total) done"
+        }
     }
 
     /// One New task, in the header — not a button at the foot of a column (ADR 0046). It lands in the milestone
@@ -56,7 +65,7 @@ struct BoardScreen: View {
             .font(DeskFont.secondary)
             .foregroundStyle(DeskColor.ink)
             .padding(.horizontal, 10)
-            .frame(width: 200, alignment: .leading)
+            .frame(width: 180, alignment: .leading)
             .controlChrome()
     }
 

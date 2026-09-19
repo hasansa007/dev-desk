@@ -37,13 +37,13 @@ struct DiagramsScreen: View {
     }
 
     var body: some View {
-        HStack(spacing: 0) {
-            kindRail
-            VStack(spacing: 0) {
-                header
-                pane
+        // The shared header spans the tab; the kinds and the drawing sit below it (ADR 0046 decision 14).
+        VStack(spacing: 0) {
+            header
+            HStack(spacing: 0) {
+                kindRail
+                pane.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(DeskColor.canvas)
     }
@@ -54,16 +54,6 @@ struct DiagramsScreen: View {
     /// it has been drawn, is being drawn now, or has not been drawn yet.
     private var kindRail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 4) {
-                Text("Diagrams")
-                    .font(DeskFont.body.weight(.semibold))
-                    .foregroundStyle(DeskColor.ink)
-                ScreenGuideButton(destination: .diagrams)
-            }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 12))
-                .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
-
             ScrollView {
                 VStack(spacing: 0) {
                     ForEach(ArchDiagramKind.all) { kind in
@@ -75,7 +65,7 @@ struct DiagramsScreen: View {
         }
         .frame(width: 248, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
-        .background(DeskColor.surface)
+        .background(DeskColor.sidebar)   // an inner list is navigation, like Work's milestones
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
     }
 
@@ -119,31 +109,24 @@ struct DiagramsScreen: View {
 
     // MARK: - Header
 
+    /// The shared header: the kind on screen and how many are drawn, and Regenerate when there is a drawing to replace —
+    /// a kind with none offers Generate in its pane. Both run the same background dev:arch for this kind.
     private var header: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "rectangle.3.group")
-                .foregroundStyle(DeskColor.accent)
-                .frame(width: 28, height: 28)
-                .background(DeskColor.tone(.info).fill, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-            VStack(alignment: .leading, spacing: 1) {
-                Text(selectedTitle).font(DeskFont.section).foregroundStyle(DeskColor.ink)
-                Text("Architecture diagrams for this project")
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-            }
-            Spacer(minLength: 8)
-            // Regenerate is offered only when this kind already has a drawing to replace; a kind with none
-            // shows Generate in its pane instead. Both run the same background dev:arch for this kind.
+        ScreenHeader(.diagrams) {
+            Text("\(selectedTitle) · \(drawnCount) of \(ArchDiagramKind.all.count) drawn")
+        } tools: {
             if selectedDiagram != nil {
                 Button("Regenerate") { generate() }
-                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
                     .disabled(blockedReason != nil)
                     .help(blockedReason ?? "Runs dev:arch again to redraw this \(selectedTitle) diagram")
             }
         }
-        .padding(EdgeInsets(top: 12, leading: 16, bottom: 12, trailing: 16))
-        .background(DeskColor.surface)
-        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+    }
+
+    private var drawnCount: Int {
+        _ = model.lastLoadedAt
+        return ArchDiagramKind.all.filter { model.diagram(kind: $0.token) != nil }.count
     }
 
     private var selectedTitle: String {
