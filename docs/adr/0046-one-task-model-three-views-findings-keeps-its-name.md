@@ -39,6 +39,14 @@ answering one question, with one filter bar.**
    cards moved there by hand, sorted by priority. A card waiting for an agent slot stays in Next up with a
    *waiting for a slot* pill: Queued is still the stage ADR 0035 stores, it is just not a column — an empty
    column that means "the queue is idle" read as "nothing is planned".
+   **A P0 is always in Next up, whatever its milestone** — pinned first, marked *P0 · outside this milestone*.
+   Plan's order ranks milestones and the label ranks inside one; without this a P0 in a lower milestone (or in
+   none — #648 on 2026-09-19) waited behind the working milestone's P2s.
+   **A card shows what it depends on, and a card that waits cannot start.** *part of #E* when it is a
+   sub-issue of an open parent; *waits for #N* when its body records `needs: #N` / `blocked by #N` (the
+   findings door's `needs:` line, carried into `## Scope`) and #N is open. Start is disabled on a waiting card,
+   the reason on hover. This is how a bug and the refactor that rewrites its code stay ordered: either the bug
+   is a piece of the refactor (sub-issue, fixed by it), or it ships first alone and the refactor `needs:` it.
 2. **One filter bar on Board and Plan**: milestone, priority (P0–P3), type (bug/feature/epic), tag
    (security/payments), search. A filter set on one view holds on the other.
 3. **Cards show only what is set.** Priority first, then security/payments, then the milestone. No
@@ -98,5 +106,7 @@ and a filing status it could not read — not its name.
 
 - One vocabulary across views: Next up is the Plan's top row, and the Plan's top row is where Next up comes from.
 - A reorder in Plan changes the Board immediately and touches nothing on GitHub.
+- Findings never compete with Plan for priority: a finding has none until it is filed, and filing is where it
+  gets a label and a milestone. Ranking lives in one place.
 - The kanban door's QUEUE (`dev:kanban`) still reads the active milestone by due date; it learns `.devdesk/`'s
   order in the same step as Plan, or the two disagree.
