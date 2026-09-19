@@ -124,7 +124,7 @@ final class BoardBuilderTests: XCTestCase {
     func testActiveMilestoneIssueIsReadyForDevWithNoBranch() throws {
         let task = try XCTUnwrap(tasks()["14"])
         XCTAssertNil(task.cardBadge)
-        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "Ready for dev"))
+        XCTAssertEqual(task.headerBadge, StatusBadge(.neutral, "Next up"))
         XCTAssertEqual(task.branchLine, "No branch yet")
         XCTAssertEqual(task.nextAction, .openURL(URL(string: "https://github.com/acme/app/issues/14")!, title: "Open on GitHub"))
         XCTAssertEqual(task.activity, .available([]))
@@ -694,5 +694,43 @@ final class BoardBuilderTests: XCTestCase {
     func testAPromotedEntryIsNotASecondCard() {
         let item = BacklogItem(id: "c1", key: "C1", title: "Filed", issue: 87, body: "", path: "/p/docs/backlog/c1.md")
         XCTAssertFalse(BoardBuilder.build(BoardInput(localBacklog: [item])).contains { $0.isLocalBacklog })
+    }
+
+    // MARK: - ADR 0046: P0 is always Next up; a card says what it waits for
+
+    private func board(_ issues: [GitHubIssue], active: String? = "M") -> [String: DeskTask] {
+        let input = BoardInput(git: GitFacts(base: "staging", baseRef: "refs/remotes/origin/staging", baseShort: "abc1234", branches: []),
+                               github: GitHubData(slug: "a/b", account: nil, issues: issues, openPullRequests: [], mergedPullRequests: []),
+                               activeMilestone: active)
+        return Dictionary(uniqueKeysWithValues: BoardBuilder.build(input).map { ($0.id, $0) })
+    }
+
+    func testAP0OutsideTheWorkingMilestoneIsNextUpAndSaysWhy() throws {
+        let tasks = board([issue(1, "Mail never arrives", labels: ["P0"]), issue(2, "Other milestone P1", labels: ["P1"], milestone: "Later")])
+        let p0 = try XCTUnwrap(tasks["1"])
+        XCTAssertEqual(p0.column, .readyForDev)
+        XCTAssertEqual(p0.cardNote, BoardBuilder.p0Note)
+        XCTAssertEqual(tasks["2"]?.column, .backlog, "only P0 jumps the milestone order")
+    }
+
+    func testAP0InsideTheWorkingMilestoneCarriesNoOutsideNote() throws {
+        let tasks = board([issue(1, "In milestone", labels: ["P0"], milestone: "M")])
+        XCTAssertNil(tasks["1"]?.cardNote)
+    }
+
+    func testP0RanksBeforeP1() {
+        XCTAssertLessThan(BoardBuilder.priorityRank(issue(1, "a", labels: ["P0"])), BoardBuilder.priorityRank(issue(2, "b", labels: ["P1"])))
+    }
+
+    func testANeedsLineOnAnOpenIssueSaysWaitsFor() throws {
+        let tasks = board([issue(5, "Refactor", milestone: "M", body: "## Scope\n- needs: #6 — the bug ships first"),
+                           issue(6, "The bug", milestone: "M")])
+        XCTAssertEqual(tasks["5"]?.cardNote, "Waits for #6")
+        XCTAssertNil(tasks["6"]?.cardNote)
+    }
+
+    func testAWaitOnAClosedIssueSaysNothing() throws {
+        let tasks = board([issue(5, "Refactor", milestone: "M", body: "blocked by #99")])
+        XCTAssertNil(tasks["5"]?.cardNote, "#99 is not open, so nothing is waited on")
     }
 }

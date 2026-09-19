@@ -97,7 +97,7 @@ struct BoardScreen: View {
         } else {
             let columns = visibleColumns.map { column in
                 ColumnEntry(column: column,
-                            tasks: BoardOrder.inColumn(column, tasks.filter { $0.column == column && matches($0) }))
+                            tasks: BoardOrder.inColumn(column, tasks.filter { Self.shows($0, in: column) && matches($0) }))
             }
             if !model.searchText.isEmpty && columns.allSatisfy({ $0.tasks.isEmpty }) {
                 Text("No tasks match “\(model.searchText)”.")
@@ -146,7 +146,12 @@ struct BoardScreen: View {
     }
 
     private var visibleColumns: [BoardColumn] {
-        BoardColumn.allCases.filter { $0 != .backlog || model.showBacklog }
+        // Queued is a stage, not a column (ADR 0046): its cards ride in Next up with their "waiting for a slot" note.
+        BoardColumn.allCases.filter { ($0 != .backlog || model.showBacklog) && $0 != .queued }
+    }
+
+    static func shows(_ task: DeskTask, in column: BoardColumn) -> Bool {
+        task.column == column || (column == .readyForDev && task.column == .queued)
     }
 
     private func matches(_ task: DeskTask) -> Bool {

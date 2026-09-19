@@ -35,7 +35,8 @@ enum BoardBuilder {
     private static let criterion = try! Regex(#"^\s*[-*]\s*\[( |x|X)\]\s*(.+)$"#)
     private static let slice = try! Regex(#"\bslice[ \t]+(\d+)\b"#).ignoresCase().wordBoundaryKind(.simple)
     private static let closing = try! Regex(#"\b(close[sd]?|fix(e[sd])?|resolve[sd]?)\s+#(\d+)\b"#).ignoresCase().wordBoundaryKind(.simple)
-    private static let blockedBy = try! Regex(#"\b(blocked by|depends on)\s+#(\d+)"#).ignoresCase().wordBoundaryKind(.simple)
+    /// `needs: #N` is the findings door's coordination line carried into an issue's `## Scope` (ADR 0046).
+    private static let blockedBy = try! Regex(#"\b(blocked by|depends on|waits for|needs:?)\s+#(\d+)"#).ignoresCase().wordBoundaryKind(.simple)
     private static let blocks = try! Regex(#"\bblocks\s+#(\d+)"#).ignoresCase().wordBoundaryKind(.simple)
 
     static func build(_ input: BoardInput) -> [DeskTask] {
@@ -47,6 +48,7 @@ enum BoardBuilder {
     /// Why a Queued card sits where it does (ADR 0035): a Start was made with every agent slot busy. A
     /// pipeline note of the card's own still wins — it describes the work, which says more than the wait.
     static let queuedNote = "Waiting for a free agent slot"
+    static let p0Note = "P0 · outside this milestone"
 
 
     static func note(github: GitHubState, activeMilestone: (title: String?, why: String), localBranchNote: String? = nil) -> String {
@@ -80,7 +82,8 @@ enum BoardBuilder {
     }
 
     static func priorityRank(_ issue: GitHubIssue) -> Int {
-        issue.labelNames.lazy.compactMap { ["P1": 1, "P2": 2, "P3": 3][$0] }.first ?? 4
+        // P0 was missing, so a P0 ranked with the unlabelled — after every P3 in Next up.
+        issue.labelNames.lazy.compactMap { ["P0": 0, "P1": 1, "P2": 2, "P3": 3][$0] }.first ?? 4
     }
 
     static func sliceRank(_ issue: GitHubIssue) -> Int {
@@ -272,7 +275,18 @@ private struct BoardContext {
         // The active milestone means "ready for dev" now, not "queued": Queued is the wait for a free
         // agent slot, which a milestone cannot know about.
         if let active = input.activeMilestone, issue.milestone?.title == active { return .readyForDev }
+        // A P0 is never behind a milestone's order (ADR 0046): it is Next up wherever it is filed.
+        if BoardBuilder.priorityRank(issue) == 0 { return .readyForDev }
         return .backlog
+    }
+
+    /// The first issue this one records it waits on (`blocked by` / `needs:` #N) that is still open.
+    private func waitsFor(_ issue: GitHubIssue) -> Int? {
+        let open = Set((input.github?.issues ?? []).map(\.number))
+        return BoardBuilder.dependencies(issue.body)
+            .filter { $0.text.hasPrefix("Blocked by") }
+            .compactMap { $0.taskID.flatMap { Int($0) } }
+            .first { open.contains($0) && $0 != issue.number }
     }
 
     /// The stored stage for a card, or nil for the ids git owns: a `branch:`, `pr:` or `merged:` card's
@@ -314,8 +328,11 @@ private struct BoardContext {
         return DeskTask(
             id: String(issue.number), issueNumber: issue.number, title: issue.title, column: column,
             cardBadge: saysAheadOnly ? nil : badge,
-            cardNote: state?.cardNote ?? (column == .queued ? BoardBuilder.queuedNote : nil),
-            headerBadge: badge ?? StatusBadge(.neutral, column == .readyForDev ? "Ready for dev" : column == .queued ? "Queued" : "Backlog"),
+            cardNote: state?.cardNote ?? (column == .queued ? BoardBuilder.queuedNote
+                : waitsFor(issue).map { "Waits for #\($0)" }
+                ?? (column == .readyForDev && BoardBuilder.priorityRank(issue) == 0 && issue.milestone?.title != input.activeMilestone
+                    ? BoardBuilder.p0Note : nil)),
+            headerBadge: badge ?? StatusBadge(.neutral, column == .readyForDev ? "Next up" : column == .queued ? "Queued" : "Backlog"),
             branchLine: branchLine(head, local: local), parallelLine: parallelLine(head, local: local),
             branch: fromFork ? nil : head, noBranchNote: fromFork ? BoardBuilder.forkNote : nil,
             nextAction: nextAction(local: local, pullRequestURL: pullRequest?.url, issueURL: issue.url),

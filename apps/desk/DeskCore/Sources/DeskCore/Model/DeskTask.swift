@@ -7,7 +7,8 @@ public enum BoardColumn: String, CaseIterable, Codable, Hashable {
     public var title: String {
         switch self {
         case .backlog: return "Backlog"
-        case .readyForDev: return "Ready for dev"
+        // "Next up" (ADR 0046): the working milestone plus moves made here — what "Ready for dev" meant, said plainly.
+        case .readyForDev: return "Next up"
         case .queued: return "Queued"
         case .inProgress: return "In progress"
         case .review: return "Review"
