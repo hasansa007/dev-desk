@@ -41,7 +41,8 @@ is absent, do Phases 3–5 by hand from the prose below** — the CLI is optiona
 work without it. Never report a number the CLI gave you as if you had checked it, and never skip a
 rule below because you assume the CLI applied it.
 
-Without `--milestone` the CLI resolves the active milestone by `dev:roadmap`'s rule and returns it
+Without `--milestone` the CLI resolves the active milestone by `dev:roadmap`'s rule — the top of Dev Desk's
+Plan order (`.devdesk/plan.json`) first, then the nearest due date, then the oldest — and returns it
 as `active_milestone`, with the reason in `active_why`. Pass the flag only to override that choice.
 
 ### Optional — mirror to a GitHub Project v2 board

@@ -10,7 +10,9 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
     public var title: String {
         switch self {
         case .terminals: return "Sessions"
-        case .board, .roadmap, .findings, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
+        // Roadmap is shown as Plan (ADR 0046); the stored value stays, as this enum's rule says.
+        case .roadmap: return "Plan"
+        case .board, .findings, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
         }
     }
 }
@@ -709,6 +711,25 @@ public final class ProjectWindowModel {
     /// `docs/backlog/` otherwise, with the connection's own reason.
     public var addTaskDestination: TaskDestination {
         TaskDestination.resolve(slug: snapshot?.slug, trackerUnavailable: snapshot?.trackerUnavailable)
+    }
+
+    /// The Plan's rows under the shared filter and search (ADR 0046); empty with no tracker to read milestones from.
+    public var planRows: [PlanRow] {
+        guard let snapshot, case .available(let roadmap) = snapshot.roadmap else { return [] }
+        let query = searchText.lowercased()
+        return PlanBuilder.rows(milestones: roadmap.milestones, order: PlanOrder(titles: snapshot.planOrder),
+                                active: snapshot.activeMilestone, tasks: tasks, filter: taskFilter,
+                                matches: { query.isEmpty || $0.title.lowercased().contains(query) || $0.issueLabel.contains(query) })
+    }
+
+    /// Puts `title` at the top of the Plan, so it becomes Working now and Next up reads it (ADR 0046). Stored in
+    /// `.devdesk/plan.json`; nothing is written to GitHub.
+    public func moveToTopOfPlan(_ title: String) async {
+        guard let root = snapshot?.repositoryRoot, case .available(let roadmap)? = snapshot?.roadmap else { return }
+        let url = URL(fileURLWithPath: root, isDirectory: true)
+        let shown = PlanOrder(titles: snapshot?.planOrder ?? []).apply(roadmap.milestones, title: \.title).map(\.title)
+        PlanOrder.read(projectRoot: url).movingToTop(title, shown: shown).write(projectRoot: url)
+        await load()
     }
 
     /// The open milestones Add Task may file into; empty with no tracker.

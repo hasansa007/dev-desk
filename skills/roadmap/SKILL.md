@@ -86,8 +86,9 @@ never render the same — `dev:kanban` Phase 3's rule.
 ### The active milestone
 
 `dev:kanban`'s QUEUE column is *the active milestone's members*, so exactly one milestone is active
-at a time. **Active = the open milestone with the nearest `due_on`**; if none has a due date, the
-oldest open one. Say which one you resolved and why. If two are equally near, **ask** — a queue that
+at a time. **Active = the top open milestone of Dev Desk's Plan order (`.devdesk/plan.json`, ADR 0046)**
+when one is stored; otherwise the open milestone with the nearest `due_on`, and if none has a due date, the
+oldest open one. `scripts/dev.py board` applies the same rule. Say which one you resolved and why. If two are equally near, **ask** — a queue that
 silently picks one is a queue nobody can trust.
 
 ### The survey comes first — check it, alert, never auto-run

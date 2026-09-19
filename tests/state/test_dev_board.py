@@ -195,6 +195,16 @@ class ActiveMilestone(unittest.TestCase):
         self.assertIsNone(title)
         self.assertIn("--milestone", why)
 
+    def test_the_plan_order_wins_over_due_dates(self):
+        ms = [{"title": "soon", "due_on": "2026-10-01T00:00:00Z", "created_at": "2026-02-01"},
+              {"title": "chosen", "due_on": None, "created_at": "2026-03-01"}]
+        title, why = resolve_active_milestone(ms, ["closed-one", "chosen"])
+        self.assertEqual(title, "chosen")
+        self.assertIn("top of Plan", why)
+
+    def test_p0_ranks_before_p1(self):
+        self.assertLess(priority_rank(issue(1, labels=["P0"])), priority_rank(issue(2, labels=["P1"])))
+
     def test_no_open_milestone_means_no_queue(self):
         self.assertIsNone(resolve_active_milestone([])[0])
 

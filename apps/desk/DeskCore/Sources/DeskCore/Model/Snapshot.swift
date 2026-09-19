@@ -60,6 +60,10 @@ public struct ProjectSnapshot: Hashable {
     public var trackerUnavailable: String?
     /// The open milestones' titles, for Add Task's optional milestone; empty with no tracker.
     public var openMilestones: [String] = []
+    /// Why `activeMilestone` is the one Next up reads — "top of Plan", "nearest due date …" — said on the Plan.
+    public var activeMilestoneReason: String?
+    /// The Plan's stored order (`.devdesk/plan.json`), applied to the roadmap's milestones on screen.
+    public var planOrder: [String] = []
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,

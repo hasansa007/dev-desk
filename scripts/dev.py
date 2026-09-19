@@ -231,7 +231,8 @@ def cmd_verify(args) -> int:
 
 # ---------------------------------------------------------------------- board
 
-PRIORITY_ORDER = {"P1": 1, "P2": 2, "P3": 3}
+# P0 was missing, so a P0 ranked with the unlabelled — after every P3 (found 2026-09-19, ADR 0046).
+PRIORITY_ORDER = {"P0": 0, "P1": 1, "P2": 2, "P3": 3}
 UNPRIORITISED = 4
 NO_SLICE = 9999
 
@@ -352,10 +353,25 @@ def _open_milestones() -> Optional[List[Dict]]:
                      "--jq", "[.[] | {title, due_on, created_at}]"])
 
 
-def resolve_active_milestone(milestones: List[Dict]) -> Tuple[Optional[str], str]:
-    """dev:roadmap's rule: the open milestone due soonest, else the oldest open. A tie is never broken silently."""
+def plan_order(root: str) -> List[str]:
+    """Dev Desk's Plan order, `.devdesk/plan.json` (ADR 0046). Missing or unreadable reads as no order."""
+    try:
+        with open(os.path.join(root, ".devdesk", "plan.json"), encoding="utf-8") as fh:
+            titles = json.load(fh).get("titles", [])
+        return [t for t in titles if isinstance(t, str)]
+    except (OSError, ValueError, AttributeError):
+        return []
+
+
+def resolve_active_milestone(milestones: List[Dict], order: Optional[List[str]] = None) -> Tuple[Optional[str], str]:
+    """The top open milestone of Dev Desk's Plan order (ADR 0046); without one, dev:roadmap's rule: the open milestone
+    due soonest, else the oldest open. A tie is never broken silently."""
     if not milestones:
         return None, "no open milestone; dev:roadmap sets one"
+    open_titles = {m["title"] for m in milestones}
+    for title in order or []:
+        if title in open_titles:
+            return title, "top of Plan (.devdesk/plan.json)"
     dated = sorted((m for m in milestones if m.get("due_on")), key=lambda m: m["due_on"])
     if dated:
         if len(dated) > 1 and dated[0]["due_on"][:10] == dated[1]["due_on"][:10]:
@@ -383,7 +399,7 @@ def cmd_board(args) -> int:
     else:
         found = _open_milestones()
         # A failed milestone read is not "no milestone" — the same rule as the issue read above.
-        milestone, why = (resolve_active_milestone(found) if found is not None
+        milestone, why = (resolve_active_milestone(found, plan_order(root)) if found is not None
                           else (None, "could not read milestones — pass --milestone"))
 
     base = origin_ref(resolve_base())

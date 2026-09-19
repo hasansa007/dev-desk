@@ -1,6 +1,9 @@
 /// dev.py's resolve_active_milestone: the open milestone due soonest, else the oldest open one; a same-day tie is never broken silently.
+/// The Plan's stored order (ADR 0046) comes first when there is one: its top open milestone is "Working now".
 enum ActiveMilestone {
-    static func resolve(_ milestones: [GitHubMilestone]) -> (title: String?, why: String) {
+    static func resolve(_ milestones: [GitHubMilestone], order: [String] = []) -> (title: String?, why: String) {
+        let open = Set(milestones.map(\.title))
+        if let top = order.first(where: open.contains) { return (top, "top of Plan") }
         let dated = milestones.enumerated()
             .compactMap { index, milestone in milestone.dueOn.flatMap { $0.isEmpty ? nil : (due: $0, index: index, title: milestone.title) } }
             .sorted { ($0.due, $0.index) < ($1.due, $1.index) }

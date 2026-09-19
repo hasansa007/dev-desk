@@ -45,11 +45,16 @@ public struct Milestone: Identifiable, Hashable {
     public var title: String
     public var progress: Double     // 0...1
     public var note: String
-    public init(id: String, title: String, progress: Double, note: String) {
+    /// Issue counts behind `progress`, so the Plan can say "3 of 13 done" without re-deriving it.
+    public var closed: Int = 0
+    public var total: Int = 0
+    public init(id: String, title: String, progress: Double, note: String, closed: Int = 0, total: Int = 0) {
         self.id = id
         self.title = title
         self.progress = progress
         self.note = note
+        self.closed = closed
+        self.total = total
     }
 }
 

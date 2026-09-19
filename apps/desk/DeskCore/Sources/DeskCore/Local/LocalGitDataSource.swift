@@ -55,7 +55,8 @@ public struct LocalGitDataSource: ProjectDataSource {
         }
         let findings = Self.findings(findingsFolders)
         let ideation = Self.ideation(await tree.reports(in: "docs/ideation", toplevel: topURL, refs: reportRefs))
-        let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones) } ?? (nil, github.unavailableReason ?? "")
+        let planOrder = PlanOrder.read(projectRoot: topURL)
+        let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones, order: planOrder.titles) } ?? (nil, github.unavailableReason ?? "")
         let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
         let localBacklog = LocalBacklog.read(projectPath: top)
         // The stages the app itself stored (ADR 0035); a sample has no folder, so it keeps none.
@@ -94,6 +95,8 @@ public struct LocalGitDataSource: ProjectDataSource {
         snapshot.folderOffBase = offBase
         snapshot.trackerUnavailable = github.data == nil ? (github.shortUnavailableReason ?? "GitHub unavailable") : nil
         snapshot.openMilestones = github.data?.milestones.map(\.title) ?? []
+        snapshot.activeMilestoneReason = active.title == nil ? nil : active.why
+        snapshot.planOrder = planOrder.titles
         return snapshot
     }
 

@@ -32,7 +32,7 @@ enum RoadmapBuilder {
     }
 
     static func priority(_ issue: GitHubIssue) -> String {
-        issue.labelNames.first { ["P1", "P2", "P3"].contains($0) } ?? "Unprioritised"
+        issue.labelNames.first { ["P0", "P1", "P2", "P3"].contains($0) } ?? "Unprioritised"
     }
 
     private static func has(_ issue: GitHubIssue, _ label: String) -> Bool {
@@ -57,6 +57,7 @@ enum RoadmapBuilder {
         let due = dueDate(milestone).map { "due \($0)" } ?? "no due date"
         return Milestone(id: milestone.title, title: milestone.title,
                          progress: total == 0 ? 0 : Double(milestone.closedIssues) / Double(total),
-                         note: "\(milestone.closedIssues) of \(total) issues closed · \(due)")
+                         note: "\(milestone.closedIssues) of \(total) issues closed · \(due)",
+                         closed: milestone.closedIssues, total: total)
     }
 }

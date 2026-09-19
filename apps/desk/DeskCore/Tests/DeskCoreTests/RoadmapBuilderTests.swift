@@ -52,10 +52,10 @@ final class RoadmapBuilderTests: XCTestCase {
 
     func testMilestonesReportProgressAndDueDate() {
         XCTAssertEqual(roadmap.milestones, [
-            Milestone(id: "v2", title: "v2", progress: 0.75, note: "3 of 4 issues closed · due 2026-10-01"),
-            Milestone(id: "v3", title: "v3", progress: 0.5, note: "2 of 4 issues closed · due 2026-12-01"),
-            Milestone(id: "Later", title: "Later", progress: 0, note: "0 of 1 issues closed · no due date"),
-            Milestone(id: "Empty", title: "Empty", progress: 0, note: "0 of 0 issues closed · no due date"),
+            Milestone(id: "v2", title: "v2", progress: 0.75, note: "3 of 4 issues closed · due 2026-10-01", closed: 3, total: 4),
+            Milestone(id: "v3", title: "v3", progress: 0.5, note: "2 of 4 issues closed · due 2026-12-01", closed: 2, total: 4),
+            Milestone(id: "Later", title: "Later", progress: 0, note: "0 of 1 issues closed · no due date", closed: 0, total: 1),
+            Milestone(id: "Empty", title: "Empty", progress: 0, note: "0 of 0 issues closed · no due date", closed: 0, total: 0),
         ])
     }
 
