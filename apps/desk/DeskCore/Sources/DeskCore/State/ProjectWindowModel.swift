@@ -18,8 +18,10 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    /// The places the sidebar lists and ⌘1… reach, in flow order. `roadmap` is not one: it opens Work.
-    public static let sidebar: [Destination] = [.findings, .ideation, .board, .terminals, .diagrams]
+    /// The places the sidebar lists and ⌘1… reach: the daily flow first (Findings → Work → Sessions), then the
+    /// occasional tools (Ideation, Diagrams). Ideation second read as a step every task passes through; it is not.
+    /// `roadmap` is not listed: it opens Work.
+    public static let sidebar: [Destination] = [.findings, .board, .terminals, .ideation, .diagrams]
 
     /// One line for the sidebar's tooltip: what the place is for, in the flow's words (ADR 0046).
     public var hint: String {

@@ -90,8 +90,9 @@ answering one question, with one filter bar.**
     **All milestones** (first row) is the whole Board, P0s pinned as in decision 1. Its three costs, answered:
     the list collapses to a rail so a 13″ screen gets the Board's width back; each row shows its P0 count and a
     narrowed Next up says *N P0 in other milestones — show all*; and the default selection is the Working now
-    milestone. The sidebar becomes Findings, Ideation, **Work**, Sessions, Diagrams — the stored `roadmap` value
-    opens Work. This supersedes decision 4's separate Plan screen; its list lives on as Work's left pane.
+    milestone. The sidebar becomes Findings, **Work**, Sessions — the daily flow — then Ideation, Diagrams, the
+    occasional tools (Ideation moved out of second place on 2026-09-19: it read as a step every task passes
+    through). The stored `roadmap` value opens Work. This supersedes decision 4's separate Plan screen; its list lives on as Work's left pane.
     *Rejected:* the switch (order and stage never on screen together); swimlanes (mostly empty cells, Backlog and
     Next up stop existing as words, the largest rebuild).
 

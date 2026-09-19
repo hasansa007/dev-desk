@@ -138,7 +138,7 @@ final class WorkScopeTests: XCTestCase {
     }
 
     func testTheSidebarListsWorkOnceAndRoadmapOpensWork() {
-        XCTAssertEqual(Destination.sidebar, [.findings, .ideation, .board, .terminals, .diagrams])
+        XCTAssertEqual(Destination.sidebar, [.findings, .board, .terminals, .ideation, .diagrams])
         XCTAssertEqual(Destination.board.title, "Work")
         XCTAssertEqual(Destination.roadmap.title, "Work")
     }
