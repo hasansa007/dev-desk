@@ -331,7 +331,7 @@ private struct FindingsBoard: View {
     private func groupNote(_ group: FindingGroup) -> String? {
         let meaning: String?
         switch group.category {
-        case .new: meaning = "confirmed — file it, add it to an open issue, or drop it"
+        case .new: meaning = "confirmed — File it, or Ignore it"
         case .knownNewEvidence: meaning = "an issue already covers these"
         case .needsDecision: meaning = "found, but no checker confirmed it — filed only if you choose to"
         case .closedOrDeclined: meaning = "decided against before"

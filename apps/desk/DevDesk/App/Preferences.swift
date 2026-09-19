@@ -177,8 +177,17 @@ struct AppliesAppearance: ViewModifier {
     func body(content: Content) -> some View {
         content
             .preferredColorScheme(override ?? appearance.colorScheme)
-            .onAppear { appearance.apply() }
-            .onChange(of: appearance) { _, choice in choice.apply() }
+            .onAppear { effective.apply() }
+            .onChange(of: appearance) { _, _ in effective.apply() }
+    }
+
+    /// A forced scheme (Snapshot mode) wins app-wide too, or AppKit-drawn parts would follow the stored setting.
+    private var effective: AppearanceChoice {
+        switch override {
+        case .some(.light): return .light
+        case .some(.dark): return .dark
+        default: return appearance
+        }
     }
 }
 
