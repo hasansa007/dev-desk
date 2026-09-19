@@ -90,6 +90,29 @@ at a time. **Active = the open milestone with the nearest `due_on`**; if none ha
 oldest open one. Say which one you resolved and why. If two are equally near, **ask** — a queue that
 silently picks one is a queue nobody can trust.
 
+### The survey comes first — check it, alert, never auto-run
+
+A roadmap planned before the survey misses every bug the survey is about to file, and nothing joins
+them afterwards. **On 2026-09-16 this door built 5 milestones and 13 parents; on 09-17 `dev:findings`
+filed 10 bugs into none of them.** So before Phase 3, find the newest report and ask how stale it is:
+
+```bash
+ls -t docs/findings/*.md 2>/dev/null | head -1                 # newest survey, if any
+git log --oneline --since="<report date>" -- . ':!docs' | wc -l  # code commits since it
+```
+
+Fresh = a report exists **and** no code commit landed after it. Anything else, say so in one line
+(*"newest survey: 2026-09-10 · 212 code commits since"*, or *"no survey in this repo"*) and ask:
+
+| Option | What happens |
+|---|---|
+| **Run the survey first** (recommended) | hand to `dev:findings`, name its cost (its Phase 4 declares the agent count), come back here on its report |
+| **Use the stale report anyway** | continue; Phase 7's render carries `evidence: survey <date>, stale` |
+| **Skip the survey** | plan from the register and the tracker only; the render says `no survey` |
+
+**Ask and wait — never start `dev:findings` yourself.** It is the largest fan-out in the family
+(39 agents on the 09-17 run), and running it is the developer's spend, not this door's.
+
 ## Phase 3 — Discover from evidence, never from imagination
 
 **This is the phase where a roadmap goes wrong.** Every theme must trace to something already
@@ -174,7 +197,31 @@ run re-proposes what you already rejected, and the door becomes noise.
 gh api repos/<owner>/<repo>/milestones -f title="<theme>" -f description="<the because + not now>" [-f due_on=...]
 ```
 
-Then, per epic in the theme, hand to **`dev:create-epic`** — do not hand-roll the body. That door
+### Adopt before you create
+
+**Every epic line in an accepted theme resolves to ONE of these, in this order — and the first match
+wins:**
+
+| The epic's evidence is… | Write |
+|---|---|
+| **one existing open issue** | **no new issue.** Assign that issue to the milestone and comment the theme's `because` on it |
+| an existing open **umbrella / epic** that already covers it | attach the pieces to that umbrella as sub-issues; assign the umbrella to the milestone |
+| **two or more** items no single open issue covers | a new parent via `dev:create-epic`, with every existing issue among the items attached as a sub-issue |
+
+Sub-issues attach by the internal id, not the number:
+`gh api -X POST repos/<o>/<r>/issues/<parent>/sub_issues -F sub_issue_id=$(gh api repos/<o>/<r>/issues/<child> --jq .id)`.
+
+**A parent with one child is refused** — it restates its child, and the tracker now holds the same
+work twice with two numbers, two bodies that drift, and one of them in no milestone. **Scar,
+2026-09-16:** #793, #796, #797, #798 each restated one open issue (#700, #741, #701, #717) without
+attaching it, and #779–#781 were cut as slices of #752 without linking it. All four were closed as
+duplicates on 2026-09-18.
+
+**Also gather the unplaced bugs.** Open issues with no milestone that a theme's `because` covers —
+typically a survey's filed bugs — join that milestone the same way. Name each one in the confirmation
+(Phase 5) so it is accepted with the theme, not slipped in.
+
+Then, per NEW epic in the theme (the third row above), hand to **`dev:create-epic`** — do not hand-roll the body. That door
 owns the template (`## Goal`, `## Why now`, `## In scope`, `## Out of scope`, `## Done when`) and
 its guards. Assign each epic to the milestone as it is created.
 
@@ -203,10 +250,16 @@ LATER     <milestone>            1 epic
 
 DECLINED  <theme> — <reason>, <date>
 
-evidence: <n> items from <k> sources        proposed <n> · accepted <n> · declined <n>
+evidence: <n> items from <k> sources · survey <date | stale | none>
+proposed <n> · accepted <n> · declined <n>
+
+NET       opened <n> · adopted existing <n> · attached as sub-issue <n> · open issues <before> → <after>
 
 → start #E1, or open the board?
 ```
+
+**The `NET` line is not optional.** Issue numbers only grow; the open count is what this door can
+make worse, and a run that opened 13 parents to plan 9 existing issues must say so on screen.
 
 **End by asking, never by listing** — `dev:kanban` Phase 6's rule. Naming an epic hands to
 `/dev #E`, which decomposes it at Phase 5. This door does not start work.
@@ -214,6 +267,9 @@ evidence: <n> items from <k> sources        proposed <n> · accepted <n> · decl
 ## Never
 
 - **Never invent a theme.** Every one traces to Phase 3 evidence, printed with its source.
+- **Never file a parent for work one open issue already describes** — adopt it (Phase 6). Never a
+  one-child parent.
+- **Never run `dev:findings` without asking** — alert on a stale survey, then wait.
 - **Never file slices or child issues** — `dev:create-epic`'s rule, and Phase 5 of the pipeline owns
   decomposition.
 - **Never write without an explicit yes per theme** (Phase 5). Batching is not consent.
@@ -250,6 +306,11 @@ claims cannot be checked against the repo, and every other door in this family r
 it cannot verify. A roadmap is the artifact where that discipline matters most, because it is the
 one people plan from.
 
-**Undated, therefore unproven:** this door has never been run. The active-milestone resolution, the
-`roadmap-declined` round trip, and whether three-to-five themes is the right ceiling are all
-designed rather than observed.
+**2026-09-16 — first real run (studyhub-deploy): 5 milestones, 13 parents, and 4 of those parents
+duplicated open issues.** Phase 2 read the tracker and Phase 6 created a parent per epic line anyway,
+so reading was never acting. The next day's survey filed 10 bugs into none of the 5 milestones.
+Closed 2026-09-18; *Adopt before you create*, the survey-freshness alert and the `NET` line exist
+because of it.
+
+**Still unproven:** the `roadmap-declined` round trip (one decline, #771, never yet re-read by a later
+run), and whether three-to-five themes is the right ceiling.
