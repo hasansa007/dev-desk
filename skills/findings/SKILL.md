@@ -433,18 +433,11 @@ without asking, and lists what it filed at the end of the report.
 
 Ask before filing anything (under `alert`). Then, for the confirmed set:
 
-- **Merge before you file — one decision per confirmed finding**, made against Phase 2's per-path
-  search and recorded in `## ALREADY TRACKED`:
-
-  | The finding… | Then |
-  |---|---|
-  | has the **same fix site** as an open issue | **no new issue** — comment the mechanism, evidence and this run's verdict on it |
-  | is in the **same area, different mechanism** | a new issue, `related to #N` in `## Scope` |
-  | matches a row of the repo's **decided-but-not-built register** (e.g. `docs/06-roadmap.md`) | file it, and name the row in the report so `dev:docs` re-points it — this door does not edit docs |
-  | is new | a new issue |
-
-  **Same fix site is the only merge.** Same file, same theme or same label is `related`, never a
-  merge — a wrong merge hides a real bug (Phase 2).
+- **Merge before you file** — `~/.claude/skills/dev/shared/duplicates.md`, applied per confirmed
+  finding against Phase 2's per-path search and recorded in `## ALREADY TRACKED`. **One addition at
+  this door:** a finding that matches a row of the repo's decided-but-not-built register (e.g.
+  `docs/06-roadmap.md`) is filed and the row is named in the report, so `dev:docs` re-points it — this
+  door does not edit docs.
 - Bugs → `dev:create-bug`, one per finding, mechanism carried into `## Steps` intact.
 - **Name this run in `## Suspected`, and say what the verdict does NOT cover:** *"found by
   `dev:findings` <date>; two checkers confirmed the mechanism against the code — not reproduced at
@@ -479,7 +472,7 @@ Ask before filing anything (under `alert`). Then, for the confirmed set:
   it stands, complexity the cost of fixing it. Both are proposals the developer corrects
   (`docs/guide/WORKFLOW.md` → *Rating an issue*), and a label the repo lacks is offered, never
   created silently.
-- **Every filed issue lands in a milestone, or is named as unplaced.** Read the open milestones
+- **Every filed issue lands in a milestone, or is named as unplaced** (`duplicates.md` step 3). Read the open milestones
   (`gh api repos/<o>/<r>/milestones --jq '.[] | "\(.number) \(.title) — \(.description)"'`) and assign
   each filed issue whose milestone's *because* covers it. The rest go in the report under
   `unplaced:` with one line each, and the run ends by offering `dev:roadmap` for them. **Do not create

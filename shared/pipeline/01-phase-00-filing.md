@@ -24,19 +24,25 @@ The whole phase is one turn. If it is taking three, it has become the work.
    number,title,labels`, then `gh issue view <N>`. This is Universal Rules' *read 2–3 examples first*
    applied to the tracker: an issue that does not look like its neighbours gets triaged like an
    outsider's.
-3. **Resolve the labels that EXIST** — `gh label list --limit 60`. **Never pass a label absent from
+3. **Search for the item before drafting it** — `~/.claude/skills/dev/shared/duplicates.md`, steps
+   1–2. A match on the same outcome ends the phase: comment on #N and hand #N back, filing nothing.
+   Step 2 above reads issues for their *style*; this reads them for their *content*, and is a
+   different search.
+4. **Resolve the labels that EXIST** — `gh label list --limit 60`. **Never pass a label absent from
    that output.** `gh issue create --label <unknown>` fails outright, and the reflex fix — drop the
    label, file anyway — produces an unlabelled issue that no board query will ever surface. A
    missing label is a taxonomy decision: ask, never create one silently.
-4. **Draft the whole thing, then ask at most TWO questions.** Draft first, never interview: a fixed
+5. **Draft the whole thing, then ask at most TWO questions.** Draft first, never interview: a fixed
    questionnaire is the ceremony this pipeline exists to refuse, and it guarantees the item gets
    filed later or never. Ask only where a wrong guess changes the issue materially — *"every course
    or only long lists?"* changes it; *"what priority?"* does not, so propose one. Mark every
    inference as one: *"(assumed: RTL only — correct me)"*. **Zero questions is the good outcome, not
    a shortcut.**
-5. **Show the draft — title, body, labels — before it exists.** Filing is cheap to do and public to
+6. **Show the draft — title, body, labels, milestone — before it exists.** Filing is cheap to do and public to
    undo; an issue edited three times in its first minute was public in all three.
-6. **Create it, then hand off** per `entry.md` → *Never end silently*.
+7. **Create it, place it, then hand off** — `duplicates.md` steps 3–4: a milestone that covers it
+   (`gh issue create --milestone`), a sub-issue link to its parent, and the net line — then
+   `entry.md` → *Never end silently*.
 
 ````bash
 gh issue create --title "<title>" --label "<resolved labels>" --body "$(cat <<'EOF'

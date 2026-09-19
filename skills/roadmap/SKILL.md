@@ -199,8 +199,8 @@ gh api repos/<owner>/<repo>/milestones -f title="<theme>" -f description="<the b
 
 ### Adopt before you create
 
-**Every epic line in an accepted theme resolves to ONE of these, in this order — and the first match
-wins:**
+`~/.claude/skills/dev/shared/duplicates.md` at theme scale. **Every epic line in an accepted theme
+resolves to ONE of these, in this order — and the first match wins:**
 
 | The epic's evidence is… | Write |
 |---|---|

@@ -53,3 +53,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0042](0042-survey-is-renamed-findings-in-the-app-the-door-and-the-folder.md) | Survey is renamed Findings, in the app, the door and the folder | Accepted |
 | [0043](0043-a-findings-run-is-told-its-stops-before-it-starts.md) | A findings run is told its stops before it starts, and refuses past its agent limit | Accepted |
 | [0044](0044-a-card-moves-on-its-runs-checkpoints-not-on-a-terminal.md) | A card moves on its run's checkpoints, not on a terminal opening | Accepted |
+| [0045](0045-add-task-files-where-the-tracker-is-checks-for-duplicates-and-can-start.md) | Add Task files where the tracker is, checks for duplicates first, and can start the work | Accepted |
