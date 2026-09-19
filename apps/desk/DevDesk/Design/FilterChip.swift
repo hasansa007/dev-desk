@@ -35,16 +35,32 @@ struct FilterChip: View {
                         .foregroundStyle(isOn ? DeskColor.accent.opacity(0.75) : DeskColor.faintInk)
                 }
             }
+        }
+        .buttonStyle(ChipButtonStyle(isOn: isOn))
+        .fixedSize()
+        .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+}
+
+/// The chip's chrome, drawn by a style rather than around a `.plain` button's label: wrapped that way, AppKit's
+/// button cell left a sliver of its own bezel at each end of the capsule (seen 2026-09-19 at 2x).
+private struct ChipButtonStyle: ButtonStyle {
+    let isOn: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
             .foregroundStyle(isOn ? DeskColor.accent : DeskColor.ink)
             .padding(.horizontal, 12)
             .frame(height: DeskMetric.chipHeight)
-            .background(Capsule().fill(isOn ? DeskColor.accent.opacity(0.12) : DeskColor.surface))
-            .overlay(Capsule().strokeBorder(isOn ? DeskColor.accent.opacity(0.45) : DeskColor.divider, lineWidth: 1))
-            .contentShape(Capsule())
-            .fixedSize()
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
+            .background {
+                // A rounded rectangle at half the height, not a Capsule: the capsule drew 1 px ticks past both ends at
+                // 2x whatever stroked it (fill, strokeBorder or an inset stroke), and the Flow menu's rounded box never did.
+                let shape = RoundedRectangle(cornerRadius: DeskMetric.chipHeight / 2, style: .continuous)
+                shape.fill(isOn ? DeskColor.accent.opacity(0.12) : DeskColor.surface)
+                    .overlay(shape.strokeBorder(isOn ? DeskColor.accent.opacity(0.45) : DeskColor.divider, lineWidth: 1))
+            }
+            .contentShape(RoundedRectangle(cornerRadius: DeskMetric.chipHeight / 2, style: .continuous))
+            .opacity(configuration.isPressed ? 0.7 : 1)
     }
 }
 

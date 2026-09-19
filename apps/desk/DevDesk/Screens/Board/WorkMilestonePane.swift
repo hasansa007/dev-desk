@@ -47,6 +47,21 @@ struct WorkMilestonePane: View {
 
     private var list: some View {
         VStack(alignment: .leading, spacing: 0) {
+            // Run roadmap and collapse head the list, not its foot (asked 2026-09-19): the action that fills the list
+            // sits above it, where the eye starts, the way New task heads the Board.
+            HStack {
+                DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
+                Spacer()
+                Button { isCollapsed = true } label: {
+                    Image(systemName: "sidebar.left").foregroundStyle(DeskColor.mutedInk)
+                        .frame(width: 24, height: 24).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Hide the milestones, for a wider Board")
+                .accessibilityLabel("Hide the milestones")
+            }
+            .padding(10)
+            Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
                     item(scope: .all, title: "All milestones", subtitle: "every open issue by stage", p0: 0, row: nil)
@@ -67,20 +82,6 @@ struct WorkMilestonePane: View {
                 .padding(.horizontal, 8)
                 .padding(.top, 8)
             }
-            Divider()
-            // No title row: the tab's header names the milestone (ADR 0046 decision 14); collapsing sits at the foot.
-            HStack {
-                DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
-                Spacer()
-                Button { isCollapsed = true } label: {
-                    Image(systemName: "sidebar.left").foregroundStyle(DeskColor.mutedInk)
-                        .frame(width: 24, height: 24).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Hide the milestones, for a wider Board")
-                .accessibilityLabel("Hide the milestones")
-            }
-            .padding(10)
         }
         .frame(width: 270)
     }
