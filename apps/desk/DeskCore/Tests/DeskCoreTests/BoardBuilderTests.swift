@@ -490,19 +490,19 @@ final class BoardBuilderTests: XCTestCase {
 
     func testBoardNoteNamesTheRuleAndTheActiveMilestone() {
         let ready = GitHubState.ready(GitHubData(slug: "acme/app"))
-        let rule = "Git decides In progress, Review and Done; the active milestone puts an issue in Ready for dev. "
-            + "Ready for dev, Queued and a started card's In progress are recorded in .devdesk/board.json until git sees a commit."
+        let rule = "Git decides In progress, Review and Done; the Working now milestone, and every P0, put an issue in Next up. "
+            + "A card moved to Next up by hand, a queued start and a started card's In progress are recorded in .devdesk/board.json until git sees a commit."
         XCTAssertEqual(BoardBuilder.note(github: ready, activeMilestone: ("v2", "nearest due date 2026-10-01")),
-                       rule + " Active milestone: v2, nearest due date 2026-10-01.")
+                       rule + " Working now: v2, nearest due date 2026-10-01.")
         XCTAssertEqual(BoardBuilder.note(github: ready, activeMilestone: (nil, "no open milestone")),
-                       rule + " No active milestone, so only moves made here fill Ready for dev.")
+                       rule + " No milestone is Working now, so only moves made here fill Next up.")
         // An unavailable GitHub says what to do about it: the note is the only place the developer is told.
         XCTAssertEqual(BoardBuilder.note(github: .unavailable("gh not installed"), activeMilestone: (nil, "gh not installed")),
                        "GitHub is unavailable (gh not installed), so the board shows local branches and docs/backlog/. " + install)
         var noIssues = GitHubData(slug: "acme/app")
         noIssues.issuesUnavailable = "the 'acme/app' repository has disabled issues"
         XCTAssertEqual(BoardBuilder.note(github: .ready(noIssues), activeMilestone: (nil, "no open milestone")),
-                       rule + " No active milestone, so only moves made here fill Ready for dev. Open issues could not be read "
+                       rule + " No milestone is Working now, so only moves made here fill Next up. Open issues could not be read "
                        + "(the 'acme/app' repository has disabled issues), so only pull requests and branches are shown.")
     }
 

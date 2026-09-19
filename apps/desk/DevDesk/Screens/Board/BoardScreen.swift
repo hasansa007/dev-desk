@@ -283,7 +283,7 @@ private struct BoardColumnView: View {
                     model.go(.terminals)
                 }
             },
-            resumeTitle: canStartDoor ? "Continue — run the door" : "Continue in the agent")
+            resumeTitle: canStartDoor ? "Continue — run /dev again" : "Continue in the agent")
     }
 
     /// A branch card's own menu. A card with an issue keeps the tracker moves instead, so neither card carries two.
@@ -427,18 +427,21 @@ private struct BoardColumnView: View {
     private func moves(for task: DeskTask) -> CardMoves? {
         guard !task.isBranchCard, !task.isMerged, !task.id.hasPrefix("pr:") else { return nil }
         let cancel: (() -> Void)? = task.issueNumber == nil ? nil : { model.present(.cancelTask(task.id)) }
+        var moves: CardMoves
         switch task.column {
         case .backlog:
-            return CardMoves(title: "Move to Ready for dev", blockedReason: nil,
-                             move: { Task { await model.moveToReadyForDev(task) } }, cancel: cancel)
+            moves = CardMoves(title: "Move to Next up", blockedReason: nil,
+                              move: { Task { await model.moveToReadyForDev(task) } }, cancel: cancel)
         case .readyForDev:
-            return CardMoves(title: "Return to backlog", blockedReason: nil,
-                             move: { Task { await model.returnToBacklog(task) } }, cancel: cancel)
+            // Only a card moved here by hand has a stage to undo; one here by its milestone or as a P0 does not.
+            let byHand = task.milestone != model.snapshot?.activeMilestone && task.priority != "P0"
+            moves = CardMoves(title: byHand ? "Not now — back to Not started" : nil, blockedReason: nil,
+                              move: { Task { await model.returnToBacklog(task) } }, cancel: cancel)
         case .queued, .inProgress:
             // In progress can refuse: git owns the column once commits exist, and the model says why.
-            return CardMoves(title: "Cancel — back to Ready for dev",
-                             blockedReason: task.column == .inProgress ? model.stageBackBlockedReason(for: task) : nil,
-                             move: { Task { await model.cancelToReadyForDev(task) } }, cancel: cancel)
+            moves = CardMoves(title: "Cancel — back to Next up",
+                              blockedReason: task.column == .inProgress ? model.stageBackBlockedReason(for: task) : nil,
+                              move: { Task { await model.cancelToReadyForDev(task) } }, cancel: cancel)
         case .review where task.isFinishedReport:
             // Approval is the only way forward, and it is the dialog's button; there is no pull request to draft.
             return nil
@@ -453,6 +456,16 @@ private struct BoardColumnView: View {
         case .done:
             return nil
         }
+        // Between milestones, on GitHub, through the same confirmation as every tracker write.
+        if let number = task.issueNumber, model.snapshot?.slug != nil {
+            moves.milestones = model.openMilestones
+            moves.currentMilestone = task.milestone
+            moves.moveToMilestone = { title in pending = PendingMove(issue: number, action: .queue(milestone: title)) }
+            if task.milestone != nil {
+                moves.removeFromMilestone = { pending = PendingMove(issue: number, action: .backlog) }
+            }
+        }
+        return moves
     }
 
     private func commit() {
@@ -468,8 +481,8 @@ private struct PendingMove {
 
     var confirmTitle: String {
         switch action {
-        case .queue: return "Queue"
-        case .backlog: return "Return to backlog"
+        case .queue: return "Move"
+        case .backlog: return "Remove from milestone"
         case .cancel: return "Close"
         case .complete: return "Mark as completed"
         case .draftPullRequest: return "Convert to draft"

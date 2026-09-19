@@ -73,9 +73,9 @@ public struct TrackerWrite {
     public static func confirmation(issue: Int, slug: String, action: TrackerAction) -> String {
         switch action {
         case .queue(let milestone):
-            return "Add \(slug)#\(issue) to the milestone “\(milestone)”?"
+            return "Move \(slug)#\(issue) to the milestone “\(milestone)”?"
         case .backlog:
-            return "Remove \(slug)#\(issue) from its milestone, back to the backlog?"
+            return "Remove \(slug)#\(issue) from its milestone? It will be listed under No milestone."
         case .cancel:
             return "Close \(slug)#\(issue) as not planned, with your reason as a comment?"
         case .complete:

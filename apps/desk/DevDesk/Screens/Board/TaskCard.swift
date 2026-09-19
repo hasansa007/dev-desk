@@ -5,13 +5,20 @@ import SwiftUI
 /// In progress → Review, each column with its single forward or backward step — plus closing the issue.
 /// Nil for the cards git owns (`branch:`, `pr:`, `merged:`) and for Done, whose revert flow is deferred.
 struct CardMoves {
-    /// What the move is called, e.g. "Move to Ready for dev".
-    let title: String
+    /// What the column move is called, e.g. "Move to Next up"; nil when the card has none to offer — a card in
+    /// Next up because of its milestone is moved by moving the milestone, not by a stage (ADR 0046).
+    let title: String?
     /// Why the move is disabled, shown as its help; nil when it can run.
     let blockedReason: String?
     let move: () -> Void
     /// Close the issue as not planned (the cancel sheet asks for the reason); nil with no issue behind the card.
     let cancel: (() -> Void)?
+    /// Work's backlog is its milestone list, so "back to the backlog" became moving between milestones — a
+    /// tracker write, confirmed like every other (ADR 0046).
+    var milestones: [String] = []
+    var currentMilestone: String? = nil
+    var moveToMilestone: ((String) -> Void)? = nil
+    var removeFromMilestone: (() -> Void)? = nil
 }
 
 /// What a branch card can do. A card with no issue behind it had no menu at all, so nineteen of them could be
@@ -219,10 +226,23 @@ struct TaskCard: View {
 
     /// The column's one move, disabled with its reason when it cannot honestly run — a card git holds
     /// In progress would not move, so the entry says so instead of doing nothing.
-    private func lifecycleEntry(_ moves: CardMoves) -> some View {
-        Button(moves.title) { moves.move() }
-            .disabled(moves.blockedReason != nil)
-            .help(moves.blockedReason ?? "")
+    @ViewBuilder private func lifecycleEntry(_ moves: CardMoves) -> some View {
+        if let title = moves.title {
+            Button(title) { moves.move() }
+                .disabled(moves.blockedReason != nil)
+                .help(moves.blockedReason ?? "")
+        }
+        if let moveTo = moves.moveToMilestone {
+            let others = moves.milestones.filter { $0 != moves.currentMilestone }
+            if !others.isEmpty {
+                Menu("Move to milestone") {
+                    ForEach(others, id: \.self) { title in Button(title) { moveTo(title) } }
+                }
+            }
+        }
+        if let remove = moves.removeFromMilestone {
+            Button("Remove from milestone") { remove() }
+        }
     }
 
     /// Stop what is live; continue what is not. Shown first, because it is the only entry about right now.

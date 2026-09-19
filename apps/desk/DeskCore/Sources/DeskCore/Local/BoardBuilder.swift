@@ -59,9 +59,9 @@ enum BoardBuilder {
             let remedy = github.unavailableRemedy.map { " \($0)" } ?? ""
             return "GitHub is unavailable (\(github.unavailableReason ?? "")), so the board shows local branches and docs/backlog/.\(remedy)" + suffix
         }
-        let rule = "Git decides In progress, Review and Done; the active milestone puts an issue in Ready for dev. "
-            + "Ready for dev, Queued and a started card's In progress are recorded in .devdesk/board.json until git sees a commit."
-        let milestone = activeMilestone.title.map { " Active milestone: \($0), \(activeMilestone.why)." } ?? " No active milestone, so only moves made here fill Ready for dev."
+        let rule = "Git decides In progress, Review and Done; the Working now milestone, and every P0, put an issue in Next up. "
+            + "A card moved to Next up by hand, a queued start and a started card's In progress are recorded in .devdesk/board.json until git sees a commit."
+        let milestone = activeMilestone.title.map { " Working now: \($0), \(activeMilestone.why)." } ?? " No milestone is Working now, so only moves made here fill Next up."
         let issues = data.issuesUnavailable.map { " Open issues could not be read (\($0)), so only pull requests and branches are shown." } ?? ""
         return rule + milestone + issues + suffix
     }
