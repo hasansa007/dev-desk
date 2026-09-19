@@ -2,7 +2,9 @@ import Foundation
 import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
-    case board, terminals, roadmap, findings, ideation, diagrams
+    // The order the work moves in (ADR 0046): decide (Findings, Ideation) → order (Plan) → do (Board, Sessions) →
+    // see (Diagrams). It drives the sidebar and the ⌘ numbers; the raw values, which windows restore from, are unchanged.
+    case findings, ideation, roadmap, board, terminals, diagrams
 
     /// What the sidebar calls each place. The raw values are what a window restores its place from, so a
     /// rename that need not change the stored value is made here and never on the case: `terminals` reads
@@ -13,6 +15,55 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
         // Roadmap is shown as Plan (ADR 0046); the stored value stays, as this enum's rule says.
         case .roadmap: return "Plan"
         case .board, .findings, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
+        }
+    }
+
+    /// One line for the sidebar's tooltip: what the place is for, in the flow's words (ADR 0046).
+    public var hint: String {
+        switch self {
+        case .findings: return "What a hunt found in the code — decide each once: file it, add it to an open issue, or drop it"
+        case .ideation: return "Improvements a run proposed — decide which become issues"
+        case .roadmap: return "Every open issue by milestone, in working order — the top milestone feeds Next up"
+        case .board: return "What is moving: Backlog → Next up → In progress → Review → Done"
+        case .terminals: return "The terminals and agent sessions running for this project"
+        case .diagrams: return "The system, drawn from its code"
+        }
+    }
+
+    /// The ⓘ on each screen: what it holds, what you do there, and what comes before and after, so a first-time
+    /// user can follow a finding to a merged fix without a manual (ADR 0046).
+    public var guide: (title: String, lines: [String]) {
+        switch self {
+        case .findings:
+            return ("Findings — step 1 of the flow", [
+                "Holds: what a hunt found in the code. Nothing here is work yet — it is not in the tracker.",
+                "You: decide each finding once. File makes it an issue; Ignore sets it aside. When an issue already covers a finding, the hunt adds its evidence there and the row says Added to #N.",
+                "Next: a filed finding is an issue — Plan decides when it is worked.",
+                "Hunt for issues starts a new hunt; each finding is checked twice before it reaches you.",
+            ])
+        case .ideation:
+            return ("Ideation — step 1 of the flow", [
+                "Holds: improvements a run proposed — faster, safer, clearer — not defects.",
+                "You: decide which become issues. Next: Plan orders them with everything else.",
+            ])
+        case .roadmap:
+            return ("Plan — step 2 of the flow", [
+                "Holds: every open issue, grouped by milestone, milestones in the order you work them.",
+                "You: order the milestones. Move to top makes one Working now — kept on this Mac, not on GitHub.",
+                "Next: the Working now milestone's issues, and every P0, are Next up on the Board.",
+                "Filters are shared with the Board: set one here and it holds there.",
+            ])
+        case .board:
+            return ("Board — step 3 of the flow", [
+                "Backlog: issues not planned now. Next up: the Working now milestone's issues and every P0, highest priority first.",
+                "You: Start a card in Next up. In progress, Review and Done then follow git — a branch, a pull request, a merge.",
+                "A card that waits for another open issue cannot start; Start also warns when a running task changes the same code.",
+                "Before: Findings files issues, Plan decides which are Next up.",
+            ])
+        case .terminals:
+            return ("Sessions", ["Every terminal and agent session this project has open. A task's session opens when you Start it."])
+        case .diagrams:
+            return ("Diagrams", ["The system drawn from its code by dev:arch — every box points at real files. Draw a kind to see it."])
         }
     }
 }

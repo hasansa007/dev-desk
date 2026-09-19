@@ -15,7 +15,7 @@ extension FindingCategory {
         case .needsDecision:
             return ("This one is yours to decide",
                     "dev:findings could not confirm it, so it held it back and filed nothing — it is not claiming a defect. "
-                        + "Add it to the backlog to have it worked on anyway, or ignore it. Either way it stays in the report.")
+                        + "File it to have it worked on anyway, or ignore it. Either way it stays in the report.")
         case .knownNewEvidence:
             return ("An issue already covers this",
                     "The run matched it to existing work and brought new evidence. Compare them before filing a second issue for the same thing.")

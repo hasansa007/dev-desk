@@ -187,7 +187,7 @@ struct FindingDialog: View {
                 model.showBacklog = true
             }
         }
-        return DialogAction(title: "Add to backlog…", blockedReason: fileBlockedReason,
+        return DialogAction(title: "File…", blockedReason: fileBlockedReason,
                             help: model.backlogDestination,
                             run: file)
     }

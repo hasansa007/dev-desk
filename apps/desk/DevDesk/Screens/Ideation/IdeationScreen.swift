@@ -103,6 +103,7 @@ private struct IdeationSplitView: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Text("Ideation").font(DeskFont.section)
+                ScreenGuideButton(destination: .ideation)
                 Spacer()
                 GenerateIdeasButton(model: model)
             }
@@ -234,7 +235,7 @@ private struct OpportunityDetail: View {
                 VStack(alignment: .trailing, spacing: 8) {
                     PropertyChip(opportunity.verdict.rawValue, verticalPadding: 2, horizontalPadding: 9)
                     if opportunity.verdict == .confirmed {
-                        Button("Add to backlog…") { file() }
+                        Button("File…") { file() }
                             .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
                             .disabled(fileBlockedReason != nil)
                             .help(fileBlockedReason

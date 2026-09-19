@@ -4,7 +4,6 @@ import SwiftUI
 
 struct BoardScreen: View {
     @Bindable var model: ProjectWindowModel
-    @State private var showsRules = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -26,9 +25,8 @@ struct BoardScreen: View {
                 .foregroundStyle(DeskColor.ink)
             Spacer(minLength: 0)
             searchField
-            if let note = model.snapshot?.boardNote, !note.isEmpty {
-                rulesButton(note)
-            }
+            // One ⓘ, like every screen: the Board's place in the flow, then its own column rules (ADR 0046).
+            ScreenGuideButton(destination: .board, extra: model.snapshot?.boardNote)
         }
         .screenHeaderBar()
     }
@@ -41,29 +39,6 @@ struct BoardScreen: View {
             .padding(.horizontal, 10)
             .frame(width: 200, alignment: .leading)
             .controlChrome()
-    }
-
-    /// The column rules are a paragraph; the header carries the control and shows the paragraph on demand.
-    private func rulesButton(_ note: String) -> some View {
-        Button { showsRules = true } label: {
-            Image(systemName: "info.circle")
-                .imageScale(.medium)
-                .foregroundStyle(DeskColor.mutedInk)
-                .frame(width: DeskMetric.controlHeight, height: DeskMetric.controlHeight)
-                .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help("How these columns are decided")
-        .accessibilityLabel("How these columns are decided")
-        .popover(isPresented: $showsRules) {
-            Text(note)
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.secondaryInk)
-                .lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(width: 320)
-                .padding(12)
-        }
     }
 
     @ViewBuilder

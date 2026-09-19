@@ -54,9 +54,12 @@ struct DiagramsScreen: View {
     /// it has been drawn, is being drawn now, or has not been drawn yet.
     private var kindRail: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("Diagrams")
-                .font(DeskFont.body.weight(.semibold))
-                .foregroundStyle(DeskColor.ink)
+            HStack(spacing: 4) {
+                Text("Diagrams")
+                    .font(DeskFont.body.weight(.semibold))
+                    .foregroundStyle(DeskColor.ink)
+                ScreenGuideButton(destination: .diagrams)
+            }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(EdgeInsets(top: 12, leading: 14, bottom: 12, trailing: 12))
                 .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }

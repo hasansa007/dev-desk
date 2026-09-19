@@ -164,12 +164,12 @@ struct FindingRow: View {
                 StatusPill(badge: StatusBadge(.neutral, "Ignored"))
             } else if isHovered {
                 Button { file() } label: {
-                    Label("Backlog", systemImage: "tray.and.arrow.down")
+                    Label("File", systemImage: "tray.and.arrow.down")
                 }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
                 .disabled(blockedReason != nil)
                 .help(blockedReason ?? model.backlogDestination)
-                .accessibilityLabel("Add \(finding.id) to the backlog")
+                .accessibilityLabel("File \(finding.id) as an issue")
             }
             menu
                 .opacity(isHovered ? 1 : 0)
@@ -207,7 +207,7 @@ struct FindingRow: View {
                     Button("Show what the run said") { showRun(filing) }
                 }
             } else {
-                Button("Add to backlog…") { file() }
+                Button("File…") { file() }
                     .disabled(blockedReason != nil)
             }
             if isIgnored {

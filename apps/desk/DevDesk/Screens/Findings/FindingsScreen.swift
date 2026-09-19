@@ -121,6 +121,7 @@ private struct FindingsBoard: View {
             Text(summary)
                 .font(DeskFont.secondary)
                 .foregroundStyle(DeskColor.mutedInk)
+            ScreenGuideButton(destination: .findings)
             runControl
             if report.searchNote != nil { noteButton }
             Spacer(minLength: 0)
@@ -378,7 +379,7 @@ private struct FindingsBoard: View {
                     checked = []
                 }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                Button(toFile.count == count ? "Add \(count) to backlog" : "Add \(toFile.count) of \(count) to backlog") {
+                Button(toFile.count == count ? "File \(count)" : "File \(toFile.count) of \(count)") {
                     toFile.forEach { model.fileToBacklog($0.backlogDraft, jobs: jobs, agent: backgroundConnection) }
                     checked = []
                 }

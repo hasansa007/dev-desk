@@ -58,7 +58,7 @@ struct SheetHost: View {
             if let finding = findFinding(findingID) {
                 FindingDialog(finding: finding, model: model)
             } else {
-                SheetChrome(title: "Finding", confirmTitle: "Add to backlog…", confirmDisabled: true,
+                SheetChrome(title: "Finding", confirmTitle: "File…", confirmDisabled: true,
                             onCancel: model.dismissSheet, onConfirm: model.dismissSheet) {
                     UnavailableView(reason: "This finding is not in the findings report any more.")
                 }

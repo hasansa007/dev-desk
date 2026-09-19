@@ -156,7 +156,8 @@ struct Sidebar: View {
             .contentShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
-        .help(isRail ? (badge.map { "\(destination.title) · \($0.count)" } ?? destination.title) : "")
+        .help(isRail ? (badge.map { "\(destination.title) · \($0.count)" } ?? destination.title) + " — " + destination.hint
+              : destination.hint)
         .accessibilityLabel(badge.map { "\(destination.title), \($0.count)" } ?? destination.title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }

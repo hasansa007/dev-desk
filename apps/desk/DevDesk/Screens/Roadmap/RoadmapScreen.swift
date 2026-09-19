@@ -73,6 +73,7 @@ private struct PlanContent: View {
         HStack(spacing: 10) {
             Text("Plan").font(DeskFont.section).foregroundStyle(DeskColor.ink)
             Text(summary).font(DeskFont.secondary).foregroundStyle(DeskColor.mutedInk)
+            ScreenGuideButton(destination: .roadmap)
             Spacer(minLength: 0)
             TextField("Search issues", text: $model.searchText)
                 .textFieldStyle(.plain)
