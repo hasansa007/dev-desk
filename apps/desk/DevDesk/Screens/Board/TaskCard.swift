@@ -200,8 +200,6 @@ struct TaskCard: View {
                 .padding(.top, 9)
             ratingRow
                 .padding(.top, 7)
-            stageRow
-                .padding(.top, 7)
             // One band at the bottom, reserved on every card: the note reads along it, and the Start control
             // sits at its right as a sibling overlay — never a button inside a button. Two separate reserved
             // rows left every card without an action half-empty.
@@ -214,11 +212,26 @@ struct TaskCard: View {
 
     /// Always present, so a card with something to say is not a different size from one without. The trailing
     /// inset keeps the note clear of the Start control sharing this band.
+    /// A card with pipeline progress carries its bar here, under the note, rather than in a row of its own: the card is
+    /// a fixed height, and the extra row pushed the note out of it and put Start over the bar.
     private var bottomBand: some View {
-        Text(task.cardNote ?? " ")
-            .font(.system(size: 11))
-            .foregroundStyle(task.cardNoteIsWarning ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
-            .lineLimit(1)
+        VStack(alignment: .leading, spacing: 3) {
+            HStack(spacing: 6) {
+                Text(task.cardNote ?? " ")
+                    .font(.system(size: 11))
+                    .foregroundStyle(task.cardNoteIsWarning ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
+                    .lineLimit(1)
+                if let stages = task.pipeline?.stages, !stages.isEmpty {
+                    Spacer(minLength: 4)
+                    Text("\(stages.filter { $0.state == .done }.count)/\(stages.count)")
+                        .font(DeskFont.mono(10))
+                        .foregroundStyle(DeskColor.faintInk)
+                }
+            }
+            if let stages = task.pipeline?.stages, !stages.isEmpty {
+                progressBar(done: stages.filter { $0.state == .done }.count, of: stages.count)
+            }
+        }
             .padding(.trailing, offersStart ? startWidth + 8 : 0)
             .frame(maxWidth: .infinity, minHeight: DeskButtonStyle.Size.mini.height,
                    maxHeight: DeskButtonStyle.Size.mini.height, alignment: .leading)
@@ -277,11 +290,12 @@ struct TaskCard: View {
     @ViewBuilder private var startButton: some View {
         if let start, activity == nil {
             Button { start() } label: {
-                Label("Start", systemImage: "play.fill")
+                // A paused card has been started; pressing it again picks the run back up.
+                Label(isPaused ? "Continue" : "Start", systemImage: "play.fill")
             }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             .help(startNote ?? "Start this task in its own worktree")
-            .accessibilityLabel("Start \(task.issueLabel.isEmpty ? task.title : task.issueLabel)")
+            .accessibilityLabel("\(isPaused ? "Continue" : "Start") \(task.issueLabel.isEmpty ? task.title : task.issueLabel)")
             .background(GeometryReader { proxy in
                 Color.clear.preference(key: StartWidthKey.self, value: proxy.size.width)
             })
@@ -327,35 +341,14 @@ struct TaskCard: View {
         }
     }
 
-    /// What the pipeline says this task has reached, from `.dev/<branch>.json` — the one thing the board knew
-    /// and never showed. A bar rather than chips, because a card is 246 pt wide and seventeen phases are not.
-    /// Advisory by `dev:kanban` 4.4: git decides the column, this only says how far along the branch claims to be.
-    @ViewBuilder private var stageRow: some View {
-        if let stages = task.pipeline?.stages, !stages.isEmpty {
-            let done = stages.filter { $0.state == .done }.count
-            let current = stages.first { $0.state == .current }?.name
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(current ?? (done == stages.count ? "Complete" : "Not started"))
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundStyle(DeskColor.mutedInk)
-                        .lineLimit(1)
-                    Spacer(minLength: 4)
-                    Text("\(done)/\(stages.count)")
-                        .font(DeskFont.mono(10))
-                        .foregroundStyle(DeskColor.faintInk)
-                }
-                GeometryReader { proxy in
-                    ZStack(alignment: .leading) {
-                        Capsule().fill(DeskColor.controlBorder)
-                        Capsule()
-                            .fill(DeskColor.accent)
-                            .frame(width: proxy.size.width * CGFloat(done) / CGFloat(max(stages.count, 1)))
-                    }
-                }
-                .frame(height: 3)
+    private func progressBar(done: Int, of total: Int) -> some View {
+        GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(DeskColor.controlBorder)
+                Capsule().fill(DeskColor.accent).frame(width: proxy.size.width * CGFloat(done) / CGFloat(max(total, 1)))
             }
         }
+        .frame(height: 3)
     }
 
     /// On every card, so one card is not a different shape from the next: a dash where nothing rated it (ADR 0020).

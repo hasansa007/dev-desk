@@ -38,9 +38,12 @@ struct PipelineState: Equatable {
                              phasesCompleted: object["phases_completed"] as? [Int] ?? [])
     }
 
+    /// Measured from the phase being worked, the one after the checkpoint, as `cardNote` is — so phase 4 done shows
+    /// Investigated done and Planned current, not Investigated still going beside a note that says Planning.
     var progress: PipelineProgress {
+        let working = phase + 1
         let stages = Self.stages.map { stage in
-            PipelineStage(stage.name, phase > stage.phases.upperBound ? .done : stage.phases.contains(phase) ? .current : .pending)
+            PipelineStage(stage.name, working > stage.phases.upperBound ? .done : stage.phases.contains(working) ? .current : .pending)
         }
         return PipelineProgress(stages: stages, note: "Advisory — read from .dev state; git wins any disagreement.")
     }
