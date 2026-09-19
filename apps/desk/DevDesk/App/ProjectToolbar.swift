@@ -86,8 +86,9 @@ private struct PanelToggle: View {
 
     var body: some View {
         Button(action: action) {
+            // The size of the sidebar toggle macOS draws at the other end of the toolbar, so the two read as a pair.
             Image(systemName: symbol)
-                .imageScale(.medium)
+                .font(.system(size: 15, weight: .regular))
                 .foregroundStyle(isOn ? DeskColor.accent : DeskColor.navInk)
                 .overlay(alignment: .topTrailing) {
                     if badge > 0 {

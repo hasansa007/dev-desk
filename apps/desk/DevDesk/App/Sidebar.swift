@@ -10,7 +10,7 @@ struct Sidebar: View {
         VStack(alignment: .leading, spacing: 0) {
             openProjectButton
             // The name and path are the window's own title and subtitle; the sidebar repeated them.
-            if isRail { railHeader } else { Color.clear.frame(height: 8) }
+            Color.clear.frame(height: 8)
             if model.snapshot != nil {
                 destinations
                 Spacer(minLength: 12)
@@ -54,17 +54,6 @@ struct Sidebar: View {
         .padding(.horizontal, isRail ? 8 : 12)
         .padding(.top, 12)
         .padding(.bottom, 4)
-    }
-
-    /// The project's initial, so the rail still says which window this is.
-    private var railHeader: some View {
-        Text(String((model.snapshot?.project.name ?? model.ref.displayName).prefix(1)).uppercased())
-            .font(.system(size: 15, weight: .bold))
-            .foregroundStyle(DeskColor.ink)
-            .frame(maxWidth: .infinity)
-            .padding(.top, 16)
-            .padding(.bottom, 12)
-            .help(model.snapshot?.project.name ?? model.ref.displayName)
     }
 
     private var destinations: some View {
