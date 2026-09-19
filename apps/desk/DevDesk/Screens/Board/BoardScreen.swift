@@ -28,12 +28,26 @@ struct BoardScreen: View {
             Text("Work")
                 .font(DeskFont.section)
                 .foregroundStyle(DeskColor.ink)
-            Spacer(minLength: 0)
-            searchField
             // One ⓘ, like every screen: the Board's place in the flow, then its own column rules (ADR 0046).
             ScreenGuideButton(destination: .board, extra: model.snapshot?.boardNote)
+            Spacer(minLength: 0)
+            searchField
+            newTaskButton
         }
         .screenHeaderBar()
+    }
+
+    /// One New task, in the header — not a button at the foot of a column (ADR 0046). It lands in the milestone
+    /// selected on the left (the sheet starts there), and in Next up when that is the Working now milestone.
+    private var newTaskButton: some View {
+        let noFolder = model.snapshot?.repositoryRoot == nil
+        let column: BoardColumn = model.firstWorkColumnTitle == BoardColumn.readyForDev.title
+            && model.effectiveWorkScope != .all ? .readyForDev : .backlog
+        return Button("New task") { model.present(.addTask(column.rawValue)) }
+            .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+            .disabled(noFolder)
+            .help(noFolder ? "This project has no folder on disk, so there is nowhere to write a task"
+                           : "Add a task — it is filed where the tracker is, in the milestone selected on the left")
     }
 
     private var searchField: some View {
@@ -370,17 +384,6 @@ private struct BoardColumnView: View {
     /// Every column that can take a typed task ends in the same row. The task is written to `docs/backlog/`
     /// (ADR 0027), so a sample project — no folder on disk to write into — keeps the button visible but
     /// disabled, with the reason on it.
-    private var addTaskButton: some View {
-        let noFolder = model.snapshot?.repositoryRoot == nil
-        return Button("+ Add a new task") { model.present(.addTask(column.rawValue)) }
-            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-            .disabled(noFolder)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .help(noFolder
-                  ? "This project has no folder on disk, so there is nowhere to write a task"
-                  : "Type a task into \(column.title) — it is written to docs/backlog/")
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             ForEach(tasks) { task in
@@ -397,11 +400,6 @@ private struct BoardColumnView: View {
                              model.present(.settings)
                          },
                          isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch)
-            }
-            // Only where a new task could land: everything past Ready for dev is reached by moves and
-            // starts, never by typing a card straight into it.
-            if column == .backlog || column == .readyForDev {
-                addTaskButton
             }
         }
         .padding(.horizontal, 12)
