@@ -12,7 +12,6 @@ struct ProjectWindow: View {
     @State private var layoutRestored = false
     @State private var columns: NavigationSplitViewVisibility = .all
     @Environment(OpenProjectRegistry.self) private var registry
-    @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
     /// Asked for by hand. A window narrower than the breakpoint takes the rail anyway — an open sidebar there
     /// leaves the board no room — and gets the choice back when it widens.
     @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
@@ -60,7 +59,7 @@ struct ProjectWindow: View {
         .modifier(DeskLinkRouting(model: model))
         .environment(\.terminals, terminals)
         .focusedSceneValue(\.projectModel, model)
-        .preferredColorScheme(SnapshotMode.shared.colorScheme ?? appearance.colorScheme)
+        .modifier(AppliesAppearance(override: SnapshotMode.shared.colorScheme))
         .background { windowHooks }
         .task { await model.sync() }
         .onChange(of: model.windowCommand) { _, request in

@@ -156,6 +156,30 @@ enum AppearanceChoice: String, CaseIterable {
         case .dark: return .dark
         }
     }
+
+    /// App-wide, not per window: alerts, open panels and any window without the modifier follow it too. Only
+    /// project windows applied the setting, so the Open Project window stayed light under Dark (2026-09-19).
+    func apply() {
+        switch self {
+        case .system: NSApp.appearance = nil
+        case .light: NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark: NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
+    }
+}
+
+/// The Appearance setting on a window: its colour scheme, and the app-wide appearance kept in step when it changes.
+/// `override` is Snapshot mode's forced scheme.
+struct AppliesAppearance: ViewModifier {
+    @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
+    var override: ColorScheme? = nil
+
+    func body(content: Content) -> some View {
+        content
+            .preferredColorScheme(override ?? appearance.colorScheme)
+            .onAppear { appearance.apply() }
+            .onChange(of: appearance) { _, choice in choice.apply() }
+    }
 }
 
 /// Which artwork the app icon wears. `light` is the bundle's shipped icon; `dark` is the near-black

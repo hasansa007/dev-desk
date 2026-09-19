@@ -14,6 +14,7 @@ struct DevDeskApp: App {
             LauncherView(context: .window)
                 .environment(registry)
                 .modifier(SnapshotBootstrap())
+                .modifier(AppliesAppearance())
         }
         // .contentSize pinned the launcher to its ideal size, so it could not be made smaller than
         // the display it had to fit on.
