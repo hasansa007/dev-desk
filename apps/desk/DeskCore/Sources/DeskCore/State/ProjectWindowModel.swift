@@ -62,7 +62,7 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
         case .terminals:
             return ("Sessions", ["Every terminal and agent session this project has open. A task's session opens when you Start it."])
         case .diagrams:
-            return ("Diagrams", ["The system drawn from its code by dev:arch — every box points at real files. Draw a kind to see it."])
+            return ("Diagrams", ["The system drawn from its code by dev:arch.", "Architecture: the parts and how they connect — every box points at real files. Data flow: where the data goes.", "Sequence: one flow over time. Its list is every flow this project has named — in its Architecture or Data flow drawing, or in the last findings hunt — and you can name another."])
         }
     }
 }
@@ -361,9 +361,21 @@ public final class ProjectWindowModel {
 
     /// The newest diagram of `kind` this project has drawn, read from disk, or nil when none exists yet. The
     /// screen calls this when a kind is selected; a sample has no folder, so it has nothing to show.
+    /// `kind` is a plain kind, or a flow's key (`SequenceFlows.key`) for the sequence drawn for that flow.
     public func diagram(kind: String) -> ArchDiagram? {
         guard let root = snapshot?.repositoryRoot else { return nil }
+        if let slug = SequenceFlows.slug(fromKey: kind) {
+            return sequenceFlows.first { $0.slug == slug }?.drawing
+        }
         return ArchDiagrams.newest(kind: kind, repositoryRoot: root)
+    }
+
+    /// The flows Sequence offers (ADR 0047), from whichever sources this project has: its Architecture and Data
+    /// flow drawings' named views and its newest findings hunt. Read from disk; empty for a sample.
+    public var sequenceFlows: [SequenceFlow] {
+        guard let root = snapshot?.repositoryRoot else { return [] }
+        return SequenceFlows.list(diagrams: ArchDiagrams.list(repositoryRoot: root),
+                                  huntFlows: SequenceFlows.huntFlows(repositoryRoot: root))
     }
 
     /// Whether a diagram can be drawn here, and why not when it can't — read only where it blocks, which is the
@@ -462,6 +474,9 @@ public final class ProjectWindowModel {
     public var selectedOpportunityID: String?
     public var selectedIdeationRunID: String?
     public var ideationFilter: OpportunityVerdict?
+    /// The Diagrams chip on screen, and on Sequence the flow (by slug; nil = the first) — ADR 0047.
+    public var diagramKind = "architecture"
+    public var diagramFlow: String?
     /// The browser's selected file, as a path relative to the project root.
     public var selectedFilePath: String?
     public var settingsSection: SettingsSection = .agentsAndDefaults

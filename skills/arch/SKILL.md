@@ -1,8 +1,8 @@
 ---
 name: arch
 description: >
-  Draws a VERIFIABLE diagram of a system — architecture, workflow, sequence, data flow, or
-  lifecycle — where every node points at real code at a real commit, and hands back one
+  Draws a VERIFIABLE diagram of a system — architecture, data flow, or the sequence of one
+  flow — where every node points at real code at a real commit, and hands back one
   self-contained HTML file whose viewer can export PNG/SVG.
   Renders through Archify (https://github.com/tt-a1i/archify): this skill authors typed JSON IR,
   Archify compiles and validates it deterministically. The validator checks that a diagram is
@@ -48,14 +48,14 @@ exactly as below. Only refuse for the repository's sake when there is **no commi
 does not resolve): there is then nothing to pin to, and the diagram cannot be evidence of anything.
 One exception: an **evidenced `architecture`** diagram needs a GitHub `origin` — Archify fails
 `repository-evidence/url-invalid` without a github.com URL and checks it against `origin`. With no
-remote, draw the four unevidenced types; for `architecture`, ask for the remote rather than drop evidence.
+remote, draw the two unevidenced types; for `architecture`, ask for the remote rather than drop evidence.
 
 ## Phase 1 — Arguments
 
 | Token | Meaning | Default |
 |---|---|---|
 | A target (`the build pipeline`, `web/app/lib`, a description) | what to draw | required |
-| `architecture` · `workflow` · `sequence` · `dataflow` · `lifecycle` | force the type | pick it from Phase 4's table |
+| `architecture` · `dataflow` · `sequence` | force the type | pick it from Phase 4's table |
 | `--showcase` | pass `--quality showcase` to `validate` and `deliver` | `--quality standard` |
 | `--open` | pass `--open` to `deliver` | off |
 | `--out <path>` | where the HTML lands | `docs/arch/<name>.html` in the invoked repo |
@@ -63,17 +63,16 @@ remote, draw the four unevidenced types; for `architecture`, ask for the remote 
 
 **The artifact lands in the repo it was drawn from, next to its IR — every type, not only
 `architecture`.** Write BOTH `docs/arch/<name>.<type>.json` and `docs/arch/<name>.html`, where `<type>`
-is the diagram's own type: `.architecture.json`, `.dataflow.json`, `.workflow.json`, `.sequence.json`
-or `.lifecycle.json`. **Never land an artifact without its IR** — the JSON is what `dev:docs`
+is the diagram's own type: `.architecture.json`, `.dataflow.json` or `.sequence.json`. **Never land an artifact without its IR** — the JSON is what `dev:docs`
 re-validates later, and an HTML with no IR beside it cannot be checked by anything. The type-suffixed
 name is what lets a reader — and Dev Desk's Diagrams screen, which lists `docs/arch/` and takes each
-file's kind from its sidecar — tell which type a file is, and it keeps the four unevidenced IRs out of
+file's kind from its sidecar — tell which type a file is, and it keeps the two unevidenced IRs out of
 `dev:docs`'s `docs/arch/*.architecture.json` staleness glob, which would have nothing to re-check in them.
 
 **For `architecture` this is safe because the pins are re-checkable.** An evidenced architecture
 diagram is not prose: `archify validate architecture <ir> --repo-root .` re-runs every pin at the
 current commit and fails loudly when a cited file or line has moved. That is why `dev:docs` can own it
-— see *Known limits* for what that check still cannot catch. For the other four types it is safe only
+— see *Known limits* for what that check still cannot catch. For the other two types it is safe only
 because the artifact says, in its own cards, that it was never checked — see below and Phase 5.
 
 **Write into `$SCRATCH` instead — never a guessed path in the tree — when:**
@@ -93,8 +92,8 @@ because the artifact says, in its own cards, that it was never checked — see b
 - **the target is not the invoked repo.** `docs/arch/` means *this* repo's `docs/arch/`; a diagram of
   another checkout does not land here. Draw it to `$SCRATCH` and say so
 
-**The four unevidenced types are NOT a scratch trigger.** `workflow`, `sequence`, `dataflow` and
-`lifecycle` land in `docs/arch/` exactly as `architecture` does. Nothing can re-check them, so the
+**The two unevidenced types are NOT a scratch trigger.** `dataflow` and `sequence` land in
+`docs/arch/` exactly as `architecture` does. Nothing can re-check them, so the
 caveat travels WITH the artifact instead of being enforced by hiding it: the diagram must carry a
 visible "unevidenced" statement in its own cards — `meta`/card text in the IR, so the rendered viewer
 shows it — and the handoff must repeat it (Phase 5). Hiding them was tried and it produced nothing:
@@ -104,6 +103,11 @@ Diagrams screen reported as never drawn, on every retry (ADR 0033).
 **Runs from Dev Desk** — a prompt that says it was started from the Diagrams screen. No target means
 the whole project; do **not** cut a branch or stash — write only the new `docs/arch/<name>.*` files on
 the current branch and leave every other change untouched. The screen picks the file up as it lands.
+When the prompt names the files (`Name the files docs/arch/<stem>.html …`), use exactly that stem: a
+flow's sequence is `<repo>-sequence-<flow>`, and the name is how the screen puts the drawing back on its
+flow's row. **Name the flows.** An `architecture` or `dataflow` drawing lists the project's flows as its
+`meta.views`, labelled the way a user would say them (*Build a course*, *Pay for a build*) — the Diagrams
+screen offers exactly those as Sequence's flows, beside the flows the last `dev:findings` hunt read.
 
 ## Phase 2 — Resolve the renderer
 
@@ -176,10 +180,13 @@ cannot converge.
 | Type | Answers |
 |---|---|
 | architecture | what exists, who owns it, how it connects |
-| workflow | order, branches, exceptions across lanes |
-| sequence | one interaction over time |
 | dataflow | sources, transforms, stores, boundaries |
-| lifecycle | states, retries, waits, terminal outcomes |
+| sequence | one flow over time — name the flow |
+
+**`workflow` and `lifecycle` are not drawn** (ADR 0047, 2026-09-19). Workflow repeated a sequence with
+lanes, and a lifecycle only means something for one named subject, which a sequence of that subject's
+flow shows better. Archify still renders both; this door does not offer them. Asked for one, draw the
+sequence of the flow it names, and say that is what you did.
 
 Then read the real code. Every node and every edge comes from something you have opened — the
 stage list from the orchestrator, the model from the config, the lane from the queue table. A node
@@ -188,7 +195,7 @@ you cannot point at is a node that does not go in.
 ## Phase 5 — Evidence wherever the renderer can prove it
 
 Archify's repository evidence — each node pinned to a file and line range at one commit and checked
-against a real Git object — is **`architecture`-only**. The other four types reject `--repo-root`
+against a real Git object — is **`architecture`-only**. The other types reject `--repo-root`
 outright: *"--repo-root is currently supported for architecture diagrams only."* So the rule is
 scoped to what can be proven, and stated out loud where it cannot.
 
@@ -196,7 +203,7 @@ scoped to what can be proven, and stated out loud where it cannot.
   relative POSIX paths, optional line ranges), pinned through `meta.repository` to one **full
   40-character SHA**, never a branch. A component that cannot be evidenced is **refused, not
   drawn** — say which one and why. Validate and deliver with `--repo-root`, or nothing is checked.
-- **`workflow` · `sequence` · `dataflow` · `lifecycle` — evidence is UNAVAILABLE.** Draw them, land
+- **`dataflow` · `sequence` — evidence is UNAVAILABLE.** Draw them, land
   them in `docs/arch/` like any other type, and **label them unevidenced twice**: in the artifact's
   own cards — `meta`/card text in the IR stating that the diagram was drawn from reading the code,
   not proven against a commit — and again in the handoff. The label in the cards is what stands
@@ -247,14 +254,14 @@ The pin is proven, not trusted: a line past end-of-file, a path absent at that c
 unknown SHA each fail with their own rule code — `repository-evidence/line-out-of-range`,
 `/file-missing`, `/revision-unavailable`. Verification is local, so a **private** repository works.
 That is what makes an evidenced architecture diagram worth more than the prose it replaced; on the
-other four types, only the caveat written into their cards and repeated in the handoff does.
+other two types, only the caveat written into their cards and repeated in the handoff does.
 
 ## Phase 6 — Author, validate, repair, deliver
 
 ```bash
 node "$ARCHIFY/bin/archify.mjs" validate architecture <ir.json> --repo-root <repo>
 node "$ARCHIFY/bin/archify.mjs" deliver  architecture <ir.json> <out.html> --repo-root <repo>
-# the other four types take neither --repo-root nor evidence:
+# the other two types take neither --repo-root nor evidence:
 node "$ARCHIFY/bin/archify.mjs" validate <type> <ir.json>
 ```
 
@@ -326,7 +333,7 @@ Report the receipt verbatim when it passes — `N/N artifact checks`, the profil
 
 | | |
 |---|---|
-| Evidence is `architecture`-only | `--repo-root` is refused on the other four types. They can be drawn but never proven, so they carry a written caveat — in their own cards and in the handoff — where architecture carries a guarantee. Verified 2026-08-31 against Archify 2.16.0 |
+| Evidence is `architecture`-only | `--repo-root` is refused on the other types. They can be drawn but never proven, so they carry a written caveat — in their own cards and in the handoff — where architecture carries a guarantee. Verified 2026-08-31 against Archify 2.16.0 |
 | `guide` cannot say "I don't know" | It falls back to `architecture` + `confidence: low` for anything it fails to keyword-match, which is indistinguishable from a real recommendation. Pick the type yourself when confidence is low |
 | Exports drop the evidence | Repository evidence is embedded for the Semantic Passport and Node Finder only. A PNG or SVG pulled out of the viewer carries none of it, so the image is not the artifact — the HTML is |
 | Diagram rot is caught late, not never | A picture reads as authoritative long after it stops being true, so `dev:docs` re-validates every committed IR against the current commit and fails when a pin no longer resolves. That catches a MOVED file or line — it cannot catch a diagram whose pins all still resolve while the shape it draws is wrong. Structural rot still needs a human. Owner added 2026-08-31 |
@@ -346,7 +353,7 @@ So close by naming the decision (`entry.md` → *Never end silently*):
 
 Report the path the files actually took: `docs/arch/` in the invoked repo by default, or the
 `$SCRATCH` path and which Phase 1 trigger sent it there. Say the commit, and say what is **not**
-proven: an architecture diagram carries evidence; for the other four types say *unevidenced* here, as
+proven: an architecture diagram carries evidence; for the other two types say *unevidenced* here, as
 the artifact's own cards already do — they carry only that label and your word.
 
 **Never open the delivered HTML** — no `open <file>`, no `--open`. Dev Desk moves to its Diagrams tab

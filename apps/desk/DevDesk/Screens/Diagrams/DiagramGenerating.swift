@@ -16,10 +16,13 @@ extension ProjectWindowModel {
     /// Starts the headless `dev:arch` for one kind, in the background, without changing tab. `target` scopes it
     /// to a subsystem (empty draws the whole project). Nothing happens when it is blocked, so the caller can
     /// wire it straight to a button under `diagramGenerateBlockedReason`.
-    func generateDiagram(kind: String, target: String, agent: String, terminals: ShellTerminalRegistry,
-                         worktreeLocation: String) {
+    /// `kind` is what the run is tracked under — a kind, or a flow's key — and `drawKind` the type drawn when they
+    /// differ: a flow's sequence is tracked by its flow and drawn as `sequence`, into `outputName` (ADR 0047).
+    func generateDiagram(kind: String, drawKind: String? = nil, outputName: String? = nil, target: String,
+                         agent: String, terminals: ShellTerminalRegistry, worktreeLocation: String) {
         guard diagramGenerateBlockedReason(kind: kind, agent: agent) == nil,
-              let launch = ArchRun.launch(agent: agent, kind: kind, target: target, home: NSHomeDirectory())
+              let launch = ArchRun.launch(agent: agent, kind: drawKind ?? kind, target: target,
+                                          home: NSHomeDirectory(), outputName: outputName)
         else { return }
         // A terminal in Sessions, shown: a run nobody can see is one whose questions nobody answers.
         let id = newTerminal()
@@ -28,7 +31,7 @@ extension ProjectWindowModel {
         beginGeneratingDiagram(kind: kind, sessionID: id)
         Task {
             await sessions.start(taskID: id, branch: nil, taskNumber: nil, noBranchNote: nil,
-                                 worktreeLocation: worktreeLocation, title: "Diagram · \(kind)")
+                                 worktreeLocation: worktreeLocation, title: "Diagram · \(target.isEmpty ? kind : target)")
             guard case .running(let folder) = sessions.state(for: id) else {
                 // The folder never materialised, so nothing will run and nothing will end: clear the spinner now.
                 finishGeneratingDiagram(sessionID: id)

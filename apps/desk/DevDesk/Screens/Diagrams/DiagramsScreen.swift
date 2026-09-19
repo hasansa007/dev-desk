@@ -1,9 +1,10 @@
 import DeskCore
 import SwiftUI
 
-/// The project, drawn: the five kinds `dev:arch` can draw down the left, the one you chose filling the rest.
-/// A kind that has been drawn shows its newest HTML from `docs/arch/`; a kind that has not offers to generate
-/// it. Generating runs `dev:arch` in the background — a session in Sessions, without leaving this screen — and
+/// The project, drawn (ADR 0047): three kinds as chips under the header — Architecture, Data flow, Sequence.
+/// Architecture and Data flow are one drawing each of the whole project. Sequence is one drawing per flow, and
+/// its flows are listed down the left from whichever source this project has. A drawn one shows its newest HTML
+/// from `docs/arch/`; one that is not offers to generate it. Generating runs `dev:arch` in the background — a session in Sessions, without leaving this screen — and
 /// the kind's pane swaps from a spinner to the drawing the moment its file lands. The app lists and shows what
 /// the door drew; it never draws one itself.
 struct DiagramsScreen: View {
@@ -13,7 +14,19 @@ struct DiagramsScreen: View {
     @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(\.terminals) private var terminals
-    @State private var selectedKind = ArchDiagrams.kinds.first ?? "architecture"
+    /// The chip and the Sequence flow live on the model, so switching tabs keeps them.
+    private var selectedKind: String {
+        get { model.diagramKind }
+        nonmutating set { model.diagramKind = newValue }
+    }
+    private var selectedFlow: String? {
+        get { model.diagramFlow }
+        nonmutating set { model.diagramFlow = newValue }
+    }
+    /// A flow typed into "Name a flow" and being drawn: no source names it yet, so it is listed from here until
+    /// its drawing lands and lists it as drawn.
+    @State private var typedFlow: SequenceFlow?
+    @State private var newFlowName = ""
     @State private var target = ""
     /// The GitHub URL typed into the no-remote setup, so Archify has an `owner/repo` to validate against.
     @State private var remoteURL = ""
@@ -33,78 +46,131 @@ struct DiagramsScreen: View {
     /// The newest file for the selected kind, re-read whenever the project reloads (a finished generate reloads).
     private var selectedDiagram: ArchDiagram? {
         _ = model.lastLoadedAt
+        if isSequence { return currentFlow?.drawing ?? currentFlow.flatMap { model.diagram(kind: $0.generateKey) } }
         return model.diagram(kind: selectedKind)
+    }
+
+    private var isSequence: Bool { selectedKind == "sequence" }
+
+    /// Every flow Sequence offers, plus one typed and still being drawn.
+    private var flows: [SequenceFlow] {
+        _ = model.lastLoadedAt
+        var all = model.sequenceFlows
+        if let typedFlow, !all.contains(where: { $0.slug == typedFlow.slug }) { all.append(typedFlow) }
+        return all
+    }
+
+    private var currentFlow: SequenceFlow? {
+        let all = flows
+        return all.first { $0.slug == selectedFlow } ?? all.first
+    }
+
+    /// What the selected drawing's run is tracked under: the kind, or on Sequence the flow's key.
+    private var selectedKey: String {
+        isSequence ? (currentFlow?.generateKey ?? "sequence") : selectedKind
     }
 
     var body: some View {
         // The shared header spans the tab; the kinds and the drawing sit below it (ADR 0046 decision 14).
         VStack(spacing: 0) {
             header
+            kindBar
             HStack(spacing: 0) {
-                kindRail
+                if isSequence { flowList }
                 pane.frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
         .background(DeskColor.canvas)
     }
 
-    // MARK: - Rail
+    // MARK: - Kinds and flows
 
-    /// The five kinds, always — a kind is a place to generate into, not only a file to show. Each says whether
-    /// it has been drawn, is being drawn now, or has not been drawn yet.
-    private var kindRail: some View {
+    /// The kinds as chips, the same chips as Work's filters (ADR 0047): one is always on.
+    private var kindBar: some View {
+        ScreenBar {
+            Text("Draw").font(DeskFont.secondary).foregroundStyle(DeskColor.mutedInk)
+            ForEach(ArchDiagramKind.all) { kind in
+                FilterChip(kind.title, isOn: selectedKind == kind.token,
+                           tone: kindIsDrawn(kind.token) ? .running : nil) { selectedKind = kind.token }
+                    .help(kind.help)
+            }
+        }
+    }
+
+    private func kindIsDrawn(_ token: String) -> Bool {
+        token == "sequence" ? flows.contains { $0.drawing != nil } : model.diagram(kind: token) != nil
+    }
+
+    /// Sequence's flows down the left, like Work's milestones: every flow a source names, drawn or not, and a
+    /// field at the foot to name one no source has.
+    private var flowList: some View {
         VStack(alignment: .leading, spacing: 0) {
             ScrollView {
-                VStack(spacing: 0) {
-                    ForEach(ArchDiagramKind.all) { kind in
-                        kindRow(kind)
-                    }
+                VStack(alignment: .leading, spacing: 2) {
+                    ForEach(flows) { flow in flowRow(flow) }
+                }
+                .padding(8)
+            }
+            Divider()
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Name a flow").font(DeskFont.secondary.weight(.semibold)).foregroundStyle(DeskColor.secondaryInk)
+                HStack(spacing: 6) {
+                    TextField("e.g. Sign in", text: $newFlowName)
+                        .textFieldStyle(.plain)
+                        .font(DeskFont.secondary)
+                        .padding(.horizontal, 8)
+                        .controlChrome(height: 26)
+                        .onSubmit(drawTypedFlow)
+                    Button("Draw", action: drawTypedFlow)
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                        .disabled(SequenceFlows.slug(newFlowName).isEmpty || blockedReason != nil)
                 }
             }
-            Spacer(minLength: 0)
+            .padding(10)
         }
-        .frame(width: 248, alignment: .leading)
+        .frame(width: 270, alignment: .leading)
         .frame(maxHeight: .infinity, alignment: .top)
         .background(DeskColor.sidebar)   // an inner list is navigation, like Work's milestones
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
     }
 
-    @ViewBuilder private func kindRow(_ kind: ArchDiagramKind) -> some View {
-        let isSelected = selectedKind == kind.token
-        let existing = model.diagram(kind: kind.token)
-        let isGenerating = model.isGeneratingDiagram(kind: kind.token)
-        Button { selectedKind = kind.token } label: {
-            HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(kind.title)
-                        .font(DeskFont.secondary)
-                        .foregroundStyle(DeskColor.ink)
-                        .lineLimit(1)
-                    Text(kindSubtitle(existing: existing, generating: isGenerating))
-                        .font(DeskFont.mono(11))
-                        .foregroundStyle(DeskColor.faintInk)
-                        .lineLimit(1)
+    private func flowRow(_ flow: SequenceFlow) -> some View {
+        let isSelected = currentFlow?.slug == flow.slug
+        let isGenerating = model.isGeneratingDiagram(kind: flow.generateKey)
+        let from = flow.sources.sorted().map(\.rawValue).joined(separator: ", ")
+        let state = isGenerating ? "Drawing…" : (flow.drawing != nil ? "Drawn" : "Not drawn")
+        return Button { selectedFlow = flow.slug } label: {
+            HStack(alignment: .top, spacing: 8) {
+                Circle().fill(flow.drawing != nil ? DeskColor.tone(.running).dot : Color.clear)
+                    .frame(width: 7, height: 7).padding(.top, 5)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(flow.name).font(DeskFont.body.weight(.semibold)).foregroundStyle(DeskColor.ink)
+                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
+                    Text(from.isEmpty ? state : "\(state) · from \(from)")
+                        .font(.system(size: 11)).foregroundStyle(DeskColor.mutedInk).lineLimit(1)
                 }
                 Spacer(minLength: 4)
-                if isGenerating {
-                    ProgressView().controlSize(.small)
-                } else if existing != nil {
-                    Circle().fill(DeskColor.tone(.running).dot).frame(width: 6, height: 6)
-                }
+                if isGenerating { ProgressView().controlSize(.small) }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(EdgeInsets(top: 10, leading: 14, bottom: 10, trailing: 12))
-            .background(isSelected ? DeskColor.tone(.info).fill : Color.clear)
+            .padding(.horizontal, 8).padding(.vertical, 7)
+            .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? DeskColor.accent.opacity(0.12) : Color.clear))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    private func kindSubtitle(existing: ArchDiagram?, generating: Bool) -> String {
-        if generating { return "Generating…" }
-        if let existing { return existing.url.lastPathComponent }
-        return "Not generated"
+    /// The flow typed at the foot of the list: listed at once, selected, and drawn.
+    private func drawTypedFlow() {
+        let name = newFlowName.trimmingCharacters(in: .whitespacesAndNewlines)
+        let slug = SequenceFlows.slug(name)
+        guard !slug.isEmpty, blockedReason == nil else { return }
+        if !flows.contains(where: { $0.slug == slug }) {
+            typedFlow = SequenceFlow(name: name, slug: slug, sources: [])
+        }
+        selectedFlow = slug
+        newFlowName = ""
+        generate()
     }
 
     // MARK: - Header
@@ -113,9 +179,9 @@ struct DiagramsScreen: View {
     /// a kind with none offers Generate in its pane. Both run the same background dev:arch for this kind.
     private var header: some View {
         ScreenHeader(.diagrams) {
-            Text("\(selectedTitle) · \(drawnCount) of \(ArchDiagramKind.all.count) drawn")
+            Text(headerStatus)
         } tools: {
-            if selectedDiagram != nil {
+            if selectedDiagram != nil, !model.isGeneratingDiagram(kind: selectedKey) {
                 Button("Regenerate") { generate() }
                     .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
                     .disabled(blockedReason != nil)
@@ -124,19 +190,27 @@ struct DiagramsScreen: View {
         }
     }
 
-    private var drawnCount: Int {
-        _ = model.lastLoadedAt
-        return ArchDiagramKind.all.filter { model.diagram(kind: $0.token) != nil }.count
+    private var headerStatus: String {
+        if isSequence {
+            let all = flows
+            return "Sequence · \(all.count) flow\(all.count == 1 ? "" : "s") · \(all.filter { $0.drawing != nil }.count) drawn"
+        }
+        guard let drawn = selectedDiagram else { return "\(selectedTitle) · not drawn yet" }
+        return "\(selectedTitle) · \(drawn.url.lastPathComponent)"
     }
 
+    /// The kind's name, or on Sequence the flow's.
     private var selectedTitle: String {
-        ArchDiagramKind.all.first { $0.token == selectedKind }?.title ?? "Diagram"
+        if isSequence, let flow = currentFlow { return flow.name }
+        return ArchDiagramKind.all.first { $0.token == selectedKind }?.title ?? "Diagram"
     }
 
     // MARK: - Pane
 
     @ViewBuilder private var pane: some View {
-        if model.isGeneratingDiagram(kind: selectedKind) {
+        if isSequence && flows.isEmpty {
+            noFlowsPane
+        } else if model.isGeneratingDiagram(kind: selectedKey) {
             generatingPane
         } else if let diagram = selectedDiagram {
             WebView(file: diagram.url)
@@ -165,8 +239,8 @@ struct DiagramsScreen: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(24)
         // The session does not exit when the file is written, so the folder is read again until it lands.
-        .task(id: selectedKind) {
-            while !Task.isCancelled, model.isGeneratingDiagram(kind: selectedKind) {
+        .task(id: selectedKey) {
+            while !Task.isCancelled, model.isGeneratingDiagram(kind: selectedKey) {
                 try? await Task.sleep(for: .seconds(4))
                 await model.load()
                 model.pickUpGeneratedDiagrams()
@@ -202,7 +276,7 @@ struct DiagramsScreen: View {
     /// as one instead of as a guess about declining, and its kept session is one click away.
     @ViewBuilder private var drawContent: some View {
         let blocked = blockedReason
-        let failure = model.diagramGenerateFailure(kind: selectedKind)
+        let failure = model.diagramGenerateFailure(kind: selectedKey)
         if let failure {
             NoticeBanner(tone: .waiting, title: "No \(selectedTitle) diagram was drawn", message: failure.message) {
                 if let sessionID = failure.sessionID {
@@ -215,27 +289,58 @@ struct DiagramsScreen: View {
                 failureOutput(failure.outputTail)
             }
         } else {
-            NoticeBanner(tone: .neutral, title: "No \(selectedTitle) diagram yet",
-                         message: "dev:arch draws this project and writes each diagram to docs/arch/ as a standalone HTML file. Generate it, and it appears here.")
+            NoticeBanner(tone: .neutral, title: isSequence ? "\(selectedTitle) is not drawn yet" : "No \(selectedTitle) diagram yet",
+                         message: isSequence
+                            ? "A sequence draws this one flow over time: who calls whom, in order, from where it starts to where it finishes. dev:arch writes it to docs/arch/."
+                            : "dev:arch draws this project and writes each diagram to docs/arch/ as a standalone HTML file. Draw it, and it appears here.")
         }
         if let blocked {
             NoticeBanner(tone: .neutral, title: "Nothing to run here", message: blocked, style: .compact)
         }
-        VStack(alignment: .leading, spacing: 8) {
-            SectionLabel("What to draw")
-            TextField("What to draw — e.g. the auth flow, or web/app/lib. Leave empty to draw the whole project.",
-                      text: $target)
-                .textFieldStyle(.plain)
-                .font(DeskFont.body)
-                .padding(.horizontal, 10)
-                .controlChrome(height: 28)
+        // A flow's sequence already says what to draw; the whole-project kinds can still be scoped to a part.
+        if !isSequence {
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel("What to draw")
+                TextField("What to draw — e.g. the auth part, or web/app/lib. Leave empty to draw the whole project.",
+                          text: $target)
+                    .textFieldStyle(.plain)
+                    .font(DeskFont.body)
+                    .padding(.horizontal, 10)
+                    .controlChrome(height: 28)
+            }
         }
         HStack(spacing: 8) {
             Spacer(minLength: 0)
-            Button(failure == nil ? "Generate \(selectedTitle)" : "Try again") { generate() }
+            Button(failure == nil ? "Draw \(selectedTitle)" : "Try again") { generate() }
                 .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
                 .disabled(blocked != nil)
         }
+    }
+
+    /// Sequence with no flow named anywhere yet. Any one source is enough, and none is required: name one here.
+    private var noFlowsPane: some View {
+        VStack {
+            Spacer(minLength: 0)
+            VStack(alignment: .leading, spacing: 12) {
+                NoticeBanner(tone: .neutral, title: "No flows named yet",
+                             message: "Sequence draws one flow at a time. Its list fills from whatever this project has: the paths an Architecture or Data flow drawing names, or the flows the last findings hunt read. Any one is enough. Or name a flow to draw it now.")
+                HStack(spacing: 8) {
+                    TextField("A flow — e.g. Sign in, or Checkout", text: $newFlowName)
+                        .textFieldStyle(.plain)
+                        .font(DeskFont.body)
+                        .padding(.horizontal, 10)
+                        .controlChrome(height: 28)
+                        .onSubmit(drawTypedFlow)
+                    Button("Draw", action: drawTypedFlow)
+                        .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                        .disabled(SequenceFlows.slug(newFlowName).isEmpty || blockedReason != nil)
+                }
+            }
+            .frame(maxWidth: 560)
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(24)
     }
 
     /// The folder is not a git repository. dev:arch pins nodes to a real commit, so it needs one — the app does
@@ -257,7 +362,7 @@ struct DiagramsScreen: View {
     /// — nothing is pushed — then add the remote and draw. This is the renderer's requirement, not the app's.
     @ViewBuilder private var needsRemoteContent: some View {
         NoticeBanner(tone: .waiting, title: "This repository has no GitHub remote",
-                     message: "An architecture diagram pins every component to code at a commit, and Archify (the renderer) checks those pins against the repo's GitHub origin. Add the repo's GitHub URL below — nothing is pushed — then the diagram can be drawn. Workflow, data flow, sequence and lifecycle draw without one.")
+                     message: "An architecture diagram pins every component to code at a commit, and Archify (the renderer) checks those pins against the repo's GitHub origin. Add the repo's GitHub URL below — nothing is pushed — then the diagram can be drawn. Data flow and sequence draw without one.")
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("GitHub URL")
             TextField("https://github.com/owner/repo", text: $remoteURL)
@@ -313,11 +418,19 @@ struct DiagramsScreen: View {
         guard let agentName else {
             return "No agent is available. Choose Claude or Codex in Settings."
         }
-        return model.diagramGenerateBlockedReason(kind: selectedKind, agent: agentName)
+        return model.diagramGenerateBlockedReason(kind: selectedKey, agent: agentName)
     }
 
     private func generate() {
         guard let terminals, let agentName else { return }
+        if isSequence {
+            guard let flow = currentFlow, let root = repositoryRoot else { return }
+            let repo = SequenceFlows.slug(URL(fileURLWithPath: root).lastPathComponent)
+            model.generateDiagram(kind: flow.generateKey, drawKind: "sequence", outputName: "\(repo)-sequence-\(flow.slug)",
+                                  target: flow.name, agent: agentName, terminals: terminals,
+                                  worktreeLocation: worktreeLocation)
+            return
+        }
         model.generateDiagram(kind: selectedKind, target: target.trimmingCharacters(in: .whitespacesAndNewlines),
                               agent: agentName, terminals: terminals, worktreeLocation: worktreeLocation)
     }
@@ -332,18 +445,17 @@ struct DiagramsScreen: View {
     }
 }
 
-/// The five diagram kinds `dev:arch` draws, in the skill's own order: the title reads, the token is the argument.
+/// The three kinds the screen offers (ADR 0047), in `ArchDiagrams.kinds` order: the title reads, the token is the argument.
 private struct ArchDiagramKind: Identifiable {
     let token: String
     let title: String
+    let help: String
     var id: String { token }
 
     static let all = [
-        ArchDiagramKind(token: "architecture", title: "Architecture"),
-        ArchDiagramKind(token: "workflow", title: "Workflow"),
-        ArchDiagramKind(token: "dataflow", title: "Data flow"),
-        ArchDiagramKind(token: "sequence", title: "Sequence"),
-        ArchDiagramKind(token: "lifecycle", title: "Lifecycle"),
+        ArchDiagramKind(token: "architecture", title: "Architecture", help: "The parts of the project and how they connect"),
+        ArchDiagramKind(token: "dataflow", title: "Data flow", help: "Where the data comes from, what changes it, and where it is kept"),
+        ArchDiagramKind(token: "sequence", title: "Sequence", help: "One flow over time — pick a flow on the left"),
     ]
 }
 

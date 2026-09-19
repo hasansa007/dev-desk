@@ -21,7 +21,7 @@ final class ArchRunTests: XCTestCase {
     /// the developer's work.
     func testTheRunCarriesTheScreensAnswers() throws {
         for agent in ["Codex", "Claude"] {
-            let prompt = try XCTUnwrap(ArchRun.prompt(agent: agent, kind: "workflow", target: "", home: home))
+            let prompt = try XCTUnwrap(ArchRun.prompt(agent: agent, kind: "dataflow", target: "", home: home))
             XCTAssertTrue(prompt.hasSuffix(ArchRun.screenInstruction))
             XCTAssertTrue(prompt.contains("Do not cut a branch"))
         }
@@ -40,5 +40,12 @@ final class ArchRunTests: XCTestCase {
     func testAnUnknownAgentGetsNoArgv() {
         XCTAssertNil(ArchRun.launch(agent: "Gemini", kind: "architecture", target: "", home: home))
         XCTAssertNil(ArchRun.prompt(agent: "Gemini", kind: "architecture", target: "", home: home))
+    }
+
+    /// A flow's sequence is named so the screen can find it again.
+    func testAFlowSequenceIsNamed() throws {
+        let prompt = try XCTUnwrap(ArchRun.prompt(agent: "Claude", kind: "sequence", target: "Build a course",
+                                                  home: home, outputName: "app-sequence-build-a-course"))
+        XCTAssertTrue(prompt.hasSuffix("Name the files docs/arch/app-sequence-build-a-course.html and its sidecar docs/arch/app-sequence-build-a-course.sequence.json."))
     }
 }

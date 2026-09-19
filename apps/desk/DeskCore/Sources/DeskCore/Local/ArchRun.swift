@@ -8,14 +8,18 @@ public enum ArchRun {
     /// The `dev:arch` prompt for one kind, with an optional target. The door reads what to draw first and a
     /// bare type token after it, so a target leads and the type follows; an empty target draws the whole
     /// project. Built from the same skill path `DoorCommand` uses, so both doors read the same SKILL.md.
-    public static func prompt(agent name: String, kind: String, target: String, home: String) -> String? {
+    /// `outputName` fixes the file stem — a flow's sequence is `<repo>-sequence-<flow slug>`, which is how the
+    /// screen matches the drawing back to its row (ADR 0047).
+    public static func prompt(agent name: String, kind: String, target: String, home: String,
+                              outputName: String? = nil) -> String? {
         guard DoorCommand.backgroundAgent(named: name) != nil else { return nil }
         var arguments: [String] = []
         let trimmed = target.trimmingCharacters(in: .whitespacesAndNewlines)
         if !trimmed.isEmpty { arguments.append(trimmed) }
         arguments.append(kind)
         guard let door = DoorCommand.prompt(door: "arch", agent: name, arguments: arguments, home: home) else { return nil }
-        return door + " " + screenInstruction
+        let naming = outputName.map { " Name the files docs/arch/\($0).html and its sidecar docs/arch/\($0).\(kind).json." } ?? ""
+        return door + " " + screenInstruction + naming
     }
 
     /// The answers the screen already has, so the run does not ask for them (SKILL.md's "Runs from Dev Desk").
@@ -26,9 +30,10 @@ public enum ArchRun {
 
     /// The interactive argv — the CLI with its prompt, the form a door's terminal command takes. nil for a CLI
     /// with no verified invocation for this door.
-    public static func launch(agent name: String, kind: String, target: String, home: String) -> [String]? {
+    public static func launch(agent name: String, kind: String, target: String, home: String,
+                              outputName: String? = nil) -> [String]? {
         guard let agent = DoorCommand.backgroundAgent(named: name),
-              let prompt = prompt(agent: name, kind: kind, target: target, home: home) else { return nil }
+              let prompt = prompt(agent: name, kind: kind, target: target, home: home, outputName: outputName) else { return nil }
         return [agent.executable, prompt]
     }
 }

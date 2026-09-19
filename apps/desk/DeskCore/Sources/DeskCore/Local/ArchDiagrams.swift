@@ -11,13 +11,26 @@ public struct ArchDiagram: Identifiable, Hashable {
     /// The HTML file's modification time, so the newest diagram of a kind can be chosen when a repository has
     /// drawn the same kind more than once. `.distantPast` when the file's date could not be read.
     public var modifiedAt: Date
+    /// The named paths the diagram draws — the sidecar's `meta.views` labels ("Build path", "Pay for a build").
+    /// Architecture and data flow name the project's flows here, which is one source of Sequence's flow list.
+    public var views: [String]
 
-    public init(id: String, title: String, url: URL, kind: String? = nil, modifiedAt: Date = .distantPast) {
+    public init(id: String, title: String, url: URL, kind: String? = nil, modifiedAt: Date = .distantPast,
+                views: [String] = []) {
         self.id = id
         self.title = title
         self.url = url
         self.kind = kind
         self.modifiedAt = modifiedAt
+        self.views = views
+    }
+
+    /// The flow a sequence was drawn for, from its file name: Dev Desk names a flow's sequence
+    /// `<anything>sequence-<flow slug>`, so the file says which row of the flow list it belongs to.
+    public var flowSlug: String? {
+        guard kind == "sequence", let range = id.range(of: "sequence-", options: .backwards) else { return nil }
+        let slug = String(id[range.upperBound...])
+        return slug.isEmpty ? nil : slug
     }
 }
 
@@ -39,13 +52,15 @@ public enum ArchDiagrams {
                                title: sidecar.title ?? readableName(stem),
                                url: url,
                                kind: sidecar.kind,
-                               modifiedAt: modified ?? .distantPast)
+                               modifiedAt: modified ?? .distantPast,
+                               views: sidecar.views)
         }
     }
 
-    /// The five diagram types `dev:arch` draws, in the skill's own order. The Diagrams screen lists exactly
-    /// these whether or not any have been drawn, so a kind is a place to generate into, not only a file to show.
-    public static let kinds = ["architecture", "workflow", "dataflow", "sequence", "lifecycle"]
+    /// The three diagram types `dev:arch` draws (ADR 0047): the whole project's parts, where its data goes, and
+    /// one flow over time. Workflow repeated sequence and lifecycle needed a named subject, so both were dropped.
+    /// The Diagrams screen shows these whether or not any have been drawn: a kind is a place to generate into.
+    public static let kinds = ["architecture", "dataflow", "sequence"]
 
     /// The newest diagram of `kind` in a repository, or nil when none has been drawn. A repository that ran the
     /// same kind twice keeps both files; the most recently written one is the one the kind's item shows.
@@ -57,18 +72,19 @@ public enum ArchDiagrams {
 
     /// What the sidecar `<stem>.<kind>.json` says about a diagram: its `meta.title` and its `diagram_type`. Both
     /// are optional — a diagram may have no sidecar, or one that says nothing useful — so each caller falls back.
-    private static func readSidecar(stem: String, in directory: URL, siblings: [String]) -> (title: String?, kind: String?) {
+    private static func readSidecar(stem: String, in directory: URL, siblings: [String]) -> (title: String?, kind: String?, views: [String]) {
         guard let sidecar = siblings.first(where: { $0.hasPrefix("\(stem).") && $0.hasSuffix(".json") }),
               case .text(let text) = SafeFile.read(directory.appendingPathComponent(sidecar),
                                                    maxBytes: maxSidecarBytes, within: directory),
               let object = try? JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any]
-        else { return (nil, nil) }
+        else { return (nil, nil, []) }
         let meta = object["meta"] as? [String: Any]
         let rawTitle = meta?["title"] as? String
         let title = (rawTitle?.isEmpty == false) ? rawTitle : nil
         let rawKind = object["diagram_type"] as? String
         let kind = (rawKind?.isEmpty == false) ? rawKind : nil
-        return (title, kind)
+        let views = (meta?["views"] as? [[String: Any]] ?? []).compactMap { $0["label"] as? String }.filter { !$0.isEmpty }
+        return (title, kind, views)
     }
 
     /// "dev-family" reads as "Dev family": the file name is the fallback label, tidied rather than shown raw.

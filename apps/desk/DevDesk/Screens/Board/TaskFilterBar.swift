@@ -51,19 +51,7 @@ struct TaskFilterBar: View {
     }
 
     private func chip(_ label: String, on: Bool, tone: StatusTone?, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(spacing: 4) {
-                if let tone { Circle().fill(DeskColor.tone(tone).dot).frame(width: 6, height: 6) }
-                Text(label).font(.system(size: 11.5, weight: on ? .semibold : .regular))
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .foregroundStyle(on ? DeskColor.surface : DeskColor.ink)
-            .background(Capsule().fill(on ? DeskColor.ink : DeskColor.surface))
-            .overlay(Capsule().stroke(on ? DeskColor.ink : DeskColor.divider, lineWidth: 1))
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(on ? .isSelected : [])
+        FilterChip(label, isOn: on, tone: tone, action: action)
     }
 
     private func toggle<T: Hashable>(_ set: inout Set<T>, _ value: T) {

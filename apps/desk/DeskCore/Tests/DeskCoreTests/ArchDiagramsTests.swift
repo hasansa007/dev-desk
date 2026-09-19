@@ -62,9 +62,22 @@ final class ArchDiagramsTests: XCTestCase {
         XCTAssertTrue(ArchDiagrams.list(repositoryRoot: "/nope/not/here").isEmpty)
     }
 
-    /// The five kinds the Diagrams screen always lists, in the skill's own order.
-    func testTheFiveKindsAreTheDevArchTypesInOrder() {
-        XCTAssertEqual(ArchDiagrams.kinds, ["architecture", "workflow", "dataflow", "sequence", "lifecycle"])
+    /// The three kinds the Diagrams screen always offers (ADR 0047).
+    func testTheThreeKindsAreTheDevArchTypesInOrder() {
+        XCTAssertEqual(ArchDiagrams.kinds, ["architecture", "dataflow", "sequence"])
+    }
+
+    /// A sidecar's named views are read, and a sequence's file name says which flow it draws.
+    func testViewsAndTheSequenceFlowAreRead() throws {
+        let root = try makeFolder()
+        try write(root, "app.html", "<html></html>")
+        try write(root, "app.architecture.json", "{\"diagram_type\": \"architecture\", \"meta\": {\"title\": \"A\", \"views\": [{\"id\": \"b\", \"label\": \"Build path\"}, {\"id\": \"x\"}]}}")
+        try write(root, "app-sequence-build-a-course.html", "<html></html>")
+        try write(root, "app-sequence-build-a-course.sequence.json", "{\"diagram_type\": \"sequence\", \"meta\": {\"title\": \"S\"}}")
+        let byID = Dictionary(uniqueKeysWithValues: ArchDiagrams.list(repositoryRoot: root.path).map { ($0.id, $0) })
+        XCTAssertEqual(byID["app"]?.views, ["Build path"])
+        XCTAssertNil(byID["app"]?.flowSlug)
+        XCTAssertEqual(byID["app-sequence-build-a-course"]?.flowSlug, "build-a-course")
     }
 
     /// A kind's item shows the newest file of that kind: a repo that drew the same kind twice keeps both, and
@@ -91,7 +104,7 @@ final class ArchDiagramsTests: XCTestCase {
         let root = try makeFolder()
         try write(root, "a.html", "<html></html>")
         try write(root, "a.architecture.json", "{\"diagram_type\": \"architecture\", \"meta\": {\"title\": \"A\"}}")
-        XCTAssertNil(ArchDiagrams.newest(kind: "lifecycle", repositoryRoot: root.path))
+        XCTAssertNil(ArchDiagrams.newest(kind: "dataflow", repositoryRoot: root.path))
         XCTAssertNotNil(ArchDiagrams.newest(kind: "architecture", repositoryRoot: root.path))
     }
 }
