@@ -70,7 +70,7 @@ struct Sidebar: View {
     private var settingsRow: some View {
         Button { model.present(.settings) } label: {
             HStack(spacing: 10) {
-                Image(systemName: "gearshape").font(.system(size: 15)).frame(width: 20)
+                Image(systemName: "gearshape").font(.system(size: 18)).frame(width: 24)
                 if !isRail {
                     Text("Settings")
                     Spacer(minLength: 4)
@@ -95,8 +95,8 @@ struct Sidebar: View {
         return Button { model.go(destination) } label: {
             HStack(spacing: 10) {
                 Image(systemName: symbol(for: destination))
-                    .font(.system(size: 15))
-                    .frame(width: 20)
+                    .font(.system(size: 18))
+                    .frame(width: 24)
                     // A rail still has to show that something needs you: the count becomes a dot on the icon.
                     .overlay(alignment: .topTrailing) {
                         if isRail, let badge, badge.isPending {
