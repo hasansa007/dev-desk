@@ -204,3 +204,22 @@ final class AddTaskDestinationTests: XCTestCase {
         XCTAssertNil(failing, "an unscripted (failed) gh reads as a failed search, never as no duplicates")
     }
 }
+
+/// A session mid-turn is visible outside the app (install.sh's guard) through `.working`, 2026-09-19.
+final class WorkingMarkerTests: XCTestCase {
+    func testATurnMarksTheSessionWorkingAndItsEndClearsIt() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent("wm-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let marker = dir.appendingPathComponent(AgentHooks.workingMarker)
+        AgentHooks.markWorking(.turnStarted, in: dir)
+        XCTAssertEqual(try String(contentsOf: marker, encoding: .utf8), String(ProcessInfo.processInfo.processIdentifier))
+        AgentHooks.markWorking(.bell, in: dir)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: marker.path), "a bell says nothing about a turn")
+        AgentHooks.markWorking(.turnFinished, in: dir)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path))
+        AgentHooks.markWorking(.turnStarted, in: dir)
+        AgentHooks.markWorking(.question(nil), in: dir)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: marker.path), "waiting on a question is not working")
+    }
+}

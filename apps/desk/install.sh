@@ -35,26 +35,35 @@ LOG=$(mktemp -t dev-desk-install)
 # Deliberately NOT removed on failure: two messages below tell the reader to open it.
 
 if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
-    # Every descendant, not two levels: a run whose agent sits under a wrapper or a re-exec was invisible to
-    # a fixed-depth scan, and the guard would pass and then kill it.
-    LIVE=$(ps -axo pid=,ppid=,comm= | awk -v roots="$(pgrep -x 'Dev Desk' | tr '\n' ' ')" '
+    # What counts as running is WORK, not a process (2026-09-19): a Claude session that finished its turn stays
+    # alive at its prompt with its MCP helpers, and counting processes blocked installs on sessions that had been
+    # idle for hours. Two things are work:
+    #   1. a session mid-turn — Dev Desk writes `.working` (its own pid inside) into the session's event folder
+    #      on a turn start and removes it on a finished turn, a question or an exit (AgentHooks.markWorking);
+    #   2. a headless background run — `claude -p` / `codex exec` under Dev Desk, which has no prompt to idle at.
+    ROOTS="$(pgrep -x 'Dev Desk' | tr '\n' ' ')"
+    EVENTS="$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}/")devdesk-events"
+    WORKING=0
+    for marker in "$EVENTS"/*/.working; do
+        [ -f "$marker" ] || continue
+        owner=$(cat "$marker" 2>/dev/null)
+        case " $ROOTS " in *" $owner "*) WORKING=$((WORKING + 1)) ;; esac   # a crashed app's marker is ignored
+    done
+    HEADLESS=$(ps -axo pid=,ppid=,args= | awk -v roots="$ROOTS" '
         BEGIN { split(roots, r, " "); for (i in r) if (r[i] != "") seen[r[i]] = 1 }
-        { pid[NR] = $1; par[NR] = $2; cmd[NR] = $3; n = NR }
+        { pid[NR] = $1; par[NR] = $2; $1 = ""; $2 = ""; args[NR] = $0; n = NR }
         END {
             changed = 1
             while (changed) {
                 changed = 0
                 for (i = 1; i <= n; i++) if (!(pid[i] in seen) && (par[i] in seen)) { seen[pid[i]] = 1; changed = 1 }
             }
-            for (i = 1; i <= n; i++) if (pid[i] in seen) {
-                name = cmd[i]; sub(/.*\//, "", name)
-                # gemini is a node script, so it shows as node: under Dev Desk that is an agent, not a coincidence.
-                if (name == "claude" || name == "codex" || name == "opencode" || name == "agy" || name == "node") print name
-            }
-        }' | sort -u | tr '\n' ' ')
-    if [ -n "$LIVE" ]; then
-        echo "Dev Desk is running something: $LIVE" >&2
-        echo "Installing quits the app, which would end it. Stop it in the Runs panel, or re-run with --force." >&2
+            for (i = 1; i <= n; i++) if ((pid[i] in seen) && args[i] ~ /(^|\/)(claude|opencode)( .*)? (-p|--print)( |$)|(^|\/)codex( .*)? exec( |$)/) c++
+            print c + 0
+        }')
+    if [ "$WORKING" -gt 0 ] || [ "$HEADLESS" -gt 0 ]; then
+        echo "Dev Desk is working: $WORKING session(s) mid-turn, $HEADLESS background run(s)." >&2
+        echo "Installing quits the app, which would end them. Wait for them to finish, or re-run with --force." >&2
         exit 1
     fi
 fi

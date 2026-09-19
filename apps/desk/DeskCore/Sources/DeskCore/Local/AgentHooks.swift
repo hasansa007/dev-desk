@@ -22,6 +22,26 @@ public enum TerminalEvent: Equatable {
 /// where it is unset — a copied command run elsewhere stays silent rather than failing.
 public enum AgentHooks {
     public static let eventDirectoryVariable = "DEVDESK_EVENT_DIR"
+    /// `.working` in a session's event folder while its agent is mid-turn, holding Dev Desk's pid. The events are
+    /// consumed as they are read, so without this nothing outside the app could tell a working session from one
+    /// idle at its prompt — and `install.sh` counted every idle Claude as "running" (2026-09-19). A dotfile, so the
+    /// event reader skips it; the folder is deleted with the session, and the pid lets a reader ignore a marker a
+    /// crashed app left behind.
+    public static let workingMarker = ".working"
+
+    /// Writes or clears the marker for one event: a turn begun marks the session working; a finished turn, a
+    /// question or an exit clears it. A bell says nothing about a turn and changes nothing.
+    public static func markWorking(_ event: TerminalEvent, in directory: URL) {
+        let marker = directory.appendingPathComponent(workingMarker)
+        switch event {
+        case .turnStarted:
+            try? Data(String(ProcessInfo.processInfo.processIdentifier).utf8).write(to: marker, options: .atomic)
+        case .turnFinished, .question, .exited:
+            try? FileManager.default.removeItem(at: marker)
+        case .bell:
+            break
+        }
+    }
 
     /// Writes stdin (or `$1`) to a dotfile first and renames it, so the watcher never reads a half-written event.
     static func script(event: String, payload: String) -> String {

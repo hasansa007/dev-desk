@@ -513,7 +513,10 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
             let file = eventDirectory.appendingPathComponent(name)
             let contents = (try? Data(contentsOf: file)) ?? Data()
             try? FileManager.default.removeItem(at: file)
-            if let event = AgentHooks.event(fileName: name, contents: contents) { onEvent?(event) }
+            if let event = AgentHooks.event(fileName: name, contents: contents) {
+                AgentHooks.markWorking(event, in: eventDirectory)
+                onEvent?(event)
+            }
         }
     }
 
