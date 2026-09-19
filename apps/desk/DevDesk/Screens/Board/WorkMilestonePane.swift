@@ -60,28 +60,24 @@ struct WorkMilestonePane: View {
     /// Type and Tag. Run roadmap and Clear all head it.
     private var list: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
-                Spacer()
-                if filter.activeCount > 0 {
+            // Only while a filter is on: Clear all gets its own line at the top, where the list starts.
+            if filter.activeCount > 0 {
+                HStack {
+                    Text(filter.summary).font(.system(size: 12)).foregroundStyle(DeskColor.secondaryInk).lineLimit(1)
+                    Spacer()
                     Button("Clear all (\(filter.activeCount))") { model.taskFilter = TaskFilter() }
                         .buttonStyle(.plain)
                         .font(.system(size: 12))
                         .foregroundStyle(DeskColor.accent)
                 }
-                Button { isCollapsed = true } label: {
-                    Image(systemName: "sidebar.left").foregroundStyle(DeskColor.mutedInk)
-                        .frame(width: 24, height: 24).contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Hide the list, for a wider Board")
-                .accessibilityLabel("Hide the milestones")
+                .padding(.horizontal, 14).padding(.vertical, 8)
+                .background(DeskColor.accent.opacity(0.06))
+                Divider()
             }
-            .padding(10)
-            Divider()
             ScrollView {
                 VStack(alignment: .leading, spacing: 2) {
-                    section("Milestones", key: "milestones", note: "\(model.milestoneRows.filter { $0.title != nil }.count)", isOn: false) {
+                    section("Milestones", key: "milestones", note: nil, isOn: false,
+                            guide: WorkGuides.milestones, accessory: AnyView(milestonesAccessory)) {
                         stageSwitch
                         milestoneItems
                     }
@@ -133,9 +129,12 @@ struct WorkMilestonePane: View {
     /// A section that folds: ▾/▸, its name, and at the right its count — blue "1 on" while it is filtering. The fold
     /// is remembered.
     private func section<Content: View>(_ title: String, key: String, note: String?, isOn: Bool,
+                                        guide: (title: String, lines: [String])? = nil,
+                                        accessory: AnyView? = nil,
                                         @ViewBuilder _ content: () -> Content) -> some View {
         let isFolded = folded.contains(key)
         return VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 0) {
             Button {
                 var set = folded
                 if isFolded { set.remove(key) } else { set.insert(key) }
@@ -145,6 +144,7 @@ struct WorkMilestonePane: View {
                     Image(systemName: isFolded ? "chevron.right" : "chevron.down")
                         .font(.system(size: 9, weight: .bold)).foregroundStyle(DeskColor.faintInk).frame(width: 10)
                     Text(title).font(.system(size: 12, weight: .semibold)).foregroundStyle(DeskColor.secondaryInk)
+                        .lineLimit(1).fixedSize()
                     Spacer()
                     if let note {
                         Text(note).font(.system(size: 11.5, weight: isOn ? .semibold : .regular))
@@ -155,9 +155,31 @@ struct WorkMilestonePane: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .help(guide == nil ? "Counts are open issues in the selected milestone, with your other filters applied" : "")
             .accessibilityLabel("\(title), \(isFolded ? "folded" : "open")")
+            // Milestones carries its own ⓘ; the filter sections explain themselves and get only the tooltip above.
+            if let guide { ScreenGuideButton(part: title, guide: guide).padding(.top, 6) }
+            if let accessory { accessory.padding(.top, 6) }
+            }
             if !isFolded { content() }
         }
+    }
+
+    /// Run roadmap sits with what it creates (asked 2026-09-19), and the collapse beside it, so the list needs no
+    /// top row of its own. Both stay visible when the section is folded.
+    private var milestonesAccessory: some View {
+        HStack(spacing: 4) {
+            DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
+            Button { isCollapsed = true } label: {
+                Image(systemName: "sidebar.left").foregroundStyle(DeskColor.mutedInk)
+                    .frame(width: 24, height: 24).contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Hide the list, for a wider Board")
+            .accessibilityLabel("Hide the milestones")
+        }
+        .fixedSize()   // the button keeps its whole name; the section title gives way first
+        .padding(.leading, 4)
     }
 
     private var rule: some View {

@@ -28,7 +28,7 @@ struct BoardScreen: View {
 
     /// The shared header (ADR 0046 decision 14): the selected milestone and its progress, then search and New task.
     private var header: some View {
-        ScreenHeader(.board, extra: model.snapshot?.boardNote) {
+        ScreenHeader(.board) {
             Text(scopeStatus)
         } tools: {
             searchField

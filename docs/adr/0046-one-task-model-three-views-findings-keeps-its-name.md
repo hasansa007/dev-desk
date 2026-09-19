@@ -126,7 +126,11 @@ answering one question, with one filter bar.**
     hide: the header reads "P1, Bug · 3 of 11 shown", Clear all (n) heads the list, and the collapsed rail
     carries the count. The milestone list itself is never filtered — the selected one cannot vanish. A Hide Done
     switch sits above the columns. Work is the one tab with no chip row: its list does that job. Run roadmap
-    heads the list rather than footing it.
+    sits in the Milestones section header, with the collapse button, since it is what creates milestones.
+17. **Small ⓘs where a part needs one, not one ⓘ for everything.** Work's header ⓘ had grown to six paragraphs
+    covering the list, the Board and the filters. It now covers the Board only; Milestones has its own ⓘ
+    (Working now, Move to top, stages, and what Run roadmap does). Priority, Type and Tag get no ⓘ — they
+    explain themselves — only a tooltip on the section header saying what the counts mean.
 
 ## Names considered for the Findings screen, and why each lost
 

@@ -51,13 +51,12 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
                 "You: decide which become issues. Next: Plan orders them with everything else.",
             ])
         case .roadmap, .board:
-            return ("Work — order, then do", [
-                "Left: your milestones in working order, with progress and P0–P3 counts. Move to top makes one Working now — kept on this Mac, not on GitHub.",
-                "Right: the selected milestone's issues by stage. Its first column is Next up for the Working now milestone, Not started for any other. All milestones shows Next up (Working now and every P0) and everything in progress, in review or done.",
-                "There is no Backlog column: the list is the backlog — select a milestone to see what waits in it.",
-                "You: Start a card in Next up. In progress, Review and Done then follow git — a branch, a pull request, a merge.",
-                "A card that waits for another open issue cannot start; Start also warns when a running task changes the same code.",
-                "Before: Findings files issues. Collapse the list with ⟨ for more room.",
+            // The Board only: the list on the left explains itself with its own ⓘ on Milestones and on Run roadmap.
+            return ("Work — the selected milestone's issues by stage", [
+                "Next up is what to start: the Working now milestone's issues, highest priority first. Another milestone's first column is Not started.",
+                "You: Start a card. In progress, Review and Done then follow git — a branch, a pull request, a merge.",
+                "A card that waits for another open issue cannot start; Start warns when a running task changes the same code.",
+                "Before: Findings files issues. After: Sessions is where a started card runs.",
             ])
         case .terminals:
             return ("Sessions", ["Every terminal and agent session this project has open. A task's session opens when you Start it."])
@@ -65,6 +64,18 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
             return ("Diagrams", ["The system drawn from its code by dev:arch.", "Architecture: the parts and how they connect — every box points at real files. Data flow: where the data goes.", "Sequence: one flow over time. Its list is every flow this project has named — in its Architecture or Data flow drawing, or in the last findings hunt — and you can name another."])
         }
     }
+}
+
+/// The small ⓘs inside Work's left list (ADR 0046 decision 17): each explains the part it sits beside, so the
+/// header's ⓘ can stay about the Board.
+public enum WorkGuides {
+    public static let milestones = (title: "Milestones", lines: [
+        "Your milestones in working order. The one on top is Working now — Next up reads it. Move to top (hover a milestone) changes it; that order is kept on this Mac, not on GitHub.",
+        "Select one to narrow the Board to its issues. All milestones shows Next up across all of them, plus every P0.",
+        "Open hides finished milestones (all issues closed); All shows them; Working now shows only the one being worked.",
+        "There is no Backlog column: a milestone's Not started column is its backlog.",
+        "Run roadmap proposes milestones from what this repository has recorded — findings, gaps, open issues — and asks before filing each one. It adopts open issues rather than duplicating them, and never starts work.",
+    ])
 }
 
 public enum TaskTab: String, CaseIterable, Codable, Hashable {
