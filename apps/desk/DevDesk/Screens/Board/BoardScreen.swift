@@ -78,7 +78,7 @@ struct BoardScreen: View {
         } else {
             let columns = visibleColumns.map { column in
                 ColumnEntry(column: column,
-                            tasks: BoardOrder.inColumn(column, tasks.filter { Self.shows($0, in: column) && matches($0) }))
+                            tasks: BoardOrder.inColumn(column, tasks.filter { model.inWorkColumn($0, column) && matches($0) }))
             }
             if (!model.searchText.isEmpty || model.taskFilter.isActive) && columns.allSatisfy({ $0.tasks.isEmpty }) {
                 Text(model.searchText.isEmpty ? "No tasks match these filters." : "No tasks match “\(model.searchText)”.")
@@ -90,10 +90,6 @@ struct BoardScreen: View {
                 GeometryReader { proxy in
                     ScrollView([.horizontal, .vertical]) {
                         HStack(alignment: .top, spacing: 14) {
-                            if !model.showBacklog {
-                                BacklogRail(count: model.counts(in: .backlog).total) { model.showBacklog = true }
-                                    .padding(.top, 16)
-                            }
                             // The headers are one pinned row, so a long Done column scrolls under its title
                             // instead of taking it off screen. Spacing -1 lays each body's top border under
                             // its header's bottom one, so the seam is a single line.
@@ -127,12 +123,8 @@ struct BoardScreen: View {
     }
 
     private var visibleColumns: [BoardColumn] {
-        // Queued is a stage, not a column (ADR 0046): its cards ride in Next up with their "waiting for a slot" note.
-        BoardColumn.allCases.filter { ($0 != .backlog || model.showBacklog) && $0 != .queued }
-    }
-
-    static func shows(_ task: DeskTask, in column: BoardColumn) -> Bool {
-        task.column == column || (column == .readyForDev && task.column == .queued)
+        // No Backlog column: Work's milestone list is the backlog; Queued rides in the first column (ADR 0046).
+        ProjectWindowModel.workColumns
     }
 
     /// A narrowed Board still says a P0 exists elsewhere, and one click shows everything (ADR 0046 decision 13).
@@ -150,7 +142,7 @@ struct BoardScreen: View {
     }
 
     private func matches(_ task: DeskTask) -> Bool {
-        guard model.inWorkScope(task), model.taskFilter.matches(task) else { return false }
+        guard model.taskFilter.matches(task) else { return false }
         guard !model.searchText.isEmpty else { return true }
         let query = model.searchText.lowercased()
         if task.title.lowercased().contains(query) { return true }
@@ -166,38 +158,6 @@ private struct ColumnEntry: Identifiable {
     var id: BoardColumn { column }
 }
 
-/// The backlog, closed: always on the board, so the count is visible without a switch, and one click from open.
-private struct BacklogRail: View {
-    let count: Int
-    let open: () -> Void
-
-    var body: some View {
-        Button(action: open) {
-            VStack(spacing: 8) {
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(DeskColor.mutedInk)
-                Text("BACKLOG  \(count)")
-                    .font(DeskFont.label)
-                    .tracking(0.66)
-                    .foregroundStyle(DeskColor.faintInk)
-                    .fixedSize()
-                    .rotationEffect(.degrees(90))
-                    .frame(width: 18, height: 120)
-            }
-            .padding(.vertical, 12)
-            .frame(width: 34, alignment: .top)
-            .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
-            .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .help("Show the backlog")
-        .accessibilityLabel("Backlog, \(count) tasks")
-        .accessibilityHint("Shows the backlog column")
-    }
-}
-
 /// A column's title row, pinned above the board's scroll so it stays on screen while its cards scroll under it.
 private struct BoardColumnHeader: View {
     let column: BoardColumn
@@ -209,23 +169,12 @@ private struct BoardColumnHeader: View {
                                                   bottomTrailingRadius: DeskMetric.cardRadius)
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
-    private var counts: (total: Int, live: Int) { model.counts(in: column) }
+    private var counts: (total: Int, live: Int) { model.workCounts(in: column) }
 
     /// What a column's header can do to the board: Backlog closes back to its rail, and In progress opens its
     /// running tasks side by side — offered only when there are two to watch, never greyed out in wait.
     @ViewBuilder private var columnControl: some View {
-        if column == .backlog {
-            Button { model.showBacklog = false } label: {
-                Image(systemName: "chevron.left")
-                    .font(.system(size: 9, weight: .semibold))
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .frame(width: 18, height: 18)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help("Hide the backlog")
-            .accessibilityLabel("Hide the backlog")
-        } else if column == .inProgress, model.parallelTasks.count > 1 {
+        if column == .inProgress, model.parallelTasks.count > 1 {
             Button { model.setMode(.parallel) } label: {
                 Label("Side by side", systemImage: "rectangle.split.2x1")
             }
@@ -239,7 +188,7 @@ private struct BoardColumnHeader: View {
             Image(systemName: column.icon)
                 .imageScale(.small)
                 .foregroundStyle(DeskColor.mutedInk)
-            SectionLabel(column.title)
+            SectionLabel(column == .readyForDev ? model.firstWorkColumnTitle : column.title)
             Text("\(counts.total)")
                 .font(DeskFont.label)
                 .tracking(0.66)

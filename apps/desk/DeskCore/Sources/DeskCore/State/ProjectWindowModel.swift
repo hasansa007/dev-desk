@@ -51,7 +51,8 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
         case .roadmap, .board:
             return ("Work — order, then do", [
                 "Left: your milestones in working order, with progress and P0–P3 counts. Move to top makes one Working now — kept on this Mac, not on GitHub.",
-                "Right: the selected milestone's issues by stage. All milestones shows everything: Backlog, Next up (the Working now milestone and every P0), In progress, Review, Done.",
+                "Right: the selected milestone's issues by stage. Its first column is Next up for the Working now milestone, Not started for any other. All milestones shows Next up (Working now and every P0) and everything in progress, in review or done.",
+                "There is no Backlog column: the list is the backlog — select a milestone to see what waits in it.",
                 "You: Start a card in Next up. In progress, Review and Done then follow git — a branch, a pull request, a merge.",
                 "A card that waits for another open issue cannot start; Start also warns when a running task changes the same code.",
                 "Before: Findings files issues. Collapse the list with ⟨ for more room.",
@@ -804,6 +805,35 @@ public final class ProjectWindowModel {
         case .milestone(let title): return task.milestone == title
         case .noMilestone: return task.issueNumber != nil && task.milestone == nil && task.column != .done
         }
+    }
+
+    /// Work's columns (ADR 0046 decision 13, no duplication): the milestone list IS the backlog, so there is no
+    /// Backlog column. The first column holds what has not started in the selection — the Working now milestone's
+    /// and every P0 under All; everything not started in any one milestone chosen on the left.
+    public static let workColumns: [BoardColumn] = [.readyForDev, .inProgress, .review, .done]
+
+    public func inWorkColumn(_ task: DeskTask, _ column: BoardColumn) -> Bool {
+        guard inWorkScope(task) else { return false }
+        guard column == .readyForDev else { return task.column == column }
+        if task.column == .readyForDev || task.column == .queued { return true }
+        if case .all = effectiveWorkScope { return false }
+        return task.column == .backlog
+    }
+
+    /// "Next up" for the milestone being worked (and under All); "Not started" for any other one — it waits there
+    /// until Move to top makes it Next up.
+    public var firstWorkColumnTitle: String {
+        switch effectiveWorkScope {
+        case .all: return BoardColumn.readyForDev.title
+        case .milestone(let title): return title == snapshot?.activeMilestone ? BoardColumn.readyForDev.title : "Not started"
+        case .noMilestone: return "Not started"
+        }
+    }
+
+    /// A Work column's count under the selection — every card in it, filters aside, and how many are running.
+    public func workCounts(in column: BoardColumn) -> (total: Int, live: Int) {
+        let cards = tasks.filter { inWorkColumn($0, column) }
+        return (cards.count, cards.filter { isTaskRunning($0) }.count)
     }
 
     /// P0 issues outside the selected milestone, so a narrowed Board can say they exist (ADR 0046 decision 13).

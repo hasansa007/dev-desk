@@ -1,14 +1,13 @@
 import DeskCore
 import SwiftUI
 
-/// The filter row the Board and the Plan share (ADR 0046). It edits `model.taskFilter`, so a filter set on one view
-/// is already set on the other when you switch.
+/// Work's filter row (ADR 0046): priority, type and tag. The milestone is chosen in Work's list, not here.
 struct TaskFilterBar: View {
     @Bindable var model: ProjectWindowModel
 
     var body: some View {
+        // No milestone picker: Work's list on the left is the milestone choice (ADR 0046 decision 13).
         HStack(spacing: 14) {
-            milestonePicker
             group("Priority") {
                 ForEach(TaskFilter.priorityOrder, id: \.self) { p in
                     chip(p, on: model.taskFilter.priorities.contains(p), tone: TaskFilterBar.tone(p)) {
@@ -45,17 +44,6 @@ struct TaskFilterBar: View {
         .padding(.vertical, 8)
         .background(DeskColor.headerFill)
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
-    }
-
-    private var milestonePicker: some View {
-        Picker("Milestone", selection: $model.taskFilter.milestone) {
-            Text("All milestones").tag(String?.none)
-            ForEach(model.openMilestones, id: \.self) { Text($0).tag(String?.some($0)) }
-            Text("No milestone").tag(String?.some(TaskFilter.noMilestone))
-        }
-        .labelsHidden()
-        .frame(maxWidth: 230)
-        .help("Only issues in this milestone")
     }
 
     private func group<Content: View>(_ label: String, @ViewBuilder _ content: () -> Content) -> some View {

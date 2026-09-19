@@ -121,6 +121,22 @@ final class WorkScopeTests: XCTestCase {
         XCTAssertEqual(model.tasks.filter(model.inWorkScope).map(\.issueNumber), [3])
     }
 
+    func testTheFirstColumnHoldsWhatHasNotStartedInTheSelection() async {
+        var ready = task(1, ["P1"], milestone: "Money"); ready.column = .readyForDev
+        var later = task(2, ["P2"], milestone: "AI"); later.column = .backlog
+        var p0 = task(3, ["P0"], milestone: "AI"); p0.column = .readyForDev
+        let model = ProjectWindowModel(ref: .local(path: "/p"), source: WorkSource(tasks: [ready, later, p0]), insightsDelay: .zero)
+        await model.load()
+        XCTAssertEqual(model.tasks.filter { model.inWorkColumn($0, .readyForDev) }.map(\.issueNumber), [1], "Working now")
+        XCTAssertEqual(model.firstWorkColumnTitle, "Next up")
+        model.workScope = .all
+        XCTAssertEqual(model.tasks.filter { model.inWorkColumn($0, .readyForDev) }.map(\.issueNumber), [1, 3], "no backlog under All")
+        model.workScope = .milestone("AI")
+        XCTAssertEqual(model.tasks.filter { model.inWorkColumn($0, .readyForDev) }.map(\.issueNumber), [2, 3], "a waiting milestone's backlog")
+        XCTAssertEqual(model.firstWorkColumnTitle, "Not started")
+        XCTAssertEqual(model.workCounts(in: .readyForDev).total, 2)
+    }
+
     func testTheSidebarListsWorkOnceAndRoadmapOpensWork() {
         XCTAssertEqual(Destination.sidebar, [.findings, .ideation, .board, .terminals, .diagrams])
         XCTAssertEqual(Destination.board.title, "Work")
