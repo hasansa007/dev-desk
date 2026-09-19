@@ -266,6 +266,20 @@ final class FindingsReportParserTests: XCTestCase {
         XCTAssertEqual(Set(filings.keys), ["C1", "C2", "A1"])
     }
 
+    func testADriftTitleIsItsFirstLineNotItsDetail() {
+        let report = """
+        ## ARCHITECTURE
+
+        **Drift — CONFIRMED**
+        - A2 — The merge route reads course content from disk
+          detail: exactly one route does, `merge/route.js:31`, and returns 409 on hosted courses.
+          id: A2   type: Architecture   group: none
+        """
+        let a2 = FindingsReportParser.parse(report, runID: "r").first
+        XCTAssertEqual(a2?.title, "A2 — The merge route reads course content from disk")
+        XCTAssertTrue(a2?.summary.contains("exactly one route does") ?? false, "the detail stays in the body")
+    }
+
     func testAReportWithNoFiledSectionFilesNothing() {
         XCTAssertTrue(FindingsReportParser.filings("## CONFIRMED (0)\n").isEmpty)
     }

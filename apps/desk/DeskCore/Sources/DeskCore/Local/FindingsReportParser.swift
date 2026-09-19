@@ -164,8 +164,12 @@ enum FindingsReportParser {
         let body = continuation.map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !isFieldLine($0) }   // structured fields, not prose
         let coordination = self.coordination(continuation)
-        let parts = ([text] + body).joined(separator: " ")
-            .components(separatedBy: " · ").map { $0.trimmingCharacters(in: .whitespaces) }
+        // The title is the first line's first " · " part, never more: a drift entry has no " · " on its line, and
+        // joining first ran its whole indented detail into the title (2026-09-19, A1/A2).
+        let head = text.components(separatedBy: " · ")
+        let tail = ([head.dropFirst().joined(separator: " · ")] + body).filter { !$0.isEmpty }.joined(separator: " ")
+        let parts = [head[0]] + (tail.isEmpty ? [] : tail.components(separatedBy: " · "))
+            .map { $0.trimmingCharacters(in: .whitespaces) }
         var locations: [String] = []
         var rest: [String] = []
         for part in parts.dropFirst() {

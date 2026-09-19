@@ -51,6 +51,12 @@ final class TaskFilterTests: XCTestCase {
         XCTAssertFalse(TaskFilter(priorities: ["P1"]).matches(task(nil)), "a branch or PR card has no priority to match")
     }
 
+    func testUnstartedColumnsRankByPriorityKeepingOrderWithin() {
+        let ordered = BoardOrder.inColumn(.readyForDev, [task(1, labels: ["P3"]), task(2), task(3, labels: ["P2"]),
+                                                         task(4, labels: ["P0"]), task(5, labels: ["P2"])])
+        XCTAssertEqual(ordered.map(\.issueNumber), [4, 3, 5, 1, 2])
+    }
+
     func testFiltersCombineWithAnd() {
         let f = TaskFilter(milestone: "Money", priorities: ["P1"], tags: ["payments"])
         XCTAssertTrue(f.matches(task(1, labels: ["P1", "payments"], milestone: "Money")))

@@ -288,10 +288,12 @@ struct TaskCard: View {
                     .foregroundStyle(DeskColor.mutedInk)
                     .lineLimit(1)
             }
-            Text(branchFacts)
-                .font(.system(size: 11))
-                .foregroundStyle(DeskColor.faintInk)
-                .lineLimit(1)
+            if !branchFacts.isEmpty {
+                Text(branchFacts)
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.faintInk)
+                    .lineLimit(1)
+            }
             if let badge = task.cardBadge {
                 StatusPill(badge: badge)
             } else if let inline = task.cardInlineText {
@@ -360,6 +362,8 @@ struct TaskCard: View {
 
     /// The branch's two facts on every card, dashed when this card has no branch — the same row either way.
     private var branchFacts: String {
+        // Nothing when there is no branch (ADR 0046): "— · —" on every unstarted card said nothing.
+        guard task.lastCommit != nil || task.unmergedCount != nil else { return "" }
         let age = task.lastCommit.map { BranchAge.label($0) } ?? "—"
         let ahead = task.unmergedCount.map { "\($0) ahead" } ?? "—"
         return "\(age) · \(ahead)"
