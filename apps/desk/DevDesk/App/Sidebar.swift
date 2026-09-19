@@ -80,8 +80,8 @@ struct Sidebar: View {
     /// Settings is a dialog, not a place: it sits at the bottom and opens over whatever you were looking at.
     private var settingsRow: some View {
         Button { model.present(.settings) } label: {
-            HStack(spacing: 9) {
-                Image(systemName: "gearshape").frame(width: 16)
+            HStack(spacing: 10) {
+                Image(systemName: "gearshape").font(.system(size: 15)).frame(width: 20)
                 if !isRail {
                     Text("Settings")
                     Spacer(minLength: 4)
@@ -89,7 +89,7 @@ struct Sidebar: View {
             }
             .font(DeskFont.body)
             .foregroundStyle(DeskColor.navInk)
-            .padding(.vertical, 7)
+            .padding(.vertical, 10)
             .padding(.horizontal, isRail ? 0 : 10)
             .frame(maxWidth: .infinity)
             .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
@@ -104,9 +104,10 @@ struct Sidebar: View {
         let isSelected = model.destination == destination
         let badge = badge(for: destination)
         return Button { model.go(destination) } label: {
-            HStack(spacing: 9) {
+            HStack(spacing: 10) {
                 Image(systemName: symbol(for: destination))
-                    .frame(width: 16)
+                    .font(.system(size: 15))
+                    .frame(width: 20)
                     // A rail still has to show that something needs you: the count becomes a dot on the icon.
                     .overlay(alignment: .topTrailing) {
                         if isRail, let badge, badge.isPending {
@@ -129,7 +130,7 @@ struct Sidebar: View {
             }
             .font(DeskFont.body)
             .foregroundStyle(isSelected ? Color.white : DeskColor.navInk)
-            .padding(.vertical, 7)
+            .padding(.vertical, 10)
             .padding(.horizontal, isRail ? 0 : 10)
             .frame(maxWidth: .infinity)
             .background(isSelected ? DeskColor.accent : Color.clear, in: RoundedRectangle(cornerRadius: 6))
