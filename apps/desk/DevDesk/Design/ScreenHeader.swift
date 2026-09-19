@@ -45,17 +45,37 @@ struct ScreenHeader<Status: View, Tools: View>: View {
     }
 }
 
-/// The optional second row: a tab's own controls — filters, session tabs, verdicts — full width, under the header.
-/// A tab with nothing to put here does not show one.
-struct ScreenBar<Content: View>: View {
+/// The optional second row: a tab's own controls — chip groups (`FilterChip`), session tabs — full width, under
+/// the header. The leading groups scroll sideways on a narrow window rather than squeezing a chip's words; the
+/// trailing ones (Findings' Group, a filter row's Clear) stay pinned right. A tab with nothing here shows none.
+struct ScreenBar<Content: View, Trailing: View>: View {
     @ViewBuilder var content: () -> Content
+    @ViewBuilder var trailing: () -> Trailing
+
+    init(@ViewBuilder content: @escaping () -> Content, @ViewBuilder trailing: @escaping () -> Trailing) {
+        self.content = content
+        self.trailing = trailing
+    }
 
     var body: some View {
-        HStack(spacing: 10) { content() }
-            .padding(.horizontal, 16)
-            .frame(minHeight: DeskMetric.screenBarHeight)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(DeskColor.canvas)
-            .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+        HStack(spacing: 10) {
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) { content() }
+                    .padding(.vertical, 2)
+            }
+            .scrollIndicators(.hidden)
+            HStack(spacing: 6) { trailing() }.fixedSize()
+        }
+        .padding(.horizontal, 16)
+        .frame(minHeight: DeskMetric.screenBarHeight)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(DeskColor.canvas)
+        .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+    }
+}
+
+extension ScreenBar where Trailing == EmptyView {
+    init(@ViewBuilder content: @escaping () -> Content) {
+        self.init(content: content, trailing: { EmptyView() })
     }
 }

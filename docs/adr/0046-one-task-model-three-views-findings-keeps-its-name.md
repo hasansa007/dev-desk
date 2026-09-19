@@ -109,6 +109,15 @@ answering one question, with one filter bar.**
     Findings' "what this report could not check" button uses an eye-slash icon, so the header has only one ⓘ.
     *Not applied:* Settings. It is a dialog with its own title bar, and a tab header inside it only repeated
     "Settings".
+15. **One chip in every second row** (`FilterChip`, mocked and approved 2026-09-19). Four controls did one job
+    there: Findings' segmented control plus its own Ignored chip, Work's small black chips, Ideation's blue square
+    chips. Now: 28 pt, 13 pt text, the count in grey inside, light blue when on (black was the heaviest thing on
+    screen and used nowhere else), a grey label before each group, a hairline between groups. **Pick-one** groups
+    always have one chip on (Findings' Show and Group, Diagrams' Draw); **filter** groups may have none and show
+    Clear while any is on (Work, Ideation). The row scrolls sideways on a narrow window rather than squeezing a
+    chip; its trailing group stays pinned right. Diagrams' Sequence picks its flow from a menu in the same row,
+    not a list on the left, so every kind draws full width (ADR 0047 decision 4 amended). The header's
+    button on Diagrams is Redraw, to match Draw.
 
 ## Names considered for the Findings screen, and why each lost
 

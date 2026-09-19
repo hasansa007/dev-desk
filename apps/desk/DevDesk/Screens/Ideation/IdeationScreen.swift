@@ -80,12 +80,14 @@ private struct IdeationSplitView: View {
             }
             if !verdictCounts.isEmpty {
                 ScreenBar {
-                    Text("Verdict").font(DeskFont.secondary).foregroundStyle(DeskColor.mutedInk)
+                    ChipGroupLabel("Verdict")
                     ForEach(verdictCounts, id: \.verdict) { entry in
-                        ChipToggle(title: "\(entry.verdict.rawValue) \(entry.count)", isOn: model.ideationFilter == entry.verdict, tone: .neutral) {
+                        FilterChip(entry.verdict.rawValue, isOn: model.ideationFilter == entry.verdict, count: entry.count) {
                             model.ideationFilter = model.ideationFilter == entry.verdict ? nil : entry.verdict
                         }
                     }
+                } trailing: {
+                    if model.ideationFilter != nil { ChipClear { model.ideationFilter = nil } }
                 }
             }
             split
@@ -160,31 +162,6 @@ private struct IdeationSplitView: View {
     }
 }
 
-/// The selected-chip treatment Findings uses, reused for both the kinds and the verdict filter.
-private struct ChipToggle: View {
-    let title: String
-    let isOn: Bool
-    let tone: StatusTone
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            if isOn {
-                Text(title)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.white)
-                    .padding(.vertical, 2)
-                    .padding(.horizontal, 8)
-                    .background(DeskColor.accent, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
-                    .fixedSize()
-            } else {
-                PropertyChip(title, tone: tone, fill: DeskColor.neutralChipFill2, verticalPadding: 2)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isOn ? .isSelected : [])
-    }
-}
 
 private struct OpportunityRow: View {
     let opportunity: Opportunity

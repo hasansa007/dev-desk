@@ -204,32 +204,35 @@ private struct FindingsBoard: View {
         }
     }
 
-    /// Defect or architecture on the left, how the list is sectioned on the right. Status was a row of chips
-    /// here too, but the sections are the status now, so a chip for each only filtered to one section.
+    /// Show (all, defects, architecture or the ignored ones) on the left, how the list is sectioned on the right —
+    /// both pick-one chip groups, the one chip every second row uses (ADR 0046 decision 15). The segmented control
+    /// and the separate Ignored chip that were here were two more controls for the same job.
     private var filters: some View {
         ScreenBar {
-            Picker("Kind", selection: $model.findingKindFilter) {
-                Text("All \(runFindings.count - ignoredCount)").tag(FindingKind?.none)
-                ForEach(FindingKind.allCases, id: \.self) { kind in
-                    Text("\(kind.rawValue) \(report.count(of: kind, run: model.selectedRunID))").tag(FindingKind?.some(kind))
+            ChipGroupLabel("Show")
+            FilterChip("All", isOn: !model.showsIgnoredFindings && model.findingKindFilter == nil,
+                       count: runFindings.count - ignoredCount) {
+                model.showsIgnoredFindings = false
+                model.findingKindFilter = nil
+            }
+            ForEach(FindingKind.allCases, id: \.self) { kind in
+                FilterChip(kind.plural, isOn: !model.showsIgnoredFindings && model.findingKindFilter == kind,
+                           count: report.count(of: kind, run: model.selectedRunID)) {
+                    model.showsIgnoredFindings = false
+                    model.findingKindFilter = kind
                 }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
             if ignoredCount > 0 || model.showsIgnoredFindings {
-                FindingFilterChip(title: "Ignored \(ignoredCount)", category: .closedOrDeclined,
-                                  isSelected: model.showsIgnoredFindings) {
-                    model.showsIgnoredFindings.toggle()
+                FilterChip("Ignored", isOn: model.showsIgnoredFindings, count: ignoredCount) {
+                    model.showsIgnoredFindings = true
+                    model.findingKindFilter = nil
                 }
             }
-            Spacer(minLength: 0)
-            Picker("Group", selection: $groupingRaw) {
-                ForEach(FindingGrouping.allCases, id: \.self) { Text($0.rawValue).tag($0.rawValue) }
+        } trailing: {
+            ChipGroupLabel("Group")
+            ForEach(FindingGrouping.allCases, id: \.self) { grouping in
+                FilterChip(grouping.chipTitle, isOn: groupingRaw == grouping.rawValue) { groupingRaw = grouping.rawValue }
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .fixedSize()
         }
     }
 
@@ -404,33 +407,14 @@ private struct FindingsBoard: View {
     }
 }
 
-/// New findings carry the info tone (D:535); the active filter takes the accent fill the design uses for selected controls.
-private struct FindingFilterChip: View {
-    let title: String
-    /// The category this chip filters by, when it filters by one. A kind chip passes none: it is neutral,
-    /// because only "New" carries the info tone and a kind is not a category.
-    var category: FindingCategory?
-    let isSelected: Bool
-    let action: () -> Void
+private extension FindingKind {
+    /// What the Show chip calls the kind: "Defects", "Architecture".
+    var plural: String { self.rawValue == "Defect" ? "Defects" : self.rawValue }
+}
 
-    var body: some View {
-        Button(action: action) {
-            if isSelected {
-                Text(title)
-                    .font(.system(size: 11))
-                    .foregroundStyle(Color.white)
-                    .padding(.vertical, 2)
-                    .padding(.horizontal, 8)
-                    .background(DeskColor.accent, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
-                    .fixedSize()
-            } else {
-                PropertyChip(title, tone: category == .new ? .info : .neutral,
-                             fill: category == .new ? nil : DeskColor.neutralChipFill2, verticalPadding: 2)
-            }
-        }
-        .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
+private extension FindingGrouping {
+    /// "By group" → "Group": the row's label already says Group.
+    var chipTitle: String { rawValue.replacingOccurrences(of: "By ", with: "").capitalized }
 }
 
 struct FindingsScreen_Previews: PreviewProvider {

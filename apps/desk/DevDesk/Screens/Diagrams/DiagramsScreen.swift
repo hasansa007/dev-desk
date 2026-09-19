@@ -27,6 +27,7 @@ struct DiagramsScreen: View {
     /// its drawing lands and lists it as drawn.
     @State private var typedFlow: SequenceFlow?
     @State private var newFlowName = ""
+    @State private var isNamingFlow = false
     @State private var target = ""
     /// The GitHub URL typed into the no-remote setup, so Archify has an `owner/repo` to validate against.
     @State private var remoteURL = ""
@@ -75,24 +76,32 @@ struct DiagramsScreen: View {
         VStack(spacing: 0) {
             header
             kindBar
-            HStack(spacing: 0) {
-                if isSequence { flowList }
-                pane.frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
+            // Every kind draws full width; Sequence's flow is a menu in the row above, not a list that shifts it.
+            pane.frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .background(DeskColor.canvas)
     }
 
     // MARK: - Kinds and flows
 
-    /// The kinds as chips, the same chips as Work's filters (ADR 0047): one is always on.
+    /// The kinds as chips, the one chip every second row uses (ADR 0046 decision 15, ADR 0047) — a pick-one group,
+    /// green-dotted when drawn — and on Sequence the flow, as a menu in the same row.
     private var kindBar: some View {
         ScreenBar {
-            Text("Draw").font(DeskFont.secondary).foregroundStyle(DeskColor.mutedInk)
+            ChipGroupLabel("Draw")
             ForEach(ArchDiagramKind.all) { kind in
                 FilterChip(kind.title, isOn: selectedKind == kind.token,
-                           tone: kindIsDrawn(kind.token) ? .running : nil) { selectedKind = kind.token }
-                    .help(kind.help)
+                           tone: kindIsDrawn(kind.token) ? .running : nil,
+                           count: kind.token == "sequence" && !flows.isEmpty
+                               ? "\(flows.filter { $0.drawing != nil }.count) of \(flows.count)" : nil) {
+                    selectedKind = kind.token
+                }
+                .help(kind.help)
+            }
+            if isSequence && !flows.isEmpty {
+                ChipSeparator()
+                ChipGroupLabel("Flow")
+                flowMenu
             }
         }
     }
@@ -101,66 +110,66 @@ struct DiagramsScreen: View {
         token == "sequence" ? flows.contains { $0.drawing != nil } : model.diagram(kind: token) != nil
     }
 
-    /// Sequence's flows down the left, like Work's milestones: every flow a source names, drawn or not, and a
-    /// field at the foot to name one no source has.
-    private var flowList: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 2) {
-                    ForEach(flows) { flow in flowRow(flow) }
-                }
-                .padding(8)
+    /// Drawn flows first, then the ones not drawn yet — each with where it was named — then a way to name another.
+    private var flowMenu: some View {
+        let drawn = flows.filter { $0.drawing != nil }
+        let undrawn = flows.filter { $0.drawing == nil }
+        return Menu {
+            if !drawn.isEmpty {
+                Section("Drawn") { ForEach(drawn) { flowItem($0) } }
+            }
+            if !undrawn.isEmpty {
+                Section("Not drawn yet") { ForEach(undrawn) { flowItem($0) } }
             }
             Divider()
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Name a flow").font(DeskFont.secondary.weight(.semibold)).foregroundStyle(DeskColor.secondaryInk)
-                HStack(spacing: 6) {
-                    TextField("e.g. Sign in", text: $newFlowName)
-                        .textFieldStyle(.plain)
-                        .font(DeskFont.secondary)
-                        .padding(.horizontal, 8)
-                        .controlChrome(height: 26)
-                        .onSubmit(drawTypedFlow)
-                    Button("Draw", action: drawTypedFlow)
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                        .disabled(SequenceFlows.slug(newFlowName).isEmpty || blockedReason != nil)
-                }
+            Button("Draw another flow…") { isNamingFlow = true }
+        } label: {
+            HStack(spacing: 8) {
+                Text(currentFlow?.name ?? "Pick a flow").font(.system(size: 13)).foregroundStyle(DeskColor.ink)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(DeskColor.faintInk)
             }
-            .padding(10)
+            .padding(.leading, 12).padding(.trailing, 10)
+            .frame(height: DeskMetric.chipHeight)
+            .background(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).fill(DeskColor.surface))
+            .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.divider))
         }
-        .frame(width: 270, alignment: .leading)
-        .frame(maxHeight: .infinity, alignment: .top)
-        .background(DeskColor.sidebar)   // an inner list is navigation, like Work's milestones
-        .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
-    }
-
-    private func flowRow(_ flow: SequenceFlow) -> some View {
-        let isSelected = currentFlow?.slug == flow.slug
-        let isGenerating = model.isGeneratingDiagram(kind: flow.generateKey)
-        let from = flow.sources.sorted().map(\.rawValue).joined(separator: ", ")
-        let state = isGenerating ? "Drawing…" : (flow.drawing != nil ? "Drawn" : "Not drawn")
-        return Button { selectedFlow = flow.slug } label: {
-            HStack(alignment: .top, spacing: 8) {
-                Circle().fill(flow.drawing != nil ? DeskColor.tone(.running).dot : Color.clear)
-                    .frame(width: 7, height: 7).padding(.top, 5)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(flow.name).font(DeskFont.body.weight(.semibold)).foregroundStyle(DeskColor.ink)
-                        .lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                    Text(from.isEmpty ? state : "\(state) · from \(from)")
-                        .font(.system(size: 11)).foregroundStyle(DeskColor.mutedInk).lineLimit(1)
-                }
-                Spacer(minLength: 4)
-                if isGenerating { ProgressView().controlSize(.small) }
-            }
-            .padding(.horizontal, 8).padding(.vertical, 7)
-            .background(RoundedRectangle(cornerRadius: 8).fill(isSelected ? DeskColor.accent.opacity(0.12) : Color.clear))
-            .contentShape(Rectangle())
-        }
+        // `.button` + plain keeps the label's own box; the borderless style drew the text bare, chevron first.
+        .menuStyle(.button)
         .buttonStyle(.plain)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .accessibilityLabel("Flow")
+        .popover(isPresented: $isNamingFlow, arrowEdge: .bottom) { nameFlowForm.padding(14).frame(width: 340) }
     }
 
-    /// The flow typed at the foot of the list: listed at once, selected, and drawn.
+    private func flowItem(_ flow: SequenceFlow) -> some View {
+        let from = flow.sources.sorted().map(\.rawValue).joined(separator: ", ")
+        let generating = model.isGeneratingDiagram(kind: flow.generateKey)
+        let title = flow.name + (generating ? " — drawing…" : "") + (from.isEmpty ? "" : "   ·  \(from)")
+        return Button { selectedFlow = flow.slug } label: {
+            if currentFlow?.slug == flow.slug { Label(title, systemImage: "checkmark") } else { Text(title) }
+        }
+    }
+
+    /// A flow no source names: typed, listed at once, and drawn.
+    private var nameFlowForm: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Draw another flow").font(DeskFont.body.weight(.semibold))
+            HStack(spacing: 8) {
+                TextField("A flow — e.g. Sign in, or Checkout", text: $newFlowName)
+                    .textFieldStyle(.plain)
+                    .font(DeskFont.body)
+                    .padding(.horizontal, 10)
+                    .controlChrome(height: 28)
+                    .onSubmit(drawTypedFlow)
+                Button("Draw", action: drawTypedFlow)
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
+                    .disabled(SequenceFlows.slug(newFlowName).isEmpty || blockedReason != nil)
+            }
+        }
+    }
+
+    /// The flow typed in "Draw another flow…": listed at once, selected, and drawn.
     private func drawTypedFlow() {
         let name = newFlowName.trimmingCharacters(in: .whitespacesAndNewlines)
         let slug = SequenceFlows.slug(name)
@@ -170,19 +179,20 @@ struct DiagramsScreen: View {
         }
         selectedFlow = slug
         newFlowName = ""
+        isNamingFlow = false
         generate()
     }
 
     // MARK: - Header
 
-    /// The shared header: the kind on screen and how many are drawn, and Regenerate when there is a drawing to replace —
+    /// The shared header: the kind on screen and how many are drawn, and Redraw when there is a drawing to replace —
     /// a kind with none offers Generate in its pane. Both run the same background dev:arch for this kind.
     private var header: some View {
         ScreenHeader(.diagrams) {
             Text(headerStatus)
         } tools: {
             if selectedDiagram != nil, !model.isGeneratingDiagram(kind: selectedKey) {
-                Button("Regenerate") { generate() }
+                Button("Redraw") { generate() }
                     .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
                     .disabled(blockedReason != nil)
                     .help(blockedReason ?? "Runs dev:arch again to redraw this \(selectedTitle) diagram")
@@ -192,8 +202,8 @@ struct DiagramsScreen: View {
 
     private var headerStatus: String {
         if isSequence {
-            let all = flows
-            return "Sequence · \(all.count) flow\(all.count == 1 ? "" : "s") · \(all.filter { $0.drawing != nil }.count) drawn"
+            guard let flow = currentFlow else { return "Sequence · no flows named yet" }
+            return "Sequence · \(flow.name) · " + (flow.drawing?.url.lastPathComponent ?? "not drawn yet")
         }
         guard let drawn = selectedDiagram else { return "\(selectedTitle) · not drawn yet" }
         return "\(selectedTitle) · \(drawn.url.lastPathComponent)"
@@ -323,18 +333,8 @@ struct DiagramsScreen: View {
             Spacer(minLength: 0)
             VStack(alignment: .leading, spacing: 12) {
                 NoticeBanner(tone: .neutral, title: "No flows named yet",
-                             message: "Sequence draws one flow at a time. Its list fills from whatever this project has: the paths an Architecture or Data flow drawing names, or the flows the last findings hunt read. Any one is enough. Or name a flow to draw it now.")
-                HStack(spacing: 8) {
-                    TextField("A flow — e.g. Sign in, or Checkout", text: $newFlowName)
-                        .textFieldStyle(.plain)
-                        .font(DeskFont.body)
-                        .padding(.horizontal, 10)
-                        .controlChrome(height: 28)
-                        .onSubmit(drawTypedFlow)
-                    Button("Draw", action: drawTypedFlow)
-                        .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
-                        .disabled(SequenceFlows.slug(newFlowName).isEmpty || blockedReason != nil)
-                }
+                             message: "Sequence draws one flow at a time. Its list fills from whatever this project has: the paths an Architecture or Data flow drawing names, or the flows the last findings hunt read. Any one is enough. Or name a flow to draw it now:")
+                nameFlowForm
             }
             .frame(maxWidth: 560)
             Spacer(minLength: 0)

@@ -107,7 +107,9 @@ enum DeskFont {
 enum DeskMetric {
     /// Every tab's header row, and the optional controls row under it (ADR 0046 decision 14).
     static let screenHeaderHeight: CGFloat = 48
-    static let screenBarHeight: CGFloat = 36
+    static let screenBarHeight: CGFloat = 44
+    /// Every chip in a second row (ADR 0046 decision 15).
+    static let chipHeight: CGFloat = 28
     static let sidebarWidth: CGFloat = 236
     /// Icons only, tooltips carrying the titles. The window's floor was 1100 pt, which an 11" iPad as a
     /// display fits with no margin and a half-screen MacBook does not fit at all.

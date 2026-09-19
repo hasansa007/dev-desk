@@ -23,14 +23,15 @@ drawings for three kinds, one data flow saved under an architecture file name.
    always on; a green dot says the kind has a drawing.
 3. **Architecture and Data flow are one drawing each** of the whole project, filling the screen, with
    Regenerate in the header.
-4. **Sequence is one drawing per flow.** Its flows are listed on the left, like Work's milestones, each
-   saying whether it is drawn and where it was named.
+4. **Sequence is one drawing per flow.** Its flow is picked from a menu beside the chips — drawn flows first,
+   each with where it was named, then *Draw another flow…* — so every kind draws full width (ADR 0046
+   decision 15). It was a list on the left for one build; the drawing jumped sideways between chips.
 5. **Every source of flows counts the same, and none is required.** The list is the union of: the named views
    (`meta.views`) of the newest Architecture drawing, of the newest Data flow drawing, and the flows the
    newest findings hunt read (its *Per flow* table). A flow two sources name by the same words is one row. A
    sequence drawn for a flow no source names any more stays listed as *Drawn earlier*. A project with none of
-   these — any project before its first drawing or hunt — types a flow at the foot of the list, or in the
-   empty pane, and draws it.
+   these — any project before its first drawing or hunt — types a flow in *Draw another flow…*, or in the empty
+   pane, and draws it.
 6. **A flow's sequence is named for its flow**: `docs/arch/<repo>-sequence-<flow slug>.html`, passed to
    `dev:arch` in the prompt. The file name is how the drawing finds its row again; no field is added to
    Archify's IR, whose schema this family does not own.
