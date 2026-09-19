@@ -81,3 +81,49 @@ final class PlanTests: XCTestCase {
         XCTAssertEqual(filtered.compactMap(\.title), ["A"])
     }
 }
+
+private struct WorkSource: ProjectDataSource {
+    let tasks: [DeskTask]
+    func load() async throws -> ProjectSnapshot {
+        var s = ProjectSnapshot(project: ProjectInfo(name: "p", displayPath: "/p", branch: "main"), isDemo: false,
+                                board: .available(tasks), boardNote: "", findings: .available(FindingsReport(runs: [], findings: [])),
+                                roadmap: .unavailable("n/a"), connections: [], connectionsNote: "",
+                                capabilities: CapabilityMatrix(providers: [], rows: [], note: ""), insights: .unavailable("none"),
+                                activeMilestone: "Money")
+        s.activeMilestoneReason = "top of Plan"
+        return s
+    }
+}
+
+/// ADR 0046 decision 13: Work — the milestone on the left chooses the Board on the right.
+@MainActor
+final class WorkScopeTests: XCTestCase {
+    private func task(_ n: Int, _ labels: [String] = [], milestone: String? = nil) -> DeskTask {
+        var t = DeskTask(id: String(n), issueNumber: n, title: "t", column: .backlog, headerBadge: StatusBadge(.neutral, ""),
+                         branchLine: "", requirements: .unavailable(""), changes: .unavailable(""), evidence: .unavailable(""),
+                         parallel: .none(""))
+        t.labels = labels
+        t.milestone = milestone
+        return t
+    }
+
+    func testTheDefaultIsTheWorkingMilestoneAndItCountsP0Elsewhere() async {
+        let model = ProjectWindowModel(ref: .local(path: "/p"), source: WorkSource(tasks: [
+            task(1, ["P1"], milestone: "Money"), task(2, ["P0"], milestone: "AI"), task(3, ["P0"]),
+        ]), insightsDelay: .zero)
+        await model.load()
+        XCTAssertEqual(model.effectiveWorkScope, .milestone("Money"))
+        XCTAssertEqual(model.tasks.filter(model.inWorkScope).map(\.issueNumber), [1])
+        XCTAssertEqual(model.p0OutsideWorkScope, 2)
+        model.workScope = .all
+        XCTAssertEqual(model.p0OutsideWorkScope, 0, "All shows every P0 already")
+        model.workScope = .noMilestone
+        XCTAssertEqual(model.tasks.filter(model.inWorkScope).map(\.issueNumber), [3])
+    }
+
+    func testTheSidebarListsWorkOnceAndRoadmapOpensWork() {
+        XCTAssertEqual(Destination.sidebar, [.findings, .ideation, .board, .terminals, .diagrams])
+        XCTAssertEqual(Destination.board.title, "Work")
+        XCTAssertEqual(Destination.roadmap.title, "Work")
+    }
+}

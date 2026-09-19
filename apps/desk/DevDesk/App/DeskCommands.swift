@@ -20,7 +20,7 @@ struct DeskCommands: Commands {
         }
         CommandMenu("Project") {
             Group {
-                ForEach(Array(Destination.allCases.enumerated()), id: \.element) { index, destination in
+                ForEach(Array(Destination.sidebar.enumerated()), id: \.element) { index, destination in
                     Button(destination.title) { model?.go(destination) }
                         .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
                 }

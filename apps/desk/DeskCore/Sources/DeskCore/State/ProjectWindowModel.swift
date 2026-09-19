@@ -12,19 +12,21 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
     public var title: String {
         switch self {
         case .terminals: return "Sessions"
-        // Roadmap is shown as Plan (ADR 0046); the stored value stays, as this enum's rule says.
-        case .roadmap: return "Plan"
-        case .board, .findings, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
+        // Plan and Board are one tab, Work (ADR 0046 decision 13); `roadmap` stays a stored value and opens Work.
+        case .board, .roadmap: return "Work"
+        case .findings, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
         }
     }
+
+    /// The places the sidebar lists and ⌘1… reach, in flow order. `roadmap` is not one: it opens Work.
+    public static let sidebar: [Destination] = [.findings, .ideation, .board, .terminals, .diagrams]
 
     /// One line for the sidebar's tooltip: what the place is for, in the flow's words (ADR 0046).
     public var hint: String {
         switch self {
         case .findings: return "What a hunt found in the code — decide each once: file it, add it to an open issue, or drop it"
         case .ideation: return "Improvements a run proposed — decide which become issues"
-        case .roadmap: return "Every open issue by milestone, in working order — the top milestone feeds Next up"
-        case .board: return "What is moving: Backlog → Next up → In progress → Review → Done"
+        case .roadmap, .board: return "Milestones in working order on the left, their issues by stage on the right"
         case .terminals: return "The terminals and agent sessions running for this project"
         case .diagrams: return "The system, drawn from its code"
         }
@@ -46,19 +48,13 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
                 "Holds: improvements a run proposed — faster, safer, clearer — not defects.",
                 "You: decide which become issues. Next: Plan orders them with everything else.",
             ])
-        case .roadmap:
-            return ("Plan — step 2 of the flow", [
-                "Holds: every open issue, grouped by milestone, milestones in the order you work them.",
-                "You: order the milestones. Move to top makes one Working now — kept on this Mac, not on GitHub.",
-                "Next: the Working now milestone's issues, and every P0, are Next up on the Board.",
-                "Filters are shared with the Board: set one here and it holds there.",
-            ])
-        case .board:
-            return ("Board — step 3 of the flow", [
-                "Backlog: issues not planned now. Next up: the Working now milestone's issues and every P0, highest priority first.",
+        case .roadmap, .board:
+            return ("Work — order, then do", [
+                "Left: your milestones in working order, with progress and P0–P3 counts. Move to top makes one Working now — kept on this Mac, not on GitHub.",
+                "Right: the selected milestone's issues by stage. All milestones shows everything: Backlog, Next up (the Working now milestone and every P0), In progress, Review, Done.",
                 "You: Start a card in Next up. In progress, Review and Done then follow git — a branch, a pull request, a merge.",
                 "A card that waits for another open issue cannot start; Start also warns when a running task changes the same code.",
-                "Before: Findings files issues, Plan decides which are Next up.",
+                "Before: Findings files issues. Collapse the list with ⟨ for more room.",
             ])
         case .terminals:
             return ("Sessions", ["Every terminal and agent session this project has open. A task's session opens when you Start it."])
@@ -434,6 +430,8 @@ public final class ProjectWindowModel {
     public var searchText = ""
     /// Shared by the Board and the Plan (ADR 0046): a filter set on one holds on the other.
     public var taskFilter = TaskFilter()
+    /// Which milestone Work's Board shows; nil = the Working now milestone, the default (ADR 0046 decision 13).
+    public var workScope: WorkScope?
     /// How deep the Runs edge is and how wide the Files edge is. An edge you cannot resize is a decision made
     /// once for every project and every screen size.
     public var runsHeight: Double = 300
@@ -600,6 +598,8 @@ public final class ProjectWindowModel {
     }
 
     public func go(_ destination: Destination) {
+        // The stored `roadmap` place opens Work (ADR 0046 decision 13).
+        let destination: Destination = destination == .roadmap ? .board : destination
         self.destination = destination
         if destination == .board {
             selectedTaskID = nil
@@ -788,6 +788,30 @@ public final class ProjectWindowModel {
         let shown = PlanOrder(titles: snapshot?.planOrder ?? []).apply(roadmap.milestones, title: \.title).map(\.title)
         PlanOrder.read(projectRoot: url).movingToTop(title, shown: shown).write(projectRoot: url)
         await load()
+    }
+
+    /// The selection in effect: the chosen one, else the Working now milestone, else all.
+    public var effectiveWorkScope: WorkScope {
+        if let workScope { return workScope }
+        return snapshot?.activeMilestone.map { .milestone($0) } ?? .all
+    }
+
+    /// Whether a card belongs on Work's Board under the current selection. Cards with no issue (branches, pull
+    /// requests, reports) show only under All — they belong to no milestone.
+    public func inWorkScope(_ task: DeskTask) -> Bool {
+        switch effectiveWorkScope {
+        case .all: return true
+        case .milestone(let title): return task.milestone == title
+        case .noMilestone: return task.issueNumber != nil && task.milestone == nil && task.column != .done
+        }
+    }
+
+    /// P0 issues outside the selected milestone, so a narrowed Board can say they exist (ADR 0046 decision 13).
+    public var p0OutsideWorkScope: Int {
+        guard case .all = effectiveWorkScope else {
+            return tasks.filter { $0.priority == "P0" && $0.column != .done && !inWorkScope($0) }.count
+        }
+        return 0
     }
 
     /// Tasks In progress that change code `task` says it will (ADR 0046): same function asks before Start.

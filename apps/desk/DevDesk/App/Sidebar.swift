@@ -89,7 +89,7 @@ struct Sidebar: View {
 
     private var destinations: some View {
         VStack(spacing: 2) {
-            ForEach(Destination.allCases, id: \.self) { destination in
+            ForEach(Destination.sidebar, id: \.self) { destination in
                 destinationButton(destination)
             }
         }

@@ -59,3 +59,10 @@ extension DeskTask {
     /// The tag labels this card carries, in filter order.
     public var tags: [String] { TaskFilter.tagLabels.filter { labels.contains($0) } }
 }
+
+/// Work's left-pane selection (ADR 0046 decision 13).
+public enum WorkScope: Hashable {
+    case all
+    case milestone(String)
+    case noMilestone
+}

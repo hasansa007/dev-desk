@@ -125,14 +125,12 @@ struct ContentRouter: View {
         switch model.destination {
         case .terminals:
             TerminalsScreen(model: model)
-        case .board:
+        case .board, .roadmap:   // Plan and Board are one tab, Work (ADR 0046 decision 13)
             if model.mode == .parallel {
                 ParallelScreen(model: model)
             } else {
                 BoardScreen(model: model)
             }
-        case .roadmap:
-            RoadmapScreen(model: model)
         case .findings:
             FindingsScreen(model: model)
         case .ideation:

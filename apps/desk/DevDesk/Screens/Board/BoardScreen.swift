@@ -6,10 +6,15 @@ struct BoardScreen: View {
     @Bindable var model: ProjectWindowModel
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            TaskFilterBar(model: model)
-            boardArea
+        // Work (ADR 0046 decision 13): the milestones on the left choose what the Board on the right shows.
+        HStack(spacing: 0) {
+            WorkMilestonePane(model: model)
+            VStack(spacing: 0) {
+                header
+                TaskFilterBar(model: model)
+                if model.p0OutsideWorkScope > 0 { p0Strip }
+                boardArea
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
@@ -20,7 +25,7 @@ struct BoardScreen: View {
     /// now lives on its column.
     private var header: some View {
         HStack(spacing: 10) {
-            Text("Board")
+            Text("Work")
                 .font(DeskFont.section)
                 .foregroundStyle(DeskColor.ink)
             Spacer(minLength: 0)
@@ -130,8 +135,22 @@ struct BoardScreen: View {
         task.column == column || (column == .readyForDev && task.column == .queued)
     }
 
+    /// A narrowed Board still says a P0 exists elsewhere, and one click shows everything (ADR 0046 decision 13).
+    private var p0Strip: some View {
+        HStack(spacing: 8) {
+            PropertyChip("P0", tone: .failed, verticalPadding: 0, horizontalPadding: 5)
+            Text("\(model.p0OutsideWorkScope) P0 in other milestones")
+                .font(DeskFont.secondary).foregroundStyle(DeskColor.secondaryInk)
+            Button("Show all") { model.workScope = .all }
+                .buttonStyle(.plain).font(DeskFont.secondary).foregroundStyle(DeskColor.accent)
+            Spacer()
+        }
+        .padding(.horizontal, 16).padding(.vertical, 6)
+        .background(DeskColor.tone(.failed).dot.opacity(0.08))
+    }
+
     private func matches(_ task: DeskTask) -> Bool {
-        guard model.taskFilter.matches(task) else { return false }
+        guard model.inWorkScope(task), model.taskFilter.matches(task) else { return false }
         guard !model.searchText.isEmpty else { return true }
         let query = model.searchText.lowercased()
         if task.title.lowercased().contains(query) { return true }
