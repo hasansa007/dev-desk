@@ -92,6 +92,8 @@ public struct LocalGitDataSource: ProjectDataSource {
             localBacklog: localBacklog, filedBacklogKeys: LocalBacklog.filedKeys(projectPath: top), repositoryRoot: top,
             terminalAgents: await terminalCLIs)
         snapshot.folderOffBase = offBase
+        snapshot.trackerUnavailable = github.data == nil ? (github.shortUnavailableReason ?? "GitHub unavailable") : nil
+        snapshot.openMilestones = github.data?.milestones.map(\.title) ?? []
         return snapshot
     }
 

@@ -55,6 +55,11 @@ public struct ProjectSnapshot: Hashable {
     public var terminalAgents: [TerminalAgent] = []
     /// The project folder's branch when it is not the base; nil when it is.
     public var folderOffBase: FolderOffBase?
+    /// Why GitHub cannot be filed into, in three words ("not signed in"); nil when it can. Add Task shows it as
+    /// its destination's reason, so a failed check never reads as an empty tracker (ADR 0045).
+    public var trackerUnavailable: String?
+    /// The open milestones' titles, for Add Task's optional milestone; empty with no tracker.
+    public var openMilestones: [String] = []
 
     public init(project: ProjectInfo, isDemo: Bool, launch: LaunchState = LaunchState(),
                 activitySummary: StatusBadge? = nil, board: Surface<[DeskTask]>, boardNote: String,

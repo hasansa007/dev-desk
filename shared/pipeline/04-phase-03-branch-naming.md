@@ -5,6 +5,11 @@
 | GitHub | `gh-{N}-{slug}`: e.g. `gh-42-add-dark-mode` |
 | Generic | `feature/{slug}`: e.g. `feature/dark-mode-toggle` (max 5 words, lowercase, hyphens) |
 
+**A `docs/backlog/` entry records the branch cut for it** (ADR 0045): write `branch: <name>` into the
+entry's header at the cut, beside `issue:`. It is a local card's only link to git. Promoting the entry
+later adds `issue: #N` and leaves the branch's name alone — renaming a branch with work on it breaks every
+worktree and remote that tracks it.
+
 ### When to cut it — at the FIRST WRITE, which differs by flow
 
 Naming is free; **creating** is what carries commitment. So:

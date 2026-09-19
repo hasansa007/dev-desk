@@ -22,6 +22,9 @@ struct SheetChrome<Content: View>: View {
     let cancelHelp: String?
     let onCancel: () -> Void
     let onConfirm: () -> Void
+    /// A second, lesser action beside the confirm — Add Task's "Add & start" (ADR 0045). Nil for every other sheet.
+    let secondaryTitle: String?
+    let onSecondary: (() -> Void)?
     let content: Content
 
     /// "Cancel" abandons a pending action. A sheet that is a place rather than an action — the task dialog,
@@ -31,7 +34,10 @@ struct SheetChrome<Content: View>: View {
     /// one eats the events it needs (ADR 0021 still holds: the dialog's size is fixed either way).
     init(title: String, confirmTitle: String, confirmDisabled: Bool = false, cancelTitle: String = "Cancel",
          scrolls: Bool = true, size: SheetSize = .card, cancelHelp: String? = nil,
+         secondaryTitle: String? = nil, onSecondary: (() -> Void)? = nil,
          onCancel: @escaping () -> Void, onConfirm: @escaping () -> Void, @ViewBuilder content: () -> Content) {
+        self.secondaryTitle = secondaryTitle
+        self.onSecondary = onSecondary
         self.title = title
         self.confirmTitle = confirmTitle
         self.confirmDisabled = confirmDisabled
@@ -122,6 +128,11 @@ struct SheetChrome<Content: View>: View {
             Spacer(minLength: 8)
             Button(cancelTitle, action: onCancel)
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .regular))
+            if let secondaryTitle, let onSecondary {
+                Button(secondaryTitle, action: onSecondary)
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .regular))
+                    .disabled(confirmDisabled)
+            }
             Button(confirmTitle, action: onConfirm)
                 .buttonStyle(DeskButtonStyle(kind: .primary, size: .regular))
                 .keyboardShortcut(.defaultAction)

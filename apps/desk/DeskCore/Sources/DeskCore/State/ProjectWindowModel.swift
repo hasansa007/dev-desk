@@ -697,14 +697,48 @@ public final class ProjectWindowModel {
         await sync()
     }
 
-    /// A task typed on the board. It is written to `docs/backlog/` (ADR 0027) — instant and local, no
-    /// tracker run — and lands in the column it was added from: adding from Ready for dev records that
-    /// stage, so the card appears where it was typed rather than at the back of Backlog. Backlog itself
-    /// records nothing — it is the absence of a stage.
+    /// A task typed on the board with a title and notes only — the pre-ADR-0045 call, kept for its callers.
     @discardableResult
     public func addTask(title: String, notes: String, column: BoardColumn) async -> Bool {
-        let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !title.isEmpty, let root = snapshot?.repositoryRoot else { return false }
+        await addTask(TaskDraft(title: title, description: notes), milestone: nil, column: column) != nil
+    }
+
+    /// Where Add Task files right now (ADR 0045 step 2): GitHub when the snapshot has a reachable tracker,
+    /// `docs/backlog/` otherwise, with the connection's own reason.
+    public var addTaskDestination: TaskDestination {
+        TaskDestination.resolve(slug: snapshot?.slug, trackerUnavailable: snapshot?.trackerUnavailable)
+    }
+
+    /// The open milestones Add Task may file into; empty with no tracker.
+    public var openMilestones: [String] { snapshot?.openMilestones ?? [] }
+
+    /// Open items that may already be this task (ADR 0045 step 3) — a proposal, never a decision. Nil when the
+    /// search itself failed: that must read differently from "nothing matches" (`dev:kanban` Phase 3's rule).
+    public func possibleDuplicates(for title: String) async -> [DuplicateCandidate]? {
+        switch addTaskDestination {
+        case .github(let slug):
+            guard let arguments = DuplicateSearch.arguments(slug: slug, title: title) else { return [] }
+            guard case .local(let path) = ref,
+                  let result = try? await runner.run("gh", arguments, in: URL(fileURLWithPath: path, isDirectory: true),
+                                                     timeout: CommandTimeout.gh),
+                  result.succeeded else { return nil }
+            return DuplicateSearch.parse(result.stdout)
+        case .local:
+            return DuplicateSearch.local(snapshot?.localBacklog ?? [], title: title)
+        }
+    }
+
+    /// Files a typed task where the tracker is (ADR 0045, amending 0027): a GitHub issue — `gh issue create`, no
+    /// agent run, no guessed labels — when one is reachable, a `docs/backlog/` file when not. It lands in the column
+    /// it was added from: Ready for dev records that stage; Backlog records nothing, being the absence of one.
+    /// Returns the new card's id so Add & start can open its start sheet; nil when nothing was filed.
+    @discardableResult
+    public func addTask(_ draft: TaskDraft, milestone: String?, column: BoardColumn) async -> String? {
+        let title = draft.trimmedTitle
+        guard !title.isEmpty, let root = snapshot?.repositoryRoot else { return nil }
+        if case .github(let slug) = addTaskDestination {
+            return await fileIssue(draft, slug: slug, milestone: milestone, column: column, root: root)
+        }
         // Today's date is the entry's key — the date-led name the folder already sorts by — so a task
         // typed today never collides with one typed another day.
         let key = Self.backlogDay.string(from: Date())
@@ -713,20 +747,52 @@ public final class ProjectWindowModel {
         let name = LocalBacklog.fileName(key: key, title: title)
         guard !LocalBacklog.read(projectPath: root).contains(where: { $0.id == name }) else {
             writeFailure = .backlog(Markdown.escape("\(LocalBacklog.folder)/\(name).md already exists, and an entry is never overwritten. Edit that file, or give this task a different title."))
-            return false
+            return nil
         }
         do {
-            let path = try LocalBacklog.write(projectPath: root, key: key, title: title,
-                                              body: notes.trimmingCharacters(in: .whitespacesAndNewlines), source: nil)
-            let stem = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+            let path = try LocalBacklog.write(projectPath: root, key: key, title: title, body: draft.body, source: nil)
+            let id = DeskTask.localPrefix + URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
             writeFailure = nil
-            if column == .readyForDev { await setStage(.readyForDev, forTaskID: DeskTask.localPrefix + stem) }
+            if column == .readyForDev { await setStage(.readyForDev, forTaskID: id) }
             await load()
-            return true
+            return id
         } catch {
             writeFailure = .backlog(Markdown.escape(error.localizedDescription))
-            return false
+            return nil
         }
+    }
+
+    private func fileIssue(_ draft: TaskDraft, slug: String, milestone: String?, column: BoardColumn,
+                           root: String) async -> String? {
+        guard !isWritingTracker else { return nil }
+        isWritingTracker = true
+        defer { isWritingTracker = false }
+        let arguments = IssueCreate.arguments(slug: slug, draft: draft, milestone: milestone)
+        let result: CommandResult
+        do {
+            result = try await runner.run("gh", arguments, in: URL(fileURLWithPath: root, isDirectory: true),
+                                          timeout: CommandTimeout.gh)
+        } catch {
+            writeFailure = .tracker(Markdown.escape(TrackerWriteError.failed(error.localizedDescription).localizedDescription))
+            return nil
+        }
+        guard result.succeeded else {
+            let detail = GitOutput.lastNonEmptyLine(result.stderr) ?? "gh exited with status \(result.status)"
+            writeFailure = .tracker(Markdown.escape(TrackerWriteError.failed(detail).localizedDescription))
+            return nil
+        }
+        // The number is read from what gh printed, never guessed (ADR 0027). Without one the issue still exists,
+        // so the board is reloaded and the developer is told where to look rather than shown a success.
+        guard let number = IssueCreate.number(fromOutput: result.stdout) else {
+            writeFailure = .tracker(Markdown.escape("gh filed the issue in \(slug) but printed no number, so it could not be opened here. It is on GitHub."))
+            await sync()
+            return nil
+        }
+        writeFailure = nil
+        let id = String(number)
+        if column == .readyForDev { await setStage(.readyForDev, forTaskID: id) }
+        await sync()
+        return id
     }
 
     /// `2026-09-14`, in the fixed locale the board's own formatters use, so the file's name never depends
