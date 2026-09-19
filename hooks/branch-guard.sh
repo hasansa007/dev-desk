@@ -15,13 +15,30 @@ FP=$(  jq -r '.tool_input.file_path // ""' <<<"$IN")
 CWD=$( jq -r '.cwd // ""'                  <<<"$IN")
 
 # Bash guards only the commit — an edit via sed/python is caught there instead.
-if [ "$TOOL" = "Bash" ] && ! grep -qE '(^|[;&|])[[:space:]]*git[[:space:]]+commit\b' <<<"$CMD"; then
+if [ "$TOOL" = "Bash" ] && ! grep -qE '(^|[;&|])[[:space:]]*git([[:space:]]+-C[[:space:]]+[^[:space:]]+)?[[:space:]]+commit\b' <<<"$CMD"; then
   exit 0
 fi
 
 DIR=$CWD; [ -n "$FP" ] && DIR=$(dirname "$FP")
+# A Bash commit runs where the COMMAND points, not where the session started: `git -C <dir> …`
+# or `cd <dir> && …`. Judging the session cwd denied commits in other repos and in worktrees
+# whenever the session's own folder sat on staging (2026-09-19).
+if [ "$TOOL" = "Bash" ]; then
+  # Candidates in order — every `git -C` target, then a `cd` on the command's FIRST line — and the
+  # first that is a real directory wins. A commit message quoting "git -C <dir>" must not win.
+  CANDS=$( { grep -oE 'git[[:space:]]+-C[[:space:]]+[^[:space:];&|]+' <<<"$CMD" | awk '{print $3}'
+             head -1 <<<"$CMD" | grep -oE '^[[:space:]]*cd[[:space:]]+[^[:space:];&|]+' | awk '{print $2}'; } )
+  while IFS= read -r T; do
+    T=${T/#\~/$HOME}; T=${T%\"}; T=${T#\"}
+    case "$T" in /*) ;; ?*) T="$CWD/$T" ;; esac
+    [ -n "$T" ] && [ -d "$T" ] && { DIR=$T; break; }
+  done <<<"$CANDS"
+fi
 ROOT=$(git -C "$DIR" rev-parse --show-toplevel 2>/dev/null) || exit 0
 [ -f "$ROOT/.claude/hooks-off" ] && { log bypass "$ROOT"; exit 0; }
+# The dev-skill repo is not gated by the pipeline it defines (its CLAUDE.md, 2026-09-13).
+SELF=$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/.." && pwd -P)
+[ "$(cd "$ROOT" && pwd -P)" = "$SELF" ] && { log self "$ROOT"; exit 0; }
 
 # --show-current, not rev-parse HEAD: the latter fails on an unborn branch,
 # which would let the very first write into a fresh repo's main through.
