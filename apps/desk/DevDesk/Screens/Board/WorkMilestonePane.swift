@@ -18,25 +18,31 @@ struct WorkMilestonePane: View {
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
     }
 
+    /// The whole rail is one button. The title is truncated to the rail's height BEFORE it is rotated: rotation does
+    /// not change layout, so an unbounded title drew past its frame and covered the expand button (2026-09-19).
     private var rail: some View {
-        VStack(spacing: 10) {
-            Button { isCollapsed = false } label: {
+        Button { isCollapsed = false } label: {
+            VStack(spacing: 10) {
                 Image(systemName: "sidebar.left").foregroundStyle(DeskColor.mutedInk)
-                    .frame(width: 28, height: 28).contentShape(Rectangle())
+                    .frame(width: 28, height: 28)
+                Text(scopeTitle)
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+                    .frame(width: 220)
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 28, height: 220)
+                Spacer()
             }
-            .buttonStyle(.plain)
-            .help("Show the milestones")
-            .accessibilityLabel("Show the milestones")
-            Text(scopeTitle)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(DeskColor.mutedInk)
-                .fixedSize()
-                .rotationEffect(.degrees(-90))
-                .frame(width: 28, height: 220)
-            Spacer()
+            .padding(.top, 10)
+            .frame(width: 36)
+            .frame(maxHeight: .infinity)
+            .contentShape(Rectangle())
         }
-        .padding(.top, 10)
-        .frame(width: 36)
+        .buttonStyle(.plain)
+        .help("Show the milestones — \(scopeTitle)")
+        .accessibilityLabel("Show the milestones")
     }
 
     private var list: some View {
