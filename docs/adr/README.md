@@ -54,3 +54,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0043](0043-a-findings-run-is-told-its-stops-before-it-starts.md) | A findings run is told its stops before it starts, and refuses past its agent limit | Accepted |
 | [0044](0044-a-card-moves-on-its-runs-checkpoints-not-on-a-terminal.md) | A card moves on its run's checkpoints, not on a terminal opening | Accepted |
 | [0045](0045-add-task-files-where-the-tracker-is-checks-for-duplicates-and-can-start.md) | Add Task files where the tracker is, checks for duplicates first, and can start the work | Accepted |
+| [0046](0046-one-task-model-three-views-findings-keeps-its-name.md) | One task model in three views — Board, Plan, Findings, one filter bar; Findings keeps its name | Accepted |
