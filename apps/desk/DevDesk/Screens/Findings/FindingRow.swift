@@ -152,6 +152,10 @@ struct FindingRow: View {
                 }
                 .buttonStyle(.plain)
                 .help("Its card is in \(task.column.title) — click to open it")
+            } else if let filed = finding.filing {
+                // Filed by the findings run itself, through gh — the report's FILED table says which issue.
+                StatusPill(badge: StatusBadge(.neutral, filed.label))
+                    .help(filed.label.hasPrefix("#") ? "Filed as issue \(filed.label)" : "\(filed.label) as new evidence — no new issue")
             } else if isInLocalBacklog || isFiledByRun {
                 // Filed, but with no card on this board to point at — promoted to the tracker, say.
                 StatusPill(badge: StatusBadge(.neutral, "Filed"))

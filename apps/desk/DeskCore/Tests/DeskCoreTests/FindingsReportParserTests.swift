@@ -208,4 +208,65 @@ final class FindingsReportParserTests: XCTestCase {
         XCTAssertEqual(finding.locations, ["Services/ReminderService.swift:68-79"])
         XCTAssertEqual(finding.title, "Async fetch returns 0 reminders")
     }
+
+    // MARK: - What the run filed (the report's FILED table and ALREADY TRACKED merges)
+
+    private let filedReport = """
+    ## CONFIRMED (3)
+
+    1. **Key alias deletes another owner's course** · `web/app/lib/safe-key.js:42`
+       id: C1   type: Data flow   group: none
+    2. **A missing PDF freezes the server** · `web/app/lib/coursePdf.js:55`
+       id: C2   type: Logic   group: none
+    3. **Append spends a whole grant** · `web/app/lib/append-handler.js:247`
+       id: C10   type: UI   group: none
+
+    ## ARCHITECTURE
+
+    **Drift — CONFIRMED**
+    - A1 — regenerate checks entitlement before ownership · `regenerate/route.js:67`
+      id: A1   type: Architecture   group: none
+
+    ## ALREADY TRACKED (3)
+
+    A1 → #784 · merged (same fix, second route)
+    C3 → #790 · related · C4 → #777 · related
+
+    ## FILED
+
+    | id | issue | finding | milestone |
+    |----|-------|---------|-----------|
+    | C1 | #810 | key alias | Access |
+    | C2 | #811 | pdf freeze | unplaced |
+    """
+
+    func testTheFiledTableMarksEachFindingWithItsIssue() {
+        let byRef = Dictionary(uniqueKeysWithValues: FindingsReportParser.parse(filedReport, runID: "r")
+            .compactMap { f in f.coordination.ref.map { ($0, f) } })
+        XCTAssertEqual(byRef["C1"]?.filing, .filed(810))
+        XCTAssertEqual(byRef["C2"]?.filing, .filed(811))
+    }
+
+    func testAMergeLineMarksTheFindingAsAddedToTheOpenIssue() {
+        let a1 = FindingsReportParser.parse(filedReport, runID: "r").first { $0.coordination.ref == "A1" }
+        XCTAssertEqual(a1?.filing, .merged(784))
+        XCTAssertEqual(a1?.filing?.label, "Added to #784")
+    }
+
+    func testRelatedIsNotFiledAndAHeldFindingStaysOpen() {
+        let filings = FindingsReportParser.filings(filedReport)
+        XCTAssertNil(filings["C3"], "related means a new issue was still needed")
+        XCTAssertNil(filings["C4"])
+        let c10 = FindingsReportParser.parse(filedReport, runID: "r").first { $0.coordination.ref == "C10" }
+        XCTAssertNil(c10?.filing, "held by the cap: not in FILED, so it still waits on a decision")
+    }
+
+    func testTheTableHeaderAndRuleAreNotRows() {
+        let filings = FindingsReportParser.filings(filedReport)
+        XCTAssertEqual(Set(filings.keys), ["C1", "C2", "A1"])
+    }
+
+    func testAReportWithNoFiledSectionFilesNothing() {
+        XCTAssertTrue(FindingsReportParser.filings("## CONFIRMED (0)\n").isEmpty)
+    }
 }

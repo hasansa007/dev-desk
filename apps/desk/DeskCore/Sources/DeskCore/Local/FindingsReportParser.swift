@@ -108,7 +108,43 @@ enum FindingsReportParser {
             }
         }
         flush()
-        return findings
+        let filings = self.filings(markdown)
+        return findings.map { finding in
+            var finding = finding
+            if let ref = finding.coordination.ref { finding.filing = filings[ref] }
+            return finding
+        }
+    }
+
+    /// `| C1 | #810 | …` rows of `## FILED`, and `C2 → #782 · merged` in `## ALREADY TRACKED`, keyed by the
+    /// report's own id. Only a merge counts from ALREADY TRACKED: `related` means a NEW issue was still needed.
+    static func filings(_ markdown: String) -> [String: FindingFiling] {
+        var result: [String: FindingFiling] = [:]
+        var section = ""
+        for line in GitOutput.lines(markdown) {
+            if line.hasPrefix("## ") { section = line.dropFirst(3).uppercased(); continue }
+            if section.hasPrefix("FILED"), line.hasPrefix("|") {
+                let cells = line.split(separator: "|", omittingEmptySubsequences: false)
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                guard cells.count > 2, let ref = firstToken(cells[1]), !ref.isEmpty, ref.lowercased() != "id",
+                      let number = issueNumber(cells[2]) else { continue }
+                result[ref] = .filed(number)
+            } else if section.hasPrefix("ALREADY TRACKED") {
+                for match in line.matches(of: merged) {
+                    if let number = Int(match.output.2), result[String(match.output.1)] == nil {
+                        result[String(match.output.1)] = .merged(number)
+                    }
+                }
+            }
+        }
+        return result
+    }
+
+    private static let merged = try! Regex<(Substring, Substring, Substring)>(#"([A-Za-z]+\d+)\s*→\s*#(\d+)\s*·\s*merged"#)
+
+    private static func issueNumber(_ cell: String) -> Int? {
+        guard let hash = cell.firstIndex(of: "#") else { return nil }
+        return Int(cell[cell.index(after: hash)...].prefix { $0.isNumber })
     }
 
     /// A finding's own line, whatever list marker the finder reached for: "- ", "* ", or "1. ".

@@ -94,6 +94,24 @@ public struct Reconciliation: Hashable {
     }
 }
 
+/// What the report says became of a finding once the run filed: a new issue, or evidence added to one that was
+/// already open. Read from the report itself, because the door files through `gh` and Dev Desk never sees that run.
+public enum FindingFiling: Hashable {
+    case filed(Int)
+    case merged(Int)
+
+    public var issue: Int {
+        switch self { case .filed(let n), .merged(let n): return n }
+    }
+
+    public var label: String {
+        switch self {
+        case .filed(let n): return "#\(n)"
+        case .merged(let n): return "Added to #\(n)"
+        }
+    }
+}
+
 public struct Finding: Identifiable, Hashable {
     public var id: String
     public var runID: String
@@ -111,6 +129,8 @@ public struct Finding: Identifiable, Hashable {
     public var historyNote: String?
     /// Type, group, the code it touches and the tickets it meets — only a grouped report writes these (ADR 0040).
     public var coordination: FindingsCoordination
+    /// Set when the report's `## FILED` table or an `ALREADY TRACKED` merge line names this finding.
+    public var filing: FindingFiling?
     public init(id: String, runID: String, title: String, listDetail: String, categories: Set<FindingCategory>, summary: String,
                 verificationLabel: String, locations: [String], limits: String, reconcile: Reconciliation? = nil, historyNote: String? = nil,
                 kind: FindingKind = .defect, coordination: FindingsCoordination = FindingsCoordination()) {

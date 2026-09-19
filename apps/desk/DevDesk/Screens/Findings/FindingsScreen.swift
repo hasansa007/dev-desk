@@ -90,6 +90,7 @@ private struct FindingsBoard: View {
 
     /// On the board, or handed to the tracker by a run that finished cleanly.
     private func isFiled(_ finding: Finding) -> Bool {
+        if finding.filing != nil { return true }   // the report's own FILED table / merge line
         if model.isInLocalBacklog(finding.id) { return true }
         if let job = filingJob(for: finding), case .ended(_, false) = job.state { return true }
         return false

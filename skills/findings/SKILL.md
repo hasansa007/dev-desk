@@ -352,6 +352,15 @@ Declared <shape>  ·  Actual <agents, wall, tokens, calls>  ·  Overrun <what an
 <per-flow table: findings, duration, tokens, calls — FAILED rows included>
 ```
 
+**Every verified finding is an entry with an `id:`, and its fate is written in exactly one other place.**
+A finding that merges into an open issue keeps its entry under CONFIRMED (or the drift list) and gets one
+`ALREADY TRACKED` line — `<id> → #N · merged` — never a free-form bullet of its own: Dev Desk reads every
+bullet in CONFIRMED as new work and every `ALREADY TRACKED` merge and `## FILED` row as done, keyed by `id`.
+The FILED table's first two columns are always `id | #issue`. **The entry's first line is its title** — one
+sentence, no file paths; paths go on the indented lines. Scar, 2026-09-19: a merged finding written as an
+un-id'd bullet and two drift items with paths in their titles rendered as three raw report lines, and a
+FILED table Dev Desk never read left ten filed findings saying "not filed yet".
+
 **The field lines are indented under their entry, one `key:` per field or several separated by three
 spaces**, and `id:` is required on every entry once any entry has one — Dev Desk resolves `needs`,
 `shares`, `held` and the GROUPS lists through it, and an unresolvable reference is shown as one.
