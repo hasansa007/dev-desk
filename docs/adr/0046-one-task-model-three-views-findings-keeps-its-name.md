@@ -83,6 +83,18 @@ answering one question, with one filter bar.**
     ⓘ that explains what it holds, what you do there, and what comes before and after — so a first-time user can
     find their way from a finding to a merged fix without a manual.
 
+13. **Plan and Board are one tab, Work: milestones on the left, their Board on the right** (option B of three
+    mocked 2026-09-19 — a Plan|Board switch, this split, and milestone swimlanes — chosen by the developer). They
+    were two tabs showing the same issues grouped two ways, which read as two different things. The list keeps
+    Plan's order, progress, P-counts and Move to top; selecting a milestone narrows the Board to its issues;
+    **All milestones** (first row) is the whole Board, P0s pinned as in decision 1. Its three costs, answered:
+    the list collapses to a rail so a 13″ screen gets the Board's width back; each row shows its P0 count and a
+    narrowed Next up says *N P0 in other milestones — show all*; and the default selection is the Working now
+    milestone. The sidebar becomes Findings, Ideation, **Work**, Sessions, Diagrams — the stored `roadmap` value
+    opens Work. This supersedes decision 4's separate Plan screen; its list lives on as Work's left pane.
+    *Rejected:* the switch (order and stage never on screen together); swimlanes (mostly empty cells, Backlog and
+    Next up stop existing as words, the largest rebuild).
+
 ## Names considered for the Findings screen, and why each lost
 
 | Name | Why not |
@@ -117,6 +129,7 @@ and a filing status it could not read — not its name.
 4. Settings: *Board and plan*, scope grouping.
 5. Diagrams: open-issue counts per part (deferred — needs node → touches mapping).
 6. Sidebar order, File, the Start overlap check, and the per-screen tooltips and ⓘ (decisions 9–12).
+7. Work: Plan and Board in one tab, milestones left, Board right (decision 13).
 
 ## Consequences
 
