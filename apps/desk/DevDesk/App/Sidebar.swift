@@ -9,7 +9,8 @@ struct Sidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             openProjectButton
-            if !isRail { header } else { railHeader }
+            // The name and path are the window's own title and subtitle; the sidebar repeated them.
+            if isRail { railHeader } else { Color.clear.frame(height: 8) }
             if model.snapshot != nil {
                 destinations
                 Spacer(minLength: 12)
@@ -26,27 +27,6 @@ struct Sidebar: View {
         .overlay(alignment: .trailing) {
             Rectangle().fill(DeskColor.border).frame(width: 1)
         }
-    }
-
-    private var header: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SectionLabel("Project")
-            Text(model.snapshot?.project.name ?? model.ref.displayName)
-                .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(DeskColor.ink)
-                .padding(.top, 4)
-            if let project = model.snapshot?.project {
-                Text(project.remote ?? project.displayPath)
-                    .font(DeskFont.mono(11))
-                    .foregroundStyle(DeskColor.faintInk)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .padding(.top, 2)
-            }
-        }
-        .padding(.top, 10)
-        .padding(.horizontal, 14)
-        .padding(.bottom, 10)
     }
 
     /// The one action that is not about this project, so it sits above everything that is — where a
