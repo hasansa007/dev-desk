@@ -29,6 +29,7 @@ struct ShellTerminalView: NSViewRepresentable {
 /// reliably give it focus, since SwiftTerm's own mouseDown only selects.
 final class ShellTerminalHost: NSView {
     private var clickMonitor: LocalEventMonitor?
+    private var scrollMonitor: LocalEventMonitor?
 
     func show(_ terminal: NSView) {
         guard terminal.superview !== self else { return }
@@ -64,6 +65,12 @@ final class ShellTerminalHost: NSView {
         clickMonitor = window == nil ? nil : LocalEventMonitor([.leftMouseDown, .rightMouseDown]) { [weak self] event in
             self?.focusTerminal(clickedBy: event)
         }
+        scrollMonitor = window == nil ? nil : LocalEventMonitor(filtering: .scrollWheel) { [weak self] event in
+            guard let self, let window, event.window === window, let terminal = subviews.first as? FocusingTerminalView,
+                  let hit = (window.contentView?.superview ?? window.contentView)?.hitTest(event.locationInWindow),
+                  hit === terminal || hit.isDescendant(of: terminal) else { return event }
+            return terminal.forwardScroll(event) ? nil : event
+        }
     }
 
     private func focusTerminal(clickedBy event: NSEvent) {
@@ -83,6 +90,13 @@ final class LocalEventMonitor {
             // Local monitors run on the main thread.
             MainActor.assumeIsolated { handler(event) }
             return event
+        }
+    }
+
+    /// A monitor that may swallow the event: the handler returns nil for one it has handled.
+    init(filtering mask: NSEvent.EventTypeMask, handler: @escaping @MainActor (NSEvent) -> NSEvent?) {
+        token = NSEvent.addLocalMonitorForEvents(matching: mask) { event in
+            MainActor.assumeIsolated { handler(event) }
         }
     }
 
@@ -550,6 +564,32 @@ final class FocusingTerminalView: LocalProcessTerminalView {
     var onBell: (() -> Void)?
 
     override func bell(source: Terminal) { onBell?() }
+
+    /// SwiftTerm 1.11.2 only ever scrolls its own scrollback, and a full-screen program (claude, codex, less) draws on the
+    /// alternate screen, which has none — so the wheel did nothing there. The wheel goes to the program instead: as wheel
+    /// events when it tracks the mouse, else as arrow keys, the alternate-scroll behaviour Terminal and iTerm have.
+    /// True when the wheel went to the program; false leaves the event to SwiftTerm's own scrollback. `scrollWheel` is
+    /// not open in SwiftTerm, so the host's event monitor calls this.
+    func forwardScroll(_ event: NSEvent) -> Bool {
+        let terminal = getTerminal()
+        let reports = allowMouseReporting && terminal.mouseMode != .off
+        guard event.deltaY != 0, reports || terminal.isCurrentBufferAlternate else { return false }
+        let magnitude = abs(event.deltaY)
+        let lines = magnitude > 5 ? 5 : magnitude > 1 ? 3 : 1
+        let up = event.deltaY > 0
+        if reports {
+            let point = convert(event.locationInWindow, from: nil)
+            let col = min(max(Int(point.x / max(bounds.width, 1) * CGFloat(terminal.cols)), 0), terminal.cols - 1)
+            let row = min(max(Int((bounds.height - point.y) / max(bounds.height, 1) * CGFloat(terminal.rows)), 0), terminal.rows - 1)
+            let flags = terminal.encodeButton(button: up ? 4 : 5, release: false, shift: event.modifierFlags.contains(.shift),
+                                              meta: event.modifierFlags.contains(.option), control: event.modifierFlags.contains(.control))
+            for _ in 0..<lines { terminal.sendEvent(buttonFlags: flags, x: col, y: row) }
+        } else {
+            let key = terminal.applicationCursor ? (up ? "\u{1b}OA" : "\u{1b}OB") : (up ? "\u{1b}[A" : "\u{1b}[B")
+            send(txt: String(repeating: key, count: lines))
+        }
+        return true
+    }
 
     /// What the arrows and delete report, whatever modifier is held: their characters are the private-use
     /// ones AppKit gives function keys, so the key itself is read from the code.
