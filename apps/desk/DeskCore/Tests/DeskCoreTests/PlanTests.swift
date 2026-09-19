@@ -156,3 +156,13 @@ final class WorkSettingsTests: XCTestCase {
         XCTAssertEqual(partial, WorkSettings(nextUpFollows: .plan, doneLimit: 0, showsPullRequestsWithoutIssue: true))
     }
 }
+
+final class WorkScopeKeysTests: XCTestCase {
+    func testChipsMapToScopes() {
+        XCTAssertEqual(WorkScope(keys: []), .all)
+        XCTAssertEqual(WorkScope(keys: ["A"]), .milestone("A"))
+        XCTAssertEqual(WorkScope(keys: [TaskFilter.noMilestone]), .noMilestone)
+        XCTAssertEqual(WorkScope(keys: ["A", "B"]), .several(["A", "B"]))
+        XCTAssertEqual(WorkScope.several(["A", TaskFilter.noMilestone]).keys, ["A", TaskFilter.noMilestone])
+    }
+}

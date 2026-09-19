@@ -104,11 +104,14 @@ private struct FindingsBoard: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            filters
-            content
-            if !checked.isEmpty { selectionBar }
+        // The shared filter panel on the left (ADR 0046 decision 18): run, what to show, how to group.
+        HStack(spacing: 0) {
+            filterPanel
+            VStack(spacing: 0) {
+                header
+                content
+                if !checked.isEmpty { selectionBar }
+            }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
@@ -123,10 +126,7 @@ private struct FindingsBoard: View {
     /// ··· for resetting, and Hunt for issues last.
     private var header: some View {
         ScreenHeader(.findings) {
-            HStack(spacing: 8) {
-                Text(summary)
-                runControl
-            }
+            Text(summary)
         } tools: {
             if report.searchNote != nil { noteButton }
             // What builds up between runs — set-aside findings, and every report ever written — is cleared
@@ -143,41 +143,6 @@ private struct FindingsBoard: View {
             .fixedSize()
             .accessibilityLabel("Findings actions")
             RunFindingsButton(model: model, size: .small)
-        }
-    }
-
-    /// A menu, not a Picker. A `.menu` Picker with a long label stretched to the width of the pane and put its
-    /// chevron at the far edge — a control the width of the screen, for a choice between two dates.
-    @ViewBuilder private var runControl: some View {
-        if report.runs.count > 1 {
-            Menu {
-                ForEach(report.runs) { run in
-                    Button(runPlainText(run)) { model.selectedRunID = run.id }
-                }
-            } label: {
-                HStack(spacing: 5) {
-                    Text(report.runs.first { $0.id == model.selectedRunID }.map(runPlainText) ?? "All runs")
-                        .font(DeskFont.secondary)
-                        .foregroundStyle(DeskColor.secondaryInk)
-                        .lineLimit(1)
-                    Image(systemName: "chevron.up.chevron.down")
-                        .font(.system(size: 9, weight: .semibold))
-                        .foregroundStyle(DeskColor.mutedInk)
-                }
-                .padding(.horizontal, 9)
-                .padding(.vertical, 4)
-                .background(DeskColor.canvas, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))
-                .overlay(RoundedRectangle(cornerRadius: DeskMetric.pillRadius).strokeBorder(DeskColor.border))
-            }
-            .menuStyle(.borderlessButton)
-            .menuIndicator(.hidden)
-            .fixedSize()
-            .accessibilityLabel("Findings run")
-        } else if let run = report.runs.first {
-            Text(runPlainText(run))
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineLimit(1)
         }
     }
 
@@ -204,36 +169,44 @@ private struct FindingsBoard: View {
         }
     }
 
-    /// Show (all, defects, architecture or the ignored ones) on the left, how the list is sectioned on the right —
-    /// both pick-one chip groups, the one chip every second row uses (ADR 0046 decision 15). The segmented control
-    /// and the separate Ignored chip that were here were two more controls for the same job.
-    private var filters: some View {
-        ScreenBar {
-            ChipGroupLabel("Show")
-            FilterChip("All", isOn: !model.showsIgnoredFindings && model.findingKindFilter == nil,
-                       count: runFindings.count - ignoredCount) {
-                model.showsIgnoredFindings = false
-                model.findingKindFilter = nil
-            }
-            ForEach(FindingKind.allCases, id: \.self) { kind in
-                FilterChip(kind.plural, isOn: !model.showsIgnoredFindings && model.findingKindFilter == kind,
-                           count: report.count(of: kind, run: model.selectedRunID)) {
-                    model.showsIgnoredFindings = false
-                    model.findingKindFilter = kind
-                }
-            }
-            if ignoredCount > 0 || model.showsIgnoredFindings {
-                FilterChip("Ignored", isOn: model.showsIgnoredFindings, count: ignoredCount) {
-                    model.showsIgnoredFindings = true
-                    model.findingKindFilter = nil
-                }
-            }
-        } trailing: {
-            ChipGroupLabel("Group")
-            ForEach(FindingGrouping.allCases, id: \.self) { grouping in
-                FilterChip(grouping.chipTitle, isOn: groupingRaw == grouping.rawValue) { groupingRaw = grouping.rawValue }
-            }
+    /// Run, Show and Group by — all pick-one groups in the shared panel. Show folds Ignored in with the kinds: seeing
+    /// what was set aside is one more way to look at the list, not a separate switch.
+    private var filterPanel: some View {
+        var groups: [FilterGroup] = []
+        if report.runs.count > 1 {
+            groups.append(FilterGroup(key: "findings.run", title: "Run", kind: .pickOne,
+                                      options: [FilterOption(id: "", label: "All runs", isOn: model.selectedRunID == nil)]
+                                        + report.runs.map { run in
+                                            FilterOption(id: run.id, label: run.label, isOn: model.selectedRunID == run.id,
+                                                         help: runPlainText(run))
+                                        },
+                                      toggle: { model.selectedRunID = $0.isEmpty ? nil : $0 }))
         }
+        var show = [FilterOption(id: "all", label: "All", isOn: !model.showsIgnoredFindings && model.findingKindFilter == nil,
+                                 count: "\(runFindings.count - ignoredCount)")]
+        show += FindingKind.allCases.map { kind in
+            FilterOption(id: kind.rawValue, label: kind.plural,
+                         isOn: !model.showsIgnoredFindings && model.findingKindFilter == kind,
+                         count: "\(report.count(of: kind, run: model.selectedRunID))")
+        }
+        if ignoredCount > 0 || model.showsIgnoredFindings {
+            show.append(FilterOption(id: "ignored", label: "Ignored", isOn: model.showsIgnoredFindings, count: "\(ignoredCount)"))
+        }
+        groups.append(FilterGroup(key: "findings.show", title: "Show", kind: .pickOne, options: show, toggle: { id in
+            model.showsIgnoredFindings = id == "ignored"
+            model.findingKindFilter = FindingKind(rawValue: id)
+        }))
+        groups.append(FilterGroup(key: "findings.group", title: "Group by", kind: .pickOne,
+                                  options: FindingGrouping.allCases.map {
+                                      FilterOption(id: $0.rawValue, label: $0.chipTitle, isOn: groupingRaw == $0.rawValue)
+                                  },
+                                  toggle: { groupingRaw = $0 }))
+        return FilterPanel(title: "Report", storageKey: "findings", groups: groups)
+    }
+
+    private func runPlainText(_ run: FindingsRun) -> String {
+        guard let revision = run.revision else { return "Run · \(run.label)" }
+        return "Run · \(run.label) · rev \(revision)"
     }
 
     @ViewBuilder private var content: some View {
@@ -401,10 +374,6 @@ private struct FindingsBoard: View {
         .overlay(alignment: .top) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
     }
 
-    private func runPlainText(_ run: FindingsRun) -> String {
-        guard let revision = run.revision else { return "Run · \(run.label)" }
-        return "Run · \(run.label) · rev \(revision)"
-    }
 }
 
 private extension FindingKind {

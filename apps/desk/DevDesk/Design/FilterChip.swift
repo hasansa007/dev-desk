@@ -1,22 +1,30 @@
+import AppKit
 import DeskCore
 import SwiftUI
 
-/// The one chip every second row uses (ADR 0046 decision 15): Findings' Show and Group, Work's filters, Ideation's
-/// verdicts, Diagrams' kinds. 28 pt tall, 13 pt text, the count in grey inside, and light blue when on — never
+/// The one chip every filter panel uses (ADR 0046 decisions 15, 18): Findings' Show and Group, Work's filters,
+/// Ideation's verdicts, Diagrams' kinds. 28 pt tall, 13 pt text, the count in grey inside, and light blue when on — never
 /// black, which was the heaviest thing on screen and appeared nowhere else. A pick-one group keeps exactly one on;
-/// a filter group may have none, and shows `ChipClear` while any is.
+/// a filter group may have none, and the panel shows Clear all while any is.
 struct FilterChip: View {
     let label: String
     let isOn: Bool
     var tone: StatusTone? = nil
     var count: String? = nil
+    /// A small filled badge before the label — "Now" on the Working now milestone.
+    var badge: String? = nil
+    /// Long labels (milestone names) are cut to this width; the chip's help carries the full text.
+    var maxLabelWidth: CGFloat? = nil
     let action: () -> Void
 
-    init(_ label: String, isOn: Bool, tone: StatusTone? = nil, count: String? = nil, action: @escaping () -> Void) {
+    init(_ label: String, isOn: Bool, tone: StatusTone? = nil, count: String? = nil, badge: String? = nil,
+         maxLabelWidth: CGFloat? = nil, action: @escaping () -> Void) {
         self.label = label
         self.isOn = isOn
         self.tone = tone
         self.count = count
+        self.badge = badge
+        self.maxLabelWidth = maxLabelWidth
         self.action = action
     }
 
@@ -28,7 +36,14 @@ struct FilterChip: View {
         Button(action: action) {
             HStack(spacing: 6) {
                 if let tone { Circle().fill(DeskColor.tone(tone).dot).frame(width: 7, height: 7) }
-                Text(label).font(.system(size: 13, weight: isOn ? .semibold : .regular))
+                if let badge {
+                    Text(badge)
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(Color.white)
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(RoundedRectangle(cornerRadius: 5).fill(DeskColor.accent))
+                }
+                labelText
                 if let count {
                     Text(count)
                         .font(.system(size: 12).monospacedDigit())
@@ -39,6 +54,22 @@ struct FilterChip: View {
         .buttonStyle(ChipButtonStyle(isOn: isOn))
         .fixedSize()
         .accessibilityAddTraits(isOn ? .isSelected : [])
+    }
+}
+
+extension FilterChip {
+    @ViewBuilder var labelText: some View {
+        let text = Text(label).font(.system(size: 13, weight: isOn ? .semibold : .regular)).lineLimit(1)
+        if let maxLabelWidth {
+            // Its natural width up to the cap, then cut: `fixedSize` on the chip would otherwise ask for all of it.
+            text.truncationMode(.tail).frame(maxWidth: min(maxLabelWidth, Self.width(of: label)), alignment: .leading)
+        } else {
+            text
+        }
+    }
+
+    static func width(of label: String) -> CGFloat {
+        ceil((label as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 13, weight: .semibold)]).width) + 1
     }
 }
 
@@ -61,30 +92,5 @@ private struct ChipButtonStyle: ButtonStyle {
             }
             .contentShape(RoundedRectangle(cornerRadius: DeskMetric.chipHeight / 2, style: .continuous))
             .opacity(configuration.isPressed ? 0.7 : 1)
-    }
-}
-
-/// The grey word before a chip group: Show, Group, Priority, Type, Verdict, Draw, Flow.
-struct ChipGroupLabel: View {
-    let text: String
-    init(_ text: String) { self.text = text }
-    var body: some View {
-        Text(text).font(.system(size: 12.5)).foregroundStyle(DeskColor.mutedInk).fixedSize()
-    }
-}
-
-/// The hairline between two chip groups.
-struct ChipSeparator: View {
-    var body: some View { Rectangle().fill(DeskColor.divider).frame(width: 1, height: 18).padding(.horizontal, 2) }
-}
-
-/// A filter group's way back to nothing on.
-struct ChipClear: View {
-    let action: () -> Void
-    var body: some View {
-        Button("Clear", action: action)
-            .buttonStyle(.plain)
-            .font(.system(size: 12.5))
-            .foregroundStyle(DeskColor.accent)
     }
 }

@@ -63,7 +63,8 @@ struct DiagramsScreen: View {
 
     private var currentFlow: SequenceFlow? {
         let all = flows
-        return all.first { $0.slug == selectedFlow } ?? all.first
+        // Nothing chosen yet: open on a flow that has a drawing, not on an empty pane.
+        return all.first { $0.slug == selectedFlow } ?? all.first { $0.drawing != nil } ?? all.first
     }
 
     /// What the selected drawing's run is tracked under: the kind, or on Sequence the flow's key.
@@ -73,82 +74,46 @@ struct DiagramsScreen: View {
 
     var body: some View {
         // The shared header spans the tab; the kinds and the drawing sit below it (ADR 0046 decision 14).
-        VStack(spacing: 0) {
-            header
-            kindBar
-            // Every kind draws full width; Sequence's flow is a menu in the row above, not a list that shifts it.
-            pane.frame(maxWidth: .infinity, maxHeight: .infinity)
+        // The shared filter panel (ADR 0046 decision 18): what to draw, and on Sequence which flow.
+        HStack(spacing: 0) {
+            filterPanel
+            VStack(spacing: 0) {
+                header
+                    .popover(isPresented: $isNamingFlow, arrowEdge: .bottom) { nameFlowForm.padding(14).frame(width: 340) }
+                pane.frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
         }
         .background(DeskColor.canvas)
     }
 
     // MARK: - Kinds and flows
 
-    /// The kinds as chips, the one chip every second row uses (ADR 0046 decision 15, ADR 0047) — a pick-one group,
-    /// green-dotted when drawn — and on Sequence the flow, as a menu in the same row.
-    private var kindBar: some View {
-        ScreenBar {
-            ChipGroupLabel("Draw")
-            ForEach(ArchDiagramKind.all) { kind in
-                FilterChip(kind.title, isOn: selectedKind == kind.token,
-                           tone: kindIsDrawn(kind.token) ? .running : nil,
-                           count: kind.token == "sequence" && !flows.isEmpty
-                               ? "\(flows.filter { $0.drawing != nil }.count) of \(flows.count)" : nil) {
-                    selectedKind = kind.token
-                }
-                .help(kind.help)
-            }
-            if isSequence && !flows.isEmpty {
-                ChipSeparator()
-                ChipGroupLabel("Flow")
-                flowMenu
-            }
+    private var filterPanel: some View {
+        var groups = [FilterGroup(key: "diagrams.draw", title: "Draw", kind: .pickOne,
+                                  options: ArchDiagramKind.all.map { kind in
+                                      FilterOption(id: kind.token, label: kind.title, isOn: selectedKind == kind.token,
+                                                   tone: kindIsDrawn(kind.token) ? .running : nil,
+                                                   count: kind.token == "sequence" && !flows.isEmpty
+                                                       ? "\(flows.filter { $0.drawing != nil }.count) of \(flows.count)" : nil,
+                                                   help: kind.help)
+                                  },
+                                  toggle: { selectedKind = $0 })]
+        if isSequence && !flows.isEmpty {
+            groups.append(FilterGroup(key: "diagrams.flow", title: "Flow", kind: .pickOne,
+                                      options: flows.map { flow in
+                                          let from = flow.sources.sorted().map(\.rawValue).joined(separator: ", ")
+                                          return FilterOption(id: flow.slug, label: flow.name, isOn: currentFlow?.slug == flow.slug,
+                                                              tone: flow.drawing != nil ? .running : nil,
+                                                              help: model.isGeneratingDiagram(kind: flow.generateKey) ? "Drawing…" : "From \(from)")
+                                      },
+                                      toggle: { selectedFlow = $0 },
+                                      footer: ("Draw another flow…", { isNamingFlow = true })))
         }
+        return FilterPanel(title: "Drawings", storageKey: "diagrams", groups: groups)
     }
 
     private func kindIsDrawn(_ token: String) -> Bool {
         token == "sequence" ? flows.contains { $0.drawing != nil } : model.diagram(kind: token) != nil
-    }
-
-    /// Drawn flows first, then the ones not drawn yet — each with where it was named — then a way to name another.
-    private var flowMenu: some View {
-        let drawn = flows.filter { $0.drawing != nil }
-        let undrawn = flows.filter { $0.drawing == nil }
-        return Menu {
-            if !drawn.isEmpty {
-                Section("Drawn") { ForEach(drawn) { flowItem($0) } }
-            }
-            if !undrawn.isEmpty {
-                Section("Not drawn yet") { ForEach(undrawn) { flowItem($0) } }
-            }
-            Divider()
-            Button("Draw another flow…") { isNamingFlow = true }
-        } label: {
-            HStack(spacing: 8) {
-                Text(currentFlow?.name ?? "Pick a flow").font(.system(size: 13)).foregroundStyle(DeskColor.ink)
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(DeskColor.faintInk)
-            }
-            .padding(.leading, 12).padding(.trailing, 10)
-            .frame(height: DeskMetric.chipHeight)
-            .background(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).fill(DeskColor.surface))
-            .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.divider))
-        }
-        // `.button` + plain keeps the label's own box; the borderless style drew the text bare, chevron first.
-        .menuStyle(.button)
-        .buttonStyle(.plain)
-        .menuIndicator(.hidden)
-        .fixedSize()
-        .accessibilityLabel("Flow")
-        .popover(isPresented: $isNamingFlow, arrowEdge: .bottom) { nameFlowForm.padding(14).frame(width: 340) }
-    }
-
-    private func flowItem(_ flow: SequenceFlow) -> some View {
-        let from = flow.sources.sorted().map(\.rawValue).joined(separator: ", ")
-        let generating = model.isGeneratingDiagram(kind: flow.generateKey)
-        let title = flow.name + (generating ? " — drawing…" : "") + (from.isEmpty ? "" : "   ·  \(from)")
-        return Button { selectedFlow = flow.slug } label: {
-            if currentFlow?.slug == flow.slug { Label(title, systemImage: "checkmark") } else { Text(title) }
-        }
     }
 
     /// A flow no source names: typed, listed at once, and drawn.

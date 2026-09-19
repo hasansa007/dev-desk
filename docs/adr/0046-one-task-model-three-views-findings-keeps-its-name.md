@@ -131,6 +131,17 @@ answering one question, with one filter bar.**
     covering the list, the Board and the filters. It now covers the Board only; Milestones has its own ⓘ
     (Working now, Move to top, stages, and what Run roadmap does). Priority, Type and Tag get no ⓘ — they
     explain themselves — only a tooltip on the section header saying what the counts mean.
+18. **One filter panel on every tab that narrows its view** (`FilterPanel`, mocked 2026-09-19 and chosen over a
+    chip row under the header). Left of the content, its own header the same 48 pt as the tab's: title, ⓘ,
+    collapse. Inside, groups of the same `FilterChip`, wrapping; each group can show as chips (the default) or as
+    a menu, remembered per group. Pick-one groups keep one on; filter groups show counts that take the other
+    groups into account, dim their zeros, and are cleared by Clear all. Collapsed, the panel is a thin strip with
+    the count of filters on. Work: Milestone (a filter group like Tag — none on is every milestone, Now marks
+    Working now, right-click Make Working now, Run roadmap on the group; names cut at the dash, full on hover),
+    Priority, Type, Tag. Findings: Run, Show, Group by. Diagrams: Draw, and Flow on Sequence with "Draw another
+    flow…". Ideation: Run, Verdict. Sessions has nothing to narrow and keeps its tab row. This supersedes the
+    chip row of decision 15 and the milestone list and stage switch of decisions 13 and 16: the milestone rows
+    no longer repeat counts and progress the Board and the header already show.
 
 ## Names considered for the Findings screen, and why each lost
 

@@ -68,31 +68,42 @@ private struct IdeationSplitView: View {
     }
 
     var body: some View {
-        // The shared header and its controls row span the tab; the idea list and the detail sit below (ADR 0046 decision 14).
-        VStack(spacing: 0) {
-            ScreenHeader(.ideation) {
-                HStack(spacing: 8) {
+        // The shared filter panel (ADR 0046 decision 18), then the header over the idea list and its detail.
+        HStack(spacing: 0) {
+            filterPanel
+            VStack(spacing: 0) {
+                ScreenHeader(.ideation) {
                     Text("\(visible.count) idea\(visible.count == 1 ? "" : "s")")
-                    runLine
+                } tools: {
+                    GenerateIdeasButton(model: model, size: .small)
                 }
-            } tools: {
-                GenerateIdeasButton(model: model, size: .small)
+                split
             }
-            if !verdictCounts.isEmpty {
-                ScreenBar {
-                    ChipGroupLabel("Verdict")
-                    ForEach(verdictCounts, id: \.verdict) { entry in
-                        FilterChip(entry.verdict.rawValue, isOn: model.ideationFilter == entry.verdict, count: entry.count) {
-                            model.ideationFilter = model.ideationFilter == entry.verdict ? nil : entry.verdict
-                        }
-                    }
-                } trailing: {
-                    if model.ideationFilter != nil { ChipClear { model.ideationFilter = nil } }
-                }
-            }
-            split
         }
         .background(DeskColor.canvas)
+    }
+
+    private var filterPanel: some View {
+        var groups: [FilterGroup] = []
+        if report.runs.count > 1 {
+            groups.append(FilterGroup(key: "ideation.run", title: "Run", kind: .pickOne,
+                                      options: report.runs.map { run in
+                                          FilterOption(id: run.id, label: run.label, isOn: model.selectedIdeationRunID == run.id,
+                                                       help: label(run))
+                                      },
+                                      toggle: { model.selectedIdeationRunID = $0 }))
+        }
+        groups.append(FilterGroup(key: "ideation.verdict", title: "Verdict", kind: .filter,
+                                  options: verdictCounts.map { entry in
+                                      FilterOption(id: entry.verdict.rawValue, label: entry.verdict.rawValue,
+                                                   isOn: model.ideationFilter == entry.verdict, count: "\(entry.count)")
+                                  },
+                                  toggle: { id in
+                                      let verdict = OpportunityVerdict(rawValue: id)
+                                      model.ideationFilter = model.ideationFilter == verdict ? nil : verdict
+                                  }))
+        return FilterPanel(title: "Ideas", storageKey: "ideation", groups: groups,
+                           clear: model.ideationFilter.map { verdict in (verdict.rawValue, 1, { model.ideationFilter = nil }) })
     }
 
     private var verdictCounts: [(verdict: OpportunityVerdict, count: Int)] {
@@ -137,24 +148,6 @@ private struct IdeationSplitView: View {
         .frame(width: 320, alignment: .leading)
         .background(DeskColor.sidebar)   // an inner list is navigation, like Work's milestones
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
-    }
-
-    @ViewBuilder private var runLine: some View {
-        if report.runs.count > 1 {
-            Picker("", selection: $model.selectedIdeationRunID) {
-                ForEach(report.runs) { run in
-                    Text(label(run)).tag(run.id as String?)
-                }
-            }
-            .labelsHidden()
-            .pickerStyle(.menu)
-            .fixedSize()
-            .accessibilityLabel("Ideation run")
-        } else if let run = report.runs.first {
-            Text(label(run))
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-        }
     }
 
     private func label(_ run: IdeationRun) -> String {

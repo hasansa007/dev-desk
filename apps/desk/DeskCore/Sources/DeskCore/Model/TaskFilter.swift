@@ -86,14 +86,31 @@ extension DeskTask {
     public var tags: [String] { TaskFilter.tagLabels.filter { labels.contains($0) } }
 }
 
-/// Work's left-pane selection (ADR 0046 decision 13).
+/// Work's milestone selection (ADR 0046 decisions 13, 18): none (all), one, no milestone, or several — the chips are
+/// a filter group like Tag. `several` holds milestone titles and `TaskFilter.noMilestone` for issues filed nowhere.
 public enum WorkScope: Hashable {
     case all
     case milestone(String)
     case noMilestone
+    case several(Set<String>)
+
+    /// The chips that are on.
+    public var keys: Set<String> {
+        switch self {
+        case .all: return []
+        case .milestone(let title): return [title]
+        case .noMilestone: return [TaskFilter.noMilestone]
+        case .several(let keys): return keys
+        }
+    }
+
+    /// The scope a set of chips means: none is all, one is that milestone, more is several.
+    public init(keys: Set<String>) {
+        switch keys.count {
+        case 0: self = .all
+        case 1: self = keys.first == TaskFilter.noMilestone ? .noMilestone : .milestone(keys.first!)
+        default: self = .several(keys)
+        }
+    }
 }
 
-/// Which milestones Work's list shows (ADR 0046 decision 16). Open is the default: finished ones fold away.
-public enum MilestoneStage: String, CaseIterable, Hashable {
-    case all = "All", open = "Open", workingNow = "Working now"
-}

@@ -10,20 +10,89 @@ struct BoardScreen: View {
     var body: some View {
         // Work (ADR 0046 decisions 13, 14): the one header and the filters span the tab; below them the milestones on
         // the left choose what the Board on the right shows.
-        VStack(spacing: 0) {
-            header
-            // No filter row: the list on the left holds the milestones and the filters (ADR 0046 decision 16).
-            HStack(spacing: 0) {
-                WorkMilestonePane(model: model)
-                VStack(spacing: 0) {
-                    if model.p0OutsideWorkScope > 0 { p0Strip }
-                    boardBar
-                    boardArea
-                }
+        // The shared filter panel on the left, its header level with the tab's (ADR 0046 decision 18).
+        HStack(spacing: 0) {
+            filterPanel
+            VStack(spacing: 0) {
+                header
+                if model.p0OutsideWorkScope > 0 { p0Strip }
+                boardBar
+                boardArea
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .background(DeskColor.canvas)
+    }
+
+    // MARK: - Filters
+
+    /// Milestone is a filter group like Tag (ADR 0046 decision 18): none on is every milestone, the Working now one
+    /// carries Now, and right-click makes another one Working now. Run roadmap sits on the group it fills.
+    private var filterPanel: some View {
+        let filter = model.taskFilter
+        return FilterPanel(
+            title: "Filters", guide: WorkGuides.milestones, storageKey: "work",
+            groups: [milestoneGroup,
+                     FilterGroup(key: "work.priority", title: "Priority", kind: .filter,
+                                 options: TaskFilter.priorityOrder.map { p in
+                                     FilterOption(id: p, label: p, isOn: filter.priorities.contains(p), tone: TaskCard.priorityTone(p),
+                                                  count: "\(model.facetCount(.priority) { $0.priority == p })")
+                                 } + [FilterOption(id: TaskFilter.unprioritised, label: "None",
+                                                   isOn: filter.priorities.contains(TaskFilter.unprioritised),
+                                                   count: "\(model.facetCount(.priority) { $0.priority == nil })")],
+                                 toggle: { toggle(\.priorities, $0) }),
+                     FilterGroup(key: "work.type", title: "Type", kind: .filter,
+                                 options: TaskKind.allCases.map { kind in
+                                     FilterOption(id: kind.rawValue, label: kind.rawValue, isOn: filter.kinds.contains(kind),
+                                                  count: "\(model.facetCount(.kind) { $0.kind == kind })")
+                                 },
+                                 toggle: { id in if let kind = TaskKind(rawValue: id) { toggle(\.kinds, kind) } }),
+                     FilterGroup(key: "work.tag", title: "Tag", kind: .filter,
+                                 options: TaskFilter.tagLabels.map { tag in
+                                     FilterOption(id: tag, label: tag.capitalized, isOn: filter.tags.contains(tag),
+                                                  count: "\(model.facetCount(.tag) { $0.labels.contains(tag) })")
+                                 },
+                                 toggle: { toggle(\.tags, $0) })],
+            clear: (filter.summary, filter.activeCount, { model.taskFilter = TaskFilter() }))
+    }
+
+    private var milestoneGroup: FilterGroup {
+        let keys = model.effectiveWorkScope.keys
+        let rows = model.milestoneRows.filter { !ProjectWindowModel.isFinished($0) || keys.contains($0.title ?? "") }
+        let filter = model.taskFilter
+        func count(_ milestone: String?) -> String {
+            "\(model.tasks.filter { $0.issueNumber != nil && $0.column != .done && $0.milestone == milestone && filter.matches($0) }.count)"
+        }
+        let options = rows.map { row -> FilterOption in
+            guard let title = row.title else {
+                return FilterOption(id: TaskFilter.noMilestone, label: "No milestone", isOn: keys.contains(TaskFilter.noMilestone),
+                                    count: count(nil))
+            }
+            return FilterOption(id: title, label: Self.shortName(title), isOn: keys.contains(title),
+                                count: count(title), badge: row.isWorkingNow ? "Now" : nil, help: title,
+                                actions: row.isWorkingNow ? [] : [FilterAction(title: "Make Working now") {
+                                    Task { await model.moveToTopOfPlan(title) }
+                                }])
+        }
+        return FilterGroup(key: "work.milestone", title: "Milestone", kind: .filter, options: options,
+                           toggle: { model.toggleWorkMilestone($0) },
+                           accessory: AnyView(DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
+                               .fixedSize()),
+                           maxLabelWidth: 190)
+    }
+
+    /// "Money integrity — nothing billed…" → "Money integrity": the part before the dash names it; hover has the rest.
+    static func shortName(_ title: String) -> String {
+        for separator in [" — ", " – ", " - "] {
+            if let range = title.range(of: separator) { return String(title[..<range.lowerBound]) }
+        }
+        return title
+    }
+
+    private func toggle<T: Hashable>(_ path: WritableKeyPath<TaskFilter, Set<T>>, _ value: T) {
+        var f = model.taskFilter
+        if f[keyPath: path].contains(value) { f[keyPath: path].remove(value) } else { f[keyPath: path].insert(value) }
+        model.taskFilter = f
     }
 
     /// The shared header (ADR 0046 decision 14): the selected milestone and its progress, then search and New task.
@@ -48,6 +117,7 @@ struct BoardScreen: View {
         case .all: return "All milestones"
         case .noMilestone: return "No milestone"
         case .milestone(let title): return title
+        case .several(let keys): return keys.map { $0 == TaskFilter.noMilestone ? "No milestone" : Self.shortName($0) }.sorted().joined(separator: ", ")
         }
     }
 
@@ -61,6 +131,8 @@ struct BoardScreen: View {
         case .milestone(let title):
             guard let row = rows.first(where: { $0.title == title }) else { return title }
             return "\(title) · \(row.closed) of \(row.total) done"
+        case .several:
+            return "\(milestoneTitle) · \(model.workFilterTally.total) open"
         }
     }
 

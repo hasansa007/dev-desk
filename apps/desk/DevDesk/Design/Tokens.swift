@@ -107,6 +107,7 @@ enum DeskFont {
 enum DeskMetric {
     /// Every tab's header row, and the optional controls row under it (ADR 0046 decision 14).
     static let screenHeaderHeight: CGFloat = 48
+    /// Sessions' tab row under its header.
     static let screenBarHeight: CGFloat = 44
     /// Every chip in a second row (ADR 0046 decision 15).
     static let chipHeight: CGFloat = 28

@@ -69,12 +69,11 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
 /// The small ⓘs inside Work's left list (ADR 0046 decision 17): each explains the part it sits beside, so the
 /// header's ⓘ can stay about the Board.
 public enum WorkGuides {
-    public static let milestones = (title: "Milestones", lines: [
-        "Your milestones in working order. The one on top is Working now — Next up reads it. Move to top (hover a milestone) changes it; that order is kept on this Mac, not on GitHub.",
-        "Select one to narrow the Board to its issues. All milestones shows Next up across all of them, plus every P0.",
-        "Open hides finished milestones (all issues closed); All shows them; Working now shows only the one being worked.",
-        "There is no Backlog column: a milestone's Not started column is its backlog.",
+    public static let milestones = (title: "Work's filters", lines: [
+        "Milestone: pick one, several, or none for every milestone. Now marks the one being worked — Next up reads it. Right-click another and Make Working now to change it; that order is kept on this Mac, not on GitHub.",
         "Run roadmap proposes milestones from what this repository has recorded — findings, gaps, open issues — and asks before filing each one. It adopts open issues rather than duplicating them, and never starts work.",
+        "Priority, Type, Tag: counts are open issues in the chosen milestones, with your other filters applied. Clear all turns them off.",
+        "Every group can show as chips or as a menu — the icon on its right.",
     ])
 }
 
@@ -822,23 +821,8 @@ public final class ProjectWindowModel {
                                 active: snapshot.activeMilestone, tasks: tasks)
     }
 
-    public var milestoneStage: MilestoneStage = .open
-    public var showsFinishedMilestones = false
-
     /// A milestone whose issues are all closed.
     public static func isFinished(_ row: PlanRow) -> Bool { row.title != nil && row.tasks.isEmpty && row.total > 0 }
-
-    public var finishedMilestoneCount: Int { milestoneRows.filter(Self.isFinished).count }
-
-    /// The rows the stage switch leaves: Working now alone; Open without the finished ones unless asked; or all.
-    public var visibleMilestoneRows: [PlanRow] {
-        let rows = milestoneRows
-        switch milestoneStage {
-        case .all: return rows
-        case .workingNow: return rows.filter(\.isWorkingNow)
-        case .open: return showsFinishedMilestones ? rows : rows.filter { !Self.isFinished($0) }
-        }
-    }
 
     /// Open issues in the selected milestone — what Work's filters narrow.
     private var openWorkIssues: [DeskTask] {
@@ -880,7 +864,17 @@ public final class ProjectWindowModel {
         case .all: return true
         case .milestone(let title): return task.milestone == title
         case .noMilestone: return task.issueNumber != nil && task.milestone == nil && task.column != .done
+        case .several(let keys):
+            if let milestone = task.milestone { return keys.contains(milestone) }
+            return keys.contains(TaskFilter.noMilestone) && task.issueNumber != nil && task.column != .done
         }
+    }
+
+    /// A milestone chip turned on or off (ADR 0046 decision 18).
+    public func toggleWorkMilestone(_ key: String) {
+        var keys = effectiveWorkScope.keys
+        if keys.contains(key) { keys.remove(key) } else { keys.insert(key) }
+        workScope = WorkScope(keys: keys)
     }
 
     /// Work's columns (ADR 0046 decision 13, no duplication): the milestone list IS the backlog, so there is no
@@ -905,6 +899,8 @@ public final class ProjectWindowModel {
         case .all: return BoardColumn.readyForDev.title
         case .milestone(let title): return title == snapshot?.activeMilestone ? BoardColumn.readyForDev.title : "Not started"
         case .noMilestone: return "Not started"
+        case .several(let keys):
+            return snapshot?.activeMilestone.map(keys.contains) == true ? BoardColumn.readyForDev.title : "Not started"
         }
     }
 
