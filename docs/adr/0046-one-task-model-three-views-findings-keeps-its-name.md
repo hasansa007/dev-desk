@@ -68,6 +68,21 @@ answering one question, with one filter bar.**
    fix touches its files, and opens the Board filtered to them. **Deferred to its own step:** it needs a
    mapping from a drawing's nodes to the `touches:` of issues, which neither side records yet.
 
+9. **The sidebar follows the flow**: *Findings, Ideation* (decide) · *Plan* (order) · *Board, Sessions* (do) ·
+   *Diagrams* (see). It listed Board, Sessions, Plan, Findings — nearly backwards, so the path from a finding to
+   a started task read right to left. Board stays the view a project opens on; the `⌘` numbers follow the order.
+10. **Filing is called File.** A Findings row's action was labelled *Backlog*, but a filed finding lands in Next
+    up when its milestone is being worked or it is a P0 — the label named a destination it often did not reach.
+    It names the action, matching the *Filed* section it moves to and Add Task's wording.
+11. **Start checks for code another running task is changing.** An issue's `touches:` (the findings door's line,
+    carried into `## Scope`) is compared with every task In progress — its own `touches:` and its branch's changed
+    files. *Same function*: Start asks — **Queue after #N** (records a local wait, `.devdesk/waits.json`, which the
+    Waits-for rule then enforces) or **Start anyway**. *Same file, different functions*: a note, no question — git
+    merges different code cleanly. Priority is never a block: Next up already ranks, the developer decides.
+12. **Every screen says where it sits in the flow.** Each sidebar item has a one-line tooltip, and each screen an
+    ⓘ that explains what it holds, what you do there, and what comes before and after — so a first-time user can
+    find their way from a finding to a merged fix without a manual.
+
 ## Names considered for the Findings screen, and why each lost
 
 | Name | Why not |
@@ -101,6 +116,7 @@ and a filing status it could not read — not its name.
 3. Plan: the list, Working now, Move to top stored in `.devdesk/`, the No milestone row.
 4. Settings: *Board and plan*, scope grouping.
 5. Diagrams: open-issue counts per part (deferred — needs node → touches mapping).
+6. Sidebar order, File, the Start overlap check, and the per-screen tooltips and ⓘ (decisions 9–12).
 
 ## Consequences
 
