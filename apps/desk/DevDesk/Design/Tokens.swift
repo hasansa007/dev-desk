@@ -129,17 +129,19 @@ enum DeskMetric {
     /// Files is the right edge: a tree over a viewer, so it is narrow.
     static let filesPanelWidth: CGFloat = 420
     static let filesWidthRange: ClosedRange<Double> = 260...900
-    static let boardColumnWidth: CGFloat = 246
+    static let boardColumnWidth: CGFloat = 300
     /// Every small control shares these: search fields, toggles and the toolbar's pill. Buttons carry their own table in `DeskButtonStyle.Size`.
     static let controlHeight: CGFloat = 26
     static let controlRadius: CGFloat = 6
     static let cardRadius: CGFloat = 8
+    /// Inside a board card, on every side; the ⋯ and Start overlays sit on the same inset.
+    static let cardPadding: CGFloat = 16
     /// A board card is one block whatever it holds, so a column reads as a column and not as a ragged list.
     /// Two lines of title, meta, ratings, then one bottom band shared by the note and the action.
-    static let cardContentHeight: CGFloat = 117
+    static let cardContentHeight: CGFloat = 132
     /// Room the title leaves for the ⋮ overlay, which takes no layout space of its own.
     static let cardMenuInset: CGFloat = 30
-    static let cardTitleHeight: CGFloat = 34
+    static let cardTitleHeight: CGFloat = 38
     /// One height for a column's header, so a long title truncates instead of dropping its own column a row.
     static let columnHeaderHeight: CGFloat = 18
     static let pillRadius: CGFloat = 10

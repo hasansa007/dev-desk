@@ -100,8 +100,8 @@ struct TaskCard: View {
         // believed. A tap gesture on the card's own shape leaves its controls as ordinary children that work.
         content
             .opacity(task.isDimmed ? 0.72 : 1)
-            .overlay(alignment: .topTrailing) { movesMenu.padding(7) }
-            .overlay(alignment: .bottomTrailing) { startButton.padding(11) }
+            .overlay(alignment: .topTrailing) { movesMenu.padding(DeskMetric.cardPadding - 4) }
+            .overlay(alignment: .bottomTrailing) { startButton.padding(DeskMetric.cardPadding) }
             .onPreferenceChange(StartWidthKey.self) { startWidth = $0 }
             .onTapGesture(perform: action)
             .accessibilityElement(children: .contain)
@@ -197,9 +197,9 @@ struct TaskCard: View {
                 .frame(maxWidth: .infinity, minHeight: DeskMetric.cardTitleHeight,
                        maxHeight: DeskMetric.cardTitleHeight, alignment: .topLeading)
             metaRow
-                .padding(.top, 9)
+                .padding(.top, 10)
             ratingRow
-                .padding(.top, 7)
+                .padding(.top, 8)
             // One band at the bottom, reserved on every card: the note reads along it, and the Start control
             // sits at its right as a sibling overlay — never a button inside a button. Two separate reserved
             // rows left every card without an action half-empty.
@@ -207,7 +207,7 @@ struct TaskCard: View {
                 .padding(.top, 9)
         }
         .frame(height: DeskMetric.cardContentHeight, alignment: .topLeading)
-        .deskCard(isSelected: isLastOpened)
+        .deskCard(padding: DeskMetric.cardPadding, isSelected: isLastOpened)
     }
 
     /// Always present, so a card with something to say is not a different size from one without. The trailing
