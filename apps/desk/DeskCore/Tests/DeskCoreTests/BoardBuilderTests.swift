@@ -698,10 +698,11 @@ final class BoardBuilderTests: XCTestCase {
 
     // MARK: - ADR 0046: P0 is always Next up; a card says what it waits for
 
-    private func board(_ issues: [GitHubIssue], active: String? = "M") -> [String: DeskTask] {
-        let input = BoardInput(git: GitFacts(base: "staging", baseRef: "refs/remotes/origin/staging", baseShort: "abc1234", branches: []),
+    private func board(_ issues: [GitHubIssue], active: String? = "M", waits: [String: [Int]] = [:]) -> [String: DeskTask] {
+        var input = BoardInput(git: GitFacts(base: "staging", baseRef: "refs/remotes/origin/staging", baseShort: "abc1234", branches: []),
                                github: GitHubData(slug: "a/b", account: nil, issues: issues, openPullRequests: [], mergedPullRequests: []),
                                activeMilestone: active)
+        input.waits = waits
         return Dictionary(uniqueKeysWithValues: BoardBuilder.build(input).map { ($0.id, $0) })
     }
 
@@ -727,6 +728,13 @@ final class BoardBuilderTests: XCTestCase {
                            issue(6, "The bug", milestone: "M")])
         XCTAssertEqual(tasks["5"]?.cardNote, "Waits for #6")
         XCTAssertNil(tasks["6"]?.cardNote)
+    }
+
+    func testAWaitQueuedAtStartIsADependencyAndSaysWaitsFor() throws {
+        let tasks = board([issue(816, "Import re-author", milestone: "M"), issue(814, "Retry re-author", milestone: "M")],
+                          waits: ["816": [814]])
+        XCTAssertEqual(tasks["816"]?.cardNote, "Waits for #814")
+        XCTAssertEqual(tasks["816"]?.dependencies.map(\.taskID), ["814"])
     }
 
     func testAWaitOnAClosedIssueSaysNothing() throws {

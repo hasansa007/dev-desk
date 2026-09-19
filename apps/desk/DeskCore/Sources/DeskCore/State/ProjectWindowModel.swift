@@ -790,6 +790,20 @@ public final class ProjectWindowModel {
         await load()
     }
 
+    /// Tasks In progress that change code `task` says it will (ADR 0046): same function asks before Start.
+    public func startOverlaps(for task: DeskTask) -> [StartOverlap] {
+        StartOverlaps.find(task, among: tasks)
+    }
+
+    /// "Queue after #N" at Start: records the wait in `.devdesk/waits.json`, so the card says Waits for #N and Start
+    /// stays off until #N is done. Nothing is written to GitHub.
+    public func queueAfter(_ task: DeskTask, blocker: Int) async {
+        guard let root = snapshot?.repositoryRoot, let number = task.issueNumber else { return }
+        let url = URL(fileURLWithPath: root, isDirectory: true)
+        LocalWaits.read(projectRoot: url).adding(blocker, to: number).write(projectRoot: url)
+        await load()
+    }
+
     /// The open milestones Add Task may file into; empty with no tracker.
     public var openMilestones: [String] { snapshot?.openMilestones ?? [] }
 

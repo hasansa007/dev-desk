@@ -19,6 +19,8 @@ struct BoardInput {
     /// Stored stages from `.devdesk/board.json`, keyed by `DeskTask.id` (ADR 0035). Consulted only
     /// after every git rule has declined, so a stage can never contradict what git says.
     var stages: [String: BoardStage] = [:]
+    /// `.devdesk/waits.json`: issue → the issues it was queued after at Start (ADR 0046).
+    var waits: [String: [Int]] = [:]
     var now: Date = Date()
     var timeZone: TimeZone = .current
 }
@@ -280,6 +282,12 @@ private struct BoardContext {
         return .backlog
     }
 
+    /// The first issue this one was queued after at Start that is still open.
+    private func localWait(_ issue: GitHubIssue) -> Int? {
+        let open = Set((input.github?.issues ?? []).map(\.number))
+        return (input.waits[String(issue.number)] ?? []).first { open.contains($0) }
+    }
+
     /// The first issue this one records it waits on (`blocked by` / `needs:` #N) that is still open.
     private func waitsFor(_ issue: GitHubIssue) -> Int? {
         let open = Set((input.github?.issues ?? []).map(\.number))
@@ -349,6 +357,12 @@ private struct BoardContext {
             pullRequestNumber: pullRequest?.number)
         task.labels = issue.labelNames
         task.milestone = issue.milestone?.title
+        task.touches = StartOverlaps.touches(inBody: issue.body)
+        // A wait chosen at Start is a dependency like a `needs:` line, so the card says so and Start honours it.
+        for blocker in input.waits[String(issue.number)] ?? [] where !task.dependencies.contains(where: { $0.taskID == String(blocker) }) {
+            task.dependencies.append(Dependency(text: "Blocked by [#\(blocker)](desk://task/\(blocker))", taskID: String(blocker)))
+        }
+        if task.cardNote == nil, let blocker = localWait(issue) { task.cardNote = "Waits for #\(blocker)" }
         return task
     }
 

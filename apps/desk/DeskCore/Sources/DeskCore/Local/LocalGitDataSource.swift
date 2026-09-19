@@ -71,7 +71,8 @@ public struct LocalGitDataSource: ProjectDataSource {
                                                              github: github.data, activeMilestone: active.title,
                                                              pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL),
                                                              issuePipeline: checkpoints.issues, localPipeline: checkpoints.local,
-                                                             localBacklog: localBacklog, stages: stages.stages)))
+                                                             localBacklog: localBacklog, stages: stages.stages,
+                                                             waits: LocalWaits.read(projectRoot: topURL).waits)))
         }
         var offBase: FolderOffBase?
         if refusal == nil, let base = facts.base, let baseRef = facts.baseRef, baseRef.hasPrefix("refs/remotes/origin/"),

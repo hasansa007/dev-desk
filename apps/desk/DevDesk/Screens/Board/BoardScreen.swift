@@ -254,6 +254,8 @@ private struct BoardColumnView: View {
     let tasks: [DeskTask]
     let model: ProjectWindowModel
     @State private var pending: PendingMove?
+    /// A Start that would change a function a running task is changing waits here for the developer's answer.
+    @State private var overlapAsk: (task: DeskTask, overlap: StartOverlap)?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @Environment(\.terminals) private var terminals
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
@@ -347,11 +349,53 @@ private struct BoardColumnView: View {
         // The sheet on a task's FIRST start, and whenever ⌥ asks for it; after that the remembered launch
         // runs without a second dialog (ADR 0036 §10.3 answer 3). Auto never comes through here.
         return {
-            if model.remembersLaunch(for: task), !NSEvent.modifierFlags.contains(.option) {
-                model.startTask(task, agent: defaultConnection, using: model.rememberedLaunch(for: task))
+            if let same = model.startOverlaps(for: task).first(where: \.isSameCode) {
+                overlapAsk = (task, same)
             } else {
-                model.present(.startTask(task.id))
+                begin(task)
             }
+        }
+    }
+
+    private static let overlapMessage = "Queue after waits until it is done, then this card can start. Start anyway runs both, and their branches will conflict at merge."
+
+    private var overlapTitle: String {
+        guard let ask = overlapAsk else { return "" }
+        let file = (ask.overlap.file as NSString).lastPathComponent
+        return "#\(ask.overlap.issue) is in progress and changes \(file) › \(ask.overlap.code ?? "")"
+    }
+
+    private var isAskingOverlap: Binding<Bool> {
+        Binding(get: { overlapAsk != nil }, set: { if !$0 { overlapAsk = nil } })
+    }
+
+    @ViewBuilder private var overlapButtons: some View {
+        if let ask = overlapAsk {
+            Button("Queue after #\(ask.overlap.issue)") {
+                overlapAsk = nil
+                Task { await model.queueAfter(ask.task, blocker: ask.overlap.issue) }
+            }
+            Button("Start anyway") {
+                overlapAsk = nil
+                begin(ask.task)
+            }
+        }
+        Button("Cancel", role: .cancel) { overlapAsk = nil }
+    }
+
+    /// "#814 also edits route.js" when a running task changes the same file but not the same function.
+    private func sameFileNote(for task: DeskTask) -> String? {
+        let files = model.startOverlaps(for: task).filter { !$0.isSameCode }
+        guard !files.isEmpty else { return nil }
+        return files.map { "#\($0.issue) also edits \(($0.file as NSString).lastPathComponent)" }.joined(separator: " · ")
+            + " — different code, so git merges it cleanly."
+    }
+
+    private func begin(_ task: DeskTask) {
+        if model.remembersLaunch(for: task), !NSEvent.modifierFlags.contains(.option) {
+            model.startTask(task, agent: defaultConnection, using: model.rememberedLaunch(for: task))
+        } else {
+            model.present(.startTask(task.id))
         }
     }
 
@@ -379,6 +423,7 @@ private struct BoardColumnView: View {
                          localActions: localActions(for: task),
                          runControls: runControls(for: task),
                          startWith: startWithItems(for: task),
+                         startNote: sameFileNote(for: task),
                          editStartWith: {
                              model.settingsSection = .startWith
                              model.present(.settings)
@@ -401,6 +446,12 @@ private struct BoardColumnView: View {
                             titleVisibility: .visible) {
             Button(pending?.confirmTitle ?? "Move") { commit() }
             Button("Cancel", role: .cancel) { pending = nil }
+        }
+        // ADR 0046 decision 11: a running task already changes this function — merging both would conflict.
+        .confirmationDialog(overlapTitle, isPresented: isAskingOverlap, titleVisibility: .visible) {
+            overlapButtons
+        } message: {
+            Text(Self.overlapMessage)
         }
     }
 

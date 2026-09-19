@@ -78,6 +78,8 @@ struct TaskCard: View {
     var runControls: CardRunControls?
     /// The "Start with" list for a card that can start; nil hides the submenu, an empty list still offers editing it.
     var startWith: [StartWithItem]?
+    /// Said on Start's hover when a running task edits the same file, different code (ADR 0046): a note, not a question.
+    var startNote: String? = nil
     var editStartWith: () -> Void = {}
     /// The branch this project has checked out. It is on the board like any other — a branch with unmerged
     /// commits is In Progress by git's rule (ADR 0011) — but git will not let it be deleted, so it says so
@@ -258,6 +260,7 @@ struct TaskCard: View {
                 Label("Start", systemImage: "play.fill")
             }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+            .help(startNote ?? "Start this task in its own worktree")
             .accessibilityLabel("Start \(task.issueLabel.isEmpty ? task.title : task.issueLabel)")
             .background(GeometryReader { proxy in
                 Color.clear.preference(key: StartWidthKey.self, value: proxy.size.width)
