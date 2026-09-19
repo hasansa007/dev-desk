@@ -463,7 +463,14 @@ public final class ProjectWindowModel {
         runs.runs.first { $0.id == id }?.title ?? task(id)?.title ?? sessions.title(for: id) ?? "A terminal session"
     }
     public var openTaskCount: Int { tasks.filter { $0.column != .done }.count }
-    public var findingsCount: Int? { snapshot?.findings.value?.findings.count }
+    /// What waits on you (ADR 0046): confirmed or unverified findings that are not filed, merged, on the board, or
+    /// ignored. It counted every finding of every run, filed or not — 35 beside a screen whose work was 2.
+    public var findingsCount: Int? {
+        snapshot?.findings.value?.findings.filter { finding in
+            finding.filing == nil && !isInLocalBacklog(finding.id) && !ignoredFindings.contains(finding.id)
+                && (finding.categories.contains(.new) || finding.categories.contains(.needsDecision))
+        }.count
+    }
     public var ideationCount: Int? { snapshot?.ideation.value?.opportunities.count }
     public var parallelTasks: [DeskTask] { Array(tasks.filter { $0.column == .inProgress && !$0.parallel.isNone }.prefix(4)) }
 

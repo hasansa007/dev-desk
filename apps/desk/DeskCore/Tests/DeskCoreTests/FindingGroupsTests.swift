@@ -153,3 +153,33 @@ final class FindingGroupsTests: XCTestCase {
         XCTAssertEqual(FindingGroups.byGroup(findings, groups: []).map(\.id), FindingGroups.byStatus(findings).map(\.id))
     }
 }
+
+private struct FindingsSource: ProjectDataSource {
+    let findings: [Finding]
+    func load() async throws -> ProjectSnapshot {
+        ProjectSnapshot(project: ProjectInfo(name: "p", displayPath: "/p", branch: "main"), isDemo: false,
+                        board: .available([]), boardNote: "", findings: .available(FindingsReport(runs: [], findings: findings)),
+                        roadmap: .unavailable("n/a"), connections: [], connectionsNote: "",
+                        capabilities: CapabilityMatrix(providers: [], rows: [], note: ""), insights: .unavailable("none"))
+    }
+}
+
+/// ADR 0046: the sidebar counts what waits on you, not every finding ever written.
+@MainActor
+final class FindingsCountTests: XCTestCase {
+    private func finding(_ id: String, _ category: FindingCategory, filing: FindingFiling? = nil) -> Finding {
+        var f = Finding(id: id, runID: "r", title: id, listDetail: "", categories: [category], summary: "",
+                        verificationLabel: "", locations: [], limits: "")
+        f.filing = filing
+        return f
+    }
+
+    func testFiledMergedAndClosedFindingsAreNotCounted() async {
+        let model = ProjectWindowModel(ref: .local(path: "/p"), source: FindingsSource(findings: [
+            finding("a", .new), finding("b", .new, filing: .filed(810)), finding("c", .new, filing: .merged(782)),
+            finding("d", .needsDecision), finding("e", .closedOrDeclined), finding("f", .knownNewEvidence),
+        ]), insightsDelay: .zero)
+        await model.load()
+        XCTAssertEqual(model.findingsCount, 2, "a (to decide) and d (to verify)")
+    }
+}
