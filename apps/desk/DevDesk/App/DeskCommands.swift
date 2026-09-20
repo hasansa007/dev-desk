@@ -52,9 +52,19 @@ struct DeskCommands: Commands {
                     .keyboardShortcut("r", modifiers: [.command, .shift])
                 Divider()
                 Button("Settings…") { openSettings() }
+                Divider()
+                // ⌘W closes the window, which is the whole app now (ADR 0050); this takes one project off
+                // the strip. Right-click does it too, on the strip icon and on the Home card.
+                Button("Close Project") { closeProject() }
+                    .keyboardShortcut("w", modifiers: [.command, .shift])
             }
             .disabled(model == nil)
         }
+    }
+
+    private func closeProject() {
+        guard let ref = workspace.selection else { return }
+        workspace.close(ref)
     }
 
     /// The card the board is standing on, when it is one that can be started and has nothing running.

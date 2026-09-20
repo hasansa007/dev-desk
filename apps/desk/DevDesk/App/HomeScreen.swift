@@ -131,6 +131,15 @@ private struct ProjectFocusCard: View {
                 // The project that is stuck on you is outlined, the same way the run that needs you is.
                 .strokeBorder(isFocus && context.waitingCount > 0 ? DeskColor.tone(.waiting).border : DeskColor.border)
         }
+        // Double-click opens it, as it does on a launcher row: the card is the project, and aiming at the
+        // small Open button was the only way in.
+        .contentShape(RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
+        .onTapGesture(count: 2) { workspace.select(context.ref) }
+        // The same right-click the strip icon has: Home is where a project you are done with is looked at,
+        // so closing one from the strip only was closing it from the screen you were not on.
+        .contextMenu {
+            Button("Close Project") { workspace.close(context.ref) }
+        }
     }
 
     /// Compact drops the path — the name and a way in are what a card is for, and a squeezed path is the
