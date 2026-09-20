@@ -26,7 +26,7 @@ Phase 12 states the ceiling outright: *"the check is ACCURACY, not presence."* `
 
 | Hook | Phase | Event | Verdict |
 |---|---|---|---|
-| `branch-guard.sh` | 3 | PreToolUse `Edit\|Write\|MultiEdit\|NotebookEdit`, and `Bash` for `git commit` | **deny** a write while on `main`/`master`/`staging` |
+| `branch-guard.sh` | 3 | PreToolUse `Edit\|Write\|MultiEdit\|NotebookEdit`, and `Bash` for `git commit` / `git -C <dir> commit` | **deny** a write while on `main`/`master`/`staging`, judged in the folder the command runs in — not the session's; this repo is exempt |
 | `pr-gates.sh` | 12 · 14 · 16 | PreToolUse `Bash` | **deny** a PR body missing `## PIPELINE`/`## DOCS` · **deny** a push onto a protected ref · **ask** on a merge into prod, on the documented catch-up push, and on `.dev/` phase state that disagrees with git |
 | `teardown.sh` | 11 | Stop | **block the stop** while MCP debug Chrome is alive |
 | `context-load.sh` | 1 | SessionStart | inject PROJECT_MAP's `TECH_STACK` + `ORPHANS` and the branch |
@@ -35,8 +35,10 @@ Phase 11's *checklist* is not reachable — only its teardown rule is.
 
 ## Install
 
-**Per-repo — `branch-guard.sh` only**, in repos with a two-stage flow. Deliberately not global: you
-commit straight to `main` in *this* repo, and a global guard would block every commit here.
+**Per-repo — `branch-guard.sh` only**, in repos with a two-stage flow. Still not global, but no longer
+because of *this* repo: since 2026-09-19 the hook exempts the repo it lives in, so a global install
+would not block the commits here. It stays per-repo because a two-stage flow is a per-repo fact — a
+repo without `staging` has no branch worth denying.
 `<repo>/.claude/settings.json`:
 
 ```json
@@ -123,8 +125,20 @@ falsification pass, not by the happy path.
 - **2026-08-05 — `^## PIPELINE` stays anchored.** Inherited from `pr-gates.yml`, whose unanchored
   grep passed a body whose heading had been deleted because the string appeared in prose.
 
+- **2026-09-19 — `branch-guard.sh` judges the folder the COMMAND runs in, not the session's.** The
+  first real-run failure, and the most expensive: a `Bash` commit was judged by the session's starting
+  folder, so while one project sat on `staging` the guard denied commits in *other* repos and in
+  `~/.devdesk/wt` worktrees — and it blocked dev-skill itself, whose `CLAUDE.md` says the pipeline does
+  not gate it. With Dev Desk's hook forbidding a project folder's branch switch, that deadlocked every
+  commit in a session (2026-09-18/19). Now the target is resolved from each `git -C` target, then a
+  `cd` on the first line, first real directory winning — so a commit message quoting a path cannot
+  steer it — `git -C <dir> commit` is recognised as a commit at all, and the repo the hook lives in is
+  exempt. Nine cases tested.
+
 **Undated, therefore unproven:** everything else — the phase-to-event mapping, the ask/deny split on
-pushes, the bypass, the log format. Twenty pipe-tested payloads, **zero real runs** as of 2026-08-05.
+pushes, the bypass, the log format. Twenty pipe-tested payloads and, as of 2026-09-20, **one real
+failure found in use** — the 09-19 entry above. The other three hooks still have zero real runs behind
+them.
 
 ## Known limits
 
