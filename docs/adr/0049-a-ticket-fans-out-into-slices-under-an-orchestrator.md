@@ -71,3 +71,47 @@ the developer's, not because a step ended.
   merges them; 14 and 16 are the prod decisions and stay where they are.
 - **A new orchestration vocabulary.** `group:` / `needs:` / `shares:` already carry base and landing
   order for parallel agents; a second scheme would have to be kept in sync with it.
+
+## The shape, on one mock ticket
+
+`#207 · Dev Desk exports the board: CSV, Markdown, PDF` — Deep tier. Phase 8 yields one root
+(`BoardExport` protocol + row model) and three leaves that need it and nothing else.
+
+Before — one writing lane, two stops before any code:
+
+```
+0 ─ 1 ─ 2 (explorers, READ) ─ 4 ─▶ ┏ 5 Discuss ┓ ─▶ ┏ 6 Architecture ┓
+                                   ┗━━━ STOPS ━┛    ┗━━━━ STOPS ━━━━━┛
+                                                            │
+7 ─ 8 ─▶ 9 IMPLEMENT   task 1 ▸▸ task 2 ▸▸ task 3 ▸▸ task 4  (one checkout)
+                       ──────────────────────────────────▶  2,3,4 in series
+                                                            │
+10 ─ 11 ─ 12 ─ 13 (review fan-out, READ) ─▶ ┏ 14 MERGE ┓ STOPS
+```
+
+After:
+
+```
+0 ─ 1 ─ 2 ─ 4 ─▶ ┏━ 5+6 DECISION PACK ━━━━━━━━━━━━━━━━━━━━━━━━━┓
+                 ┃ clarifications · architecture pick           ┃ the ONE stop
+                 ┃ slice plan: 1 root + 3 leaves · max-agents=3 ┃ before code
+                 ┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
+                                    │
+7 ─ 8 ─▶ graph: width = 3 leaves ≤ cap
+         orchestrator writes the root itself, then one contract per leaf
+         (acceptance criteria + a FAILING test) and dispatches
+                                    │
+              ┌─────────────────────┼─────────────────────┐
+              ▼                     ▼                     ▼
+        worktree · CSV        worktree · Markdown    worktree · PDF
+        group/export 2of4     group/export 3of4      group/export 4of4
+              │ checkpoint          │ checkpoint          │ ✗ ✗ two strikes
+              └──────────┬──────────┘                     └─▶ finding
+                         ▼
+         integrate: merge-tree dry run; the group branch MERGES its base in
+                         │
+10 ─ 11 ─ 12 ─ 13 (writer ≠ reviewer) ─▶ ┏ 14 MERGE ┓ STOPS, unchanged
+```
+
+Review stays one agent reading every diff — the saving is in the writing only. A Light-tier ticket
+takes neither path: one agent, no fan-out, as today.
