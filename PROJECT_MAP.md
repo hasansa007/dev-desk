@@ -94,14 +94,13 @@ ORPHANS).
   `impact:high|medium|low`, `complexity:high|medium|low` and `plan-not-final` exist since
   2026-09-12, created for epic #59 (ADR 0020).
 - **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
-- **0 milestones** — `dev:board`'s QUEUE column is decided by the active milestone, and none
-  exists, so every board render so far has put its 9 open issues in Backlog or later.
-- **`dev board` never reaches the `pr_created`/`human_review` columns.** `cmd_board`
-  (`scripts/dev.py:371-383`) builds each issue's `facts` dict with only `unmerged` and
-  `phase_group` — it never sets `facts["pr"]`, so `classify`'s PR branch (`facts.get("pr")`) is
-  always empty and those two columns are dead code. Dev Desk's board (ADR 0013) does receive PR
-  data and reaches Review correctly, so for an issue with an open PR the app says Review while
-  `dev board` says In progress or Backlog. A `dev.py` fix; out of this branch's scope.
+- **QUEUE fills since a milestone exists** — the board of 2026-09-20 put 3 of 11 open issues in it,
+  resolved as the oldest open milestone because none has a due date.
+- **`dev board` reaches `pr_created`/`human_review` since 2026-09-20.** `cmd_board` reads open pull
+  requests once and attaches one per issue, by head branch or by a closing line in the body — Dev
+  Desk's two rules (`BoardBuilder.branch`, `closedIssues`), so the app and the CLI now agree on an
+  issue with an open PR. A draft is In progress in both. Still unobserved on a live tracker: this
+  repo's one open PR closes no issue, so both columns are covered by fixtures only.
 
 **Dev Desk (`apps/desk/`), not built yet:**
 

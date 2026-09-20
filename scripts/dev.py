@@ -241,6 +241,32 @@ NO_SLICE = 9999
 # progress bar that is wrong is worse than none, because it is the number you plan from.
 TASK_LINE = re.compile(r"^[ \t]*[-*][ \t]*\[([ xX])\][ \t]*#(\d+)", re.MULTILINE)
 SLICE_RE = re.compile(r"\bslice[ \t]+(\d+)\b", re.IGNORECASE)
+# A pull request speaks for an issue the same two ways Dev Desk reads it (BoardBuilder.branch and
+# closedIssues): its head branch is named for the issue, or its body closes the issue in words.
+CLOSING_RE = re.compile(r"\b(?:close[sd]?|fix(?:e[sd])?|resolve[sd]?)\s+#(\d+)\b", re.IGNORECASE)
+
+
+def branch_matches(name: str, number: int) -> bool:
+    """`gh-12-thing`, `12-thing`, `12`, or `anything/12-thing` — never `gh-120-thing`."""
+    return bool(re.match(r"^(gh-)?%d(-|$)" % number, name)) or ("/%d-" % number) in name
+
+
+def closed_issues(body: str) -> List[int]:
+    """The issues a pull request's body says it closes. Prose about #N is not a claim on N."""
+    return [int(n) for n in CLOSING_RE.findall(body or "")]
+
+
+def pull_request_for(number: int, pull_requests: List[Dict]) -> Optional[Dict]:
+    """The open pull request that speaks for this issue. The head branch wins over the body, because a
+    branch named for the issue is the work itself; a closing line is a claim about it. A fork's branch
+    name is not ours to read, so cross-repository pull requests are matched by their body alone."""
+    for pr in pull_requests:
+        if not pr.get("isCrossRepository") and branch_matches(pr.get("headRefName", ""), number):
+            return pr
+    for pr in pull_requests:
+        if number in closed_issues(pr.get("body", "")):
+            return pr
+    return None
 
 
 def parse_epic_children(body: str) -> List[Tuple[int, bool]]:
@@ -293,6 +319,10 @@ def classify(issue: Dict, facts: Dict, active_milestone: Optional[str] = None) -
         return "deferred"
     pr = facts.get("pr")
     if pr and pr.get("state") == "OPEN":
+        # A draft is still being written. Dev Desk puts it In progress for the same reason: converting a
+        # pull request back to a draft is how you take work OUT of review, and the two boards agree.
+        if pr.get("isDraft"):
+            return "in_progress"
         if pr.get("reviewDecision") in ("REVIEW_REQUIRED", "CHANGES_REQUESTED", "APPROVED"):
             return "human_review"
         return "pr_created"
@@ -409,15 +439,28 @@ def cmd_board(args) -> int:
         milestone, why = (resolve_active_milestone(found, plan_order(root)) if found is not None
                           else (None, "could not read milestones — pass --milestone"))
 
+    # The board's PR_CREATED and HUMAN_REVIEW columns were dead for as long as they have existed: nothing
+    # ever put a `pr` in an issue's facts, so `classify`'s pull-request branch could not be reached and an
+    # issue with an open pull request rendered as In progress — while Dev Desk, reading the same repo,
+    # said Review. One `gh pr list` is what the two boards were missing (2026-09-20).
+    pull_requests = _gh_json(["pr", "list", "--state", "open", "--limit", "100", "--json",
+                              "number,headRefName,isCrossRepository,reviewDecision,isDraft,state,body"])
+    # A failed read is not "no pull requests" — the same rule the issue and milestone reads follow.
+    pr_unavailable = pull_requests is None
+    if pr_unavailable:
+        pull_requests = []
+
     base = origin_ref(resolve_base())
     facts: Dict[int, Dict] = {}
     code, out = run(["git", "branch", "--format=%(refname:short)"])
     branches = out.splitlines() if code == 0 else []
     for issue in issues:
         n = issue["number"]
-        match = next((b for b in branches
-                      if re.match(r"^(gh-)?%d(-|$)" % n, b) or ("/%d-" % n) in b), None)
+        match = next((b for b in branches if branch_matches(b, n)), None)
         f: Dict = {}
+        pr = pull_request_for(n, pull_requests)
+        if pr:
+            f["pr"] = pr
         if match and base:
             c, cnt = run(["git", "rev-list", "--count", "%s..%s" % (base, match)])
             # A branch existing proves nothing; only unmerged commits do.
@@ -429,6 +472,8 @@ def cmd_board(args) -> int:
 
     board = build_board(issues, facts, milestone)
     board["active_milestone"], board["active_why"] = milestone, why
+    if pr_unavailable:
+        board["pull_requests"] = "unavailable"
     if args.json:
         print(json.dumps(board, indent=2, sort_keys=True))
         return 0
@@ -439,6 +484,10 @@ def cmd_board(args) -> int:
     print("## %s — %d open%s" % (slug, len(issues), truncated))
     print("QUEUE = milestone %s — %s" % (milestone, why) if milestone
           else "QUEUE is empty — %s" % why)
+    if pr_unavailable:
+        # Said on the board itself: an empty PR OPEN column that means "could not look" reads exactly
+        # like one that means "nothing is in review", and they are opposite answers.
+        print("could not read pull requests — PR OPEN and HUMAN REVIEW are unknown, not empty")
     for col in ("queue", "in_progress", "pr_created", "human_review", "backlog", "deferred"):
         rows = board["columns"][col]
         if not rows:

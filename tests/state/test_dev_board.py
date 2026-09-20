@@ -21,13 +21,16 @@ sys.path.insert(0, REPO_ROOT)
 
 from scripts import dev as _dev  # noqa: E402
 from scripts.dev import (  # noqa: E402
+    branch_matches,
     build_board,
     classify,
+    closed_issues,
     epic_progress,
     is_startable,
     main,
     order_next,
     parse_epic_children,
+    pull_request_for,
     priority_rank,
     resolve_active_milestone,
     slice_rank,
@@ -132,6 +135,64 @@ class Classification(unittest.TestCase):
         facts = {"unmerged": 2, "pr": {"state": "OPEN", "reviewDecision": "CHANGES_REQUESTED"}}
         self.assertEqual(classify(issue(1), facts), "human_review")
 
+    def test_a_draft_pull_request_is_still_in_progress(self):
+        facts = {"unmerged": 2, "pr": {"state": "OPEN", "reviewDecision": None, "isDraft": True}}
+        self.assertEqual(classify(issue(1), facts), "in_progress")
+
+    def test_a_draft_with_no_local_branch_is_in_progress_not_backlog(self):
+        """The work is on a branch this clone has never fetched; the pull request is the only witness."""
+        facts = {"pr": {"state": "OPEN", "reviewDecision": None, "isDraft": True}}
+        self.assertEqual(classify(issue(1), facts), "in_progress")
+
+    def test_an_open_pull_request_outranks_unmerged_commits(self):
+        facts = {"unmerged": 7, "pr": {"state": "OPEN", "reviewDecision": "APPROVED"}}
+        self.assertEqual(classify(issue(1), facts), "human_review")
+
+
+class PullRequestMatching(unittest.TestCase):
+    """Which pull request speaks for an issue — the rule Dev Desk's BoardBuilder reads the same way."""
+
+    def pr(self, number, head="", body="", fork=False):
+        return {"number": number, "headRefName": head, "body": body,
+                "isCrossRepository": fork, "state": "OPEN"}
+
+    def test_a_branch_named_for_the_issue_speaks_for_it(self):
+        found = pull_request_for(12, [self.pr(3, head="gh-12-the-thing")])
+        self.assertEqual(found["number"], 3)
+
+    def test_a_longer_number_is_not_a_match(self):
+        self.assertIsNone(pull_request_for(12, [self.pr(3, head="gh-120-other")]))
+
+    def test_a_worktree_style_prefix_matches(self):
+        self.assertIsNotNone(pull_request_for(12, [self.pr(3, head="hasan/12-the-thing")]))
+
+    def test_a_closing_line_in_the_body_matches(self):
+        found = pull_request_for(12, [self.pr(4, head="rename-things", body="Fixes #12.")])
+        self.assertEqual(found["number"], 4)
+
+    def test_prose_about_an_issue_is_not_a_claim_on_it(self):
+        self.assertIsNone(pull_request_for(12, [self.pr(4, body="see #12 for context")]))
+
+    def test_the_head_branch_wins_over_a_closing_line(self):
+        prs = [self.pr(4, body="Closes #12"), self.pr(5, head="gh-12-the-thing")]
+        self.assertEqual(pull_request_for(12, prs)["number"], 5)
+
+    def test_a_fork_is_matched_by_its_body_not_its_branch_name(self):
+        self.assertIsNone(pull_request_for(12, [self.pr(6, head="gh-12-x", fork=True)]))
+        self.assertIsNotNone(pull_request_for(12, [self.pr(6, head="gh-12-x", fork=True, body="closes #12")]))
+
+    def test_no_open_pull_request_is_none(self):
+        self.assertIsNone(pull_request_for(12, []))
+
+    def test_branch_matches_reads_the_same_shapes(self):
+        self.assertTrue(branch_matches("gh-12-thing", 12))
+        self.assertTrue(branch_matches("12", 12))
+        self.assertFalse(branch_matches("gh-121-thing", 12))
+
+    def test_closed_issues_reads_every_closing_verb(self):
+        body = "Closes #1, fixed #2 and resolves #3. Mentions #4."
+        self.assertEqual(closed_issues(body), [1, 2, 3])
+
     def test_active_milestone_membership_is_the_queue(self):
         self.assertEqual(classify(issue(1, milestone="M1"), {}, active_milestone="M1"), "queue")
 
@@ -233,7 +294,8 @@ class BoardResolvesTheQueue(unittest.TestCase):
         self.milestones = [
             {"title": "late", "due_on": "2026-12-01T00:00:00Z", "created_at": "2026-01-01"},
             {"title": "soon", "due_on": "2026-10-01T00:00:00Z", "created_at": "2026-02-01"}]
-        _dev._gh_json = lambda args: issues if args[:2] == ["issue", "list"] else None
+        _dev._gh_json = lambda args: (issues if args[:2] == ["issue", "list"]
+                                      else [] if args[:2] == ["pr", "list"] else None)
         _dev._open_milestones = lambda: self.milestones
 
     def tearDown(self):
@@ -266,6 +328,53 @@ class BoardResolvesTheQueue(unittest.TestCase):
 
     def test_the_text_board_names_the_milestone_its_queue_is(self):
         self.assertIn("QUEUE = milestone soon", self.run_board())
+
+
+class BoardReachesThePullRequestColumns(unittest.TestCase):
+    """End to end through `main`, because the bug was never in `classify` — it was that nothing ever
+    handed `classify` a pull request, so both columns were unreachable however right the rule was."""
+
+    def setUp(self):
+        self.dir, self.cwd = tempfile.mkdtemp(), os.getcwd()
+        subprocess.run(["git", "init", "-q", self.dir], check=True)
+        os.chdir(self.dir)
+        self.real = (_dev._gh_json, _dev._open_milestones)
+        self.issues = [issue(12, "the thing"), issue(13, "the other thing")]
+        self.pulls = [{"number": 3, "headRefName": "gh-12-the-thing", "isCrossRepository": False,
+                       "reviewDecision": "", "isDraft": False, "state": "OPEN", "body": ""}]
+        _dev._gh_json = lambda args: (self.issues if args[:2] == ["issue", "list"]
+                                      else self.pulls if args[:2] == ["pr", "list"] else None)
+        _dev._open_milestones = lambda: []
+
+    def tearDown(self):
+        os.chdir(self.cwd)
+        _dev._gh_json, _dev._open_milestones = self.real
+        shutil.rmtree(self.dir, ignore_errors=True)
+
+    def run_board(self, *argv):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(main(["board"] + list(argv)), 0)
+        return out.getvalue()
+
+    def test_an_issue_with_an_open_pull_request_lands_in_pr_created(self):
+        board = json.loads(self.run_board("--json"))
+        self.assertEqual([r["number"] for r in board["columns"]["pr_created"]], [12])
+        self.assertEqual([r["number"] for r in board["columns"]["backlog"]], [13])
+
+    def test_a_review_decision_moves_it_on_to_human_review(self):
+        self.pulls[0]["reviewDecision"] = "REVIEW_REQUIRED"
+        board = json.loads(self.run_board("--json"))
+        self.assertEqual([r["number"] for r in board["columns"]["human_review"]], [12])
+        self.assertEqual(board["columns"]["pr_created"], [])
+
+    def test_the_text_board_prints_the_column(self):
+        self.assertIn("PR CREATED (1)", self.run_board())
+
+    def test_a_failed_pull_request_read_says_so_rather_than_posing_as_none(self):
+        self.pulls = None
+        self.assertIn("could not read pull requests", self.run_board())
+        self.assertEqual(json.loads(self.run_board("--json"))["pull_requests"], "unavailable")
 
 
 if __name__ == "__main__":
