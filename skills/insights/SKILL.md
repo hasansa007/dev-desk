@@ -61,7 +61,7 @@ above.
 
 ## Phase 2 — Resolve the repo
 
-Read `~/.claude/skills/dev/shared/entry.md` — **the absolute path, because this skill runs inside
+Read `~/.claude/.dev-root/shared/entry.md` — **the absolute path, because this skill runs inside
 somebody else's repo.** The resolved repo is the boundary: answer about *that* repo, and Phase 5
 writes only into it.
 

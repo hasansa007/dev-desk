@@ -50,7 +50,7 @@ afterwards. The engine owns the fan-out.
 
 ## Phase 2 — Resolve the repo and the diff
 
-Read `~/.claude/skills/dev/shared/entry.md` — **the absolute path, because this skill runs inside
+Read `~/.claude/.dev-root/shared/entry.md` — **the absolute path, because this skill runs inside
 somebody else's repo.** It resolves the repo and, critically, the **base branch**.
 
 ```bash

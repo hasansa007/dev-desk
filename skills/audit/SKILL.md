@@ -80,7 +80,7 @@ When auditing a branch or existing PR:
    ```
 3. Run the checker. It applies Steps 2–4 and prints the `## COMPLIANCE` section:
    ```bash
-   python3 ~/.claude/skills/dev/skills/audit/compliance_auditor.py --pr <PR_NUMBER>
+   python3 ~/.claude/.dev-root/skills/audit/compliance_auditor.py --pr <PR_NUMBER>
    # no PR yet: --file <body.md> --title "<PR title>" — the title is what marks a feat PR
    # --append-pr writes the section into the PR (Step 5); --format json gives the raw verdict
    ```

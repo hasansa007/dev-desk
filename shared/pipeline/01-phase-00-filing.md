@@ -24,7 +24,7 @@ The whole phase is one turn. If it is taking three, it has become the work.
    number,title,labels`, then `gh issue view <N>`. This is Universal Rules' *read 2–3 examples first*
    applied to the tracker: an issue that does not look like its neighbours gets triaged like an
    outsider's.
-3. **Search for the item before drafting it** — `~/.claude/skills/dev/shared/duplicates.md`, steps
+3. **Search for the item before drafting it** — `~/.claude/.dev-root/shared/duplicates.md`, steps
    1–2. A match on the same outcome ends the phase: comment on #N and hand #N back, filing nothing.
    Step 2 above reads issues for their *style*; this reads them for their *content*, and is a
    different search.

@@ -8,17 +8,32 @@ First install, first run, and the four situations you can be in.
 
 ## 1. Install
 
+**Claude Code — as a plugin.** It carries the hooks as well as the doors:
+
+```text
+/plugin marketplace add hasansa007/dev-skill
+/plugin install dev@dev-skill
+```
+
+The root door is `/dev:dev` on this path, not `/dev`: a plugin namespaces every skill under its own
+name. The doors are `/dev:board`, `/dev:verify` and the rest, as usual.
+
+**Codex, Antigravity, or Claude Code without the plugin:**
+
 ```bash
 git clone https://github.com/hasansa007/dev-skill.git && dev-skill/install.sh
 ```
 
 The installer symlinks the checkout into every agent CLI on the machine that uses the
 `skills/<name>/SKILL.md` convention — Claude Code, Codex, Antigravity — and skips the ones that are
-absent. It is safe to rerun.
+absent. It skips Claude Code when the plugin is installed, so the two never list every door twice.
+It is safe to rerun.
 
 **Installing is required, not optional.** Every path inside the family resolves through the install
-root (`~/.claude/skills/dev/…`), which is what lets it run on any machine regardless of where you
-cloned it. A clone that has never been installed has no root to resolve against.
+root, `~/.claude/.dev-root` — one symlink to whichever copy is live, maintained by `install.sh` or,
+under the plugin, by its SessionStart hook ([ADR 0054](../adr/0054-the-install-root-is-one-hidden-symlink-not-a-skills-directory.md)).
+That is what lets the family run on any machine regardless of where it was cloned. A clone that has
+never been installed has no root to resolve against.
 
 Reload with `/reload-skills` in Claude Code, or restart your CLI.
 
@@ -44,7 +59,7 @@ skill root      ok    /Users/you/.claude/skills/dev
 | `origin` | Add a remote — the family resolves `owner/repo` from it |
 | `gh auth` | `gh auth login`. Without it the filing doors cannot reach GitHub; Dev Desk records work in `docs/backlog/` instead and files it later ([ADR 0027](../adr/0027-work-without-a-tracker-is-recorded-locally-and-promoted-on-request.md)) |
 | `.dev/ ignored` | Add `.dev/` to `.gitignore`. **Nothing edits your `.gitignore` for you** — that would be this family writing into a repo it does not own |
-| `skill root` | Run `install.sh` |
+| `skill root` | Run `install.sh`, or install the plugin — either writes `~/.claude/.dev-root` |
 
 `python3` is optional. The CLI is a convenience; every door works without it.
 

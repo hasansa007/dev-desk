@@ -76,12 +76,12 @@ only by Phase 2's dedupe, as *what was already tracked*.
 
 ## Phase 2 — Resolve the repo, then read what is already tracked
 
-Read `~/.claude/skills/dev/shared/entry.md` — **the absolute path, because this skill runs
+Read `~/.claude/.dev-root/shared/entry.md` — **the absolute path, because this skill runs
 inside somebody else's repo**, where a bare `shared/entry.md` resolves to a file that does not
 exist. The resolved repo is the boundary, for reading, for writing and for filing.
 
-Also read `~/.claude/skills/dev/shared/pipeline/00-principles.md` → **Guiding Principles
-and Right-Size the Process**, and `~/.claude/skills/dev/shared/pipeline/18-output-and-universal-rules.md` → **Universal Rules**. Right-Size is not optional here despite this being a tool: it owns the
+Also read `~/.claude/.dev-root/shared/pipeline/00-principles.md` → **Guiding Principles
+and Right-Size the Process**, and `~/.claude/.dev-root/shared/pipeline/18-output-and-universal-rules.md` → **Universal Rules**. Right-Size is not optional here despite this being a tool: it owns the
 fan-out rule, and Phases 4 and 5 are the largest fan-out in the family.
 
 **A findings run that files a bug already in the tracker has made the board worse.** Dedupe runs at
@@ -447,7 +447,7 @@ without asking, and lists what it filed at the end of the report.
 
 Ask before filing anything (under `alert`). Then, for the confirmed set:
 
-- **Merge before you file** — `~/.claude/skills/dev/shared/duplicates.md`, applied per confirmed
+- **Merge before you file** — `~/.claude/.dev-root/shared/duplicates.md`, applied per confirmed
   finding against Phase 2's per-path search and recorded in `## ALREADY TRACKED`. **One addition at
   this door:** a finding that matches a row of the repo's decided-but-not-built register (e.g.
   `docs/06-roadmap.md`) is filed and the row is named in the report, so `dev:docs` re-points it — this

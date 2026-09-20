@@ -20,8 +20,8 @@ A rough description of work spanning several tasks.
 
 ## Run
 
-1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
-2. Read `~/.claude/skills/dev/shared/pipeline/01-phase-00-filing.md` → execute **Phase 0 — Filing** in full.
+1. Read `~/.claude/.dev-root/shared/entry.md` and apply it.
+2. Read `~/.claude/.dev-root/shared/pipeline/01-phase-00-filing.md` → execute **Phase 0 — Filing** in full.
 3. Fill the template below. Default type label: whatever this repo uses for epics — read
    `gh label list`, do not assume one exists.
 4. **Propose `impact:` and `complexity:` at epic level** — what the whole outcome is worth, and how

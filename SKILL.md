@@ -20,15 +20,21 @@ The rules below are CLI-agnostic — plain markdown over `git` and `gh`. Only th
 
 ## Where these paths point
 
-Every `~/.claude/skills/dev/...` path in this family is the **install** path, not the clone path.
-`install.sh` symlinks this repo into each CLI's skills directory under the fixed name `dev`, so the
-path resolves the same on every machine regardless of where the repo was cloned:
+Every `~/.claude/.dev-root/...` path in this family is the **install root**, not the clone path, and
+not a skills directory. It is one symlink to whichever copy of this repo is live, so the path
+resolves the same on every machine regardless of where the repo was cloned — or whether it was
+installed at all:
 
-| CLI | Root |
+| Installed as | What maintains `~/.claude/.dev-root` |
 |---|---|
-| Claude Code | `~/.claude/skills/dev/` |
-| Codex | `~/.codex/skills/dev/` |
-| Antigravity | its registered skills path (`install.sh` reads it from config) — else `~/.agents/skills/dev/` |
+| A symlink (`install.sh`) | `install.sh`, on every run — for Claude Code, Codex and Antigravity alike |
+| A Claude Code plugin | `hooks/context-load.sh` at SessionStart, from its own location |
+
+It is deliberately **not** under `~/.claude/skills/`: a root there is scanned, and every door would
+be listed a second time beside the plugin's. The doors themselves are still linked per CLI —
+`~/.claude/skills/dev/`, `~/.codex/skills/dev/`, or Antigravity's registered skills path — but what
+they *read* is the root above. A plugin install creates no per-CLI link at all, which is exactly why
+the root cannot be one (2026-09-20: 68 reads broke silently the first time one was installed).
 
 **The paths stay absolute on purpose.** These doors run inside somebody else's repo, where a bare
 `shared/entry.md` resolves to a file that does not exist — `dev:findings` Phase 2 and `dev:arch`
@@ -40,7 +46,7 @@ A clone that has never been installed has no such root. Run `install.sh` first.
 
 ## Workspace Config
 
-**Lives in `~/.claude/skills/dev/shared/entry.md`** — repo auto-detect, pre-prod branch resolution,
+**Lives in `~/.claude/.dev-root/shared/entry.md`** — repo auto-detect, pre-prod branch resolution,
 prod branch resolution, and the single-stage detection. It is shared with every `dev-*` sibling,
 so it is defined once there and never duplicated here.
 
@@ -228,10 +234,10 @@ description, and produces an issue number. That is why it can be a door when Pha
 
 ## Shared Pipeline
 
-1. Read `~/.claude/skills/dev/shared/entry.md` — workspace + base-branch resolution, shared with
+1. Read `~/.claude/.dev-root/shared/entry.md` — workspace + base-branch resolution, shared with
    every `dev-*` sibling.
-2. Read `~/.claude/skills/dev/shared/pipeline.md` — the index — then read the phase files it lists
-   under `~/.claude/skills/dev/shared/pipeline/` in order and execute all phases from them,
+2. Read `~/.claude/.dev-root/shared/pipeline.md` — the index — then read the phase files it lists
+   under `~/.claude/.dev-root/shared/pipeline/` in order and execute all phases from them,
    incorporating the Phase 14 additions defined above.
 
 The pipeline's Phase 2 detects the stack and routes to the matching platform pipeline automatically.
@@ -246,15 +252,15 @@ Apply only when `ARCHITECTURE.md` is **missing** from the repo root (first featu
 
 | Detected stack | Variant | Prompt location |
 |---|---|---|
-| `*.xcodeproj` / `Package.swift` only | A — iOS only | `~/.claude/skills/dev/platforms/mobile/MASTER_PROMPT.md` |
-| `build.gradle*` + Android manifest only | B — Android only | `~/.claude/skills/dev/platforms/mobile/MASTER_PROMPT.md` |
-| `androidApp/` + `iOSApp/` + `shared/` (KMP) | C — iOS + Android + KMP | `~/.claude/skills/dev/platforms/mobile/MASTER_PROMPT.md` |
+| `*.xcodeproj` / `Package.swift` only | A — iOS only | `~/.claude/.dev-root/platforms/mobile/MASTER_PROMPT.md` |
+| `build.gradle*` + Android manifest only | B — Android only | `~/.claude/.dev-root/platforms/mobile/MASTER_PROMPT.md` |
+| `androidApp/` + `iOSApp/` + `shared/` (KMP) | C — iOS + Android + KMP | `~/.claude/.dev-root/platforms/mobile/MASTER_PROMPT.md` |
 
 ### Web
 
 | Detected stack | Prompt location |
 |---|---|
-| `package.json` → Next.js / React / Vue | `~/.claude/skills/dev/platforms/web/MASTER_PROMPT.md` |
+| `package.json` → Next.js / React / Vue | `~/.claude/.dev-root/platforms/web/MASTER_PROMPT.md` |
 
 ### Per-Feature Prompts
 
@@ -262,7 +268,7 @@ For every feature (regardless of whether ARCHITECTURE.md exists), use the matchi
 
 | Stack | Feature prompt |
 |---|---|
-| Mobile (iOS / Android / KMP) | `~/.claude/skills/dev/platforms/mobile/FEATURE_PROMPT.md` |
-| Web (Next.js / React / Vue) | `~/.claude/skills/dev/platforms/web/FEATURE_PROMPT.md` |
+| Mobile (iOS / Android / KMP) | `~/.claude/.dev-root/platforms/mobile/FEATURE_PROMPT.md` |
+| Web (Next.js / React / Vue) | `~/.claude/.dev-root/platforms/web/FEATURE_PROMPT.md` |
 
 Do not invoke architecture or feature prompts for trivial changes (typos, copy edits, dependency bumps).

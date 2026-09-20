@@ -62,3 +62,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0051](0051-in-progress-gets-the-width-and-a-card-has-a-second-shape.md) | In progress gets the width, and a card has a second shape | Accepted |
 | [0052](0052-the-bottom-edge-is-a-dock-that-holds-several-terminals.md) | The bottom edge is a dock that holds several terminals | Accepted |
 | [0053](0053-kanban-is-renamed-board-in-the-door-and-the-folder.md) | Kanban is renamed Board, in the door and the folder | Accepted |
+| [0054](0054-the-install-root-is-one-hidden-symlink-not-a-skills-directory.md) | The install root is one hidden symlink, not a skills directory | Accepted |

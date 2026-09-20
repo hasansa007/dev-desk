@@ -16,21 +16,32 @@ This private repository requires GitHub access.
 
 ### 1 · The Mac app: Dev Desk
 
+One window holds every project. A strip down the left switches between them, and Home says which one
+needs you. Each project shows its board, a workspace for every task, findings, the roadmap and
+decisions; each task gets a real shell and its agent, Claude Code or Codex, running in the task's own
+worktree. You start an agent yourself, or turn on Auto for a project so it works through the queue —
+at most 3 at once, after a token warning you confirm.
+
+**Install and run it** — builds Release, puts it in `~/Applications`, and opens it:
+
 ```bash
-(cd dev-skill/apps/desk && xcodegen generate && open DevDesk.xcodeproj)   # then ⌘R in Xcode
+dev-skill/apps/desk/install.sh          # --no-open to install without launching
 ```
 
-Dev Desk shows each project's board, a workspace for every task, findings, the roadmap and decisions. Each task also gets a real shell and its agent, Claude Code or Codex, which run in the task's own worktree. You start an agent yourself, or turn on Auto for a project so it works through the queue. Auto runs at most 3 agents at once and asks you to confirm a token warning first.
+It builds on your machine, so it needs Xcode and `xcodegen` (`brew install xcodegen`). If you'd
+rather not build, take the release below.
 
-**Download it.** The repository is private, so fetch the latest build with the GitHub CLI:
+**Or download the built app.** The repository is private, so fetch the release with the GitHub CLI:
 
 ```bash
 gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.dmg'
 ```
 
-Open the DMG and drag **Dev Desk.app** onto the `/Applications` symlink inside it.
+Open the DMG and drag **Dev Desk.app** onto the `/Applications` symlink inside it. It's ad-hoc signed
+rather than notarized, so the first time, right-click the app and choose **Open**. macOS 14 or later;
+there is no Windows or Linux build.
 
-It's ad-hoc signed rather than notarized, so the first time you open it, right-click **Dev Desk.app** and choose **Open**. To build it yourself instead, as above, you need macOS 14 or later, Xcode and `xcodegen` (`brew install xcodegen`). For details, see [apps/desk/README.md](apps/desk/README.md).
+For details, see [apps/desk/README.md](apps/desk/README.md).
 
 ### 2 · The skill for your agent CLI
 

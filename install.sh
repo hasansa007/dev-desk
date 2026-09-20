@@ -48,6 +48,13 @@ for i in "${!NAMES[@]}"; do
   ln -sfn "$SRC" "$link" && printf '  %-12s linked  %s\n' "$cli" "$link" && ok=$((ok+1))
 done
 
+# The family's install ROOT, which every door reads as `~/.claude/.dev-root/...`. Kept outside
+# `skills/` on purpose: a root under `skills/` is scanned, and would list every door a second time
+# alongside the plugin. The plugin maintains the same link from its SessionStart hook.
+mkdir -p "$HOME/.claude" 2>/dev/null
+ln -sfn "$SRC" "$HOME/.claude/.dev-root" 2>/dev/null \
+  && printf '  %-12s root    %s\n' "dev root" "$HOME/.claude/.dev-root"
+
 # The `dev` command: link scripts/dev.py into the first user bin dir ALREADY on PATH.
 # Never edits a shell profile, never adds a PATH entry, never replaces something that is not ours —
 # a `dev` belonging to another tool is reported and left alone.

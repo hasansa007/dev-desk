@@ -36,8 +36,8 @@ A PR number or URL that has review comments on it.
 
 ## Run
 
-1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
-2. Read `~/.claude/skills/dev/shared/pipeline/16-phase-15-review-cycle.md` → execute **Phase 15 — Review Cycle**.
+1. Read `~/.claude/.dev-root/shared/entry.md` and apply it.
+2. Read `~/.claude/.dev-root/shared/pipeline/16-phase-15-review-cycle.md` → execute **Phase 15 — Review Cycle**.
 3. After the fixes land and are pushed, **return to Phase 14's pre-merge gates** — the diff
    changed, so the review that was clean no longer is.
 

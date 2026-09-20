@@ -105,7 +105,7 @@ is skipped, not the judgment.
   *"this needs you."*
 - **Stepping is available on request, never by default.** "Slow down" / "ask me between phases"
   is honoured for the rest of the run — confirm in one line and carry on. Do not offer it.
-- **Checkpoint every phase that clears.** `python3 ~/.claude/skills/dev/scripts/dev.py state checkpoint
+- **Checkpoint every phase that clears.** `python3 ~/.claude/.dev-root/scripts/dev.py state checkpoint
   --phase <N> --issue <number>` (a `docs/backlog/` task with no issue passes `--local <entry id>` instead). It
   is what the board reads to move a card: a started terminal moves nothing, a checkpoint does. A
   failed command costs the card its phase, never the run — say so in one line and carry on.

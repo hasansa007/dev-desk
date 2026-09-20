@@ -30,10 +30,10 @@ guards.
 
 ## Phase 0 — Prefer the CLI, fall back to prose
 
-If `~/.claude/skills/dev/scripts/dev.py` exists, Phases 3–5 are already implemented there:
+If `~/.claude/.dev-root/scripts/dev.py` exists, Phases 3–5 are already implemented there:
 
 ```bash
-python3 ~/.claude/skills/dev/scripts/dev.py board --json [--milestone "<active>"]
+python3 ~/.claude/.dev-root/scripts/dev.py board --json [--milestone "<active>"]
 ```
 
 It returns the columns, the epic progress and the ordering, computed the same way every run. **If it
@@ -73,7 +73,7 @@ everything else works unchanged.
 
 ## Phase 2 — Resolve the repo
 
-Read `~/.claude/skills/dev/shared/entry.md` — repo auto-detect and pre-prod branch resolution. Both
+Read `~/.claude/.dev-root/shared/entry.md` — repo auto-detect and pre-prod branch resolution. Both
 are needed: the repo to query, the pre-prod branch to measure "unmerged" against. Do not restate
 that logic.
 

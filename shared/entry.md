@@ -13,13 +13,13 @@ workspace resolution and for which pipeline sections always load.
 
 ## Where these paths point
 
-Every `~/.claude/skills/dev/...` path in this family is the **install** path, not the clone path.
+Every `~/.claude/.dev-root/...` path in this family is the **install** path, not the clone path.
 `install.sh` symlinks this repo into each CLI's skills directory under the fixed name `dev`, so the
 path resolves the same on every machine regardless of where the repo was cloned:
 
 | CLI | Root |
 |---|---|
-| Claude Code | `~/.claude/skills/dev/` |
+| Claude Code | `~/.claude/.dev-root/` |
 | Codex | `~/.codex/skills/dev/` |
 | Antigravity | its registered skills path (`install.sh` reads it from config) — else `~/.agents/skills/dev/` |
 
@@ -169,7 +169,7 @@ Then state it in the form **`<result> — from <command>, which covers <domain>`
 ## What to load from `shared/pipeline/`
 
 `shared/pipeline.md` is now an index; the phases live as one file per phase under
-`~/.claude/skills/dev/shared/pipeline/`, and every file named below is relative to that folder —
+`~/.claude/.dev-root/shared/pipeline/`, and every file named below is relative to that folder —
 these doors run inside somebody else's repo, where a bare relative path resolves to nothing, so the
 folder is spelled absolutely once here and by basename everywhere else. **A door loads only the files
 its row below names** — that is the rule the whole split exists to state.
@@ -193,7 +193,7 @@ this pipeline exists to refuse.
 
 | Sibling | Phase | Loads |
 |---|---|---|
-| `dev` | 1–16 | every file under `~/.claude/skills/dev/shared/pipeline/` except `01-phase-00-filing.md` — the item already exists by the time it runs |
+| `dev` | 1–16 | every file under `~/.claude/.dev-root/shared/pipeline/` except `01-phase-00-filing.md` — the item already exists by the time it runs |
 | `dev:create-bug` | 0 | `00-principles.md` **minus Right-Size** + `18-output-and-universal-rules.md` + `01-phase-00-filing.md` |
 | `dev:create-issue` | 0 | `00-principles.md` **minus Right-Size** + `18-output-and-universal-rules.md` + `01-phase-00-filing.md` |
 | `dev:create-epic` | 0 | `00-principles.md` **minus Right-Size** + `18-output-and-universal-rules.md` + `01-phase-00-filing.md` |

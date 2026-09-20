@@ -20,8 +20,8 @@ epic-sized.
 
 ## Run
 
-1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
-2. Read `~/.claude/skills/dev/shared/pipeline/01-phase-00-filing.md` → execute **Phase 0 — Filing** in full.
+1. Read `~/.claude/.dev-root/shared/entry.md` and apply it.
+2. Read `~/.claude/.dev-root/shared/pipeline/01-phase-00-filing.md` → execute **Phase 0 — Filing** in full.
 3. Fill the template below. Default type label: whatever this repo uses for features
    (`enhancement` / `feature` / `task`) — read `gh label list`, do not assume which.
 4. **Propose `impact:` and `complexity:`** from what the work is worth and how big it looks, marked

@@ -19,8 +19,8 @@ A rough description of what is broken. One sentence is enough — drafting it is
 
 ## Run
 
-1. Read `~/.claude/skills/dev/shared/entry.md` and apply it.
-2. Read `~/.claude/skills/dev/shared/pipeline/01-phase-00-filing.md` → execute **Phase 0 — Filing** in full.
+1. Read `~/.claude/.dev-root/shared/entry.md` and apply it.
+2. Read `~/.claude/.dev-root/shared/pipeline/01-phase-00-filing.md` → execute **Phase 0 — Filing** in full.
 3. Fill the template below. Default type label: `bug`, if `gh label list` shows it exists.
 4. **Propose `impact:` and `complexity:`** — for a defect, impact is what it costs while it is
    broken, complexity the cost of fixing it. Both are assumptions for the developer to correct

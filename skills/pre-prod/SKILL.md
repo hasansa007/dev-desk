@@ -21,9 +21,9 @@ A branch with the work committed. The base is the **pre-prod branch** resolved b
 
 ## Run
 
-1. Read `~/.claude/skills/dev/shared/entry.md` and apply it. **State the resolved base branch
+1. Read `~/.claude/.dev-root/shared/entry.md` and apply it. **State the resolved base branch
    before doing anything** — getting this wrong means a PR that never deploys.
-2. Read `~/.claude/skills/dev/shared/pipeline/15-phase-14-pr-and-merge.md` → execute **Phase 14** in full, including the
+2. Read `~/.claude/.dev-root/shared/pipeline/15-phase-14-pr-and-merge.md` → execute **Phase 14** in full, including the
    `Phase 14 Additions` from `dev/SKILL.md` when the source is a GitHub issue (`Closes #N`, labels).
 
 ## The sequence and its guards

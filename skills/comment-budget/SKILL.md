@@ -34,8 +34,8 @@ direction silently changes a published site, and no gate will catch it.
 
 A **tool**, not a phase. It maps to no phase number and runs no pipeline phase — but it is not a
 `nothing` loader: it applies **Short Documentation**, so it reads that rule from
-`~/.claude/skills/dev/shared/pipeline/00-principles.md` (Guiding Principles) and the budget in
-`~/.claude/skills/dev/shared/pipeline/18-output-and-universal-rules.md` (Universal Rules) before
+`~/.claude/.dev-root/shared/pipeline/00-principles.md` (Guiding Principles) and the budget in
+`~/.claude/.dev-root/shared/pipeline/18-output-and-universal-rules.md` (Universal Rules) before
 classifying anything. Restating the rule here would give this repo two versions of it.
 
 Phase 9 applies that rule to code being written **now**. Nothing applied it to code already on

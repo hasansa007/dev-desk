@@ -60,7 +60,7 @@ when they are done.
 
 ## Phase 2 — Resolve the repo, then read what ALREADY exists
 
-Read `~/.claude/skills/dev/shared/entry.md` — **the absolute path, because this skill runs inside
+Read `~/.claude/.dev-root/shared/entry.md` — **the absolute path, because this skill runs inside
 somebody else's repo.** The resolved repo is the boundary for reading, writing and filing.
 
 **Read the current state before proposing anything.** A roadmap that duplicates what is already
@@ -200,7 +200,7 @@ gh api repos/<owner>/<repo>/milestones -f title="<theme>" -f description="<the b
 
 ### Adopt before you create
 
-`~/.claude/skills/dev/shared/duplicates.md` at theme scale. **Every epic line in an accepted theme
+`~/.claude/.dev-root/shared/duplicates.md` at theme scale. **Every epic line in an accepted theme
 resolves to ONE of these, in this order — and the first match wins:**
 
 | The epic's evidence is… | Write |

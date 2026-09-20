@@ -63,9 +63,9 @@ Verification continues automatically into documentation checks. Release actions 
 
 ## Running it on another CLI
 
-The installer links this checkout into existing skill directories for Claude Code, Codex, and Antigravity. It skips missing directories and does not install dependencies.
+The installer links this checkout into existing skill directories for Claude Code, Codex, and Antigravity. It skips missing directories, skips Claude Code when the plugin is installed, and does not install dependencies. Either install writes `~/.claude/.dev-root`, the root every door reads ([ADR 0054](../adr/0054-the-install-root-is-one-hidden-symlink-not-a-skills-directory.md)).
 
-The workflow is Markdown, but Claude Code's slash commands and hooks do not transfer automatically. In another CLI, point the agent at `SKILL.md` for a full run or `skills/<name>/SKILL.md` for a focused command.
+The workflow is Markdown. Installed as a Claude Code **plugin**, the four hooks come with it (`hooks/hooks.json`); installed as a symlink, or on another CLI, slash commands and hooks do not transfer automatically. In another CLI, point the agent at `SKILL.md` for a full run or `skills/<name>/SKILL.md` for a focused command.
 
 - Provide the required `superpowers:systematic-debugging` and `superpowers:brainstorming` skills, or suitable equivalents that preserve their gates.
 - Adapt Claude Code hooks to the host agent when equivalent enforcement is needed.
