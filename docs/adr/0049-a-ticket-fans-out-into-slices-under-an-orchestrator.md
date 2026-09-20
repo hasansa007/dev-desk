@@ -77,20 +77,6 @@ the developer's, not because a step ended.
 `#207 · Dev Desk exports the board: CSV, Markdown, PDF` — Deep tier. Phase 8 yields one root
 (`BoardExport` protocol + row model) and three leaves that need it and nothing else.
 
-Before — one writing lane, two stops before any code:
-
-```
-0 ─ 1 ─ 2 (explorers, READ) ─ 4 ─▶ ┏ 5 Discuss ┓ ─▶ ┏ 6 Architecture ┓
-                                   ┗━━━ STOPS ━┛    ┗━━━━ STOPS ━━━━━┛
-                                                            │
-7 ─ 8 ─▶ 9 IMPLEMENT   task 1 ▸▸ task 2 ▸▸ task 3 ▸▸ task 4  (one checkout)
-                       ──────────────────────────────────▶  2,3,4 in series
-                                                            │
-10 ─ 11 ─ 12 ─ 13 (review fan-out, READ) ─▶ ┏ 14 MERGE ┓ STOPS
-```
-
-After:
-
 ```
 0 ─ 1 ─ 2 ─ 4 ─▶ ┏━ 5+6 DECISION PACK ━━━━━━━━━━━━━━━━━━━━━━━━━┓
                  ┃ clarifications · architecture pick           ┃ the ONE stop
