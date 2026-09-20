@@ -4,7 +4,7 @@ Status:  Accepted
 Date:    2026-09-20
 Commit:  (this commit)
 
-Amends the rule stated in the root `SKILL.md` since the family began: that every absolute path in it
+Amends [0010](0010-paths-point-at-the-install-root.md) and the rule stated in the root `SKILL.md` since the family began: that every absolute path in it
 resolves under a per-CLI skills directory. It does not reverse *absolute paths* — that rule
 ([the "Where these paths point" section](../../SKILL.md)) stands and is the reason this fix was
 needed at all.

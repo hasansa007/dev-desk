@@ -73,7 +73,7 @@ Antigravity**, skipping any that are missing. It is safe to rerun, and it **skip
 the plugin is installed**, so the two never give you every door twice. Installed this way the hooks
 do not come with it, and `/dev` keeps its bare name — see [hooks/README.md](hooks/README.md).
 
-**Installing is required, not optional.** Every path inside the family resolves through the install root (`~/.claude/skills/dev/…`), which is what lets it run on any machine regardless of where you cloned it. A clone that has never been installed has no root to resolve against.
+**Installing is required, not optional.** Every path inside the family resolves through the install root (`~/.claude/.dev-root/…`), which is what lets it run on any machine regardless of where you cloned it. A clone that has never been installed has no root to resolve against.
 
 Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check the loaded skill list.
 
@@ -150,7 +150,7 @@ above works without it; when present, the doors use it instead of doing the same
 | `dev run <door> [args]` | Dispatch a door to an agent CLI for headless or CI use. Prints the command unless given `--execute`. |
 
 ```bash
-python3 ~/.claude/skills/dev/scripts/dev.py doctor
+python3 ~/.claude/.dev-root/scripts/dev.py doctor
 ```
 
 `install.sh` puts `dev` on your `PATH` by linking it into `~/.local/bin` (or `~/bin`) when one of

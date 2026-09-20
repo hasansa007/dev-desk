@@ -18,7 +18,7 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0007](0007-raise-the-pipeline-line-ceiling-to-988.md) | Raise the pipeline line ceiling to 988, and install the check | Accepted |
 | [0008](0008-replace-the-board-add-the-opportunity-door.md) | Replace the board; add the opportunity door rather than merge it | Accepted |
 | [0009](0009-track-docs-so-an-adr-can-be-part-of-its-own-diff.md) | Track `docs/` so an ADR can be part of the diff that introduces it | Accepted |
-| [0010](0010-paths-point-at-the-install-root.md) | Paths point at the install root, not the clone | Accepted |
+| [0010](0010-paths-point-at-the-install-root.md) | Paths point at the install root, not the clone | Accepted — amended by 0054 |
 | [0011](0011-the-project-board-mirrors-it-never-decides.md) | The Project board mirrors; it never decides | Accepted, partially reversed by 0035 |
 | [0012](0012-the-mac-app-lives-in-apps-desk.md) | The Mac app lives in `apps/desk/`, in this repo | Accepted |
 | [0013](0013-the-app-reads-git-and-github-directly.md) | The app reads git and GitHub directly, until `dev snapshot` exists | Accepted |

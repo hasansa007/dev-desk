@@ -15,6 +15,7 @@ sys.path.insert(0, REPO_ROOT)
 from scripts.dev import (  # noqa: E402
     AGENTS,
     ROOTS,
+    FALLBACKS,
     UNSUPPORTED,
     build_command,
     build_prompt,
@@ -150,8 +151,22 @@ class SkillRootPerAgent(unittest.TestCase):
 
     def test_each_agent_reads_its_own_root(self):
         self.assertTrue(skill_root("codex").endswith("/.codex/skills/dev"))
-        self.assertTrue(skill_root("claude").endswith("/.claude/skills/dev"))
+        self.assertIn(skill_root("claude").rsplit("/.claude/", 1)[-1],
+                      (".dev-root", "skills/dev"))
         self.assertNotEqual(skill_root("codex"), skill_root("claude"))
+
+    def test_claude_falls_back_to_the_per_cli_link_when_the_root_is_absent(self):
+        # A machine installed before ADR 0054 has ~/.claude/skills/dev and no .dev-root.
+        with FakeRoot() as fake:
+            with mock.patch.dict(ROOTS, {"claude": "/nonexistent/.claude/.dev-root"}), \
+                 mock.patch.dict(FALLBACKS, {"claude": fake.dir}):
+                self.assertEqual(skill_root("claude"), fake.dir)
+
+    def test_claude_reports_the_root_even_when_neither_exists(self):
+        # doctor must say WHICH path is missing, so an absent root resolves to its own name.
+        with mock.patch.dict(ROOTS, {"claude": "/nonexistent/.claude/.dev-root"}), \
+             mock.patch.dict(FALLBACKS, {"claude": "/nonexistent/.claude/skills/dev"}):
+            self.assertEqual(skill_root("claude"), "/nonexistent/.claude/.dev-root")
 
     def test_an_unnamed_agent_takes_an_installed_root(self):
         with FakeRoot() as fake:

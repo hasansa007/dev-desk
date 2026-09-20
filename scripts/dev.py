@@ -624,10 +624,15 @@ UNSUPPORTED = {
 
 
 # install.sh writes one copy of the family per agent, and an agent can only read its own root.
+# Claude Code's is the hidden symlink both installs maintain (ADR 0054): a PLUGIN install creates
+# no per-CLI link, so ~/.claude/skills/dev is absent and every prompt built from it named a path
+# that did not exist.
 ROOTS = {
-    "claude": "~/.claude/skills/dev",
+    "claude": "~/.claude/.dev-root",
     "codex": "~/.codex/skills/dev",
 }
+# The per-CLI link a symlink install still writes, for a machine installed before 0054.
+FALLBACKS = {"claude": "~/.claude/skills/dev"}
 
 
 def skill_root(agent: Optional[str] = None) -> str:
@@ -638,7 +643,11 @@ def skill_root(agent: Optional[str] = None) -> str:
     first installed root wins, so doctor and the door list still work with either CLI alone.
     """
     if agent in ROOTS:
-        return os.path.expanduser(ROOTS[agent])
+        named = os.path.expanduser(ROOTS[agent])
+        if os.path.isdir(named):
+            return named
+        fallback = os.path.expanduser(FALLBACKS.get(agent, ""))
+        return fallback if fallback and os.path.isdir(fallback) else named
     for path in ROOTS.values():
         expanded = os.path.expanduser(path)
         if os.path.isdir(expanded):

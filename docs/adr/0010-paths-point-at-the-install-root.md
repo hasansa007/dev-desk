@@ -1,6 +1,6 @@
 # 0010 — Paths point at the install root, not the clone
 
-Status:  Accepted
+Status:  Accepted, amended by [0054](0054-the-install-root-is-one-hidden-symlink-not-a-skills-directory.md)
 Date:    2026-09-10
 Commit:  ea912ba  ·  `feature/tracker-and-pipeline-state`
 

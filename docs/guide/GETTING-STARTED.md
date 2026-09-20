@@ -40,7 +40,7 @@ Reload with `/reload-skills` in Claude Code, or restart your CLI.
 ### Check the environment before your first run
 
 ```bash
-python3 ~/.claude/skills/dev/scripts/dev.py doctor
+python3 ~/.claude/.dev-root/scripts/dev.py doctor
 ```
 
 ```
@@ -225,8 +225,8 @@ gh project item-add <N> --owner "@me" --url <issue-url>   # 4. add issues
 Then, from the repo:
 
 ```bash
-python3 ~/.claude/skills/dev/scripts/dev.py project --number <N>          # dry run
-python3 ~/.claude/skills/dev/scripts/dev.py project --number <N> --apply  # write
+python3 ~/.claude/.dev-root/scripts/dev.py project --number <N>          # dry run
+python3 ~/.claude/.dev-root/scripts/dev.py project --number <N> --apply  # write
 ```
 
 View it at `github.com/users/<you>/projects/<N>`.
