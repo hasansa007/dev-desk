@@ -23,3 +23,6 @@
 # SwiftPM and xcodebuild output under the Mac app. Build artifacts, never source.
 apps/desk/build/
 apps/desk/DeskCore/build/
+
+# The hook bypass is a local, per-session escape hatch — never a repo state.
+.claude/hooks-off
