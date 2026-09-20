@@ -16,14 +16,10 @@ struct Sidebar: View {
             Divider().overlay(DeskColor.border).padding(.horizontal, 8).padding(.top, 10).padding(.bottom, 4)
             if model.snapshot != nil {
                 destinations
-                Spacer(minLength: 12)
-                // Connections used to live here as four permanent rows. Settings → Accounts holds the same
-                // four with their identity and their sign-in, so the sidebar copy was a screen you visit
-                // twice a year, kept open, with an email address on it (decision 14 made it redundant).
-                settingsRow
-            } else {
-                Spacer(minLength: 0)
             }
+            // Settings left the foot of this rail for the foot of the strip: it is a dialog every screen can
+            // open, and a rail exists only inside a project, so Home had no way to reach it but ⌘,.
+            Spacer(minLength: 0)
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
         .background(DeskColor.sidebar)
@@ -80,29 +76,6 @@ struct Sidebar: View {
         }
         .padding(.vertical, 4)
         .padding(.horizontal, 8)
-    }
-
-    /// Settings is a dialog, not a place: it sits at the bottom and opens over whatever you were looking at.
-    private var settingsRow: some View {
-        Button { model.present(.settings) } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "gearshape").font(.system(size: 20)).frame(width: 24)
-                if !isRail {
-                    Text("Settings")
-                    Spacer(minLength: 4)
-                }
-            }
-            .font(DeskFont.body)
-            .foregroundStyle(DeskColor.navInk)
-            .padding(.vertical, 10)
-            .padding(.horizontal, isRail ? 0 : 10)
-            .frame(maxWidth: .infinity)
-            .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-        }
-        .buttonStyle(.plain)
-        .help(isRail ? "Settings" : "")
-        .padding(.horizontal, 8)
-        .padding(.bottom, 8)
     }
 
     private func destinationButton(_ destination: Destination) -> some View {

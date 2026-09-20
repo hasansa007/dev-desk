@@ -863,11 +863,15 @@ struct ShellLifetimeHook: NSViewRepresentable {
     let registries: [ShellTerminalRegistry]
 
     func makeNSView(context: Context) -> ShellLifetimeView { ShellLifetimeView(registries: registries) }
-    func updateNSView(_ nsView: ShellLifetimeView, context: Context) {}
+    // The one window outlives every project in it, so the list this was made with goes stale the moment a
+    // project is opened or closed. Without this the view kept the projects that happened to be on the strip
+    // when it was first built, and a project opened later kept its shells and agents running after the
+    // window closed — the app would be gone from the screen with claude still on the CPU.
+    func updateNSView(_ nsView: ShellLifetimeView, context: Context) { nsView.registries = registries }
 }
 
 final class ShellLifetimeView: NSView {
-    private let registries: [ShellTerminalRegistry]
+    var registries: [ShellTerminalRegistry]
 
     init(registries: [ShellTerminalRegistry]) {
         self.registries = registries

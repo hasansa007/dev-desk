@@ -29,6 +29,10 @@ struct ProjectStrip: View {
             }
             Spacer(minLength: 8)
             openProjectButton
+            // Settings was a row at the foot of the project's own rail, which made it look like a place inside
+            // the project — and hid it entirely on Home, where the rail does not exist. The strip is the one
+            // column every screen has, so the dialog every screen can open belongs at the foot of it.
+            settingsButton
         }
         .padding(.vertical, 10)
         .frame(width: DeskMetric.stripWidth)
@@ -94,6 +98,22 @@ struct ProjectStrip: View {
         .buttonStyle(.plain)
         .help("Open project (⌘O)")
         .accessibilityLabel("Open project")
+    }
+
+    /// A project's Settings opens over that project; on Home it is the app-wide ones — the same rule ⌘, follows.
+    private var settingsButton: some View {
+        Button {
+            if let model = workspace.selected?.model { model.present(.settings) } else { workspace.isShowingSettings = true }
+        } label: {
+            Image(systemName: "gearshape")
+                .font(.system(size: 17, weight: .medium))
+                .foregroundStyle(DeskColor.navInk)
+                .frame(width: DeskMetric.stripBadge, height: DeskMetric.stripBadge)
+                .contentShape(RoundedRectangle(cornerRadius: DeskMetric.stripBadgeRadius))
+        }
+        .buttonStyle(.plain)
+        .help("Settings (⌘,)")
+        .accessibilityLabel("Settings")
     }
 
     /// In the strip's own gutter, not flush with its edge: the prototype sits it at x=0, which on a macOS
