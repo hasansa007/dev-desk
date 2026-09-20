@@ -107,16 +107,13 @@ final class WorkScopeTests: XCTestCase {
         return t
     }
 
-    func testTheDefaultIsTheWorkingMilestoneAndItCountsP0Elsewhere() async {
+    func testTheDefaultIsTheWorkingMilestone() async {
         let model = ProjectWindowModel(ref: .local(path: "/p"), source: WorkSource(tasks: [
             task(1, ["P1"], milestone: "Money"), task(2, ["P0"], milestone: "AI"), task(3, ["P0"]),
         ]), insightsDelay: .zero)
         await model.load()
         XCTAssertEqual(model.effectiveWorkScope, .milestone("Money"))
         XCTAssertEqual(model.tasks.filter(model.inWorkScope).map(\.issueNumber), [1])
-        XCTAssertEqual(model.p0OutsideWorkScope, 2)
-        model.workScope = .all
-        XCTAssertEqual(model.p0OutsideWorkScope, 0, "All shows every P0 already")
         model.workScope = .noMilestone
         XCTAssertEqual(model.tasks.filter(model.inWorkScope).map(\.issueNumber), [3])
     }

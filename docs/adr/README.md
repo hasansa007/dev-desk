@@ -56,3 +56,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0045](0045-add-task-files-where-the-tracker-is-checks-for-duplicates-and-can-start.md) | Add Task files where the tracker is, checks for duplicates first, and can start the work | Accepted |
 | [0046](0046-one-task-model-three-views-findings-keeps-its-name.md) | One task model in three views — Board, Plan, Findings, one filter bar; Findings keeps its name | Accepted |
 | [0047](0047-diagrams-are-architecture-data-flow-and-one-sequence-per-flow.md) | Diagrams are Architecture, Data flow and one Sequence per flow — every flow source counts the same | Accepted |
+| [0048](0048-the-board-drops-the-p0-strip.md) | The Board drops the P0 strip | Accepted |

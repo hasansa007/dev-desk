@@ -15,7 +15,6 @@ struct BoardScreen: View {
             filterPanel
             VStack(spacing: 0) {
                 header
-                if model.p0OutsideWorkScope > 0 { p0Strip }
                 boardBar
                 boardArea
             }
@@ -254,20 +253,6 @@ struct BoardScreen: View {
         }
         .padding(.horizontal, 16)
         .padding(.top, 8)
-    }
-
-    /// A narrowed Board still says a P0 exists elsewhere, and one click shows everything (ADR 0046 decision 13).
-    private var p0Strip: some View {
-        HStack(spacing: 8) {
-            PropertyChip("P0", tone: .failed, verticalPadding: 0, horizontalPadding: 5)
-            Text("\(model.p0OutsideWorkScope) P0 in other milestones")
-                .font(DeskFont.secondary).foregroundStyle(DeskColor.secondaryInk)
-            Button("Show all") { model.workScope = .all }
-                .buttonStyle(.plain).font(DeskFont.secondary).foregroundStyle(DeskColor.accent)
-            Spacer()
-        }
-        .padding(.horizontal, 16).padding(.vertical, 6)
-        .background(DeskColor.tone(.failed).dot.opacity(0.08))
     }
 
     private func matches(_ task: DeskTask) -> Bool {

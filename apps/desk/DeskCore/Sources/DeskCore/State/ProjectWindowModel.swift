@@ -928,14 +928,6 @@ public final class ProjectWindowModel {
         return (cards.count, cards.filter { isTaskRunning($0) }.count)
     }
 
-    /// P0 issues outside the selected milestone, so a narrowed Board can say they exist (ADR 0046 decision 13).
-    public var p0OutsideWorkScope: Int {
-        guard case .all = effectiveWorkScope else {
-            return tasks.filter { $0.priority == "P0" && $0.column != .done && !inWorkScope($0) }.count
-        }
-        return 0
-    }
-
     /// Tasks In progress that change code `task` says it will (ADR 0046): same function asks before Start.
     public func startOverlaps(for task: DeskTask) -> [StartOverlap] {
         StartOverlaps.find(task, among: tasks)
