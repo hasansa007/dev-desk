@@ -26,3 +26,6 @@ apps/desk/DeskCore/build/
 
 # The hook bypass is a local, per-session escape hatch — never a repo state.
 .claude/hooks-off
+
+# Stray visual-check run artifacts (a failed Chrome inspection log, written at the repo root).
+*.visual-check.json
