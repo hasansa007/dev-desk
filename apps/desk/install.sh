@@ -43,8 +43,9 @@ if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
     #   1b. a session that ASKED and is waiting for the answer — `.asking`, written on a question and cleared when
     #      the next turn begins. Quitting throws the pending decision away, so it counts as work (2026-09-20);
     #   2. a headless background run — `claude -p` / `codex exec` under Dev Desk, which has no prompt to idle at;
-    #   3. a session running a CLI that reports nothing — gemini, opencode, antigravity. Nothing marks their turns,
-    #      so the process itself is the only evidence, and a live one counts as work rather than being guessed idle.
+    #   3. a session running a CLI that reports nothing — gemini, opencode, antigravity. `AgentProtocol` is the
+    #      table: a CLI that never reports the end of a turn is marked working from its start until it exits, so
+    #      such a session shows up above as `.working` rather than being guessed idle.
     ROOTS="$(pgrep -x 'Dev Desk' | tr '\n' ' ')"
     EVENTS="$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}/")devdesk-events"
     WORKING=0

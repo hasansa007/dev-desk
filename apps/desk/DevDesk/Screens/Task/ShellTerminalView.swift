@@ -383,6 +383,13 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
         view.optionAsMetaKey = false
         view.processDelegate = self
         view.onBell = { [weak self] in self?.onEvent?(.bell) }
+        // A sent line is a turn begun in any CLI (AgentProtocol): the CLIs that report it are believed, and the
+        // ones that report nothing are covered by this.
+        view.onSend = { [weak self] in
+            guard let self, executable != nil else { return }
+            if let eventDirectory { AgentHooks.markWorking(.turnStarted, in: eventDirectory, protocol: AgentProtocol.of(executable)) }
+            onEvent?(.turnStarted)
+        }
     }
 
     var isRunning: Bool { view.process.shellPid != 0 && !hasExited }
@@ -423,6 +430,11 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
         // An app opened from Finder gets no locale; a locale that is set is never replaced.
         if ["LANG", "LC_ALL", "LC_CTYPE"].allSatisfy({ (environment[$0] ?? "").isEmpty }) {
             environment["LANG"] = Self.utf8Locale()
+        }
+        // A CLI that reports no turn end (gemini, opencode, antigravity) is working from here until it exits:
+        // nothing else will ever say otherwise, and guessing it idle is what loses work.
+        if let directory = eventDirectory, AgentProtocol.of(command.first).mustNotBeEndedWhileIdle, command.first != nil {
+            AgentHooks.markWorking(.turnStarted, in: directory, protocol: AgentProtocol.of(command.first))
         }
         view.startProcess(executable: "/bin/sh",
                           args: ["-c"] + script,
@@ -547,7 +559,7 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
             let contents = (try? Data(contentsOf: file)) ?? Data()
             try? FileManager.default.removeItem(at: file)
             if let event = AgentHooks.event(fileName: name, contents: contents) {
-                AgentHooks.markWorking(event, in: eventDirectory, reportsQuestions: AgentHooks.reports(executable))
+                AgentHooks.markWorking(event, in: eventDirectory, protocol: AgentProtocol.of(executable))
                 onEvent?(event)
             }
         }
@@ -583,6 +595,16 @@ final class FocusingTerminalView: LocalProcessTerminalView {
     var onBell: (() -> Void)?
 
     override func bell(source: Terminal) { onBell?() }
+
+    /// Every keystroke and every typed line reaches the process through here, so this is where Dev Desk learns
+    /// that a turn has begun — without a hook, for any CLI. Return is the send; the rest is composing.
+    override func send(source: Terminal, data: ArraySlice<UInt8>) {
+        if data.contains(0x0d) { onSend?() }
+        super.send(source: source, data: data)
+    }
+
+    /// Called when a line is sent to whatever runs in this terminal.
+    var onSend: (() -> Void)?
 
     /// SwiftTerm 1.11.2 only ever scrolls its own scrollback, and a full-screen program (claude, codex, less) draws on the
     /// alternate screen, which has none — so the wheel did nothing there. The wheel goes to the program instead: as wheel

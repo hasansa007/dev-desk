@@ -85,12 +85,25 @@ final class AgentHooksTests: XCTestCase {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         let asking = directory.appendingPathComponent(AgentHooks.askingMarker).path
-        AgentHooks.markWorking(.turnFinished, in: directory, reportsQuestions: false)
+        AgentHooks.markWorking(.turnFinished, in: directory, protocol: .codex)
         XCTAssertTrue(FileManager.default.fileExists(atPath: asking))
-        AgentHooks.markWorking(.turnStarted, in: directory, reportsQuestions: false)
+        AgentHooks.markWorking(.turnStarted, in: directory, protocol: .codex)
         XCTAssertFalse(FileManager.default.fileExists(atPath: asking))
         // Claude reports its questions, so a finished turn there is finished.
-        AgentHooks.markWorking(.turnFinished, in: directory, reportsQuestions: true)
+        AgentHooks.markWorking(.turnFinished, in: directory, protocol: .claude)
         XCTAssertFalse(FileManager.default.fileExists(atPath: asking))
+    }
+
+    /// The contract, one row per CLI: what it reports decides how its silence is read.
+    func testEachCLIsProtocol() {
+        XCTAssertEqual(AgentProtocol.of("claude"), .claude)
+        XCTAssertEqual(AgentProtocol.of("codex"), .codex)
+        XCTAssertEqual(AgentProtocol.of("gemini"), .silent)
+        XCTAssertEqual(AgentProtocol.of(nil), .silent)
+        XCTAssertFalse(AgentProtocol.claude.mustNotBeEndedWhileIdle, "Claude says when a turn ends")
+        XCTAssertFalse(AgentProtocol.codex.mustNotBeEndedWhileIdle, "Codex says when a turn ends")
+        XCTAssertTrue(AgentProtocol.silent.mustNotBeEndedWhileIdle, "nothing reports, so nothing is assumed idle")
+        XCTAssertTrue(AgentHooks.reports("claude"))
+        XCTAssertFalse(AgentHooks.reports("codex"))
     }
 }

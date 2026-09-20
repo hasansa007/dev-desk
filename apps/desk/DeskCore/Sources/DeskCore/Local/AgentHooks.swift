@@ -38,7 +38,8 @@ public enum AgentHooks {
     /// `reportsQuestions` is Claude alone: its Notification hook fires when it asks, so a finished turn there is
     /// genuinely finished. Codex has one hook for the end of a turn and asks in that same breath, so a finished
     /// turn is treated as a question — it is waiting for you either way, and an install must not eat it.
-    public static func markWorking(_ event: TerminalEvent, in directory: URL, reportsQuestions: Bool = true) {
+    public static func markWorking(_ event: TerminalEvent, in directory: URL, protocol agent: AgentProtocol = .claude) {
+        let reportsQuestions = agent.reportsQuestions
         let working = directory.appendingPathComponent(workingMarker)
         let asking = directory.appendingPathComponent(askingMarker)
         let pid = Data(String(ProcessInfo.processInfo.processIdentifier).utf8)
@@ -105,9 +106,9 @@ public enum AgentHooks {
         return line
     }
 
-    /// True when a command reports its questions through hooks, so the bell is not also read as one. Only Claude:
-    /// Codex's hook covers a finished turn alone, so its bell still counts.
-    public static func reports(_ executable: String?) -> Bool { executable == "claude" }
+    /// True when a command reports its questions itself, so the bell is not also read as one. Only Claude:
+    /// Codex's hook covers a finished turn alone, so its bell still counts. The whole table is `AgentProtocol`.
+    public static func reports(_ executable: String?) -> Bool { AgentProtocol.of(executable).reportsQuestions }
 
     /// One event file: `question.*` carries Claude's JSON with a `message`; `turn.*` is a finished turn. A dotfile
     /// is still being written, and an unknown name is ignored.
