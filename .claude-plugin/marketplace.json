@@ -1,11 +1,15 @@
 {
   "name": "dev-skill",
-  "owner": { "name": "Hasan", "email": "hasansa007@gmail.com" },
+  "owner": {
+    "name": "Hasan",
+    "url": "https://github.com/hasansa007"
+  },
   "plugins": [
     {
       "name": "dev",
       "source": "./",
-      "description": "Personal development workflow: a GitHub issue or a plain description taken from \"what should this do?\" to production, through gates that do not get skipped."
+      "description": "Personal development workflow: a GitHub issue or a plain description taken from \"what should this do?\" to production, through gates that do not get skipped.",
+      "version": "1.0.0"
     }
   ]
 }
