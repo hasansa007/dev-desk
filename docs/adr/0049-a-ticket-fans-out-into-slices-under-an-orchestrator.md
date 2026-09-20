@@ -72,6 +72,13 @@ the developer's, not because a step ended.
 - **A new orchestration vocabulary.** `group:` / `needs:` / `shares:` already carry base and landing
   order for parallel agents; a second scheme would have to be kept in sync with it.
 
+## Scope
+
+This governs a `/dev` run on a ticket, and nothing else. A **door** run — `dev:arch`,
+`dev:insights`, `dev:findings` — is one agent executing one skill: it has no Phase 8 graph to read
+and no slices to dispatch. `dev:findings` does fan out, into read-only finders under ADR 0043; that
+is a separate mechanism and this ADR neither extends nor replaces it.
+
 ## The shape, on one mock ticket
 
 `#207 · Dev Desk exports the board: CSV, Markdown, PDF` — Deep tier. Phase 8 yields one root

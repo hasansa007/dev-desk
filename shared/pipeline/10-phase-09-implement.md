@@ -32,6 +32,10 @@ Before touching any file:
 **When:** Deep tier, Phase 8's graph has 2+ independent leaves, and the decision pack declared the
 count. Standard fans out only on request; Light never does. One leaf, one lane — skip all of this.
 
+**A door run is not this.** `dev:arch`, `dev:insights` and `dev:findings` are one agent executing
+one skill — no ticket, no graph, no slices. `dev:findings`' finders fan out read-only under ADR
+0043, which is a different mechanism with a different budget.
+
 You are the orchestrator. **Write the root tasks yourself** — everything the leaves need exists
 before any of them starts — then, per leaf:
 
