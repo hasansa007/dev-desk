@@ -285,10 +285,13 @@ struct TerminalsScreen: View {
     private func handoff(for record: JournalRecord) -> RecoveredTile.Handoff? {
         switch record.kind {
         case .terminalSession:
-            guard model.task(record.id) != nil else { return nil }
+            // A `/dev` run is recorded under its run id (`task:776`), the card under its number (`776`). Matching
+            // only the card's id left a recovered run with nothing but Dismiss.
+            guard let task = model.tasks.first(where: { $0.id == record.id || DoorRuns.id(for: $0) == record.id })
+            else { return nil }
             return RecoveredTile.Handoff(title: "Open the task",
                                          help: "Opens the task so you can start a session again. It starts fresh — the agent's own conversation is not restored.") {
-                model.openTask(record.id)
+                model.openTask(task.id)
             }
         case .backgroundRun:
             guard record.sessionID == nil, let door = record.door, !door.isEmpty, let jobs else { return nil }
