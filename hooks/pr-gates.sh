@@ -65,7 +65,10 @@ override: touch \"$ROOT/.claude/hooks-off\"   (logged)"
   # than one carrying none, and this is the last moment being wrong costs anything.
   # Fires only on STALE: no .dev/ and no dev.py are the prose-fallback path, which must stay
   # silent or the CLI has stopped being optional. MISSING is not stale — it is unused.
-  DEVPY="$HOME/.claude/skills/dev/scripts/dev.py"
+  # The install root, never a skills-dir path: a PLUGIN install never creates `~/.claude/skills/dev`,
+  # and this check is designed to stay silent when dev.py is absent — so the wrong path does not fail,
+  # it just stops checking. `.dev-root` is what context-load keeps pointed at whichever copy is live.
+  DEVPY="$HOME/.claude/.dev-root/scripts/dev.py"
   if [ -f "$DEVPY" ] && [ -d "$ROOT/.dev" ]; then
     SV=$(cd "$ROOT" && python3 "$DEVPY" state verify 2>&1)
     case "$SV" in

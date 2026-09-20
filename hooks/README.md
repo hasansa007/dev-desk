@@ -97,7 +97,7 @@ Then point `~/.claude/` at this repo, so edits here take effect without a copy s
 
 ```bash
 for f in branch-guard pr-gates teardown context-load; do
-  ln -sfn ~/.claude/skills/dev/hooks/$f.sh ~/.claude/hooks/$f.sh
+  ln -sfn ~/.claude/.dev-root/hooks/$f.sh ~/.claude/hooks/$f.sh
 done
 ```
 
