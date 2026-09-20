@@ -34,11 +34,31 @@ It's ad-hoc signed rather than notarized, so the first time you open it, right-c
 
 ### 2 · The skill for your agent CLI
 
+**Claude Code — install it as a plugin.** This is the better path, because a plugin carries the
+[hooks](hooks/README.md) as well as the doors; the symlink below cannot. The repo is its own
+marketplace, so point Claude Code at your clone:
+
+```text
+/plugin marketplace add ~/Developer/skills/dev-skill     # the path you cloned into
+/plugin install dev@dev-skill
+```
+
+Then restart Claude Code and check that `/dev` and one door — say `/dev:kanban` — both appear.
+Four hooks come with it: `branch-guard` denies a write on a protected branch, `pr-gates` checks a PR
+body and a push, `teardown` blocks a stop while debug Chrome is alive, and `context-load` injects
+PROJECT_MAP at session start. `branch-guard` becomes global this way, which is safe — it exempts
+the repo it ships in — but it means every repo you work in gets the protected-branch rule.
+
+**Codex, Antigravity, or Claude Code without the plugin:**
+
 ```bash
 dev-skill/install.sh
 ```
 
-The installer links the checkout into existing skill directories for **Claude Code, Codex, and Antigravity**, skipping any that are missing. It is safe to rerun.
+The installer links the checkout into existing skill directories for **Claude Code, Codex, and
+Antigravity**, skipping any that are missing. It is safe to rerun, and it **skips Claude Code when
+the plugin is installed**, so the two never give you every door twice. Installed this way, the hooks
+are not installed with it — see [hooks/README.md](hooks/README.md).
 
 **Installing is required, not optional.** Every path inside the family resolves through the install root (`~/.claude/skills/dev/…`), which is what lets it run on any machine regardless of where you cloned it. A clone that has never been installed has no root to resolve against.
 

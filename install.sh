@@ -18,12 +18,24 @@ agy_path() {
   python3 -c "import json,sys;print(json.load(open('$j'))['entries'][0]['path'])" 2>/dev/null
 }
 
+# Claude Code can install this repo as a PLUGIN, which carries the hooks the symlink cannot.
+# Both at once means every door twice, so the symlink stands aside when the plugin is there.
+plugin_installed() {
+  local reg="$HOME/.claude/plugins/installed_plugins.json"
+  [ -f "$reg" ] || return 1
+  python3 -c "import json;print(any(k.split('@')[0]=='$NAME' for k in json.load(open('$reg')).get('plugins',{})))" 2>/dev/null | grep -q True
+}
+
 declare -a NAMES=(claude codex antigravity)
 declare -a DIRS=("$HOME/.claude/skills" "$HOME/.codex/skills" "$(agy_path || echo "$HOME/.agents/skills")")
 
 ok=0; skip=0; same=0
 for i in "${!NAMES[@]}"; do
   cli="${NAMES[$i]}"; dir="${DIRS[$i]}"; link="$dir/$NAME"
+  if [ "$cli" = claude ] && plugin_installed; then
+    printf '  %-12s installed as a plugin — skipped (the plugin carries the hooks too)\n' "$cli"
+    skip=$((skip+1)); continue
+  fi
   if [ ! -d "$dir" ]; then
     printf '  %-12s not found — skipped\n' "$cli"; skip=$((skip+1)); continue
   fi

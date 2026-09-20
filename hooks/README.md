@@ -1,7 +1,8 @@
 # hooks/
 
-Four Claude Code hooks — the mechanical half of six phases. **Not installed by the plugin symlink.**
-Hooks are harness config, so they need their own two settings blocks (below).
+Four Claude Code hooks — the mechanical half of six phases. **Installed by the plugin** (`hooks.json`,
+below). A symlink install from `install.sh` does not carry them: hooks are harness config, so that
+path still needs its own two settings blocks.
 
 They live here for the reason `pr-gates.yml` does: beside the rules they enforce. `pr-gates.sh`
 greps `^## PIPELINE`, `teardown.sh` mirrors Phase 11's kill commands, `context-load.sh` parses
@@ -34,6 +35,23 @@ Phase 12 states the ceiling outright: *"the check is ACCURACY, not presence."* `
 Phase 11's *checklist* is not reachable — only its teardown rule is.
 
 ## Install
+
+**The plugin installs all four, and is the way to do it.** `hooks/hooks.json` wires every hook to its
+event with `${CLAUDE_PLUGIN_ROOT}`, so they travel with the repo and need no settings block and no
+symlink into `~/.claude/hooks/`:
+
+```text
+/plugin marketplace add ~/Developer/skills/dev-skill
+/plugin install dev@dev-skill
+```
+
+This makes `branch-guard.sh` **global**, which the per-repo section below was written to avoid. That
+argument expired on 2026-09-19: the hook now exempts the repo it lives in and judges the folder the
+command runs in, so a global install no longer blocks the commits here or in an unrelated repo. What
+it does mean is that every repo you work in gets the protected-branch rule — which is the point.
+
+The two sections below are the manual path, for a symlink install (`install.sh`) or a CLI without
+plugins.
 
 **Per-repo — `branch-guard.sh` only**, in repos with a two-stage flow. Still not global, but no longer
 because of *this* repo: since 2026-09-19 the hook exempts the repo it lives in, so a global install
