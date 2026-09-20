@@ -652,21 +652,28 @@ struct SessionRow: Identifiable {
     @MainActor
     static func all(in model: ProjectWindowModel, jobs: JobRegistry? = nil) -> [SessionRow] {
         let doorIDs = Set(model.runs.runs.map(\.id))
+        // A live session whose agent has ended its turn says so: "Running" on one waiting for a message was the
+        // same word for working and for waiting.
+        func state(_ id: String) -> String {
+            model.sessions.state(for: id).isLive && model.waitingSessions.contains(id)
+                ? "Waiting for you" : RunLabel.label(for: model.sessions.state(for: id)).label
+        }
         let doors = model.runs.runs.map { run in
             SessionRow(id: run.id, title: run.title,
-                       subtitle: "\(run.agent) · \(RunLabel.label(for: model.sessions.state(for: run.id)).label)",
+                       subtitle: "\(run.agent) · \(state(run.id))",
                        isLive: model.sessions.state(for: run.id).isLive, kind: .door(run))
         }
         let tasks = model.sessions.activeTaskIDs.filter { !doorIDs.contains($0) }.compactMap { id -> SessionRow? in
             guard let task = model.task(id) else { return nil }
             return SessionRow(id: id, title: task.title,
-                              subtitle: model.sessions.purpose(for: id) == .agent ? "Agent" : "Terminal",
+                              subtitle: (model.sessions.purpose(for: id) == .agent ? "Agent" : "Terminal")
+                                  + (model.waitingSessions.contains(id) ? " · Waiting for you" : ""),
                               isLive: model.sessions.state(for: id).isLive, kind: .task(task))
         }
         let scratch = model.scratchTerminals.map { id -> SessionRow in
             let number = id.replacingOccurrences(of: "term:", with: "")
             return SessionRow(id: id, title: "Terminal \(number)",
-                              subtitle: "Terminal · \(RunLabel.label(for: model.sessions.state(for: id)).label)",
+                              subtitle: "Terminal · \(state(id))",
                               isLive: model.sessions.state(for: id).isLive, kind: .scratch)
         }
         var background: [SessionRow] = []

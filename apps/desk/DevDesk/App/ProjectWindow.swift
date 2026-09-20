@@ -104,6 +104,12 @@ struct ProjectWindow: View {
             registry.windowOpened(ref)
             terminals.onEvent = { [model, ref, terminals] id, event in
                 guard case .local(let path) = ref else { return }
+                switch event {
+                case .turnStarted: model.markSession(id, waiting: false)
+                case .turnFinished, .question: model.markSession(id, waiting: true)
+                case .exited: model.markSession(id, waiting: false)
+                case .bell: break
+                }
                 if event == .turnFinished {
                     // A turn is when an agent commits, opens a PR or merges; without auto-reload nothing else would show it,
                     // and a task merged in that turn would never be seen reaching Done.

@@ -79,6 +79,9 @@ struct TaskDialog: View {
 
     /// What it is doing now outranks what column it sits in: a paused branch and a working one are not the same.
     private var statusBadge: StatusBadge {
+        if activity != nil, model.isWaiting(task) {
+            return StatusBadge(.waiting, "Waiting for you", symbol: "questionmark.diamond")
+        }
         if let activity { return StatusBadge(.running, activity.label, pulses: true) }
         if task.column == .inProgress { return StatusBadge(.waiting, "Paused") }
         return task.headerBadge

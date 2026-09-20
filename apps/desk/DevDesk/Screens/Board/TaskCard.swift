@@ -75,6 +75,8 @@ struct TaskCard: View {
     /// What this task has live in this window — a door run, its shell, or its agent. The app's own process
     /// state, never a claim about git's columns.
     var activity: TaskActivity?
+    /// The live session has ended its turn and is waiting for a message, which is not the same as working.
+    var isWaiting = false
     /// Starts the task from the card itself; nil when this card has nothing to start.
     var start: (() -> Void)?
     /// What a card with a branch but no issue can do; `moves` covers the ones with an issue.
@@ -305,7 +307,8 @@ struct TaskCard: View {
     private var metaRow: some View {
         HStack(spacing: 8) {
             if let activity {
-                StatusPill(badge: StatusBadge(.running, activity.label, pulses: true))
+                StatusPill(badge: isWaiting ? StatusBadge(.waiting, "Waiting for you", symbol: "questionmark.diamond")
+                                            : StatusBadge(.running, activity.label, pulses: true))
             } else if isPaused {
                 StatusPill(badge: StatusBadge(.waiting, "Paused"))
             }

@@ -1212,6 +1212,20 @@ public final class ProjectWindowModel {
 
     public func isTaskRunning(_ task: DeskTask) -> Bool { activity(of: task) != nil }
 
+    /// Sessions whose agent has ended its turn and is waiting for a message — by its own hooks, so only an agent that
+    /// reports them is ever in here. A live session that is not is working, or is a plain shell that never says.
+    public private(set) var waitingSessions: Set<String> = []
+
+    /// Told by the window as the hooks report: a turn begun takes the session out, a turn ended or a question puts it in.
+    public func markSession(_ id: String, waiting: Bool) {
+        if waiting { waitingSessions.insert(id) } else { waitingSessions.remove(id) }
+    }
+
+    /// True when this task's live session is waiting for the developer rather than working.
+    public func isWaiting(_ task: DeskTask) -> Bool {
+        [DoorRuns.id(for: task), task.id].compactMap { $0 }.contains { waitingSessions.contains($0) }
+    }
+
     /// Sessions waiting to be closed because their task reached Done, held until an agent's turn ends.
     public var closingOnDone: Set<String> = []
 

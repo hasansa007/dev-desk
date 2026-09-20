@@ -496,7 +496,7 @@ private struct BoardColumnView: View {
             ForEach(shownTasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
-                         activity: model.activity(of: task), start: start(for: task),
+                         activity: model.activity(of: task), isWaiting: model.isWaiting(task), start: start(for: task),
                          branchActions: branchActions(for: task),
                          localActions: localActions(for: task),
                          runControls: runControls(for: task),
