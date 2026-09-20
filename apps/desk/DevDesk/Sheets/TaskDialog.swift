@@ -345,7 +345,10 @@ struct TaskDialog: View {
             return ("Approve & merge", model.isWritingTracker ? "A write is already running." : nil, { confirmsApproval = true })
         }
         if task.taskNumber != nil {
-            return ("Start task", model.startBlockedReason(for: task, agent: defaultConnection), {
+            // A card already In progress has been started; pressing this picks the run back up, as the card's own
+            // button says.
+            let title = task.column == .inProgress ? "Continue task" : "Start task"
+            return (title, model.startBlockedReason(for: task, agent: defaultConnection), {
                 model.startTask(task, agent: defaultConnection)
                 model.dismissSheet()
             })

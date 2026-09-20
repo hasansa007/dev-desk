@@ -285,9 +285,10 @@ struct TerminalsScreen: View {
     private func openTerminal(for task: DeskTask) {
         guard let terminals else { return }
         hasChosen = true
-        selection = .session(task.id)
-        model.selectedSessionID = task.id
-        guard !model.sessions.state(for: task.id).isLive else { return }
+        if model.sessions.state(for: task.id).isLive {
+            selection = .session(task.id)
+            return
+        }
         let location = worktreeLocation
         Task {
             await model.sessions.start(taskID: task.id, branch: task.branch, taskNumber: task.taskNumber,
@@ -295,6 +296,10 @@ struct TerminalsScreen: View {
                                        title: task.title, baseRef: task.baseRef)
             guard case .running(let folder) = model.sessions.state(for: task.id) else { return }
             terminals.start(taskID: task.id, folder: folder.url)
+            // Selected only now: a tab for a session that does not exist yet is dropped by the bar's own
+            // "selection must name a row" rule, which left the click looking like nothing happened.
+            selection = .session(task.id)
+            model.selectedSessionID = task.id
         }
     }
 
@@ -629,6 +634,10 @@ private struct SessionPane: View {
                     preamble = "echo \(ShellQuote.single(reason)); "
                 }
             }
+            // A login shell reads nothing until it has drawn its first prompt; typed sooner the line is swallowed,
+            // and zsh mid-setup answers with "error on TTY read: invalid argument" and exits 1 (seen 2026-09-20).
+            // The pane's own start has always waited; this one did not.
+            try? await Task.sleep(for: .milliseconds(700))
             // Through sendCommand, not send: a plain send typed the agent without its hooks, so it never notified.
             terminals.sendCommand(command, to: id, preamble: preamble)
         }
