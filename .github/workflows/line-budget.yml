@@ -1,4 +1,4 @@
-name: pipeline.md line budget
+name: pipeline line budget
 
 # Installed ON ITS OWN, unlike the rest of hooks/pr-gates.yml. That file stays uninstalled here because
 # its `required-sections` job demands a `## PIPELINE` body on every PR, and PRs opened against this
@@ -7,6 +7,12 @@ name: pipeline.md line budget
 #
 # Installed 2026-09-06, after the ceiling was breached for four consecutive PRs (#19-#23) with
 # nothing firing — because the only copy of this check sat in a file nobody had installed.
+#
+# 2026-09-21 (#90): it measured `wc -l shared/pipeline.md` alone. aef0b8e split the phases into
+# shared/pipeline/ on 2026-09-14, leaving that file a 29-line index, so the job compared 29 against a
+# stated 995 and failed EVERY run for a week — never once for a breach. A gate that is always red is a
+# gate people scroll past, which is the 2026-09-06 outcome reached by the opposite route. It now sums
+# the index and the phase files, because the rules moved and did not shrink.
 
 on:
   pull_request:
@@ -16,7 +22,7 @@ on:
 
 jobs:
   line-budget:
-    name: pipeline.md is within the budget docs/guide/CONTRIBUTING.md states
+    name: the pipeline is within the budget docs/guide/CONTRIBUTING.md states
     runs-on: ubuntu-latest
     # Three wrong line counts shipped in three consecutive PRs (2026-08-23/24): GUIDE said 957/975
     # while README said 938/950, and a predicted 958 was written into both files against an actual
@@ -28,7 +34,21 @@ jobs:
       - name: Recompute the budget rather than trusting the prose
         shell: bash
         run: |
-          actual=$(wc -l < shared/pipeline.md | tr -d '[:space:]')
+          # The index plus one file per phase. Summed in a loop rather than `cat | wc -l`: a phase file
+          # with no trailing newline would silently merge two lines into one and UNDERSTATE the total.
+          shopt -s nullglob
+          files=(shared/pipeline.md shared/pipeline/*.md)
+          if [ ${#files[@]} -lt 2 ]; then
+            echo "::error::Found ${#files[@]} pipeline file(s) — the layout changed and this gate no longer measures it."
+            exit 1
+          fi
+          actual=0
+          for f in "${files[@]}"; do
+            n=$(wc -l < "$f" | tr -d '[:space:]')
+            actual=$((actual + n))
+            printf '  %5s  %s\n' "$n" "$f"
+          done
+          echo "  ${#files[@]} files, $actual lines total"
           # The ceiling and the current-count parenthetical both live in docs/guide/CONTRIBUTING.md's budget
           # blockquote. Parse both: a stale parenthetical is the exact defect being caught.
           # `| head -1`: the budget blockquote accumulates one dated entry per raise, so a second
@@ -44,14 +64,14 @@ jobs:
             exit 1
           fi
           if [ "$actual" -gt "$ceiling" ]; then
-            echo "::error::shared/pipeline.md is $actual lines, over the $ceiling ceiling."
+            echo "::error::the pipeline is $actual lines across ${#files[@]} files, over the $ceiling ceiling."
             echo "docs/guide/CONTRIBUTING.md: at the ceiling, an addition is only allowed with a deletion in the same commit."
             fail=1
           fi
           if [ "$actual" -ne "$stated" ]; then
-            echo "::error::docs/guide/CONTRIBUTING.md says the file is $stated lines; it is $actual."
+            echo "::error::docs/guide/CONTRIBUTING.md says the pipeline is $stated lines; it is $actual."
             echo "Update the count parenthetical in docs/guide/CONTRIBUTING.md."
             fail=1
           fi
-          [ "$fail" -eq 0 ] && echo "pipeline.md $actual / $ceiling — documented count and ceiling verified."
+          [ "$fail" -eq 0 ] && echo "pipeline $actual / $ceiling across ${#files[@]} files — documented count and ceiling verified."
           exit $fail
