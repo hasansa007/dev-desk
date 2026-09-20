@@ -144,6 +144,7 @@ final class ShellTerminalRegistry {
             executables[taskID] = executable
             sessions.noteExecutable(executable, for: taskID)
         }
+        terminal(for: taskID).executable = command.first
         let terminal = terminal(for: taskID)
         runsCommand[taskID] = !command.isEmpty
         reportsThroughHooks[taskID] = AgentHooks.reports(command.first)
@@ -158,6 +159,7 @@ final class ShellTerminalRegistry {
         if let executable, AgentKind(rawValue: executable) != nil {
             executables[taskID] = executable
             sessions.noteExecutable(executable, for: taskID)
+            terminal(for: taskID).executable = executable
         }
         send(preamble + AgentHooks.inject(into: line) + "\n", to: taskID)
     }
@@ -360,6 +362,8 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
     private let onExit: @MainActor (ShellTerminal, Int32?) -> Void
     /// What the session reports about itself: hook events, and the bell.
     var onEvent: (@MainActor (TerminalEvent) -> Void)?
+    /// The CLI running in this session, so its events are read the way that CLI reports them.
+    var executable: String?
     /// Set by `end()`: a session the developer stopped is not news.
     private(set) var wasEnded = false
     /// The folder this session's hooks drop events into, and the watch on it.
@@ -543,7 +547,7 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
             let contents = (try? Data(contentsOf: file)) ?? Data()
             try? FileManager.default.removeItem(at: file)
             if let event = AgentHooks.event(fileName: name, contents: contents) {
-                AgentHooks.markWorking(event, in: eventDirectory)
+                AgentHooks.markWorking(event, in: eventDirectory, reportsQuestions: AgentHooks.reports(executable))
                 onEvent?(event)
             }
         }

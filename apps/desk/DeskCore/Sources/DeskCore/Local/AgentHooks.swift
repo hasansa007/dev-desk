@@ -35,7 +35,10 @@ public enum AgentHooks {
 
     /// Writes or clears the marker for one event: a turn begun marks the session working; a finished turn, a
     /// question or an exit clears it. A bell says nothing about a turn and changes nothing.
-    public static func markWorking(_ event: TerminalEvent, in directory: URL) {
+    /// `reportsQuestions` is Claude alone: its Notification hook fires when it asks, so a finished turn there is
+    /// genuinely finished. Codex has one hook for the end of a turn and asks in that same breath, so a finished
+    /// turn is treated as a question — it is waiting for you either way, and an install must not eat it.
+    public static func markWorking(_ event: TerminalEvent, in directory: URL, reportsQuestions: Bool = true) {
         let working = directory.appendingPathComponent(workingMarker)
         let asking = directory.appendingPathComponent(askingMarker)
         let pid = Data(String(ProcessInfo.processInfo.processIdentifier).utf8)
@@ -49,6 +52,7 @@ public enum AgentHooks {
             try? pid.write(to: asking, options: .atomic)
         case .turnFinished:
             try? FileManager.default.removeItem(at: working)
+            if !reportsQuestions { try? pid.write(to: asking, options: .atomic) }
         case .exited:
             try? FileManager.default.removeItem(at: working)
             try? FileManager.default.removeItem(at: asking)

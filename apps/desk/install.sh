@@ -42,7 +42,9 @@ if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
     #      on a turn start and removes it on a finished turn, a question or an exit (AgentHooks.markWorking);
     #   1b. a session that ASKED and is waiting for the answer — `.asking`, written on a question and cleared when
     #      the next turn begins. Quitting throws the pending decision away, so it counts as work (2026-09-20);
-    #   2. a headless background run — `claude -p` / `codex exec` under Dev Desk, which has no prompt to idle at.
+    #   2. a headless background run — `claude -p` / `codex exec` under Dev Desk, which has no prompt to idle at;
+    #   3. a session running a CLI that reports nothing — gemini, opencode, antigravity. Nothing marks their turns,
+    #      so the process itself is the only evidence, and a live one counts as work rather than being guessed idle.
     ROOTS="$(pgrep -x 'Dev Desk' | tr '\n' ' ')"
     EVENTS="$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}/")devdesk-events"
     WORKING=0
@@ -53,6 +55,18 @@ if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
         case " $ROOTS " in *" $owner "*) ;; *) continue ;; esac            # a crashed app's marker is ignored
         case "$marker" in *.asking) ASKING=$((ASKING + 1)) ;; *) WORKING=$((WORKING + 1)) ;; esac
     done
+    SILENT=$(ps -axo pid=,ppid=,args= | awk -v roots="$ROOTS" '
+        BEGIN { split(roots, r, " "); for (i in r) if (r[i] != "") seen[r[i]] = 1 }
+        { pid[NR] = $1; par[NR] = $2; $1 = ""; $2 = ""; args[NR] = $0; n = NR }
+        END {
+            changed = 1
+            while (changed) {
+                changed = 0
+                for (i = 1; i <= n; i++) if (!(pid[i] in seen) && (par[i] in seen)) { seen[pid[i]] = 1; changed = 1 }
+            }
+            for (i = 1; i <= n; i++) if ((pid[i] in seen) && args[i] ~ /(^|\/)(gemini|opencode|antigravity)( |$)/) c++
+            print c + 0
+        }')
     HEADLESS=$(ps -axo pid=,ppid=,args= | awk -v roots="$ROOTS" '
         BEGIN { split(roots, r, " "); for (i in r) if (r[i] != "") seen[r[i]] = 1 }
         { pid[NR] = $1; par[NR] = $2; $1 = ""; $2 = ""; args[NR] = $0; n = NR }
@@ -65,8 +79,8 @@ if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
             for (i = 1; i <= n; i++) if ((pid[i] in seen) && args[i] ~ /(^|\/)(claude|opencode)( .*)? (-p|--print)( |$)|(^|\/)codex( .*)? exec( |$)/) c++
             print c + 0
         }')
-    if [ "$WORKING" -gt 0 ] || [ "$ASKING" -gt 0 ] || [ "$HEADLESS" -gt 0 ]; then
-        echo "Dev Desk is working: $WORKING session(s) mid-turn, $ASKING waiting on a question, $HEADLESS background run(s)." >&2
+    if [ "$WORKING" -gt 0 ] || [ "$ASKING" -gt 0 ] || [ "$HEADLESS" -gt 0 ] || [ "$SILENT" -gt 0 ]; then
+        echo "Dev Desk is working: $WORKING session(s) mid-turn, $ASKING waiting on a question, $HEADLESS background run(s), $SILENT session(s) whose CLI reports no turns." >&2
         echo "Installing quits the app, which would end them — a pending question is lost with it. Answer or finish them, or re-run with --force." >&2
         exit 1
     fi

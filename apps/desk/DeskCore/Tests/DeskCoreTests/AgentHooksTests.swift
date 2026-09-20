@@ -77,4 +77,20 @@ final class AgentHooksTests: XCTestCase {
         AgentHooks.markWorking(.exited(0), in: directory)
         XCTAssertFalse(exists(AgentHooks.workingMarker))
     }
+
+    /// Codex has one hook, for the end of a turn, and asks in that same breath: its finished turn waits for you,
+    /// so it leaves the marker an install refuses on.
+    func testACodexTurnEndCountsAsWaitingBecauseItCannotReportAQuestion() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let asking = directory.appendingPathComponent(AgentHooks.askingMarker).path
+        AgentHooks.markWorking(.turnFinished, in: directory, reportsQuestions: false)
+        XCTAssertTrue(FileManager.default.fileExists(atPath: asking))
+        AgentHooks.markWorking(.turnStarted, in: directory, reportsQuestions: false)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: asking))
+        // Claude reports its questions, so a finished turn there is finished.
+        AgentHooks.markWorking(.turnFinished, in: directory, reportsQuestions: true)
+        XCTAssertFalse(FileManager.default.fileExists(atPath: asking))
+    }
 }
