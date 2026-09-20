@@ -13,6 +13,9 @@ public enum TrackerAction: Equatable, Hashable {
     /// converting the PR back to a draft is what honestly moves the card to In progress — the column stays
     /// git's, and the fact it reads changes.
     case draftPullRequest
+    /// The dialog's own edit: the issue's title, its body, and the `impact:`/`complexity:` labels that carry its
+    /// ratings. What the developer typed is the confirmation, so this one is written without a dialog.
+    case edit(title: String, body: String, addLabels: [String], removeLabels: [String])
 }
 
 public enum TrackerWriteError: Error, Equatable, LocalizedError {
@@ -66,6 +69,13 @@ public struct TrackerWrite {
         case .draftPullRequest:
             // `issue` carries the pull request number here: the write edits the PR, not the issue behind it.
             return ["pr", "ready", String(issue), "--repo", slug, "--undo"]
+        case .edit(let title, let body, let add, let remove):
+            let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !title.isEmpty else { return nil }
+            var arguments = ["issue", "edit", String(issue), "--repo", slug, "--title", title, "--body", body]
+            if !add.isEmpty { arguments += ["--add-label", add.joined(separator: ",")] }
+            if !remove.isEmpty { arguments += ["--remove-label", remove.joined(separator: ",")] }
+            return arguments
         }
     }
 
@@ -82,6 +92,8 @@ public struct TrackerWrite {
             return "Close \(slug)#\(issue) as completed? Its work is already in the base branch."
         case .draftPullRequest:
             return "Convert \(slug)#\(issue) back to a draft, so it leaves Review?"
+        case .edit:
+            return "Save your changes to \(slug)#\(issue)?"
         }
     }
 
@@ -111,6 +123,7 @@ extension TrackerAction {
         case .backlog: return .failed("nothing to remove")
         case .cancel: return .cancelNeedsReason
         case .complete: return .failed("nothing to close")
+        case .edit: return .failed("an issue needs a title")
         case .draftPullRequest: return .failed("nothing to convert")
         }
     }

@@ -15,7 +15,9 @@ struct EvidenceTab: View {
                     }
                 }
                 if evidence.checks.isEmpty {
-                    Text("No checks recorded for this task.")
+                    // The two sources: GitHub's checks for a pull request, and the run's own phase checkpoint.
+                    Text("No checks yet. They appear once this task has a pull request, whose CI results are read here, "
+                         + "or once its run checkpoints a phase.")
                         .font(DeskFont.body)
                         .foregroundStyle(DeskColor.mutedInk)
                         .padding(.top, 8)

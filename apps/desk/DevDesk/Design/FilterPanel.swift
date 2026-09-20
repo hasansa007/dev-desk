@@ -33,6 +33,8 @@ struct FilterGroup: Identifiable {
     var kind: Kind
     var options: [FilterOption]
     let toggle: (String) -> Void
+    /// The group's own ⓘ: what it narrows by, beside its title (ADR 0046 decision 17).
+    var guide: (title: String, lines: [String])? = nil
     /// Beside the title: a control that belongs to the group, like Work's Run roadmap.
     var accessory: AnyView? = nil
     /// Under the options: one link, like Diagrams' "Draw another flow…".
@@ -194,6 +196,7 @@ struct FilterPanel: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityLabel("\(group.title), \(isFolded ? "folded" : "open")")
+                if let guide = group.guide { ScreenGuideButton(part: group.title, guide: guide) }
                 Spacer(minLength: 4)
                 if group.kind == .filter, group.onCount > 0 {
                     Text("\(group.onCount) on").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(DeskColor.accent)

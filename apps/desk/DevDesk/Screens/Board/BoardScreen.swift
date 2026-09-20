@@ -40,19 +40,20 @@ struct BoardScreen: View {
                                  } + [FilterOption(id: TaskFilter.unprioritised, label: "None",
                                                    isOn: filter.priorities.contains(TaskFilter.unprioritised),
                                                    count: "\(model.facetCount(.priority) { $0.priority == nil })")],
-                                 toggle: { toggle(\.priorities, $0) }),
+                                 toggle: { toggle(\.priorities, $0) }, guide: WorkGuides.priority),
                      FilterGroup(key: "work.type", title: "Type", kind: .filter,
                                  options: TaskKind.allCases.map { kind in
                                      FilterOption(id: kind.rawValue, label: kind.rawValue, isOn: filter.kinds.contains(kind),
                                                   count: "\(model.facetCount(.kind) { $0.kind == kind })")
                                  },
-                                 toggle: { id in if let kind = TaskKind(rawValue: id) { toggle(\.kinds, kind) } }),
+                                 toggle: { id in if let kind = TaskKind(rawValue: id) { toggle(\.kinds, kind) } },
+                                 guide: WorkGuides.type),
                      FilterGroup(key: "work.tag", title: "Tag", kind: .filter,
                                  options: TaskFilter.tagLabels.map { tag in
                                      FilterOption(id: tag, label: tag.capitalized, isOn: filter.tags.contains(tag),
                                                   count: "\(model.facetCount(.tag) { $0.labels.contains(tag) })")
                                  },
-                                 toggle: { toggle(\.tags, $0) })],
+                                 toggle: { toggle(\.tags, $0) }, guide: WorkGuides.tag)],
             clear: (filter.summary, filter.activeCount, { model.taskFilter = TaskFilter() }))
     }
 
@@ -75,7 +76,7 @@ struct BoardScreen: View {
                                 }])
         }
         return FilterGroup(key: "work.milestone", title: "Milestone", kind: .filter, options: options,
-                           toggle: { model.toggleWorkMilestone($0) },
+                           toggle: { model.toggleWorkMilestone($0) }, guide: WorkGuides.milestone,
                            accessory: AnyView(DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
                                .fixedSize()),
                            maxLabelWidth: 190)
@@ -613,6 +614,8 @@ private struct PendingMove {
         case .cancel: return "Close"
         case .complete: return "Mark as completed"
         case .draftPullRequest: return "Convert to draft"
+        // The dialog saves its own edit without a confirmation, so no card ever holds one of these.
+        case .edit: return "Save"
         }
     }
 }

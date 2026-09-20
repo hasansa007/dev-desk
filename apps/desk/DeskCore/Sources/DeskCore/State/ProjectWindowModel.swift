@@ -75,6 +75,24 @@ public enum WorkGuides {
         "Priority, Type, Tag: counts are open issues in the chosen milestones, with your other filters applied. Clear all turns them off.",
         "Every group can show as chips or as a menu — the icon on its right.",
     ])
+
+    /// One per filter group, on the group's own ⓘ: what that group narrows by, and where the values come from.
+    public static let milestone = (title: "Milestone", lines: [
+        "The milestones this repository has on GitHub. None on means every milestone; Now marks the one being worked, which Next up reads.",
+        "Right-click one and Make Working now to change that order. It is kept on this Mac, not on GitHub.",
+    ])
+    public static let priority = (title: "Priority", lines: [
+        "An issue's P0–P3 label. None gathers the issues nobody has prioritised.",
+        "Counts are open issues in the chosen milestones, with your other filters applied.",
+    ])
+    public static let type = (title: "Type", lines: [
+        "What kind of work the issue is — feature, bug, chore — read from its labels.",
+        "An issue with no type label is in no group here, so turning them all on can still show fewer cards than none on.",
+    ])
+    public static let tag = (title: "Tag", lines: [
+        "The repository's own subject labels, such as payments or security.",
+        "Several tags on show issues carrying any of them, not only those carrying all.",
+    ])
 }
 
 public enum TaskTab: String, CaseIterable, Codable, Hashable {
@@ -1225,6 +1243,23 @@ public final class ProjectWindowModel {
         case .preparing, .running: return true
         default: return false
         }
+    }
+
+    /// The dialog's own edit: the issue's title, body and two rating labels, written in one `gh issue edit`.
+    /// What the developer typed is the confirmation, so unlike the moves this one asks nothing first.
+    public func saveEdit(_ task: DeskTask, title: String, body: String, impact: String?, complexity: String?) async {
+        guard let number = task.issueNumber else { return }
+        var add: [String] = []
+        var remove: [String] = []
+        for (kind, value) in [("impact", impact), ("complexity", complexity)] {
+            let existing = task.labels.filter { $0.lowercased().hasPrefix("\(kind):") }
+            let wanted = value.map { "\(kind):\($0.lowercased())" }
+            // The label already there keeps its own spelling; only a changed rating is written.
+            if let wanted, !existing.contains(where: { $0.lowercased() == wanted }) { add.append(wanted) }
+            remove += existing.filter { label in wanted == nil || label.lowercased() != wanted }
+        }
+        await performTrackerWrite(issue: number,
+                                  action: .edit(title: title, body: body, addLabels: add, removeLabels: remove))
     }
 
     /// Runs one bounded write from `dev:kanban` Phase 7, then reloads so the board shows what GitHub now says.

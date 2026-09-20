@@ -17,7 +17,10 @@ struct ActivityTab: View {
             }
             SurfaceView(task.activity) { events in
                 if events.isEmpty {
-                    Text("No activity yet.")
+                    // Activity is the branch's commits, so an unstarted task has none rather than nothing to say.
+                    Text(task.branch == nil
+                         ? "No commits yet — this task has no branch. Its commits appear here once its run starts committing."
+                         : "No commits on \(task.branch ?? "") yet.")
                         .font(DeskFont.body)
                         .foregroundStyle(DeskColor.mutedInk)
                 } else {

@@ -25,6 +25,8 @@ struct DialogHeader: View {
     /// Where this thing is actually edited, when that is somewhere else. The app does not edit an issue body,
     /// so the pencil goes to the place that does rather than pretending to be a field.
     var editURL: URL?
+    /// Editing in the dialog itself, where the app can write the change; without one the pencil opens `editURL`.
+    var edit: (() -> Void)?
     var editHelp = "Edit on GitHub"
     let close: () -> Void
 
@@ -38,7 +40,9 @@ struct DialogHeader: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
                 Spacer(minLength: 8)
-                if let editURL {
+                if let edit {
+                    DialogGlyph(symbol: "pencil", label: editHelp, action: edit)
+                } else if let editURL {
                     DialogGlyph(symbol: "pencil", label: editHelp) { NSWorkspace.shared.open(editURL) }
                 }
                 DialogGlyph(symbol: "xmark", label: "Close", action: close)

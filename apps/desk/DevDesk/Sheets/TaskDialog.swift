@@ -19,6 +19,11 @@ struct TaskDialog: View {
     @State private var confirmsRemoval = false
     @State private var confirmsApproval = false
     @State private var confirmsWorktreeRemoval = false
+    /// The dialog's edit, open only for an issue: a local entry is still edited in its own file.
+    @State private var edit: TaskEdit?
+
+    /// What an issue's ratings can be set to; "—" clears the label.
+    private static let ratings = ["—", "High", "Medium", "Low"]
 
     private var activity: TaskActivity? { model.activity(of: task) }
 
@@ -30,8 +35,12 @@ struct TaskDialog: View {
     var body: some View {
         VStack(spacing: 0) {
             header
-            tabs
-            DialogBody { meta } content: { content }
+            if edit == nil {
+                tabs
+                DialogBody { meta } content: { content }
+            } else {
+                DialogBody { EmptyView() } content: { editForm }
+            }
             footer
         }
         .deskDialogFrame()
@@ -41,7 +50,8 @@ struct TaskDialog: View {
 
     private var header: some View {
         DialogHeader(title: task.title, identifier: identifier, badges: badges, editURL: issueURL,
-                     editHelp: task.isLocalBacklog ? "Open the file" : "Edit on GitHub",
+                     edit: task.issueNumber == nil ? nil : { beginEdit() },
+                     editHelp: task.isLocalBacklog ? "Open the file" : "Edit this issue",
                      close: model.dismissSheet)
     }
 
@@ -96,6 +106,72 @@ struct TaskDialog: View {
         }
     }
 
+    // MARK: - Edit
+
+    /// The issue as fields: its title, its two ratings and its body. Saved with one `gh issue edit`, then the board
+    /// reloads, so what is shown afterwards is what GitHub has — never only what was typed.
+    @ViewBuilder private var editForm: some View {
+        if let edit {
+            VStack(alignment: .leading, spacing: 14) {
+                field("Title") {
+                    TextField("", text: Binding(get: { edit.title }, set: { self.edit?.title = $0 }))
+                        .textFieldStyle(.plain)
+                        .font(.system(size: 14, weight: .semibold))
+                        .padding(8)
+                        .controlChrome()
+                }
+                HStack(spacing: 14) {
+                    field("Impact") { ratingPicker(get: { edit.impact }, set: { self.edit?.impact = $0 }) }
+                    field("Complexity") { ratingPicker(get: { edit.complexity }, set: { self.edit?.complexity = $0 }) }
+                    Spacer(minLength: 0)
+                }
+                field("Description") {
+                    TextEditor(text: Binding(get: { edit.body }, set: { self.edit?.body = $0 }))
+                        .font(DeskFont.mono(12))
+                        .scrollContentBackground(.hidden)
+                        .frame(minHeight: 320)
+                        .padding(6)
+                        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
+                }
+            }
+        }
+    }
+
+    private func field<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Text(label.uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(DeskColor.faintInk)
+            content()
+        }
+    }
+
+    private func ratingPicker(get: @escaping () -> String, set: @escaping (String) -> Void) -> some View {
+        Picker("", selection: Binding(get: get, set: set)) {
+            ForEach(Self.ratings, id: \.self) { Text($0).tag($0) }
+        }
+        .labelsHidden()
+        .frame(width: 130)
+    }
+
+    private func beginEdit() {
+        edit = TaskEdit(title: task.title,
+                        body: task.requirements.value?.body ?? "",
+                        impact: task.impact ?? Self.ratings[0],
+                        complexity: task.complexity ?? Self.ratings[0])
+    }
+
+    private func saveEdit() {
+        guard let edit else { return }
+        let rating = { (value: String) in value == Self.ratings[0] ? nil : value }
+        self.edit = nil
+        Task {
+            await model.saveEdit(task, title: edit.title, body: edit.body,
+                                 impact: rating(edit.impact), complexity: rating(edit.complexity))
+        }
+    }
+
     // MARK: - Meta
 
     private var meta: some View {
@@ -118,7 +194,21 @@ struct TaskDialog: View {
 
     // MARK: - Footer
 
-    private var footer: some View {
+    @ViewBuilder private var footer: some View {
+        if let edit {
+            // Close still closes the dialog; Cancel only leaves the form, so a mistyped edit is not also a lost dialog.
+            DialogFooter(primary: DialogAction(title: "Save changes",
+                                               blockedReason: edit.title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                                                   ? "An issue needs a title." : nil,
+                                               run: { saveEdit() }),
+                         secondary: DialogAction(title: "Cancel", run: { self.edit = nil }),
+                         close: model.dismissSheet)
+        } else {
+            readingFooter
+        }
+    }
+
+    private var readingFooter: some View {
         DialogFooter(primary: DialogAction(title: primary.title, blockedReason: primary.blockedReason, run: primary.run),
                      secondary: localSecondary, close: model.dismissSheet) {
             if task.isLocalBacklog {
@@ -268,4 +358,12 @@ struct TaskDialog: View {
             model.go(.terminals)
         })
     }
+}
+
+/// One issue's fields while it is being edited; nil when the dialog is only reading.
+private struct TaskEdit {
+    var title: String
+    var body: String
+    var impact: String
+    var complexity: String
 }
