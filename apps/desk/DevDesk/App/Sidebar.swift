@@ -33,7 +33,7 @@ struct Sidebar: View {
     /// sidebar's primary action belongs, rather than in the toolbar beside the panel toggles.
     private var openProjectButton: some View {
         Button { model.present(.openProject) } label: {
-            HStack(spacing: 7) {
+            HStack(spacing: 10) {
                 Image(systemName: "plus.circle")
                     .font(.system(size: 20))
                     .frame(width: 24)
@@ -44,7 +44,8 @@ struct Sidebar: View {
             }
             .foregroundStyle(DeskColor.ink)
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 9)
+            // The same vertical padding and spacing a destination row has, so the two are one size in the rail.
+            .padding(.vertical, 10)
             .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
             .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.border))
             .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
