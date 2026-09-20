@@ -3,8 +3,8 @@ import XCTest
 @testable import DeskCore
 
 final class AgentLaunchTests: XCTestCase {
-    private static let root = "/Users/me/.claude/skills/dev"
-    private static let read = "Read /Users/me/.claude/skills/dev/SKILL.md and execute it exactly as written, following every phase and gate it defines."
+    private static let root = "/Users/me/.claude/.dev-root"
+    private static let read = "Read /Users/me/.claude/.dev-root/SKILL.md and execute it exactly as written, following every phase and gate it defines."
 
     /// Pinned to `dev run`'s prompt, scripts/dev.py:599-602:
     ///     extra = (" Arguments: " + " ".join(args)) if args else ""
@@ -68,15 +68,24 @@ final class AgentLaunchTests: XCTestCase {
     }
 
     func testEachAgentReadsItsOwnSkillRootWithTheTildeExpanded() {
-        let home = ProcessInfo.processInfo.environment["HOME"] ?? NSHomeDirectory()
         for agent in [AgentKind.claude, .codex] {
             let root = AgentLaunch.skillRoot(for: agent)
             XCTAssertFalse(root.contains("~"), root)
             XCTAssertTrue(root.hasPrefix("/"), root)
         }
         // install.sh writes one copy per agent; sending Codex to Claude's copy is what this pins shut.
-        XCTAssertEqual(AgentLaunch.skillRoot(for: .claude), home + "/.claude/skills/dev",
-                       "the home os.path.expanduser reads")
-        XCTAssertEqual(AgentLaunch.skillRoot(for: .codex), home + "/.codex/skills/dev")
+        let onlyDevRoot: (String) -> Bool = { $0 == "/Users/me/.claude/.dev-root" }
+        XCTAssertEqual(AgentLaunch.skillRoot(for: .claude, home: "/Users/me", exists: onlyDevRoot),
+                       "/Users/me/.claude/.dev-root")
+        XCTAssertEqual(AgentLaunch.skillRoot(for: .codex, home: "/Users/me", exists: onlyDevRoot),
+                       "/Users/me/.codex/skills/dev")
+    }
+
+    /// A machine installed before ADR 0054 has no `.dev-root`, and the per-CLI link install.sh still wrote is
+    /// the family. Reading the new root there is the same defect in the other direction.
+    func testClaudeFallsBackToThePerCLILinkOnAPre0054Install() {
+        let onlyOldLink: (String) -> Bool = { $0 == "/Users/me/.claude/skills/dev" }
+        XCTAssertEqual(AgentLaunch.skillRoot(for: .claude, home: "/Users/me", exists: onlyOldLink),
+                       "/Users/me/.claude/skills/dev")
     }
 }

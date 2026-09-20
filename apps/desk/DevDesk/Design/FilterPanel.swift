@@ -35,7 +35,7 @@ struct FilterGroup: Identifiable {
     let toggle: (String) -> Void
     /// The group's own ⓘ: what it narrows by, beside its title (ADR 0046 decision 17).
     var guide: (title: String, lines: [String])? = nil
-    /// Beside the title: a control that belongs to the group, like Work's Run roadmap.
+    /// Under the title: a control that belongs to the group, like Work's Run roadmap.
     var accessory: AnyView? = nil
     /// Under the options: one link, like Diagrams' "Draw another flow…".
     var footer: (title: String, run: () -> Void)? = nil
@@ -168,6 +168,8 @@ struct FilterPanel: View {
             }
         }
         .frame(width: Self.width)
+        // Whatever a group puts in the panel, it is painted inside the panel — never over the rail beside it.
+        .clipped()
     }
 
     // MARK: - A group
@@ -191,7 +193,7 @@ struct FilterPanel: View {
                         Image(systemName: isFolded ? "chevron.right" : "chevron.down")
                             .font(.system(size: 9, weight: .bold, design: .monospaced)).foregroundStyle(DeskColor.faintInk).frame(width: 10)
                         Text(group.title).font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.secondaryInk)
-                            .lineLimit(1).fixedSize()
+                            .lineLimit(1).truncationMode(.tail)
                     }
                     .contentShape(Rectangle())
                 }
@@ -202,7 +204,6 @@ struct FilterPanel: View {
                 if group.kind == .filter, group.onCount > 0 {
                     Text("\(group.onCount) on").font(.system(size: 11.5, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.accent)
                 }
-                if let accessory = group.accessory { accessory }
                 // Chips or a menu: the same choices either way, remembered per group.
                 Button { flip(group.key, in: &menusRaw) } label: {
                     Image(systemName: asMenu ? "square.grid.2x2" : "list.bullet")
@@ -214,7 +215,14 @@ struct FilterPanel: View {
                 .accessibilityLabel(asMenu ? "Show as chips" : "Show as a menu")
             }
             .padding(.top, 12)
+            // The group's own control sits UNDER its title, not beside it: beside it, a long label
+            // ("Run after Findings") made the header row wider than the panel, and an overflowing row
+            // takes the whole panel's content with it — every group's chips were drawn shifted left,
+            // under the rail, with their first letters cut off (2026-09-21, on screen).
             if !isFolded {
+                if let accessory = group.accessory {
+                    accessory.frame(maxWidth: .infinity, alignment: .leading)
+                }
                 if asMenu { menu(group) } else { chips(group) }
                 if let footer = group.footer {
                     Button(footer.title, action: footer.run)
