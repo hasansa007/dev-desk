@@ -1,0 +1,125 @@
+{
+  "_": [
+    "The board rules both readers implement, as cases rather than as code. scripts/dev.py and",
+    "apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift stay two implementations on purpose",
+    "(ADR 0013, ADR 0055): the columns they build are deliberately different and one of them is Swift",
+    "in an app that must stay dependency-free. What is shared is the RULE, and this file is where it lives.",
+    "",
+    "This file is a REGISTRY, not only a fixture. Both suites fail when a rule named here has no binding",
+    "on their side, so adding a rule to one reader and not the other is what breaks the build — which is",
+    "the failure ADR 0013 left to whoever remembered, and nobody did (the install root, #88).",
+    "",
+    "To add a rule: add it here with its cases, then bind it in tests/state/test_board_conformance.py",
+    "and in apps/desk/DeskCore/Tests/DeskCoreTests/BoardConformanceTests.swift. Both fail until you do.",
+    "",
+    "Cases pin AGREEMENT, not correctness. priority_rank returns the first matching label rather than the",
+    "best one, so an issue labelled P1,P0 ranks 1 in both readers; that is recorded below as it behaves."
+  ],
+
+  "branch_matches": {
+    "what": "The branch names that speak for issue N: gh-N-…, N-…, N, or any/N-… — never gh-N0-…",
+    "cases": [
+      {"in": {"name": "gh-12-thing", "number": 12}, "out": true},
+      {"in": {"name": "12-thing", "number": 12}, "out": true},
+      {"in": {"name": "12", "number": 12}, "out": true},
+      {"in": {"name": "feature/12-thing", "number": 12}, "out": true},
+      {"in": {"name": "gh-12", "number": 12}, "out": true},
+      {"in": {"name": "gh-1-a", "number": 1}, "out": true},
+      {"in": {"name": "gh-120-thing", "number": 12}, "out": false},
+      {"in": {"name": "120", "number": 12}, "out": false},
+      {"in": {"name": "x/120-y", "number": 12}, "out": false},
+      {"in": {"name": "release/12", "number": 12}, "out": false},
+      {"in": {"name": "gh-12x", "number": 12}, "out": false},
+      {"in": {"name": "12x", "number": 12}, "out": false}
+    ]
+  },
+
+  "closed_issues": {
+    "what": "The issues a pull request body CLAIMS. Prose mentioning #N is not a claim on N.",
+    "cases": [
+      {"in": {"body": "closes #1 and fixes #2"}, "out": [1, 2]},
+      {"in": {"body": "Closed #3"}, "out": [3]},
+      {"in": {"body": "resolve #4"}, "out": [4]},
+      {"in": {"body": "FIXES #7"}, "out": [7]},
+      {"in": {"body": "resolves  #8"}, "out": [8]},
+      {"in": {"body": "closes #10, closes #10"}, "out": [10]},
+      {"in": {"body": "see #5"}, "out": []},
+      {"in": {"body": "fixes#6"}, "out": []},
+      {"in": {"body": "unfix #9"}, "out": []}
+    ]
+  },
+
+  "priority_rank": {
+    "what": "P0..P3 rank 0..3; unlabelled ranks 4, AFTER P3, because unprioritised is not urgent.",
+    "cases": [
+      {"in": {"labels": ["P0"]}, "out": 0},
+      {"in": {"labels": ["P1"]}, "out": 1},
+      {"in": {"labels": ["P2"]}, "out": 2},
+      {"in": {"labels": ["P3"]}, "out": 3},
+      {"in": {"labels": []}, "out": 4},
+      {"in": {"labels": ["bug"]}, "out": 4},
+      {"in": {"labels": ["P0", "P3"]}, "out": 0},
+      {"in": {"labels": ["P1", "P0"]}, "out": 1}
+    ]
+  },
+
+  "slice_rank": {
+    "what": "`slice N` in a title is a dependency statement, so N+1 never precedes N. No slice sorts last.",
+    "cases": [
+      {"in": {"title": "slice 2 of 5: thing"}, "out": 2},
+      {"in": {"title": "Slice 10 — x"}, "out": 10},
+      {"in": {"title": "SLICE 7 x"}, "out": 7},
+      {"in": {"title": "no slice here"}, "out": 9999},
+      {"in": {"title": "sliced 3"}, "out": 9999},
+      {"in": {"title": "slice2"}, "out": 9999}
+    ]
+  },
+
+  "is_decomposed_epic": {
+    "what": "An epic whose CHECKLIST still has an open child is already decomposed: offer a child instead.",
+    "cases": [
+      {"in": {"labels": ["epic"], "body": "- [ ] #1\n- [x] #2"}, "out": true},
+      {"in": {"labels": ["epic"], "body": "* [ ] #3"}, "out": true},
+      {"in": {"labels": ["epic"], "body": "  - [ ] #4"}, "out": true},
+      {"in": {"labels": ["epic"], "body": "- [x] #1"}, "out": false},
+      {"in": {"labels": ["epic"], "body": ""}, "out": false},
+      {"in": {"labels": ["epic"], "body": "see #9 in prose"}, "out": false},
+      {"in": {"labels": ["bug"], "body": "- [ ] #1"}, "out": false}
+    ]
+  },
+
+  "order_next": {
+    "what": "Priority, then slice, then the issue ignored longest, then number. Returns the numbers in order.",
+    "cases": [
+      {"in": {"issues": [
+        {"number": 3, "labels": [], "title": "c", "updatedAt": "2026-01-01"},
+        {"number": 1, "labels": ["P0"], "title": "a", "updatedAt": "2026-03-01"},
+        {"number": 2, "labels": ["P2"], "title": "b", "updatedAt": "2026-02-01"}
+      ]}, "out": [1, 2, 3]},
+      {"in": {"issues": [
+        {"number": 5, "labels": ["P1"], "title": "slice 2 x", "updatedAt": "2026-01-01"},
+        {"number": 4, "labels": ["P1"], "title": "slice 1 x", "updatedAt": "2026-09-01"}
+      ]}, "out": [4, 5]},
+      {"in": {"issues": [
+        {"number": 9, "labels": [], "title": "x", "updatedAt": "2026-05-01"},
+        {"number": 8, "labels": [], "title": "y", "updatedAt": "2026-01-01"}
+      ]}, "out": [8, 9]},
+      {"in": {"issues": [
+        {"number": 7, "labels": [], "title": "x", "updatedAt": "2026-01-01"},
+        {"number": 6, "labels": [], "title": "y", "updatedAt": "2026-01-01"}
+      ]}, "out": [6, 7]}
+    ]
+  },
+
+  "agent_prompt": {
+    "what": "The prompt a task's agent is started with. A task names itself only while it has no branch.",
+    "cases": [
+      {"in": {"skill_root": "/h/.claude/.dev-root", "task_number": 212},
+       "out": "Read /h/.claude/.dev-root/SKILL.md and execute it exactly as written, following every phase and gate it defines. Arguments: #212"},
+      {"in": {"skill_root": "/h/.codex/skills/dev", "task_number": null},
+       "out": "Read /h/.codex/skills/dev/SKILL.md and execute it exactly as written, following every phase and gate it defines."},
+      {"in": {"skill_root": "/h/root/", "task_number": 7},
+       "out": "Read /h/root/SKILL.md and execute it exactly as written, following every phase and gate it defines. Arguments: #7"}
+    ]
+  }
+}

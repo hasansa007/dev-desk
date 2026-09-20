@@ -21,7 +21,7 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0010](0010-paths-point-at-the-install-root.md) | Paths point at the install root, not the clone | Accepted — amended by 0054 |
 | [0011](0011-the-project-board-mirrors-it-never-decides.md) | The Project board mirrors; it never decides | Accepted, partially reversed by 0035 |
 | [0012](0012-the-mac-app-lives-in-apps-desk.md) | The Mac app lives in `apps/desk/`, in this repo | Accepted |
-| [0013](0013-the-app-reads-git-and-github-directly.md) | The app reads git and GitHub directly, until `dev snapshot` exists | Accepted |
+| [0013](0013-the-app-reads-git-and-github-directly.md) | The app reads git and GitHub directly, until `dev snapshot` exists | Accepted — amended by 0055 |
 | [0014](0014-dev-desk-replaces-dev-ui.md) | Dev Desk replaces `/dev:ui`; card moves go through `/dev:board` | Accepted |
 | [0015](0015-files-live-with-the-flow-that-reads-them.md) | Files live with the flow that reads them; the root holds only entry points and folders with a reader | Accepted |
 | [0016](0016-dev-desk-embeds-a-terminal-with-swiftterm.md) | Dev Desk embeds a terminal with SwiftTerm, its first dependency; DeskCore stays dependency-free | Accepted, reversed by 0036 |
@@ -63,3 +63,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0052](0052-the-bottom-edge-is-a-dock-that-holds-several-terminals.md) | The bottom edge is a dock that holds several terminals | Accepted |
 | [0053](0053-kanban-is-renamed-board-in-the-door-and-the-folder.md) | Kanban is renamed Board, in the door and the folder | Accepted |
 | [0054](0054-the-install-root-is-one-hidden-symlink-not-a-skills-directory.md) | The install root is one hidden symlink, not a skills directory | Accepted |
+| [0055](0055-the-shared-board-rules-are-a-registry-both-readers-are-pinned-to.md) | The shared board rules are a registry both readers are pinned to | Accepted |

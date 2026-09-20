@@ -1,13 +1,17 @@
 name: desk
 
 # Installed ON ITS OWN, like tests.yml: DeskCore's tests and the Dev Desk app build, run only when apps/desk/ changes.
+#
+# shared/board-rules.json is in the filter because DeskCore's conformance test reads it (ADR 0055). Without
+# that line the registry could be edited, the Python half would run and pass, and the Swift half — the one
+# that catches the drift — would never start. A gate that does not run on the file it guards is not a gate.
 
 on:
   pull_request:
-    paths: ['apps/desk/**', '.github/workflows/desk.yml']
+    paths: ['apps/desk/**', 'shared/board-rules.json', '.github/workflows/desk.yml']
   push:
     branches: [main]
-    paths: ['apps/desk/**', '.github/workflows/desk.yml']
+    paths: ['apps/desk/**', 'shared/board-rules.json', '.github/workflows/desk.yml']
 
 jobs:
   core-tests:
