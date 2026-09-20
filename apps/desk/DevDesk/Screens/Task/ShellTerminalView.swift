@@ -62,22 +62,32 @@ final class ShellTerminalHost: NSView {
     /// The app's events reach a local monitor before any view, so this holds whatever SwiftUI draws around the terminal.
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        clickMonitor = window == nil ? nil : LocalEventMonitor([.leftMouseDown, .rightMouseDown]) { [weak self] event in
-            self?.focusTerminal(clickedBy: event)
+        clickMonitor = window == nil ? nil : LocalEventMonitor(filtering: [.leftMouseDown, .rightMouseDown]) { [weak self] event in
+            guard let self else { return event }
+            // A ⌘-click that lands on a URL opens it and goes no further, so it never also starts a selection.
+            if event.type == .leftMouseDown, event.modifierFlags.contains(.command),
+               let terminal = terminal(under: event), terminal.openLink(at: event) { return nil }
+            focusTerminal(clickedBy: event)
+            return event
         }
         scrollMonitor = window == nil ? nil : LocalEventMonitor(filtering: .scrollWheel) { [weak self] event in
-            guard let self, let window, event.window === window, let terminal = subviews.first as? FocusingTerminalView,
-                  let hit = (window.contentView?.superview ?? window.contentView)?.hitTest(event.locationInWindow),
-                  hit === terminal || hit.isDescendant(of: terminal) else { return event }
+            guard let self, let terminal = terminal(under: event) else { return event }
             return terminal.forwardScroll(event) ? nil : event
         }
     }
 
-    private func focusTerminal(clickedBy event: NSEvent) {
-        guard let window, event.window === window, let terminal = subviews.first, window.firstResponder !== terminal,
+    /// This host's terminal, when the event landed on it in this window — and nil otherwise, so one pane's monitor
+    /// never answers for the pane the user is actually in.
+    private func terminal(under event: NSEvent) -> FocusingTerminalView? {
+        guard let window, event.window === window, let terminal = subviews.first as? FocusingTerminalView,
               let hit = (window.contentView?.superview ?? window.contentView)?.hitTest(event.locationInWindow),
-              hit === terminal || hit.isDescendant(of: terminal) else { return }
-        window.makeFirstResponder(terminal)
+              hit === terminal || hit.isDescendant(of: terminal) else { return nil }
+        return terminal
+    }
+
+    private func focusTerminal(clickedBy event: NSEvent) {
+        guard let terminal = terminal(under: event), window?.firstResponder !== terminal else { return }
+        window?.makeFirstResponder(terminal)
     }
 }
 
@@ -599,8 +609,31 @@ final class FocusingTerminalView: LocalProcessTerminalView {
     /// Every keystroke and every typed line reaches the process through here, so this is where Dev Desk learns
     /// that a turn has begun — without a hook, for any CLI. Return is the send; the rest is composing.
     override func send(source: Terminal, data: ArraySlice<UInt8>) {
-        if data.contains(0x0d) { onSend?() }
+        if Self.carriesReturn(data) { onSend?() }
         super.send(source: source, data: data)
+    }
+
+    /// True when the bytes carry a Return the program will act on. The one ⇧↩ sends does not count: it is ESC CR,
+    /// a newline typed INTO the agent's prompt (`performKeyEquivalent`), and reading it as a turn begun lit the
+    /// session up as working while the user was still writing the message.
+    private static func carriesReturn(_ data: ArraySlice<UInt8>) -> Bool {
+        var previous: UInt8 = 0
+        for byte in data {
+            if byte == 0x0d, previous != 0x1b { return true }
+            previous = byte
+        }
+        return false
+    }
+
+    /// macOS dictation — and any input method that commits styled text — hands `insertText` an NSAttributedString.
+    /// SwiftTerm 1.11.2 reads only `string as? NSString` and drops everything else without a sound, which is why
+    /// Fn-Fn over a session appeared to do nothing at all. The text is unwrapped before it goes down.
+    override func insertText(_ string: Any, replacementRange: NSRange) {
+        guard let attributed = string as? NSAttributedString else {
+            super.insertText(string, replacementRange: replacementRange)
+            return
+        }
+        super.insertText(attributed.string as NSString, replacementRange: replacementRange)
     }
 
     /// Called when a line is sent to whatever runs in this terminal.
@@ -638,6 +671,7 @@ final class FocusingTerminalView: LocalProcessTerminalView {
         static let left: UInt16 = 123
         static let right: UInt16 = 124
         static let delete: UInt16 = 51
+        static let ret: UInt16 = 36
     }
 
     /// Word and line motion, which macOS puts on ⌥/⌘ with the arrows and delete, and which SwiftTerm sends
@@ -657,6 +691,14 @@ final class FocusingTerminalView: LocalProcessTerminalView {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let option = modifiers.contains(.option)
         let command = modifiers.contains(.command)
+        // ⇧↩ and ⌥↩ open a new line in the agent's prompt instead of sending the message. Both reach the pty as a
+        // plain Return otherwise — the modifier is not in the byte — so each is sent as ESC CR, which is exactly what
+        // Claude Code's own `/terminal-setup` writes into iTerm2 and VS Code for ⇧↩, and what Codex reads as a
+        // newline too. A shell that does not know the sequence ignores it rather than running the line.
+        if event.keyCode == KeyCode.ret, !command, option || modifiers.contains(.shift) {
+            send(txt: "\u{1b}\r")
+            return true
+        }
         switch (event.keyCode, option, command) {
         case (KeyCode.left, true, false): send(txt: "\u{1b}b")    // ⌥← one word back
         case (KeyCode.right, true, false): send(txt: "\u{1b}f")   // ⌥→ one word on
@@ -671,6 +713,10 @@ final class FocusingTerminalView: LocalProcessTerminalView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
+        // SwiftTerm registers no dragged types at all, so a file or an image dropped on a session did nothing.
+        var dropped: [NSPasteboard.PasteboardType] = [.fileURL, .png, .tiff, .URL, .string]
+        dropped += NSFilePromiseReceiver.readableDraggedTypes.map { NSPasteboard.PasteboardType($0) }
+        registerForDraggedTypes(dropped)
         takeFocusIfAsked()
     }
 
@@ -678,6 +724,143 @@ final class FocusingTerminalView: LocalProcessTerminalView {
         guard focusOnAttach, let window else { return }
         focusOnAttach = false
         window.makeFirstResponder(self)
+    }
+
+    // MARK: Opening a link
+
+    /// Opens the URL under a ⌘-click. SwiftTerm opens one only where the program marked it as a hyperlink (OSC 8),
+    /// and the agent CLIs mark nothing — every URL an agent prints is plain text, so ⌘-click found no payload and
+    /// did nothing at all. The URL is read back out of the terminal's own grid instead, rejoining the rows a long
+    /// one was wrapped across. True when a link was opened, so the click is not also a selection.
+    func openLink(at event: NSEvent) -> Bool {
+        let terminal = getTerminal()
+        guard terminal.cols > 0, terminal.rows > 0, bounds.width > 0, bounds.height > 0 else { return false }
+        let point = convert(event.locationInWindow, from: nil)
+        let col = min(max(Int(point.x / bounds.width * CGFloat(terminal.cols)), 0), terminal.cols - 1)
+        let row = min(max(Int((bounds.height - point.y) / bounds.height * CGFloat(terminal.rows)), 0), terminal.rows - 1)
+        guard let url = Self.link(in: terminal, row: row, col: col) else { return false }
+        NSWorkspace.shared.open(url)
+        return true
+    }
+
+    /// The word under `col`, grown across wrapped rows, read as a URL. Only http, https and file are opened: a
+    /// terminal prints whatever a program feels like printing, and a click should not hand an unknown scheme to
+    /// whichever app has claimed it.
+    private static func link(in terminal: Terminal, row: Int, col: Int) -> URL? {
+        var word = Array(rowText(terminal, row))
+        guard col < word.count else { return nil }
+        var start = col, end = col
+        while start > 0, !word[start - 1].isWhitespace { start -= 1 }
+        while end < word.count - 1, !word[end + 1].isWhitespace { end += 1 }
+        var text = String(word[start...end])
+        // A URL too long for the width is wrapped onto the next row with nothing between, so a word that runs to
+        // an edge is continued there. Only an edge grows it: a word with space on both sides is whole already.
+        var above = row
+        while start == 0, above > 0 {
+            above -= 1
+            word = Array(rowText(terminal, above))
+            var from = word.count - 1
+            guard !word[from].isWhitespace else { break }
+            while from > 0, !word[from - 1].isWhitespace { from -= 1 }
+            text = String(word[from...]) + text
+            start = from
+        }
+        var below = row
+        while end == terminal.cols - 1, below < terminal.rows - 1 {
+            below += 1
+            word = Array(rowText(terminal, below))
+            var to = 0
+            guard !word[to].isWhitespace else { break }
+            while to < word.count - 1, !word[to + 1].isWhitespace { to += 1 }
+            text = text + String(word[...to])
+            end = to
+        }
+        // Prose puts a URL in brackets and ends the sentence after it; none of that belongs to the address.
+        text = text.trimmingCharacters(in: CharacterSet(charactersIn: "<>()[]{}'\"`,;:!?"))
+        while let last = text.last, ".,;:!?".contains(last) { text.removeLast() }
+        let scheme = text.lowercased()
+        guard scheme.hasPrefix("https://") || scheme.hasPrefix("http://") || scheme.hasPrefix("file://") else { return nil }
+        return URL(string: text) ?? text.addingPercentEncoding(withAllowedCharacters: .urlFragmentAllowed).flatMap(URL.init(string:))
+    }
+
+    /// One visible row as text, blanks included, so a column index into it is the column on screen.
+    private static func rowText(_ terminal: Terminal, _ row: Int) -> String {
+        (0..<terminal.cols).map { terminal.getCharacter(col: $0, row: row).map(String.init) ?? " " }.joined()
+    }
+
+    // MARK: Dropping files and images
+
+    override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { accepts(sender) ? .copy : [] }
+
+    override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation { accepts(sender) ? .copy : [] }
+
+    private func accepts(_ sender: NSDraggingInfo) -> Bool { dropText(sender) != nil || promises(sender) != nil }
+
+    /// A drop is typed into the session as a path, the way Terminal and iTerm have always done it — an agent is
+    /// given a file to read, not a picture pasted into a pty that has nowhere to put one. Nothing is sent: the path
+    /// lands at the prompt and the user presses Return.
+    override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+        window?.makeFirstResponder(self)
+        guard let text = dropText(sender) else { return receive(sender) }
+        send(txt: text)
+        return true
+    }
+
+    /// A drag out of Photos or Mail carries no file yet, only a promise to write one. The files are asked for into a
+    /// folder of our own and typed when they arrive, which is well after this drop has been answered.
+    private func receive(_ sender: NSDraggingInfo) -> Bool {
+        guard let receivers = promises(sender) else { return false }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("DevDesk dropped files", isDirectory: true)
+        guard (try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)) != nil else { return false }
+        for receiver in receivers {
+            receiver.receivePromisedFiles(atDestination: folder, operationQueue: .main) { [weak self] url, error in
+                guard error == nil else { return }
+                self?.send(txt: Self.quoted(url.path) + " ")
+            }
+        }
+        return true
+    }
+
+    private func promises(_ sender: NSDraggingInfo) -> [NSFilePromiseReceiver]? {
+        let receivers = sender.draggingPasteboard.readObjects(forClasses: [NSFilePromiseReceiver.self]) as? [NSFilePromiseReceiver]
+        return (receivers?.isEmpty ?? true) ? nil : receivers
+    }
+
+    /// What a drop should type: the quoted paths of the files dropped, the path of an image saved out of the
+    /// pasteboard when the drag carried pixels rather than a file (an image dragged from a browser), or a plain URL.
+    /// Nil for a drag this terminal has no path for, so the cursor says no before the mouse is let go.
+    private func dropText(_ sender: NSDraggingInfo) -> String? {
+        let board = sender.draggingPasteboard
+        let urls = board.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL] ?? []
+        if !urls.isEmpty { return urls.map { Self.quoted($0.path) }.joined(separator: " ") + " " }
+        if let saved = Self.saveImage(from: board) { return Self.quoted(saved.path) + " " }
+        if let web = board.readObjects(forClasses: [NSURL.self], options: nil) as? [URL], !web.isEmpty {
+            return web.map { Self.quoted($0.absoluteString) }.joined(separator: " ") + " "
+        }
+        if let text = board.string(forType: .string), !text.isEmpty { return text }
+        return nil
+    }
+
+    /// Writes the dragged pixels to a file the agent can open, since a pasteboard image has no path of its own.
+    /// Always PNG, whatever came in, so the name and the bytes agree.
+    private static func saveImage(from board: NSPasteboard) -> URL? {
+        guard let image = NSImage(pasteboard: board),
+              let tiff = image.tiffRepresentation,
+              let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return nil }
+        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("DevDesk dropped images", isDirectory: true)
+        let file = folder.appendingPathComponent("drop-\(Int(Date().timeIntervalSince1970))-\(UInt32.random(in: 0..<0xFFFF)).png")
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try png.write(to: file)
+        } catch {
+            return nil
+        }
+        return file
+    }
+
+    /// A path typed into a shell, safe whatever is in it: single quotes, with any quote of its own closed and reopened.
+    static func quoted(_ path: String) -> String {
+        "'" + path.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 }
 
