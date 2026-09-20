@@ -7,6 +7,8 @@ decisions behind it. Each task gets a real shell and its own agent — Claude Co
 in the task's own git worktree. Start an agent yourself, or turn on Auto for a project and it works
 through the queue: at most 3 at once, after a token warning you confirm.
 
+![Dev Desk: the board with a task running, its own worktree and its own agent](docs/assets/dev-desk.gif)
+
 ## Download
 
 [**Dev Desk (.dmg)**](https://github.com/hasansa007/dev-desk/releases/latest) — macOS 14 or later.
