@@ -34,11 +34,7 @@ struct ProjectToolbar: ToolbarContent {
     }
 
     var body: some ToolbarContent {
-        if let summary = activity {
-            ToolbarItem(placement: .primaryAction) {
-                ActivitySummary(summary: summary)
-            }
-        }
+        activityItem
         // The project's own run, before the panels: it is an action on the project, not a view of it.
         // The reload ring lived here, spending its life counting down to an automatic reload nobody had asked
         // about. Reloading is a pull at the top of the screen now, and ⌘R in the Project menu.
@@ -63,6 +59,30 @@ struct ProjectToolbar: ToolbarContent {
         #else
         legacyRunAndPanels
         #endif
+    }
+
+    /// The readout, with no capsule of its own. macOS 26 gave it the toolbar's glass pill, and a readout in a
+    /// pill reads as a button you can press — the pill also sat tight against the text (2026-09-20, on screen,
+    /// reported). Hidden here for the same reason it is hidden on Run and the panel toggles.
+    @ToolbarContentBuilder private var activityItem: some ToolbarContent {
+        if let summary = activity {
+            #if compiler(>=6.2)
+            if #available(macOS 26.0, *) {
+                ToolbarItem(placement: .primaryAction) {
+                    ActivitySummary(summary: summary)
+                }
+                .sharedBackgroundVisibility(.hidden)
+            } else {
+                ToolbarItem(placement: .primaryAction) {
+                    ActivitySummary(summary: summary)
+                }
+            }
+            #else
+            ToolbarItem(placement: .primaryAction) {
+                ActivitySummary(summary: summary)
+            }
+            #endif
+        }
     }
 
     @ToolbarContentBuilder private var legacyRunAndPanels: some ToolbarContent {

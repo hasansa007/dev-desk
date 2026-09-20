@@ -114,7 +114,48 @@ private struct WindowChrome: View {
         WindowAccessor { window in
             window.titlebarAppearsTransparent = true
             window.backgroundColor = NSColor(DeskColor.strip)
+            TitlebarZoom.install(on: window)
         }
         .frame(width: 0, height: 0)
+    }
+}
+
+/// Double-clicking the title bar zooms the window — everywhere except over the title itself, which SwiftUI
+/// draws in a hosting view that eats the click and never passes it to the bar beneath. Measured on screen
+/// (2026-09-20): a double-click right of the toolbar items zoomed; one on the project's name did nothing,
+/// and the name spans 850 pt of the bar, so the place you actually aim for was the one dead spot.
+///
+/// The monitor answers for the whole bar and CONSUMES what it handles, so the system's own zoom and this one
+/// can never both fire and cancel each other out. It only acts where the click landed on text or on bare
+/// bar: anything with a button's role — a toolbar control — keeps its second click.
+private enum TitlebarZoom {
+    private static var monitor: Any?
+
+    static func install(on window: NSWindow) {
+        guard monitor == nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: .leftMouseUp) { [weak window] event in
+            guard let window, event.window === window, event.clickCount == 2,
+                  event.locationInWindow.y > window.contentLayoutRect.maxY,
+                  isPassiveChrome(window.contentView?.superview?.hitTest(event.locationInWindow))
+            else { return event }
+            window.performZoom(nil)
+            return nil
+        }
+    }
+
+    /// True when nothing under the pointer wants the click: bare bar (nil), or a view — and every view above
+    /// it — that is not a control and does not report itself as one.
+    private static func isPassiveChrome(_ hit: NSView?) -> Bool {
+        var view = hit
+        while let current = view {
+            if current is NSControl { return false }
+            switch current.accessibilityRole() {
+            case .some(.button), .some(.checkBox), .some(.popUpButton), .some(.slider), .some(.menuButton):
+                return false
+            default: break
+            }
+            view = current.superview
+        }
+        return true
     }
 }

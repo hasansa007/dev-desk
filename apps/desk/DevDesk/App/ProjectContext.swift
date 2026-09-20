@@ -42,7 +42,10 @@ final class ProjectContext: Identifiable {
     // MARK: - What the strip shows
 
     /// Runs in this project waiting on an answer. The strip's amber number, and what Home counts as needing you.
-    var waitingCount: Int { model.waitingSessions.count }
+    /// Only LIVE sessions count: `waitingSessions` is a record of what each agent last reported and nothing takes
+    /// an id out of it when the session ends, so a project with nothing running wore an amber 1 for the last turn
+    /// that ever ended there (2026-09-20, on screen, reported). The toolbar's summary already counted this way.
+    var waitingCount: Int { model.waitingSessions.count { model.sessions.state(for: $0).isLive } }
 
     /// Anything live here at all — the strip's green dot.
     var isRunning: Bool { SessionRow.all(in: model).contains(where: \.isLive) }
