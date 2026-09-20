@@ -1,6 +1,6 @@
 # 0011 — The Project board mirrors; it never decides
 
-Status:  Accepted
+Status:  Accepted, partially reversed by [0035](0035-the-board-stores-what-git-cannot-see.md)
 Date:    2026-09-11
 Commit:  (this branch)  ·  `feature/tracker-and-pipeline-state`
 

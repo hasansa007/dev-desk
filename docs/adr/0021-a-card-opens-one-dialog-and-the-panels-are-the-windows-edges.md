@@ -1,6 +1,6 @@
 # 0021 — A card opens one dialog, and the panels are the window's edges
 
-Status:  Accepted, amended by [0038](0038-the-survey-is-a-triage-list-and-board-controls-live-on-their-columns.md) and [0039](0039-a-confirmation-is-as-big-as-its-question.md)
+Status:  Accepted, amended by [0028](0028-the-window-fits-an-ipad-and-a-dialog-clamps-to-it.md), [0032](0032-a-tapped-file-opens-beside-the-work-or-floats-over-it.md), [0038](0038-the-survey-is-a-triage-list-and-board-controls-live-on-their-columns.md) and [0039](0039-a-confirmation-is-as-big-as-its-question.md)
 Date:    2026-09-12
 Commit:  (this branch)  ·  `feat/macos-app-missing-features`
 

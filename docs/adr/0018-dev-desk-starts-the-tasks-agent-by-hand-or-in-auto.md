@@ -1,6 +1,6 @@
 # 0018 — Dev Desk starts the task's agent, by hand or in Auto for queued tasks
 
-Status:  Accepted
+Status:  Accepted, amended by [0030](0030-insights-runs-its-agent-headlessly.md) and [0036](0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md)
 Date:    2026-09-11
 Commit:  (this branch)  ·  `feat/desk-agents-and-auto`
 

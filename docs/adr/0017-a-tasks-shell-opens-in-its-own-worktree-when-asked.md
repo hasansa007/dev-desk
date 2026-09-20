@@ -1,6 +1,6 @@
 # 0017 — A task's shell opens in that task's own worktree, and only when asked
 
-Status:  Accepted
+Status:  Accepted, amended by [0036](0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md)
 Date:    2026-09-11
 Commit:  (this branch)  ·  `feat/desk-embedded-shell`
 

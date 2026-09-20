@@ -29,3 +29,15 @@ apps/desk/DeskCore/build/
 
 # Stray visual-check run artifacts (a failed Chrome inspection log, written at the repo root).
 *.visual-check.json
+
+# Generated icon previews. `apps/desk/icon/make-appicon.py` writes these beside the source art on
+# its way to Assets.xcassets, which is the copy that ships and the copy check-appicon.py reads.
+apps/desk/icon/AppIcon-1024.png
+apps/desk/icon/AppIcon-dark-1024.png
+
+# Icon export scratch. Nothing in the repo reads this path.
+/output/
+
+# Workflow viewer artifacts, written at the repo root by whatever ran last.
+dev-task-start.html
+dev-task-start.workflow.json

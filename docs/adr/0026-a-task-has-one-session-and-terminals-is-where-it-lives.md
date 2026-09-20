@@ -1,6 +1,6 @@
 # 0026 — A task has one session, and Terminals is where it lives
 
-Status:  Accepted
+Status:  Accepted, amended by [0036](0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md)
 Date:    2026-09-13
 Commit:  (this branch)  ·  `refactor/desk-one-session-and-terminals`
 Amends:  0017 (a task's shell), 0018 (the task's agent), 0021 (the dialog's tabs, the panels as edges)

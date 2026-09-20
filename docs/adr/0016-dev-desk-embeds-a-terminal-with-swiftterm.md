@@ -1,6 +1,6 @@
 # 0016 — Dev Desk embeds a terminal with SwiftTerm, its first dependency
 
-Status:  Accepted
+Status:  Accepted, reversed by [0036](0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md)
 Date:    2026-09-11
 Commit:  (this branch)  ·  `feat/desk-embedded-shell`
 
