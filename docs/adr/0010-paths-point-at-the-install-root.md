@@ -6,7 +6,7 @@ Commit:  ea912ba  ·  `feature/tracker-and-pipeline-state`
 
 ## Context
 
-14 files hardcoded `~/Developer/skills/dev-skill/…` — `SKILL.md` alone 9 of 33 occurrences. The
+14 files hardcoded `~/Developer/skills/dev-desk/…` — `SKILL.md` alone 9 of 33 occurrences. The
 pipeline's first instruction was to read a file under one developer's home directory, so the family
 could not run on any other machine.
 

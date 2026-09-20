@@ -7,7 +7,7 @@ Amends:  0022 (decisions 1 and 4), 0021 (card anatomy)
 
 ## Context
 
-[#69](https://github.com/hasansa007/dev-skill/pull/69) was merged on request with Phase 13 skipped.
+[#69](https://github.com/hasansa007/dev-desk/pull/69) was merged on request with Phase 13 skipped.
 The PR body said so rather than claiming a gate it had not run, and the omission mattered more than
 usual: that diff added the first code in this app that can destroy work. The gate ran afterwards,
 against the merged diff `e8c421d..744bb01`, and returned fifteen findings. Each was verified against
@@ -85,9 +85,9 @@ one-dialog rule to the card that opens it.
 - **The dead error cases are gone.** `checkedOut` and `unmergedNeedsConfirmation` carried user-facing
   sentences no code path could reach; git's own stderr is shown instead, under a banner that now
   names the thing that failed rather than saying "the tracker was not changed" about a branch.
-- **Two findings are filed, not fixed**: [#70](https://github.com/hasansa007/dev-skill/issues/70) the
+- **Two findings are filed, not fixed**: [#70](https://github.com/hasansa007/dev-desk/issues/70) the
   refresh ring counts down to a reload on a different schedule, and
-  [#71](https://github.com/hasansa007/dev-skill/issues/71) a decomposed epic in BACKLOG gets no chips
+  [#71](https://github.com/hasansa007/dev-desk/issues/71) a decomposed epic in BACKLOG gets no chips
   and no Build. Both need a decision rather than a correction, so neither was made quietly here.
 
 ## Alternatives rejected

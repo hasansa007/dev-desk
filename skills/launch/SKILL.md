@@ -164,7 +164,7 @@ Platform precedence when multiple are detected:
   the second one is the quiet one:
   - Never fall back to "serve the directory" — an empty static server returns 200 on a directory
     listing and looks like success
-  - **Never reach into another repo.** Observed 2026-08-05: `/dev:launch` run from the dev-skill
+  - **Never reach into another repo.** Observed 2026-08-05: `/dev:launch` run from the dev-desk
     repo found no app there and silently continued discovery in ANOTHER repo — a different
     project, reachable only because it was an additional working directory — getting as far as
     reading its launch script before anyone noticed the repo had changed. A session can reach many

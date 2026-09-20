@@ -1,9 +1,9 @@
 public enum SampleProject: String, Codable, CaseIterable, Hashable {
     case studyHub
-    case devSkill
+    case devDesk
 
-    public var title: String { self == .studyHub ? "StudyHub" : "dev-skill" }
-    public var displayPath: String { self == .studyHub ? "~/code/studyhub" : "~/code/dev-skill" }
+    public var title: String { self == .studyHub ? "StudyHub" : "dev-desk" }
+    public var displayPath: String { self == .studyHub ? "~/code/studyhub" : "~/code/dev-desk" }
 }
 
 public enum ProjectRef: Hashable, Codable, Identifiable {

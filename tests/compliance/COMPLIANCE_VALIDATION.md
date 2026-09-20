@@ -10,7 +10,7 @@
 
 ## 1. Executive Summary
 
-The **Phase Compliance Auditor** (`/dev:audit`) closes the single most critical trust gap in `dev-skill`: **the self-reporting gap**. 
+The **Phase Compliance Auditor** (`/dev:audit`) closes the single most critical trust gap in `dev-desk`: **the self-reporting gap**. 
 
 Prior to this feature, `## PIPELINE` and `## DOCS` sections were authored by the AI agent itself. A run that skipped a phase *and* omitted it from the `Skipped:` line was completely invisible. Competitor tools like Cursor (pain-1-1) and CLAUDE.md guidelines (pain-6-1) provide guidance with zero mechanical enforcement.
 
@@ -78,7 +78,7 @@ ALL 7/7 TESTS PASSED!
 - **Result:** PASS.
 
 ### Scenario 7: Real-World PR #47 Trace
-- **Condition:** Audited the actual merged PR [#47](https://github.com/hasansa007/dev-skill/pull/47).
+- **Condition:** Audited the actual merged PR [#47](https://github.com/hasansa007/dev-desk/pull/47).
 - **Finding:** Correctly caught that PR #47 reported `Ran: 1-5, 7, 9, 11-14` (Phase 10 omitted from Ran line) while properly parsing complex parenthetical reasons containing semicolons.
 - **Result:** PASS.
 

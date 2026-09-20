@@ -3,7 +3,7 @@
 Read by `dev` and by every `dev-*` sibling **before anything else**. One source of truth for
 workspace resolution and for which pipeline sections always load.
 
-> **The family's own repository is exempt.** When the resolved repo is `dev-skill` — the source of
+> **The family's own repository is exempt.** When the resolved repo is `dev-desk` — the source of
 > these doors — the Phase 11–14 gates do not apply to changes made in it: a repo cannot be governed by
 > the rules it defines, and the loop has no end. Build with `apps/desk/install.sh`, look at the
 > result, commit to the working branch. See that repo's `CLAUDE.md`. Everywhere else, the gates hold

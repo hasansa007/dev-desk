@@ -29,7 +29,7 @@ final class SessionUsageReaderTests: XCTestCase {
     func testTheClaudeSlugTurnsEverySlashAndDotIntoADash() {
         XCTAssertEqual(SessionUsageReader.claudeSlug("/Users/hasan/.devdesk/wt/studyhub-deploy-auto-claude-004"),
                        "-Users-hasan--devdesk-wt-studyhub-deploy-auto-claude-004")
-        XCTAssertEqual(SessionUsageReader.claudeSlug("/Users/hasan/Developer/dev-skill"), "-Users-hasan-Developer-dev-skill")
+        XCTAssertEqual(SessionUsageReader.claudeSlug("/Users/hasan/Developer/dev-desk"), "-Users-hasan-Developer-dev-desk")
     }
 
     func testClaudeReadsTheNewestSessionInItsProjectDirectory() throws {

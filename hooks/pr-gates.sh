@@ -14,7 +14,7 @@ CMD=$(jq -r '.tool_input.command // ""' <<<"$IN")
 CWD=$(jq -r '.cwd // ""' <<<"$IN")
 ROOT=$(git -C "$CWD" rev-parse --show-toplevel 2>/dev/null) || ROOT=$CWD
 [ -f "$ROOT/.claude/hooks-off" ] && { log bypass "$ROOT"; exit 0; }
-# The dev-skill repo is not gated by the pipeline it defines (its CLAUDE.md, 2026-09-13): it commits
+# The dev-desk repo is not gated by the pipeline it defines (its CLAUDE.md, 2026-09-13): it commits
 # and pushes straight to main. Matched the way branch-guard matches it — by path when this copy sits
 # in the repo, and by plugin identity when it sits in a plugin cache, which is where a plugin install
 # puts it (2026-09-20: the first push after one was installed was denied).

@@ -1,6 +1,6 @@
 # Dev Desk
 
-Dev Desk is a native Mac app for the dev-skill family. One window holds every project — a strip switches between them and Home says which one needs you ([ADR 0050](../../docs/adr/0050-one-window-holds-every-project-and-the-strip-switches-them.md)). For each project it shows the board, a workspace for every task, findings, the roadmap and decisions, with Insights alongside. Each task also gets a real shell and its agent, running in the task's own folder.
+Dev Desk is a native Mac app for the dev-desk family. One window holds every project — a strip switches between them and Home says which one needs you ([ADR 0050](../../docs/adr/0050-one-window-holds-every-project-and-the-strip-switches-them.md)). For each project it shows the board, a workspace for every task, findings, the roadmap and decisions, with Insights alongside. Each task also gets a real shell and its agent, running in the task's own folder.
 
 It's a first build of the container described in the [container spec](../../docs/superpowers/specs/2026-09-11-container-design.md). [System model](../../docs/guide/SYSTEM-MODEL.md) explains what it reads, what it runs, and what isn't built yet.
 
@@ -9,7 +9,7 @@ It's a first build of the container described in the [container spec](../../docs
 A prebuilt release is quicker than building. Releases are ad-hoc signed DMGs, published to GitHub Releases when a `desk-v*` tag is pushed:
 
 ```bash
-gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.dmg'
+gh release download -R hasansa007/dev-desk -p 'Dev-Desk-*.dmg'
 ```
 
 Open the DMG and drag **Dev Desk.app** onto the `/Applications` symlink inside it.
@@ -58,7 +58,7 @@ open "/tmp/devdesk-dd/Build/Products/Debug/Dev Desk.app"
 
 - **One window holds every project** ([ADR 0050](../../docs/adr/0050-one-window-holds-every-project-and-the-strip-switches-them.md)). A strip of project badges down the left edge switches between them, and every open project keeps running whether or not you are looking at it — its loads, its Auto loop, its queue.
   - **Home** is the strip's top item: what needs you across projects, with the project that needs you most drawn widest. A card is the project — double-click opens it, right-click closes it, and **Project ▸ Close Project** (⇧⌘W) does the same from the menu bar.
-- **Open a project** with the strip's **+** or **Open Project…** (⌘O), a dialog raised over the one window. You can open a sample (StudyHub or dev-skill, with labelled demo data), a local folder, a clone, or a new project.
+- **Open a project** with the strip's **+** or **Open Project…** (⌘O), a dialog raised over the one window. You can open a sample (StudyHub or dev-desk, with labelled demo data), a local folder, a clone, or a new project.
   - For a real folder, Dev Desk reads git and GitHub directly ([ADR 0013](../../docs/adr/0013-the-app-reads-git-and-github-directly.md)): the board, branches, diffs, PR checks, `.dev/` state, `docs/findings/` and `docs/ideation/`.
 - **Starting a task.** A card's **Start** button, its menu, or ⌘↩ on the card you last opened; a card's dialog offers the same thing ([ADR 0021](../../docs/adr/0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md)). Nothing runs until you ask.
   - It runs Claude Code or Codex with the same prompt `dev run` uses ([ADR 0018](../../docs/adr/0018-dev-desk-starts-the-tasks-agent-by-hand-or-in-auto.md)), from Settings → Agents and defaults or a project's override, and it stops at the pipeline's approval gates and asks you in its terminal.

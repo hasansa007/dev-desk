@@ -6,7 +6,7 @@ Commit:  (this branch)  ·  `feat/macos-app-missing-features`
 
 ## Context
 
-The gaps epic ([#59](https://github.com/hasansa007/dev-skill/issues/59)) was designed from
+The gaps epic ([#59](https://github.com/hasansa007/dev-desk/issues/59)) was designed from
 screenshots, before the app had been used on a real project. Its design record kept the full-screen
 task workspace and added a sheet only for cards nobody had started, so a card led to one of two
 different places depending on whether it had a branch.

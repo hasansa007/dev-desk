@@ -1,4 +1,4 @@
-# Maintaining dev-skill
+# Maintaining dev-desk
 
 Shared behaviour belongs in `shared/`; command entry points reference it. The sections below preserve the design rationale, policy, and incident history behind the workflow.
 

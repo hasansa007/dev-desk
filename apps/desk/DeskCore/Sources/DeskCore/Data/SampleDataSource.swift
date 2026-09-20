@@ -5,7 +5,7 @@ public struct SampleDataSource: ProjectDataSource {
     public func load() async throws -> ProjectSnapshot {
         switch project {
         case .studyHub: return SampleData.studyHub()
-        case .devSkill: return SampleData.devSkill()
+        case .devDesk: return SampleData.devDesk()
         }
     }
 }

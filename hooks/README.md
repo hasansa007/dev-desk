@@ -41,8 +41,8 @@ event with `${CLAUDE_PLUGIN_ROOT}`, so they travel with the repo and need no set
 symlink into `~/.claude/hooks/`:
 
 ```text
-/plugin marketplace add ~/Developer/skills/dev-skill
-/plugin install dev@dev-skill
+/plugin marketplace add ~/Developer/skills/dev-desk
+/plugin install dev@dev-desk
 ```
 
 This makes `branch-guard.sh` **global**, which the per-repo section below was written to avoid. That
@@ -146,7 +146,7 @@ falsification pass, not by the happy path.
 - **2026-09-19 — `branch-guard.sh` judges the folder the COMMAND runs in, not the session's.** The
   first real-run failure, and the most expensive: a `Bash` commit was judged by the session's starting
   folder, so while one project sat on `staging` the guard denied commits in *other* repos and in
-  `~/.devdesk/wt` worktrees — and it blocked dev-skill itself, whose `CLAUDE.md` says the pipeline does
+  `~/.devdesk/wt` worktrees — and it blocked dev-desk itself, whose `CLAUDE.md` says the pipeline does
   not gate it. With Dev Desk's hook forbidding a project folder's branch switch, that deadlocked every
   commit in a session (2026-09-18/19). Now the target is resolved from each `git -C` target, then a
   `cd` on the first line, first real directory winning — so a commit message quoting a path cannot

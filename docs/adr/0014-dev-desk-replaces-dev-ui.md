@@ -78,7 +78,7 @@ wc -l scripts/dev.py
 → 1286 before, 746 after — 28 names removed, none still referenced
 
 python3 scripts/dev.py board        # this repo: no open milestone
-→ ## hasansa007/dev-skill — 0 open
+→ ## hasansa007/dev-desk — 0 open
   QUEUE is empty — no open milestone; dev:roadmap sets one
 
 for f in test-projects/*/test_*.py; do PYTHONPATH=. python3 "$f" 2>&1 | tail -2; done

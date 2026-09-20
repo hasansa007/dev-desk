@@ -1,6 +1,6 @@
 # System model
 
-What dev-skill is made of, which part holds what, and which part wins when two disagree.
+What dev-desk is made of, which part holds what, and which part wins when two disagree.
 
 [Guide](GUIDE.md) · [Workflow](WORKFLOW.md) · [Commands](COMMANDS.md) · [Diagram](../arch/dev-system.html)
 
@@ -22,7 +22,7 @@ Each layer is authoritative over every layer numbered above it, so when a checkp
 
 Dev Desk is a native Mac app in `apps/desk/`. It lives in this repository ([ADR 0012](../adr/0012-the-mac-app-lives-in-apps-desk.md)).
 
-It opens two sample projects, StudyHub and dev-skill, which show the whole design with labelled sample data. It also opens real folders. For a real folder it reads git and GitHub directly, through `git` and `gh` ([ADR 0013](../adr/0013-the-app-reads-git-and-github-directly.md)): the board, diffs, commit activity, PR checks, `.dev/` state, and GitHub milestones as Roadmap.
+It opens two sample projects, StudyHub and dev-desk, which show the whole design with labelled sample data. It also opens real folders. For a real folder it reads git and GitHub directly, through `git` and `gh` ([ADR 0013](../adr/0013-the-app-reads-git-and-github-directly.md)): the board, diffs, commit activity, PR checks, `.dev/` state, and GitHub milestones as Roadmap.
 
 One window holds every project, a strip down its left edge switches them, and **Home** says which one needs you ([ADR 0050](../adr/0050-one-window-holds-every-project-and-the-strip-switches-them.md)). Within a project, five destinations and two edges ([ADR 0021](../adr/0021-a-card-opens-one-dialog-and-the-panels-are-the-windows-edges.md)):
 

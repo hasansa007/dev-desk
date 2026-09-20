@@ -19,7 +19,7 @@ The app reuses step 1's terminal machinery to run a command rather than a bare s
 ## Global Constraints
 
 - **Never launch the real `claude` or `codex` in tests, harnesses or manual runs.** It spends the developer's tokens. Use a stand-in script. The launch builder takes the executable as a parameter. A **DEBUG-only** launch argument, `-DevDeskAgentExecutable <path>`, makes the app run that path instead of the resolved CLI; release builds ignore it.
-- **Never create a worktree, start a shell or start an agent in the dev-skill repository or any real checkout.** Tests and manual runs use throwaway repositories under `$TMPDIR`.
+- **Never create a worktree, start a shell or start an agent in the dev-desk repository or any real checkout.** Tests and manual runs use throwaway repositories under `$TMPDIR`.
 - **The prompt matches `dev run`'s `build_prompt` (`scripts/dev.py:599-602`) byte for byte.** It is `Read <skill root>/SKILL.md and execute it exactly as written, following every phase and gate it defines.`, followed by ` Arguments: #N` only when the task has no branch and has a number. The skill root is `~/.claude/skills/dev` with `~` expanded (`skill_root()`, `scripts/dev.py:572-574`), for every agent.
 - **The commands.** Claude → `claude <prompt>`. Codex → `codex <prompt>`. Always interactive: never `-p` or `exec`, never a flag that skips permissions or approvals, and no `--model`.
 - **The agent runs through the user's login shell,** so the user's `PATH` applies. It starts through step 1's fail-closed `cd -- "$1"` wrapper. The folder, shell, executable and prompt are separate argv elements, never interpolated into a script string.

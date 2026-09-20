@@ -20,7 +20,7 @@ The mobile MASTER_PROMPT bootstrap flow has **the same five critical gaps as web
 **Additional Mobile-Specific Finding:**
 6. **Platform detection gap** — Pipeline Phase 2 detects iOS/Android/KMP stack but doesn't route to correct MASTER_PROMPT variant (A/B/C)
 
-**Impact:** New mobile projects cannot use dev-skill from day one. The pipeline expects ARCHITECTURE.md to exist but provides no mechanism to create it.
+**Impact:** New mobile projects cannot use dev-desk from day one. The pipeline expects ARCHITECTURE.md to exist but provides no mechanism to create it.
 
 ---
 

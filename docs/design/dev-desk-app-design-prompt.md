@@ -11,7 +11,7 @@ explicitly called provisional are design assumptions, not final product decision
 ## Product purpose
 
 Dev Desk brings together project understanding, investigation, planning, implementation,
-verification, and human decisions. It is the desktop companion to **dev-skill**, a family of
+verification, and human decisions. It is the desktop companion to **dev-desk**, a family of
 developer workflows already available through coding agents and a CLI.
 
 Make the relationship between a task, its requirements, branch, agents, evidence, and decisions
@@ -181,7 +181,7 @@ The panel includes:
 - Answers with navigable source references.
 - Contextual actions such as **Run survey**, **Explore roadmap**, or **Save project knowledge**.
 
-Use the dev-skill Insights behavior: answer from evidence, route specialized work to its
+Use the dev-desk Insights behavior: answer from evidence, route specialized work to its
 own workflow, and retain only durable, supported knowledge in PROJECT_MAP.md within the
 user's authorization. Do not save all chat as project truth or label chat speculation as a
 verified finding. Keep the primary interaction simple; source details can expand on demand.
@@ -229,7 +229,7 @@ finding identifies related navigation code and proposes attaching evidence to #4
 as code-inspected rather than reproduced. Use realistic illustrative paths and label all
 sample evidence as demo content.
 
-Include a second project window called **dev-skill** to demonstrate project independence.
+Include a second project window called **dev-desk** to demonstrate project independence.
 
 ## Required output and prototype coverage
 

@@ -195,7 +195,7 @@ ADR for why it lost, measured rather than assumed.
 
 The app is a client of the contract. The question is whether it lives beside the contract.
 
-| | **Two repos** — `dev-skill` + `dev-desk` | **One repo** — `apps/desk/` in `dev-skill` |
+| | **Two repos** — this repo (then named `dev-skill`) + `dev-desk` | **One repo** — `apps/desk/` in `dev-desk` |
 |---|---|---|
 | Skill install (`install.sh` symlinks the clone) | prose + one Python file | the same **plus the Xcode project**, in every user's `~/.claude/skills/dev` |
 | A UI-only change | a dev-desk commit; the skill is untouched | bumps the skill; every install pulls it |
@@ -224,9 +224,9 @@ CLI on most PRs.
 
 | | Deliverable | Repo |
 |---|---|---|
-| A | `documentation/SYSTEM-MODEL.md` (section 2 as a page) + `docs/arch/dev-system.*` rendered with `dev:arch` | dev-skill |
-| B | `snapshot`, `jobs`, `events`, `board move`, `"contract": 1`, tests; the `/dev:ui` and `dev:board` doors learn the verbs (`/dev:ui` retired 2026-09-11, ADR 0014) | dev-skill |
-| C | Mac shell: project windows, Board, task details, agent outputs, Decisions, then remaining views from the latest UI note | `dev-skill` (`apps/desk/`, decided — ADR 0012) |
+| A | `documentation/SYSTEM-MODEL.md` (section 2 as a page) + `docs/arch/dev-system.*` rendered with `dev:arch` | dev-desk |
+| B | `snapshot`, `jobs`, `events`, `board move`, `"contract": 1`, tests; the `/dev:ui` and `dev:board` doors learn the verbs (`/dev:ui` retired 2026-09-11, ADR 0014) | dev-desk |
+| C | Mac shell: project windows, Board, task details, agent outputs, Decisions, then remaining views from the latest UI note | `dev-desk` (`apps/desk/`, decided — ADR 0012) |
 
 Each was planned as its own PR. **A and C shipped together in one PR, at the developer's
 request** — this branch carries the system-model page and diagram (A) alongside the first Mac

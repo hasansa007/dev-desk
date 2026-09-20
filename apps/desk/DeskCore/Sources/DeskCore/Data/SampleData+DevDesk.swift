@@ -1,9 +1,9 @@
 extension SampleData {
-    public static func devSkill() -> ProjectSnapshot {
+    public static func devDesk() -> ProjectSnapshot {
         ProjectSnapshot(
-            project: ProjectInfo(name: "dev-skill", displayPath: "~/code/dev-skill", branch: "main"),
+            project: ProjectInfo(name: "dev-desk", displayPath: "~/code/dev-desk", branch: "main"),
             isDemo: true,
-            board: .available(devSkillTasks()),
+            board: .available(devDeskTasks()),
             boardNote: "Separate window, separate selection and layout. Work in StudyHub is unaffected by what happens here.",
             findings: .available(FindingsReport(runs: [], findings: [])),
             roadmap: .available(Roadmap(
@@ -13,12 +13,12 @@ extension SampleData {
             connections: studyHubConnections(),
             connectionsNote: "Illustrative prototype states. No tools are installed or called.",
             capabilities: studyHubCapabilities(),
-            insights: .unavailable("The dev-skill sample window has no scripted conversation."),
+            insights: .unavailable("The dev-desk sample window has no scripted conversation."),
             projectFacts: [KeyValue("Base branch", "main", monospaced: true)]
         )
     }
 
-    private static func devSkillTasks() -> [DeskTask] {
+    private static func devDeskTasks() -> [DeskTask] {
         [
             DeskTask(
                 id: "12", issueNumber: 12, title: "Findings run summaries", column: .inProgress,

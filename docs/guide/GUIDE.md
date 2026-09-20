@@ -1,4 +1,4 @@
-# Using dev-skill
+# Using dev-desk
 
 Start with a task, let the agent investigate, and agree on the approach before it writes code.
 

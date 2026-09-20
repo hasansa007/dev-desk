@@ -1,4 +1,4 @@
-# dev-skill
+# dev-desk
 
 **From GitHub issue to production, with your coding agent.**
 
@@ -9,7 +9,7 @@ A development workflow that investigates problems, plans solutions, writes code,
 Use it as a Mac app, as a skill in your agent CLI, or both. Both come from one clone:
 
 ```bash
-git clone https://github.com/hasansa007/dev-skill.git
+git clone https://github.com/hasansa007/dev-desk.git
 ```
 
 This private repository requires GitHub access.
@@ -25,7 +25,7 @@ at most 3 at once, after a token warning you confirm.
 **Install and run it** — builds Release, puts it in `~/Applications`, and opens it:
 
 ```bash
-dev-skill/apps/desk/install.sh          # --no-open to install without launching
+dev-desk/apps/desk/install.sh          # --no-open to install without launching
 ```
 
 It builds on your machine, so it needs Xcode and `xcodegen` (`brew install xcodegen`). If you'd
@@ -34,7 +34,7 @@ rather not build, take the release below.
 **Or download the built app.** The repository is private, so fetch the release with the GitHub CLI:
 
 ```bash
-gh release download -R hasansa007/dev-skill -p 'Dev-Desk-*.dmg'
+gh release download -R hasansa007/dev-desk -p 'Dev-Desk-*.dmg'
 ```
 
 Open the DMG and drag **Dev Desk.app** onto the `/Applications` symlink inside it. It's ad-hoc signed
@@ -50,8 +50,8 @@ For details, see [apps/desk/README.md](apps/desk/README.md).
 marketplace — `.claude-plugin/marketplace.json` — so point Claude Code at it on GitHub:
 
 ```text
-/plugin marketplace add hasansa007/dev-skill
-/plugin install dev@dev-skill
+/plugin marketplace add hasansa007/dev-desk
+/plugin install dev@dev-desk
 ```
 
 Restart Claude Code, then check the doors are there — `/dev:board`, say. The root door is
@@ -65,7 +65,7 @@ protected-branch rule.
 **Codex, Antigravity, or Claude Code without the plugin:**
 
 ```bash
-dev-skill/install.sh
+dev-desk/install.sh
 ```
 
 The installer links the checkout into existing skill directories for **Claude Code, Codex, and

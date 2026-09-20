@@ -167,7 +167,7 @@ Roadmap, Settings, and floating Insights need a revised concept after this discu
 ## Naming proposal
 
 **Dev Desk** is the current recommendation: a workspace for projects, decisions, and agents,
-with a clear relationship to dev-skill. The name is not accepted merely because it appeared
+with a clear relationship to dev-desk. The name is not accepted merely because it appeared
 in mockups. Two alternatives for discussion are **Relay**, emphasizing continuity between
 agents and surfaces, and **Workbench**, emphasizing the developer's working environment.
 No trademark, domain, or store-name availability check has been performed. Naming does not

@@ -98,7 +98,7 @@ The contract every other task consumes. Types below are written out in full; tra
 - Create: `apps/desk/.gitignore` (lines: `DevDesk.xcodeproj/`, `.build/`, `DerivedData/`, `*.xcuserstate`)
 - Create: `apps/desk/DeskCore/Package.swift`
 - Create: `apps/desk/DeskCore/Sources/DeskCore/Model/{Surface,ProjectRef,Status,Snapshot,DeskTask,Findings,Roadmap,Decisions,Connections,Insights}.swift`
-- Create: `apps/desk/DeskCore/Sources/DeskCore/Data/{ProjectDataSource,SampleDataSource,SampleData+StudyHubTasks,SampleData+StudyHubSurfaces,SampleData+DevSkill}.swift`
+- Create: `apps/desk/DeskCore/Sources/DeskCore/Data/{ProjectDataSource,SampleDataSource,SampleData+StudyHubTasks,SampleData+StudyHubSurfaces,SampleData+DevDesk}.swift`
 - Create: `apps/desk/DeskCore/Sources/DeskCore/State/{ProjectWindowModel,InsightsConversation,DeskLink,RecentProjectsStore,OpenProjectRegistry}.swift`
 - Create: `apps/desk/DeskCore/Sources/DeskCore/Local/{CommandRunner,GitRemote,LocalGitDataSource}.swift`
 - Test: `apps/desk/DeskCore/Tests/DeskCoreTests/{SampleDataTests,ProjectWindowModelTests,InsightsConversationTests,DeskLinkTests,RecentProjectsStoreTests,CommandRunnerTests,GitRemoteTests}.swift`
@@ -152,10 +152,10 @@ extension Surface: Hashable where Value: Hashable {}
 ```swift
 public enum SampleProject: String, Codable, CaseIterable, Hashable {
     case studyHub
-    case devSkill
+    case devDesk
 
-    public var title: String { self == .studyHub ? "StudyHub" : "dev-skill" }
-    public var displayPath: String { self == .studyHub ? "~/code/studyhub" : "~/code/dev-skill" }
+    public var title: String { self == .studyHub ? "StudyHub" : "dev-desk" }
+    public var displayPath: String { self == .studyHub ? "~/code/studyhub" : "~/code/dev-desk" }
 }
 
 public enum ProjectRef: Hashable, Codable, Identifiable {
@@ -886,7 +886,7 @@ public struct SampleDataSource: ProjectDataSource {
     public func load() async throws -> ProjectSnapshot {
         switch project {
         case .studyHub: return SampleData.studyHub()
-        case .devSkill: return SampleData.devSkill()
+        case .devDesk: return SampleData.devDesk()
         }
     }
 }
@@ -978,14 +978,14 @@ Shared shorthands used below: `running = StatusBadge(.running, "Running", pulses
 
 **Insights** `.demo(InsightsScript)`: provider "Codex"; providers ["Codex", "Claude"]; chips (`project`, "Project StudyHub"), (`task`, "Task #42", isTask), (`finding`, "Finding F-108"); initial D:968–969 (the "You" question, isUser; then author "Insights · Codex" with the answer and citation "useScrollRestore.ts:18 · CourseList.tsx:63 · finding F-108"); freeformReply D:1147 (answer, src); quickActions (`survey`, "Run survey", D:1149), (`roadmap`, "Explore roadmap", D:1150), (`save`, "Save project knowledge", D:1151), (`continue`, "Continue task conversation", D:1152, dockedOnly true); footnote D:779.
 
-#### Sample content — dev-skill window (`SampleData+DevSkill.swift`)
+#### Sample content — dev-desk window (`SampleData+DevDesk.swift`)
 
-`public static func devSkill() -> ProjectSnapshot`, D:28–67: project ("dev-skill", "~/code/dev-skill", "main"); isDemo true; default launch; no activitySummary; boardNote D:65. Tasks (empty requirements with sources "Issue #N"; empty changes with note "No diff is included for this task in the demo."; empty evidence with limitations "No checks recorded for this task."; parallel `.none("No agent assigned")`; agentsNote "No agent assigned"):
+`public static func devDesk() -> ProjectSnapshot`, D:28–67: project ("dev-desk", "~/code/dev-desk", "main"); isDemo true; default launch; no activitySummary; boardNote D:65. Tasks (empty requirements with sources "Issue #N"; empty changes with note "No diff is included for this task in the demo."; empty evidence with limitations "No checks recorded for this task."; parallel `.none("No agent assigned")`; agentsNote "No agent assigned"):
 - `12` "Survey run summaries", inProgress, cardMeta "feat/run-summary", header `.neutral "In progress"`, branchLine "feat/run-summary · base main".
 - `9` "Decision gate copy pass", review, cardMeta "docs/gates", header `.info "In review"`, branchLine "docs/gates · base main".
 - `4` "CLI discovery handshake", done, cardMeta "main", dimmed, header `.ended "Done"`, branchLine "main".
 
-findings `.available(FindingsReport(runs: [], findings: []))`; roadmap `.available(Roadmap(note: <D:597>, themes: [], milestones: []))`; decisions `.available([])`; connections, connectionsNote and capabilities as StudyHub; insights `.unavailable("The dev-skill sample window has no scripted conversation.")`; projectFacts [("Base branch", "main", mono)].
+findings `.available(FindingsReport(runs: [], findings: []))`; roadmap `.available(Roadmap(note: <D:597>, themes: [], milestones: []))`; decisions `.available([])`; connections, connectionsNote and capabilities as StudyHub; insights `.unavailable("The dev-desk sample window has no scripted conversation.")`; projectFacts [("Base branch", "main", mono)].
 
 #### State/DeskLink.swift
 
@@ -1663,7 +1663,7 @@ Test helpers live in `Tests/DeskCoreTests/TestSupport.swift`: `FixedSource(snaps
   - `testStudyHubColumnCounts`: backlog 2, queued 1, inProgress 3, review 1, done 1.
   - `testStudyHubSidebarBadges`: after `load()`, `openTaskCount == 7`, `findingsCount == 3`, `pendingDecisionCount == 1` (the design's 7 / 3 / 1, D:111, 118, 122).
   - `testTask42CarriesDesignContent`: 5 activity events, 3 criteria (two met), 3 changed files, 4 checks, 3 agents, 3 dock tabs, splitTabID "reviewer".
-  - `testDevSkillBoardHasThreeTasks`: ids ["12", "9", "4"] in columns inProgress, review, done.
+  - `testDevDeskBoardHasThreeTasks`: ids ["12", "9", "4"] in columns inProgress, review, done.
   - `testEveryDeskLinkInSampleResolves`: collect every `desk://…` URL in the markdown fields (activity text, dependencies, roadmap linkText, decision context). Each must parse with `DeskLink(url:)` and name an existing task, finding or decision.
   - `testDecisionTaskIDsExist`: every non-nil `Decision.taskID` is a task id.
 - `ProjectWindowModelTests`
@@ -2004,7 +2004,7 @@ No marketing language, no emoji. State what exists, not what is hoped for.
 
 - [ ] **Step 1:** Read `skills/arch/SKILL.md` in full. Resolve Archify, run `doctor`, record the version.
 - [ ] **Step 2:** Read each candidate source with `git show 321fb15…:<path>` and choose exact line ranges.
-- [ ] **Step 3:** Author the IR, with `meta.repository` = `{"url": "https://github.com/hasansa007/dev-skill", "revision": "321fb15a6e78d497c49dccbdfecf5c7e431b6eca"}` and `output: "dev-system.html"`. Follow the shape of `docs/arch/dev-family.architecture.json` at HEAD.
+- [ ] **Step 3:** Author the IR, with `meta.repository` = `{"url": "https://github.com/hasansa007/dev-desk", "revision": "321fb15a6e78d497c49dccbdfecf5c7e431b6eca"}` and `output: "dev-system.html"`. Follow the shape of `docs/arch/dev-family.architecture.json` at HEAD.
 - [ ] **Step 4:** Run validate → repair → deliver. Paste the receipt.
 - [ ] **Step 5:** Write `documentation/SYSTEM-MODEL.md`.
 - [ ] **Step 6:** Negative control: copy the IR to `/tmp`, set one `line` past the end of its file, validate it with `--repo-root .`, and confirm `repository-evidence/line-out-of-range`. Delete the copy. Leave the changes uncommitted.
@@ -2019,7 +2019,7 @@ No marketing language, no emoji. State what exists, not what is hoped for.
 - Consumes: `ProjectWindowModel` (`tasks`, `searchText`, `showBacklog`, `lastOpenedTaskID`, `openTask(_:)`, `setMode(_:)`, `openDecision(_:)`, `go(_:)`, `parallelTasks`, `snapshot.board`, `snapshot.boardNote`); Task 2 primitives (`StatusPill`, `SectionLabel`, `EmptyStateView`, `UnavailableView`, `NoticeBanner`, `TerminalTranscriptView`, `ActivityEventRow`, `DeskButtonStyle`, `DeskColor`, `DeskFont`, `DeskMetric`).
 - Produces: nothing other tasks call. Keep the signatures: `BoardScreen(model:)`, `ParallelScreen(model:)`.
 
-**Board (D:148–236; the dev-skill window's cards D:53–64 use the same card):**
+**Board (D:148–236; the dev-desk window's cards D:53–64 use the same card):**
 - **Header bar:** surface fill, bottom divider, padding 12×16, spacing 10.
   - "Board" at 15/600.
   - Search field: capsule, height 26, min width 200, border, 12pt, placeholder "Search tasks". Bound to `model.searchText`; filters case-insensitively on title, issue label and cardMeta.

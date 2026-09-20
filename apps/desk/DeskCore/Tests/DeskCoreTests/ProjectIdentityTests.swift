@@ -9,7 +9,7 @@ final class ProjectIdentityDerivationTests: XCTestCase {
         // The literal is the point: the same project must wear the same colour on every machine, so a
         // change to the hash or the palette order has to be a deliberate one.
         XCTAssertEqual(first, "#8FD3E8")
-        XCTAssertEqual(ProjectIdentity.paletteHex(forID: ProjectRef.local(path: "/Users/hasan/Developer/skills/dev-skill").id), "#B8A7F2")
+        XCTAssertEqual(ProjectIdentity.paletteHex(forID: ProjectRef.local(path: "/Users/hasan/Developer/skills/dev-desk").id), "#C9CFD9")
     }
 
     func testColourAlwaysComesFromThePalette() {
@@ -36,7 +36,7 @@ final class ProjectIdentityDerivationTests: XCTestCase {
     }
 
     func testInitialsFromAName() {
-        XCTAssertEqual(ProjectIdentity.initials(from: "dev-skill"), "DS")
+        XCTAssertEqual(ProjectIdentity.initials(from: "dev-desk"), "DD")
         XCTAssertEqual(ProjectIdentity.initials(from: "studyhub-deploy"), "SD")
         XCTAssertEqual(ProjectIdentity.initials(from: "studyhub"), "ST")
         XCTAssertEqual(ProjectIdentity.initials(from: "my_cool_thing"), "MC")
@@ -66,9 +66,9 @@ final class ProjectIdentityStoreTests: XCTestCase {
 
     func testDefaultIsInitialsOnTheDerivedColour() {
         let store = makeStore()
-        let ref = ProjectRef.local(path: "/p/dev-skill")
-        let identity = store.identity(for: ref, name: "dev-skill")
-        XCTAssertEqual(identity.initials, "DS")
+        let ref = ProjectRef.local(path: "/p/dev-desk")
+        let identity = store.identity(for: ref, name: "dev-desk")
+        XCTAssertEqual(identity.initials, "DD")
         XCTAssertEqual(identity.colorHex, ProjectIdentity.paletteHex(forID: ref.id))
         XCTAssertNil(identity.imagePath)
     }

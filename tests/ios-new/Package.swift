@@ -1,5 +1,5 @@
 // swift-tools-version: 5.9
-// Minimal iOS test project for validating dev-skill new-project bootstrap flow
+// Minimal iOS test project for validating dev-desk new-project bootstrap flow
 
 import PackageDescription
 

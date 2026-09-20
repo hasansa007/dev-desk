@@ -8,7 +8,7 @@ which also records the reorganization that use asked for (one dialog for every c
 size, Insights as a destination, Decisions removed, panels as window edges, Survey and Ideation as
 two workflows). Decision 3 is [ADR 0020](../../adr/0020-impact-and-complexity-are-labels-the-doors-propose.md).
 
-**Epic:** [#59](https://github.com/hasansa007/dev-skill/issues/59) · children #60–#67
+**Epic:** [#59](https://github.com/hasansa007/dev-desk/issues/59) · children #60–#67
 
 **Related:** [container](2026-09-11-container-design.md) ·
 [navigation and Insights](2026-09-11-mac-app-navigation-and-insights-design.md) ·
@@ -138,14 +138,14 @@ One shape, recorded so it can be objected to.
 
 | # | Issue | Depends on |
 |---|---|---|
-| 1 | [#60](https://github.com/hasansa007/dev-skill/issues/60) control styles and the sidebar's order | — |
-| 2 | [#61](https://github.com/hasansa007/dev-skill/issues/61) the launcher: terminals and the Runs list | — |
-| 3 | [#62](https://github.com/hasansa007/dev-skill/issues/62) the unstarted-task sheet | #61 |
-| 4 | [#63](https://github.com/hasansa007/dev-skill/issues/63) the card menu's writes | — |
-| 5 | [#64](https://github.com/hasansa007/dev-skill/issues/64) the Ideation destination | #61 |
-| 6 | [#65](https://github.com/hasansa007/dev-skill/issues/65) impact and complexity, end to end | — |
-| 7 | [#66](https://github.com/hasansa007/dev-skill/issues/66) the Files browser | — |
-| 8 | [#67](https://github.com/hasansa007/dev-skill/issues/67) background runs and the answer inbox | #61 |
+| 1 | [#60](https://github.com/hasansa007/dev-desk/issues/60) control styles and the sidebar's order | — |
+| 2 | [#61](https://github.com/hasansa007/dev-desk/issues/61) the launcher: terminals and the Runs list | — |
+| 3 | [#62](https://github.com/hasansa007/dev-desk/issues/62) the unstarted-task sheet | #61 |
+| 4 | [#63](https://github.com/hasansa007/dev-desk/issues/63) the card menu's writes | — |
+| 5 | [#64](https://github.com/hasansa007/dev-desk/issues/64) the Ideation destination | #61 |
+| 6 | [#65](https://github.com/hasansa007/dev-desk/issues/65) impact and complexity, end to end | — |
+| 7 | [#66](https://github.com/hasansa007/dev-desk/issues/66) the Files browser | — |
+| 8 | [#67](https://github.com/hasansa007/dev-desk/issues/67) background runs and the answer inbox | #61 |
 
 Slices 1–7 are Standard tier. Slice 8 is Deep: it starts a process that writes to a repository with
 its permissions granted up front, and that decision is made inside it, before the first run.

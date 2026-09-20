@@ -16,7 +16,7 @@ The web MASTER_PROMPT bootstrap flow has **five critical gaps** that prevent it 
 4. **Unclear invocation model** — documentation conflicts on whether this is manual or automatic
 5. **Never validated** — the new-project path has never been exercised end-to-end
 
-**Impact:** New projects cannot use dev-skill from day one. The pipeline expects ARCHITECTURE.md to exist (Phase 1) but provides no mechanism to create it.
+**Impact:** New projects cannot use dev-desk from day one. The pipeline expects ARCHITECTURE.md to exist (Phase 1) but provides no mechanism to create it.
 
 ---
 
@@ -312,7 +312,7 @@ To verify fixes work:
 
 - `documentation/WORKFLOW.md` line 80: "New-project path barely tested. The `ARCHITECTURE.md`-absent branch and both MASTER_PROMPTs [need validation]"
 - Spec `001-new-project-bootstrap-path-validation` acceptance criteria #2: "The pipeline handles the absence of ARCHITECTURE.md gracefully"
-- User story: "As a developer starting a new project, I want dev-skill to bootstrap the necessary architecture documentation so that I can use the full pipeline from day one"
+- User story: "As a developer starting a new project, I want dev-desk to bootstrap the necessary architecture documentation so that I can use the full pipeline from day one"
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-10
 **Status:** design approved, not implemented
-**Repo:** `hasansa007/dev-skill` (single-stage — `main` is both pre-prod and prod)
+**Repo:** `hasansa007/dev-desk` (single-stage — `main` is both pre-prod and prod)
 **Reference:** an autonomous multi-agent coding framework (desktop app + Python backend), v2.7.6,
 AGPL-3.0. Read at design time; deliberately not named here, and nothing vendored from it.
 
@@ -18,7 +18,7 @@ here is written from the idea, not from the source.
 
 **Evidence.** Comparisons below were taken from that framework's public tree (1,751 files) and from
 a working directory it had left in this repo at design time, holding six real specs — so its
-behaviour was read rather than inferred. Its `roadmap/roadmap.json` recorded `project_name: "dev-skill"`, 17 features under MoSCoW,
+behaviour was read rather than inferred. Its `roadmap/roadmap.json` recorded `project_name: "dev-desk"`, 17 features under MoSCoW,
 `competitor_analysis_used: true`, of which two were `done` and matched commits `d97fcd5` (#47) and
 `4a419b5` (#46).
 
@@ -153,7 +153,7 @@ label.
 `.dev/<branch>.json` — `repo`, `branch`, `base`, `tier`, `phase`, `phases_completed[]`,
 `attempts[]` (approach, outcome, error), `head_sha`, `updated_at`.
 
-**Where it lives:** in the **target repo** being worked on, not in `dev-skill`. The family is
+**Where it lives:** in the **target repo** being worked on, not in `dev-desk`. The family is
 installed once and drives many repos; state belongs with the work.
 
 **Filename:** branch names contain slashes (`feature/tracker-and-pipeline-state`), which would silently

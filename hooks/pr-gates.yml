@@ -2,7 +2,7 @@ name: PR gates
 
 # NOT INSTALLED, and not running from here. `.github/workflows/` holds line-budget.yml, tests.yml
 # and desk.yml; THIS file was never copied there, so it is inert — and it belongs that way:
-# dropped into dev-skill's own workflows it would fail every PR opened here, since those are not
+# dropped into dev-desk's own workflows it would fail every PR opened here, since those are not
 # /dev pipeline runs and carry no `## PIPELINE` body. It lives in this repo to sit BESIDE the rules
 # it enforces: rename `## PIPELINE` in shared/pipeline.md and this file is right there, visibly
 # stale, instead of drifting unnoticed in someone else's repo.

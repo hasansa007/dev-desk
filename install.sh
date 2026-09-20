@@ -7,7 +7,7 @@
 set -uo pipefail
 SRC="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # The link name is FIXED to this repo's own name. It used to take $1, which let
-# `install.sh archify` link archify -> dev-skill and clobber a correct symlink.
+# `install.sh archify` link archify -> dev-desk and clobber a correct symlink.
 # A script that installs the repo it lives in has no business naming another.
 NAME="dev"
 

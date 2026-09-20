@@ -34,7 +34,7 @@ The project picker/opening flow and detailed window restoration behavior remain 
 | Task | Goal, requirements, acceptance criteria, issue and finding links |
 | Workspace | Repository, branch, checkout path, and isolation for code changes |
 | Agent session | Provider-specific conversation, context, and execution |
-| dev-skill | Investigation, planning, verification, review, and decision procedures |
+| dev-desk | Investigation, planning, verification, review, and decision procedures |
 | Shared runner | Managed process/session lifecycle and coordinated input |
 | App and CLI | Views and actions over the same task and runner records |
 

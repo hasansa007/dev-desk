@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Automated Test Harness for dev-skill Phase Compliance Auditor.
+Automated Test Harness for dev-desk Phase Compliance Auditor.
 Validates:
 1. Honest Pipeline Run: 100% compliance score, matched phases, valid declared skips.
 2. Hidden Skip Detection (Placeholder Verification): Claimed Phase 11 without test output.
@@ -267,7 +267,7 @@ Gates: 10 clean · 12 docs updated · 13 clean
         """Test against real-world PR #47 body pattern to verify detection of omitted Phase 10."""
         pr_47_body = """
 ## SUMMARY
-- Implements the `/dev:rollback` door in `dev-skill`.
+- Implements the `/dev:rollback` door in `dev-desk`.
 
 ## PIPELINE
 Tier:    Standard

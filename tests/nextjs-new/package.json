@@ -2,7 +2,7 @@
   "name": "nextjs-new-test-project",
   "version": "0.1.0",
   "private": true,
-  "description": "Minimal Next.js test project for validating dev-skill new-project bootstrap flow",
+  "description": "Minimal Next.js test project for validating dev-desk new-project bootstrap flow",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

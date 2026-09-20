@@ -461,11 +461,11 @@ $ ls -la
 
 **Cons:**
 - Violates SKILL.md and MASTER_PROMPT expectations
-- Defeats purpose of dev-skill (architecture-driven development)
+- Defeats purpose of dev-desk (architecture-driven development)
 - Every phase after Phase 1 operates with degraded context
 - User story explicitly requires: "bootstrap necessary architecture documentation"
 
-**Verdict:** Not viable. ARCHITECTURE.md is fundamental to dev-skill's value proposition.
+**Verdict:** Not viable. ARCHITECTURE.md is fundamental to dev-desk's value proposition.
 
 ---
 

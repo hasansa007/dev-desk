@@ -36,7 +36,7 @@ if [ "$TOOL" = "Bash" ]; then
 fi
 ROOT=$(git -C "$DIR" rev-parse --show-toplevel 2>/dev/null) || exit 0
 [ -f "$ROOT/.claude/hooks-off" ] && { log bypass "$ROOT"; exit 0; }
-# The dev-skill repo is not gated by the pipeline it defines (its CLAUDE.md, 2026-09-13).
+# The dev-desk repo is not gated by the pipeline it defines (its CLAUDE.md, 2026-09-13).
 SELF=$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/.." && pwd -P)
 [ "$(cd "$ROOT" && pwd -P)" = "$SELF" ] && { log self "$ROOT"; exit 0; }
 # Installed as a PLUGIN, SELF is the cache copy, so the path above never matches the working repo

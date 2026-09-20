@@ -9,9 +9,9 @@
 
 ## Executive Summary
 
-This validation report confirms the implementation and end-to-end functionality of `/dev:rollback` in `dev-skill`. Prior to this feature, `dev-skill` ended at production promotion (Phase 16) with no structured recovery workflow when AI-driven changes caused production regressions.
+This validation report confirms the implementation and end-to-end functionality of `/dev:rollback` in `dev-desk`. Prior to this feature, `dev-desk` ended at production promotion (Phase 16) with no structured recovery workflow when AI-driven changes caused production regressions.
 
-With `/dev:rollback` (`skills/rollback/SKILL.md`), `dev-skill` provides a production-grade recovery door that:
+With `/dev:rollback` (`skills/rollback/SKILL.md`), `dev-desk` provides a production-grade recovery door that:
 1. Classifies promotions into **Code-Only**, **Additive Migration**, or **Destructive Migration**.
 2. Executes clean Git reverts with test verification for code-only regressions.
 3. Keeps database schema forward while reverting application code for additive migrations.
@@ -49,4 +49,4 @@ With `/dev:rollback` (`skills/rollback/SKILL.md`), `dev-skill` provides a produc
 
 ## Conclusion & Signoff
 
-All 6 acceptance criteria for specification `002-rollback-recovery-workflow` have been verified and documented. The `/dev:rollback` workflow is fully integrated into `dev-skill` and ready for production use.
+All 6 acceptance criteria for specification `002-rollback-recovery-workflow` have been verified and documented. The `/dev:rollback` workflow is fully integrated into `dev-desk` and ready for production use.

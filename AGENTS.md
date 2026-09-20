@@ -1,4 +1,4 @@
-# dev-skill
+# dev-desk
 
 This repository **is** the dev family: the doors, the pipeline, and the Mac app that reads them.
 

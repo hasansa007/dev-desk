@@ -41,7 +41,7 @@ The dock model gains two tab kinds besides the transcript: a live shell, and an 
   - Every reason and note is plain `Text`, never rendered as markdown.
 - **Sample projects** keep their demo transcripts unchanged and get no live shell, because a sample has no folder.
 - Comment density, naming and idiom match the surrounding code. Implementers never commit or stage; the controller commits.
-- **Never create a worktree in, or start a shell in, the dev-skill repository or any real checkout while testing.** Integration tests build throwaway repos under `$TMPDIR`. For a manual run, use a throwaway repo.
+- **Never create a worktree in, or start a shell in, the dev-desk repository or any real checkout while testing.** Integration tests build throwaway repos under `$TMPDIR`. For a manual run, use a throwaway repo.
 
 ---
 

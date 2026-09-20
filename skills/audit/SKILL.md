@@ -1,7 +1,7 @@
 ---
 name: audit
 description: >
-  Mechanical phase compliance auditor for dev-skill pipeline runs. Cross-references self-reported
+  Mechanical phase compliance auditor for dev-desk pipeline runs. Cross-references self-reported
   ## PIPELINE sections against actual tool-call and repository evidence (file writes, git operations,
   test execution, lint runs) to detect hidden skips, unverified claims, and silent omissions. Appends
   an objective ## COMPLIANCE section to the PR body.
@@ -13,9 +13,9 @@ allowed-tools: [gh, git, python3]
 
 # Dev — Phase Compliance Auditor
 
-Mechanical compliance auditor that closes the **self-reporting trust gap** in `dev-skill`.
+Mechanical compliance auditor that closes the **self-reporting trust gap** in `dev-desk`.
 
-The dev-skill pipeline's core promise is **"enforcement, not just guidance"**. However, because the
+The dev-desk pipeline's core promise is **"enforcement, not just guidance"**. However, because the
 `## PIPELINE` block in PR descriptions is written by the agent itself, an agent can claim it executed
 phases that were silently bypassed, or omit skipped phases entirely from the `Skipped:` line.
 

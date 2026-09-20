@@ -2,7 +2,7 @@ import React from 'react';
 
 export const metadata = {
   title: 'Next.js App',
-  description: 'Bootstrapped with dev-skill web architecture strategy',
+  description: 'Bootstrapped with dev-desk web architecture strategy',
 };
 
 export default function RootLayout({

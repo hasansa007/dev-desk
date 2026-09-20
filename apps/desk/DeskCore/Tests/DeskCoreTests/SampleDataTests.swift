@@ -36,7 +36,7 @@ final class SampleDataTests: XCTestCase {
     }
 
     func testSampleTasksKeepTheirDemoTranscriptsAndHaveNoBranch() {
-        for snapshot in [SampleData.studyHub(), SampleData.devSkill()] {
+        for snapshot in [SampleData.studyHub(), SampleData.devDesk()] {
             for task in snapshot.board.value ?? [] {
                 XCTAssertNil(task.branch, task.id)
                 XCTAssertNil(task.baseRef, task.id)
@@ -44,8 +44,8 @@ final class SampleDataTests: XCTestCase {
         }
     }
 
-    func testDevSkillBoardHasThreeTasks() {
-        let tasks = SampleData.devSkill().board.value ?? []
+    func testDevDeskBoardHasThreeTasks() {
+        let tasks = SampleData.devDesk().board.value ?? []
         XCTAssertEqual(tasks.map(\.id), ["12", "9", "4"])
         XCTAssertEqual(tasks.map(\.column), [.inProgress, .review, .done])
     }

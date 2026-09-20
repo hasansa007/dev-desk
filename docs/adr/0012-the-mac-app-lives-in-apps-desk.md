@@ -7,12 +7,13 @@ Commit:  (this branch)  ·  `feat/dev-desk-mac-app-design`
 ## Context
 
 [The container spec](../superpowers/specs/2026-09-11-container-design.md) §5 compared one repo
-against two and recommended two: `dev-skill` for the contract, a separate `dev-desk` for the app.
+against two and recommended two: this repo (then named `dev-skill`) for the contract, a separate
+`dev-desk` for the app.
 Its deciding cost was that every user's skill install would carry an Xcode project they never
 build, and that a UI-only change would bump the skill everyone's `install.sh` pulls.
 
 The developer decided the opposite in this session, 2026-09-11: the app lives in `apps/desk/` in
-`dev-skill`. The first build covers the whole design on sample data, plus real git/gh reads for
+`dev-desk`. The first build covers the whole design on sample data, plus real git/gh reads for
 opened folders (ADR 0013) — both land on this branch, alongside the system-model page and
 `docs/arch/dev-system.*` (container spec §7 deliverable A).
 

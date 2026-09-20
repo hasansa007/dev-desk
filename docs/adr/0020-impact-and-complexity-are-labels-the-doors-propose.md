@@ -65,7 +65,7 @@ repository on 2026-09-12.
 ## Evidence
 
 ```
-gh label list -R hasansa007/dev-skill --limit 100 --json name -q '.[].name'
+gh label list -R hasansa007/dev-desk --limit 100 --json name -q '.[].name'
 → … epic impact:high impact:medium impact:low complexity:high complexity:medium complexity:low
 
 swift test --package-path apps/desk/DeskCore

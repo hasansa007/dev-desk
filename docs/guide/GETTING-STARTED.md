@@ -11,8 +11,8 @@ First install, first run, and the four situations you can be in.
 **Claude Code — as a plugin.** It carries the hooks as well as the doors:
 
 ```text
-/plugin marketplace add hasansa007/dev-skill
-/plugin install dev@dev-skill
+/plugin marketplace add hasansa007/dev-desk
+/plugin install dev@dev-desk
 ```
 
 The root door is `/dev:dev` on this path, not `/dev`: a plugin namespaces every skill under its own
@@ -21,7 +21,7 @@ name. The doors are `/dev:board`, `/dev:verify` and the rest, as usual.
 **Codex, Antigravity, or Claude Code without the plugin:**
 
 ```bash
-git clone https://github.com/hasansa007/dev-skill.git && dev-skill/install.sh
+git clone https://github.com/hasansa007/dev-desk.git && dev-desk/install.sh
 ```
 
 The installer symlinks the checkout into every agent CLI on the machine that uses the

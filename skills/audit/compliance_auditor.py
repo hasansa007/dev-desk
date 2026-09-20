@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Phase Compliance Auditor for dev-skill pipeline runs.
+Phase Compliance Auditor for dev-desk pipeline runs.
 Cross-references self-reported ## PIPELINE sections against actual execution
 evidence (file changes, git operations, test runs, transcripts) to detect
 hidden skips, unverified claims, and silent omissions.
@@ -585,7 +585,7 @@ def append_to_pr_body(pr_number: str, compliance_md: str) -> bool:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Audit dev-skill pipeline self-reporting compliance against mechanical evidence."
+        description="Audit dev-desk pipeline self-reporting compliance against mechanical evidence."
     )
     parser.add_argument("--pr", help="GitHub PR number or URL to audit")
     parser.add_argument("--file", help="Path to markdown file containing PR body")

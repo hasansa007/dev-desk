@@ -9,7 +9,7 @@
 
 ## Executive Summary
 
-This report documents the final end-to-end (E2E) verification of the new-project bootstrap path for `dev-skill`. Prior to this initiative, `dev-skill` assumed mature repositories with pre-existing `ARCHITECTURE.md` and `PROJECT_MAP.md` files. When executed in fresh greenfield repositories, the pipeline suffered from silent failures, unpinned architecture decisions, and conversational-only plan generation that never materialized into concrete repository files.
+This report documents the final end-to-end (E2E) verification of the new-project bootstrap path for `dev-desk`. Prior to this initiative, `dev-desk` assumed mature repositories with pre-existing `ARCHITECTURE.md` and `PROJECT_MAP.md` files. When executed in fresh greenfield repositories, the pipeline suffered from silent failures, unpinned architecture decisions, and conversational-only plan generation that never materialized into concrete repository files.
 
 Through Phases 1 to 3:
 1. Failures were reproduced across web (Next.js) and mobile (iOS, Android) stacks (`REPRODUCTION.md` files).
@@ -123,7 +123,7 @@ OK
 
 ### Step 4: Pipeline Phase 1 Graceful Context Loading
 
-When the `dev-skill` pipeline was simulated for the new project:
+When the `dev-desk` pipeline was simulated for the new project:
 - **Input State**: `ARCHITECTURE.md` present; `PROJECT_MAP.md` missing.
 - **Pre-Fix Behavior**: Would stall or report ambiguous missing file warnings.
 - **Post-Fix Behavior** (per `shared/pipeline.md` Phase 1 updates):
@@ -214,6 +214,6 @@ We verified the code against the rules established in `ARCHITECTURE.md`:
 
 ## Conclusion
 
-Subtask 4-3 successfully proves that greenfield projects can adopt `dev-skill` from Day 1. The full journey from an empty folder with only `package.json` to a fully architected, structured, and implemented feature works cleanly without manual intervention, silent halts, or path errors.
+Subtask 4-3 successfully proves that greenfield projects can adopt `dev-desk` from Day 1. The full journey from an empty folder with only `package.json` to a fully architected, structured, and implemented feature works cleanly without manual intervention, silent halts, or path errors.
 
 All acceptance criteria for spec `001-new-project-bootstrap-path-validation` are completely satisfied.

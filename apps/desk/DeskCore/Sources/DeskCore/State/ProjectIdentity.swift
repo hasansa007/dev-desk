@@ -70,7 +70,7 @@ extension ProjectIdentity {
         palette[Int(fnv1a(id) % UInt64(palette.count))]
     }
 
-    /// `dev-skill` → `DS`, `studyhub` → `ST`. Separators are `-`, `_`, `.`, space and slash; a single word
+    /// `dev-desk` → `DS`, `studyhub` → `ST`. Separators are `-`, `_`, `.`, space and slash; a single word
     /// falls back to its first two letters because there is nothing else to take a second letter from.
     public static func initials(from name: String) -> String {
         let words = name.split(whereSeparator: { !$0.isLetter && !$0.isNumber }).filter { !$0.isEmpty }

@@ -193,7 +193,7 @@ framework needs the panel because it is a desktop app with no chat; this door ne
 
 **2026-09-10 — the repo that mandates the map does not have one.** `shared/pipeline.md` opens its
 Guiding Principles with *"Maintain `PROJECT_MAP.md`"*, and `Live Synchronization` and `Impact
-Analysis` both depend on it — yet `dev-skill` itself has no `PROJECT_MAP.md`. A rule stated in three
+Analysis` both depend on it — yet `dev-desk` itself has no `PROJECT_MAP.md`. A rule stated in three
 principles and honoured in none is the reason this door has a Phase 5 at all.
 
 **Undated, therefore unproven:** this door has never been run. The durable/not-durable test, the

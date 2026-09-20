@@ -8,7 +8,7 @@ export default function HomePage() {
         E2E Test Project
       </h1>
       <p className="mt-4 max-w-md text-gray-600 dark:text-gray-300">
-        Demonstrating end-to-end dev-skill execution from greenfield bootstrap to first feature.
+        Demonstrating end-to-end dev-desk execution from greenfield bootstrap to first feature.
       </p>
       <div className="mt-8">
         <Link

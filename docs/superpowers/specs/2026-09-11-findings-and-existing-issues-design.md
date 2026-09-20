@@ -13,9 +13,9 @@ destination into a combined Survey/Ideation/Insights inbox.
 
 ## Context and acceptance boundary
 
-The maintainer already had dev-skill and compared it with a third-party desktop workflow tool
+The maintainer already had dev-desk and compared it with a third-party desktop workflow tool
 that covers similar ground. The discussion explored how a visual container could expose
-dev-skill's value without merely adding the same screens. The comparison used that tool's
+dev-desk's value without merely adding the same screens. The comparison used that tool's
 README and agent instructions, not a running application audit.
 
 The maintainer accepted the proposed direction for filtering existing issues and reconciling
