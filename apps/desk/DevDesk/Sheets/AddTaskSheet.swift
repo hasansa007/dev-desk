@@ -69,8 +69,8 @@ struct AddTaskSheet: View {
         }
         .onAppear {
             titleFocused = true
-            // Start in the milestone Work has selected, so the new task appears where you were looking.
-            if case .milestone(let title) = model.effectiveWorkScope, model.openMilestones.contains(title) { milestone = title }
+            // No milestone by default: a task typed in a filtered view was silently joining that milestone, which is
+            // a plan decision, not a side effect of what you were looking at. Pick one here when you mean it.
         }
         // Searched once the title settles, not per keystroke: `gh` is a process per call.
         .task(id: draft.trimmedTitle) { await search(draft.trimmedTitle) }
