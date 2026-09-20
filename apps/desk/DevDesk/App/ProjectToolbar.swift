@@ -7,6 +7,22 @@ struct ProjectToolbar: ToolbarContent {
     /// play button that does nothing, which is the one failure this control must not have.
     let terminals: ShellTerminalRegistry?
 
+    /// What this project is doing right now, counted from its own live sessions. It used to read
+    /// `snapshot.activitySummary`, which NOTHING but the StudyHub fixtures ever sets — so the one place it
+    /// appeared it was the literal string "2 running · 1 waiting", which is why it read as a mock
+    /// (2026-09-20, reported on screen). Nil when nothing is going, rather than a badge saying zero.
+    private var activity: (label: String, tone: StatusTone, pulses: Bool)? {
+        let live = SessionRow.all(in: model).filter(\.isLive)
+        guard !live.isEmpty else { return nil }
+        let waiting = live.count { model.waitingSessions.contains($0.id) }
+        let running = live.count - waiting
+        var parts: [String] = []
+        if running > 0 { parts.append("\(running) running") }
+        if waiting > 0 { parts.append("\(waiting) waiting") }
+        // Waiting wins the colour: a run stopped on a question is the one that needs you.
+        return (parts.joined(separator: " · "), waiting > 0 ? .waiting : .running, running > 0)
+    }
+
     /// Counts only what is actually live, so the dot never claims a finished run is still going.
     private var liveRuns: Int {
         model.runs.runs.filter {
@@ -18,9 +34,9 @@ struct ProjectToolbar: ToolbarContent {
     }
 
     var body: some ToolbarContent {
-        if let summary = model.snapshot?.activitySummary {
+        if let summary = activity {
             ToolbarItem(placement: .primaryAction) {
-                ActivitySummary(badge: summary)
+                ActivitySummary(summary: summary)
             }
         }
         // The project's own run, before the panels: it is an action on the project, not a view of it.
@@ -75,6 +91,23 @@ struct ProjectToolbar: ToolbarContent {
     }
 }
 
+/// The rail's own toggle, where macOS's sidebar toggle used to sit. The system's collapsed the rail out of
+/// the window; Dev Desk's rail is either labels or icons, which is what ⇧⌘S has always meant here.
+struct RailToggle: View {
+    @Binding var isRail: Bool
+
+    var body: some View {
+        Button { isRail.toggle() } label: {
+            Image(systemName: isRail ? "sidebar.left" : "sidebar.leading")
+                .font(.system(size: 15, weight: .regular))
+                .foregroundStyle(isRail ? DeskColor.accent : DeskColor.navInk)
+        }
+        .help(isRail ? "Show the rail's labels (⇧⌘S)" : "Icons only (⇧⌘S)")
+        .accessibilityLabel("Compact Sidebar")
+        .accessibilityValue(isRail ? "On" : "Off")
+    }
+}
+
 /// A toolbar glyph that shows whether its panel is open, the way a panel toggle does everywhere else.
 private struct PanelToggle: View {
     let symbol: String
@@ -105,18 +138,20 @@ private struct PanelToggle: View {
     }
 }
 
+/// What this project is doing, in its own tone. No chrome at all: it wore `controlChrome` (the app's BUTTON
+/// chrome) and then a tinted capsule, and both read as something you could press. It is a readout — a dot
+/// and a count — and the dot carries the colour (2026-09-20, on screen).
 private struct ActivitySummary: View {
-    let badge: StatusBadge
+    let summary: (label: String, tone: StatusTone, pulses: Bool)
 
     var body: some View {
         HStack(spacing: 6) {
-            StatusDot(tone: badge.tone, pulses: badge.pulses)
-            Text(badge.label)
+            StatusDot(tone: summary.tone, pulses: summary.pulses)
+            Text(summary.label)
         }
         .font(DeskFont.secondary)
-        .foregroundStyle(DeskColor.navInk)
-        .padding(.horizontal, 10)
-        .controlChrome(height: 28)
+        .foregroundStyle(DeskColor.tone(summary.tone).foreground)
+        .padding(.horizontal, 4)
         .accessibilityElement(children: .combine)
     }
 }

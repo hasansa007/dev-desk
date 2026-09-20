@@ -7,9 +7,7 @@ import SwiftUI
 /// happening while you are looking elsewhere lives in `ProjectContext` and `ProjectHooks`.
 struct ProjectHost: View {
     let context: ProjectContext
-    @State private var columns: NavigationSplitViewVisibility = .all
-    /// Asked for by hand. A window narrower than the breakpoint takes the rail anyway — an open sidebar there
-    /// leaves the board no room — and gets the choice back when it widens.
+    /// Icons only, asked for by hand (⇧⌘S). Nothing overrides it.
     @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
 
@@ -25,13 +23,24 @@ struct ProjectHost: View {
     }
 
     private func host(size: CGSize) -> some View {
-        let isRail = railMode || size.width < DeskMetric.railBreakpoint
-        return NavigationSplitView(columnVisibility: $columns) {
+        // The developer's choice, at every width. It used to be `railMode || width < railBreakpoint`, so on
+        // any window under 1100 pt the rail was forced and ⇧⌘S silently did nothing — a toggle that answers
+        // to nothing is broken, whatever its reasoning (2026-09-20, reported against a 950 pt window). A
+        // narrow window with labels is survivable now: the board falls back to columns you scroll.
+        let isRail = railMode
+        // Our own column, not a `NavigationSplitView`. The split view's sidebar toggle collapses the rail out
+        // of the window — a state this app does not have, since the rail is either labels or icons (⇧⌘S) —
+        // and `toolbar(removing: .sidebarToggle)` does not remove it on macOS 26, so the window carried two
+        // toggles side by side (2026-09-20, on screen). Nothing else here was the split view's: the rail
+        // draws its own ground, border and width.
+        return HStack(spacing: 0) {
             Sidebar(context: context, isRail: isRail)
-                .navigationSplitViewColumnWidth(isRail ? DeskMetric.sidebarRailWidth : DeskMetric.sidebarWidth)
-        } detail: {
+                .frame(width: isRail ? DeskMetric.sidebarRailWidth : DeskMetric.sidebarWidth)
             ContentRouter(model: model)
+                .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
         }
+        .animation(.easeOut(duration: 0.14), value: isRail)
+        .toolbar { railToggleItem }
         .toolbar { ProjectToolbar(model: model, terminals: terminals) }
         .navigationTitle(model.snapshot?.project.name ?? context.ref.displayName)
         .navigationSubtitle(subtitle)
@@ -41,9 +50,6 @@ struct ProjectHost: View {
         .modifier(DeskLinkRouting(model: model))
         .environment(\.terminals, terminals)
         .focusedSceneValue(\.projectModel, model)
-        // The title bar is navigation: macOS painted its own grey there, a fourth one beside the sidebar.
-        .toolbarBackground(DeskColor.sidebar, for: .windowToolbar)
-        .toolbarBackground(.visible, for: .windowToolbar)
         .onChange(of: model.windowCommand) { _, request in
             guard let request else { return }
             model.windowCommand = nil
@@ -72,6 +78,21 @@ struct ProjectHost: View {
         } message: {
             Text("Both would use the same port, so only one run of a configuration goes at a time.")
         }
+    }
+
+    /// macOS 26 gives every toolbar item a pale glass capsule of its own; the controls carry Dev Desk's own
+    /// chrome, so the system's is turned off here as it is on the right-hand items.
+    @ToolbarContentBuilder private var railToggleItem: some ToolbarContent {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            ToolbarItem(placement: .navigation) { RailToggle(isRail: $railMode) }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .navigation) { RailToggle(isRail: $railMode) }
+        }
+        #else
+        ToolbarItem(placement: .navigation) { RailToggle(isRail: $railMode) }
+        #endif
     }
 
     private var subtitle: String {

@@ -18,6 +18,8 @@ final class Workspace {
     private(set) var selection: ProjectRef?
     /// The Open project dialog, raised by the strip's `+` and by ⌘O.
     var isOpeningProject = false
+    /// Settings with no project behind it: what ⌘, opens on Home, holding only the app-wide options.
+    var isShowingSettings = false
 
     private var contexts: [String: ProjectContext] = [:]
     /// Kept in step so the launcher can still grey out a project that is already open.

@@ -29,6 +29,17 @@ struct WorkspaceWindow: View {
         .sheet(isPresented: $workspace.isOpeningProject) {
             LauncherView(context: .sheet, onDismiss: { workspace.isOpeningProject = false })
         }
+        // ⌘, with no project: the same Settings dialog holding only what is not a project's.
+        .sheet(isPresented: $workspace.isShowingSettings) {
+            AppSettingsSheet(onClose: { workspace.isShowingSettings = false })
+        }
+        // The title bar is navigation: macOS painted its own grey there, a fourth one beside the sidebar.
+        // On the window, not on the project: Home was left with the system's own light bar, and a shorter
+        // one, so switching to it changed the height of the window's chrome (2026-09-20, on screen).
+        // It takes the STRIP's ground, not the rail's: the strip runs up to the title bar, and two near
+        // greys meeting at the window's rounded corner drew a seam across it. One ground, one corner.
+        .toolbarBackground(DeskColor.strip, for: .windowToolbar)
+        .toolbarBackground(.visible, for: .windowToolbar)
         .modifier(AppliesAppearance(override: SnapshotMode.shared.colorScheme))
         .background { WindowChrome() }
         .onAppear { workspace.attach(registry: registry) }

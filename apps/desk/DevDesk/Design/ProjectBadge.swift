@@ -60,6 +60,8 @@ extension Color {
     static func identityInk(onHex hex: String) -> Color {
         let rgb = ProjectIdentity.rgbComponents(ofHex: hex) ?? (0.61, 0.75, 1.0)
         let luminance = 0.2126 * rgb.0 + 0.7152 * rgb.1 + 0.0722 * rgb.2
-        return luminance > 0.55 ? Color(.sRGB, white: 0.06, opacity: 1) : DeskColor.ink
+        // Fixed, not `DeskColor.ink`: the mark's colour is the same in both schemes, so ink that flips with
+        // the appearance put near-black initials on a dark identity under Light (2026-09-20).
+        return luminance > 0.55 ? Color(.sRGB, white: 0.06, opacity: 1) : Color(.sRGB, white: 0.93, opacity: 1)
     }
 }

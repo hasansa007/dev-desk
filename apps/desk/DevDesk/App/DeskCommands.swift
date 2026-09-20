@@ -2,16 +2,23 @@ import DeskCore
 import SwiftUI
 
 struct DeskCommands: Commands {
-    @FocusedValue(\.projectModel) private var model: ProjectWindowModel?
+    /// The project the strip has selected — NOT `@FocusedValue`. With one window (ADR 0050) the workspace is
+    /// the authority on which project you are in, and the focused value depended on the split view that the
+    /// rail replaced: with it gone nothing published the model, so every item in this menu, ⇧⌘S included,
+    /// was permanently disabled (2026-09-20, reported as "compact sidebar is not functional").
+    @State private var workspace = Workspace.shared
+
+    private var model: ProjectWindowModel? { workspace.selected?.model }
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     /// A narrow window takes the rail whatever this says; this is the choice at widths that have room.
     @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
 
     var body: some Commands {
         CommandGroup(replacing: .appSettings) {
+            // Never disabled: ⌘, on Home opens the settings that are not a project's (2026-09-20). It used
+            // to need a project, so the one screen with no project had no way into Settings at all.
             Button("Settings…") { openSettings() }
                 .keyboardShortcut(",", modifiers: .command)
-                .disabled(model == nil)
         }
         CommandGroup(replacing: .newItem) {
             // One window now (ADR 0050): Open project is the strip's `+`, raised as a dialog over it.
@@ -76,7 +83,8 @@ struct DeskCommands: Commands {
         Task { await model.sync() }
     }
 
+    /// A project's Settings opens over that project; on Home the workspace raises the app-wide ones.
     private func openSettings() {
-        model?.present(.settings)
+        if let model { model.present(.settings) } else { Workspace.shared.isShowingSettings = true }
     }
 }

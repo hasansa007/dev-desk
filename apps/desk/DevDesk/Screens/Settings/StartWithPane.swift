@@ -29,47 +29,35 @@ struct StartWithPane: View {
     private var entries: [StartWithEntry] { StartWithList.decode(data) }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Start with", scope: .everyProject)
-            Text("Other apps a task can start with, from the start sheet and a card's ⋯ menu. An app opens the project folder, and the task's prompt is copied to the clipboard so you can paste it there. A command runs in a Sessions terminal with the task filled in.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 12)
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("Start with", scope: .everyProject,
+                       summary: "Other apps a task can start with, from the start sheet and a card's ⋯ menu. An app opens the project folder and the task's prompt goes to the clipboard, so you can paste it there; a command runs in a Sessions terminal with the task filled in.")
 
-            VStack(alignment: .leading, spacing: 8) {
-                if entries.isEmpty {
-                    Text("Nothing added yet.")
-                        .font(DeskFont.secondary)
-                        .foregroundStyle(DeskColor.faintInk)
-                }
+            SettingCard("Your list", footer: entries.isEmpty ? "Nothing added yet — the start sheet shows only the agents until something is here." : nil) {
                 ForEach(Array(entries.enumerated()), id: \.element.id) { index, entry in
-                    row(entry, at: index)
+                    SettingRowShell { row(entry, at: index) }
+                }
+                SettingRowShell {
+                    HStack(spacing: 10) {
+                        Button("Add an app…", action: addApp)
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                        SettingNote("Any Mac app. It is listed here even after it moves, with the reason — a list that silently drops an entry looks like the entry was never saved.")
+                    }
                 }
             }
-            .padding(.top, 16)
 
-            Button("Add an app…", action: addApp)
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                .padding(.top, 14)
-
-            SectionLabel("Add a command")
-                .padding(.top, 22)
-            HStack(spacing: 8) {
-                field("Name", text: $commandName, width: 140)
-                field("zadloop run {folder} --prompt {prompt}", text: $commandTemplate, width: 380)
-                Button("Add", action: addCommand)
-                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                    .disabled(commandName.trimmed.isEmpty || commandTemplate.trimmed.isEmpty)
+            SettingCard("Add a command") {
+                SettingBlockRow("Command", why: commandHelp, unavailable: nil) {
+                    HStack(spacing: 8) {
+                        TextField("Name", text: $commandName).settingField(width: 130)
+                        TextField("zadloop run {folder} --prompt {prompt}", text: $commandTemplate)
+                            .settingField(width: 300, isInvalid: !unknownInDraft.isEmpty)
+                        Button("Add", action: addCommand)
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                            .disabled(commandName.trimmed.isEmpty || commandTemplate.trimmed.isEmpty || !unknownInDraft.isEmpty)
+                    }
+                }
             }
-            .padding(.top, 8)
-            Text(commandHelp)
-                .font(DeskFont.secondary)
-                .foregroundStyle(unknownInDraft.isEmpty ? DeskColor.mutedInk : DeskColor.tone(.failed).dot)
-                .lineSpacing(4)
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 8)
         }
     }
 
@@ -89,10 +77,11 @@ struct StartWithPane: View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 Text(entry.name)
+                    .font(DeskFont.body)
                     .foregroundStyle(DeskColor.ink)
                 Text(summary(entry))
                     .font(DeskFont.mono(11))
-                    .foregroundStyle(problem(entry) == nil ? DeskColor.mutedInk : DeskColor.tone(.failed).dot)
+                    .foregroundStyle(problem(entry) == nil ? DeskColor.mutedInk : DeskColor.tone(.failed).foreground)
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .help(problem(entry) ?? summary(entry))
@@ -109,11 +98,7 @@ struct StartWithPane: View {
             Button("Remove") { remove(entry) }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
         }
-        .padding(.vertical, 7)
-        .padding(.horizontal, 10)
-        .frame(maxWidth: 700, alignment: .leading)
-        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.border))
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func summary(_ entry: StartWithEntry) -> String {
@@ -131,15 +116,6 @@ struct StartWithPane: View {
             let unknown = StartWithTemplate.unknownPlaceholders(in: template)
             return unknown.isEmpty ? nil : "Not a placeholder: " + unknown.map { "{\($0)}" }.joined(separator: ", ")
         }
-    }
-
-    private func field(_ prompt: String, text: Binding<String>, width: CGFloat) -> some View {
-        TextField(prompt, text: text)
-            .textFieldStyle(.plain)
-            .padding(.horizontal, 10)
-            .frame(width: width, height: 28)
-            .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-            .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
     }
 
     private func save(_ list: [StartWithEntry]) { data = StartWithList.encode(list) }

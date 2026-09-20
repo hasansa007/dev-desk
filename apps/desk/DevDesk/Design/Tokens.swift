@@ -20,49 +20,56 @@ struct ToneColors {
 }
 
 enum DeskColor {
-    /// Console, 2026-09-20: every pair is the same hex twice, so light renders dark until a light palette
-    /// is drawn (redesign decision 3). The `desk(_:_:)` shape stays so reintroducing one touches no call site.
-    static let accent = Color.desk(0x9CC0FF, 0x9CC0FF)
-    static let accentHover = Color.desk(0x7AA2F7, 0x7AA2F7)
-    /// Three grounds over the page (#0F1114), one colour each — the Console rewrite of the 2026-09-19 rule:
-    /// strip + dock (#0B0D10) · bar, which the rail and the title bar share (#14171B) · surface, the tiles
-    /// and cards (#16191E). Anything else here is a state or a detail, never a fourth ground.
-    static let surface = Color.desk(0x16191E, 0x16191E)
-    static let canvas = Color.desk(0x0F1114, 0x0F1114)
+    /// Console, 2026-09-20 (amended the same day): redesign decision 3 — "dark now, light later" — is
+    /// withdrawn. Light is derived from dark rather than designed twice: the three grounds keep their order
+    /// inverted (strip is the most recessed, surface the raised one, bar between), the hairline family and
+    /// the ink ramp flip, and the terminal stays dark in both. The Appearance preference now actually moves.
+    static let accent = Color.desk(0x2F6FEB, 0x9CC0FF)
+    /// Hover goes further from the ground in each scheme: deeper on white, paler on near-black.
+    static let accentHover = Color.desk(0x2559C9, 0xC2D8FF)
+    /// Three grounds over the page, one colour each — the Console rewrite of the 2026-09-19 rule:
+    /// strip + dock · bar, which the rail and the title bar share · surface, the tiles and cards.
+    /// Anything else here is a state or a detail, never a fourth ground.
+    static let surface = Color.desk(0xFFFFFF, 0x16191E)
+    static let canvas = Color.desk(0xEDEFF2, 0x0F1114)
     /// The rail and the title bar. It was the strip's near-black, which made the two one unbroken column
     /// with the strip's divider invisible inside it (2026-09-20, on screen).
-    static let sidebar = Color.desk(0x14171B, 0x14171B)
+    static let sidebar = Color.desk(0xF5F6F8, 0x14171B)
     /// The floor of the window: the project strip and the dock behind its tiles, a step below everything.
-    static let strip = Color.desk(0x0B0D10, 0x0B0D10)
-    static let inspector = Color.desk(0x0B0D10, 0x0B0D10)
-    static let headerFill = Color.desk(0x14171B, 0x14171B)
-    static let border = Color.desk(0x343A44, 0x343A44)
-    static let controlBorder = Color.desk(0x454A53, 0x454A53)
-    static let divider = Color.desk(0x262B33, 0x262B33)
+    static let strip = Color.desk(0xE2E5EA, 0x0B0D10)
+    static let inspector = Color.desk(0xE2E5EA, 0x0B0D10)
+    static let headerFill = Color.desk(0xF5F6F8, 0x14171B)
+    static let border = Color.desk(0xCBD0D8, 0x343A44)
+    static let controlBorder = Color.desk(0xB4BAC4, 0x454A53)
+    static let divider = Color.desk(0xDCDFE4, 0x262B33)
     /// The hairline under a bar, one step quieter than a divider between panes.
-    static let rowDivider = Color.desk(0x1E2228, 0x1E2228)
-    static let ink = Color.desk(0xE4E7EB, 0xE4E7EB)
-    static let navInk = Color.desk(0xC9CDD4, 0xC9CDD4)
-    static let secondaryInk = Color.desk(0xB8BEC8, 0xB8BEC8)
-    static let mutedInk = Color.desk(0x8E96A3, 0x8E96A3)
-    static let faintInk = Color.desk(0x7C8796, 0x7C8796)
-    static let disabledDot = Color.desk(0x5A606A, 0x5A606A)
-    /// A raised control on a surface, and the same control hovered.
-    static let neutralChipFill = Color.desk(0x1B1F25, 0x1B1F25)
-    static let neutralChipFill2 = Color.desk(0x262B33, 0x262B33)
-    static let titlebarFill = Color.desk(0x14171B, 0x14171B)
-    static let titlebarBorder = Color.desk(0x343A44, 0x343A44)
-    /// Ink on a filled accent, green or amber control — the Console never puts white on a colour.
-    static let onColorInk = Color.desk(0x0F1114, 0x0F1114)
+    static let rowDivider = Color.desk(0xE6E8EC, 0x1E2228)
+    static let ink = Color.desk(0x16181D, 0xE4E7EB)
+    static let navInk = Color.desk(0x3C4149, 0xC9CDD4)
+    static let secondaryInk = Color.desk(0x4B5563, 0xB8BEC8)
+    static let mutedInk = Color.desk(0x6B7280, 0x8E96A3)
+    static let faintInk = Color.desk(0x838A95, 0x7C8796)
+    static let disabledDot = Color.desk(0xB0B6BF, 0x5A606A)
+    /// A raised control on a surface, and the same control hovered. Raised means lighter over a dark ground
+    /// and darker over a light one, so the pair inverts rather than being copied across.
+    static let neutralChipFill = Color.desk(0xEFF1F4, 0x1B1F25)
+    static let neutralChipFill2 = Color.desk(0xE4E7EC, 0x262B33)
+    static let titlebarFill = Color.desk(0xF5F6F8, 0x14171B)
+    static let titlebarBorder = Color.desk(0xCBD0D8, 0x343A44)
+    /// Ink on a filled accent, green or amber control — the Console never puts white on a colour, and never
+    /// black on a deep one. The fill is pale under dark and deep under light, so this token inverts with it;
+    /// every call site (primary button, filter badge, strip waiting count, Settings row) sits on such a fill.
+    static let onColorInk = Color.desk(0xFFFFFF, 0x0F1114)
 
     /// Deliberately a muted green, not the running green: a diff hunk is not a run (redesign decision 4).
-    static let diffAddFill = Color.desk(0x16301F, 0x16301F)
-    static let diffAddInk = Color.desk(0x9FDDB2, 0x9FDDB2)
-    static let diffDeleteFill = Color.desk(0x331A1A, 0x331A1A)
-    static let diffDeleteInk = Color.desk(0xF3A6A6, 0xF3A6A6)
+    static let diffAddFill = Color.desk(0xE7F6EC, 0x16301F)
+    static let diffAddInk = Color.desk(0x1F5C36, 0x9FDDB2)
+    static let diffDeleteFill = Color.desk(0xFDEAEA, 0x331A1A)
+    static let diffDeleteInk = Color.desk(0x8A1F1F, 0xF3A6A6)
 
-    /// A terminal is one step below the surface behind it, and borrows the rest of the palette so a tile
-    /// stops reading as another app pasted into the window (2026-09-20).
+    /// A terminal is a terminal: these keep their dark values under Light too, and borrow the rest of the
+    /// palette so a tile stops reading as another app pasted into the window (2026-09-20). What FRAMES one —
+    /// the dock ground, the pane border, the tile header — is the light palette's job, not theirs.
     static let terminalGround = Color.desk(0x14161A, 0x14161A)
     static let terminalInk = Color.desk(0xD7DBE0, 0xD7DBE0)
     static let terminalBar = Color.desk(0x14171B, 0x14171B)
@@ -72,8 +79,9 @@ enum DeskColor {
     static let terminalError = Color.desk(0xF19A9A, 0xF19A9A)
     static let terminalControlFill = Color.desk(0x1B1F25, 0x1B1F25)
     static let terminalControlBorder = Color.desk(0x343A44, 0x343A44)
-    /// Was black, which cut a trench between tiles no other edge in the window has.
-    static let terminalPaneBorder = Color.desk(0x262B33, 0x262B33)
+    /// Was black, which cut a trench between tiles no other edge in the window has. Under Light it lifts a
+    /// step so a dark tile still has an edge where it meets the dock's pale ground.
+    static let terminalPaneBorder = Color.desk(0x3A4049, 0x262B33)
 
     static func tone(_ tone: StatusTone) -> ToneColors {
         switch tone {
@@ -87,19 +95,21 @@ enum DeskColor {
     }
 
     /// Green is running and amber is waiting, and nothing else may borrow either (redesign decision 4):
-    /// `info` is the blue accent, `neutral` and `ended` stay grey and differ only in their dot.
+    /// `info` is the blue accent, `neutral` and `ended` stay grey and differ only in their dot. Light keeps
+    /// both hues and drops the lightness — #7FD19B and #E7C067 on white are unreadable — and the waiting dot
+    /// goes deeper still than its foreground, because it is the one dot that carries `onColorInk` on it.
     private static let running = ToneColors(
-        foreground: .desk(0x7FD19B, 0x7FD19B), fill: .desk(0x16301F, 0x16301F),
-        border: .desk(0x245C38, 0x245C38), dot: .desk(0x7FD19B, 0x7FD19B), body: .desk(0x9FDDB2, 0x9FDDB2))
+        foreground: .desk(0x1F7A43, 0x7FD19B), fill: .desk(0xE6F4EB, 0x16301F),
+        border: .desk(0xBCE0CB, 0x245C38), dot: .desk(0x1B7F45, 0x7FD19B), body: .desk(0x1B5C35, 0x9FDDB2))
     private static let waiting = ToneColors(
-        foreground: .desk(0xE7C067, 0xE7C067), fill: .desk(0x33280F, 0x33280F),
-        border: .desk(0x5C4718, 0x5C4718), dot: .desk(0xE7C067, 0xE7C067), body: .desk(0xD9C79A, 0xD9C79A))
+        foreground: .desk(0x8A5A0B, 0xE7C067), fill: .desk(0xFBF2DE, 0x33280F),
+        border: .desk(0xEBDAAE, 0x5C4718), dot: .desk(0x9A6510, 0xE7C067), body: .desk(0x5C4413, 0xD9C79A))
     private static let failed = ToneColors(
-        foreground: .desk(0xF19A9A, 0xF19A9A), fill: .desk(0x331A1A, 0x331A1A),
-        border: .desk(0x5E2B2B, 0x5E2B2B), dot: .desk(0xF19A9A, 0xF19A9A), body: .desk(0xE0B4B4, 0xE0B4B4))
+        foreground: .desk(0xA32020, 0xF19A9A), fill: .desk(0xFCEBEB, 0x331A1A),
+        border: .desk(0xF0CFCF, 0x5E2B2B), dot: .desk(0xB32B2B, 0xF19A9A), body: .desk(0x7A1F1F, 0xE0B4B4))
     private static let info = ToneColors(
-        foreground: .desk(0x9CC0FF, 0x9CC0FF), fill: .desk(0x1B2A45, 0x1B2A45),
-        border: .desk(0x2F4B7C, 0x2F4B7C), dot: accent, body: ink)
+        foreground: .desk(0x1F4FB0, 0x9CC0FF), fill: .desk(0xE7EFFD, 0x1B2A45),
+        border: .desk(0xC3D7F8, 0x2F4B7C), dot: accent, body: ink)
     private static let neutral = ToneColors(
         foreground: secondaryInk, fill: neutralChipFill, border: border, dot: disabledDot, body: secondaryInk)
     private static let ended = ToneColors(

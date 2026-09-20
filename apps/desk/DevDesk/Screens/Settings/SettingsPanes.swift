@@ -3,61 +3,20 @@ import DeskCore
 import SwiftUI
 import UserNotifications
 
-/// A form row with a 200-wide right-aligned label, matching D:715's field rows.
-private struct SettingsRow<Content: View>: View {
-    let label: String
-    let content: Content
-
-    init(_ label: String, @ViewBuilder content: () -> Content) {
-        self.label = label
-        self.content = content()
-    }
-
-    var body: some View {
-        HStack(alignment: .center, spacing: 14) {
-            Text(label)
-                .foregroundStyle(DeskColor.secondaryInk)
-                .frame(width: 200, alignment: .trailing)
-            content
-        }
-    }
-}
-
-/// Whose setting this is. A pane that does not say it invites the question on every visit — and the
-/// Project overrides pane answered it wrongly, with a caption denying the two Dev Desk preferences under it.
-enum SettingScope {
-    case everyProject, thisProject
-
-    var label: String {
-        switch self {
-        case .everyProject: return "all projects"
-        case .thisProject: return "this project"
-        }
-    }
-}
-
-/// A pane's heading and the scope of everything under it.
-struct PaneTitle: View {
-    let title: String
-    let scope: SettingScope
-
-    init(_ title: String, scope: SettingScope) {
-        self.title = title
-        self.scope = scope
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            Text(title).font(DeskFont.section)
-            PropertyChip(scope.label)
-            Spacer(minLength: 0)
-        }
-    }
-}
+// Every pane here is cards of `SettingRow`s from `SettingsControls.swift`. The rule the rewrite enforces:
+// one row, one control, one line saying what changing it does — and where there is nothing to change, the
+// reason, in the row, rather than a control that quietly does nothing (2026-09-20).
 
 @MainActor
 private func isGitHubUnavailable(_ model: ProjectWindowModel) -> Bool {
     model.snapshot?.connections.first { $0.id == "github" }?.state == .unavailable
+}
+
+/// A sample project has no folder on disk, which is why half the project-scoped settings have nothing to
+/// write to. One sentence, said the same way everywhere it is true.
+@MainActor
+private func noFolderReason(_ model: ProjectWindowModel) -> String? {
+    model.projectRoot == nil ? "A sample project has no folder on disk, so there is nothing here to save to." : nil
 }
 
 /// The failed "GitHub is unavailable" callout and its Reconnect popover, shared by two panes.
@@ -79,41 +38,53 @@ private struct GitHubUnavailableNotice: View {
     }
 }
 
+// MARK: - General
+
 struct GeneralPane: View {
-    @Bindable var model: ProjectWindowModel
+    /// nil on Home, where no project is selected: the Dev Desk card is app-wide and stands on its own, and
+    /// the Diagnostics card simply is not there — dev doctor runs at a project root or not at all.
+    let model: ProjectWindowModel?
     @AppStorage(PreferenceKey.showSamples) private var showSamples = true
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("General", scope: .everyProject)
-            Toggle("Show sample projects in the project picker", isOn: $showSamples)
-                .padding(.top, 16)
-            Text("Dev Desk \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—")")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .padding(.top, 10)
+    private var version: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
 
-            SectionLabel("Diagnostics").padding(.top, 22)
-            HStack(spacing: 10) {
-                Button("Run dev doctor") {
-                    model.dismissSheet()
-                    model.runDoctor()
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("General", scope: .everyProject,
+                       summary: "This app itself: what the project picker offers, which build is running, and the CLI's own check of the machine.")
+
+            SettingCard("Dev Desk") {
+                SettingToggle(title: "Show sample projects",
+                              why: "The built-in read-only projects in the picker and the project strip. Off leaves only the repositories you have opened.",
+                              isOn: $showSamples)
+                SettingRow("Version", why: "The build installed in ~/Applications. `apps/desk/install.sh` replaces it.") {
+                    Text(version)
+                        .font(DeskFont.mono(12))
+                        .foregroundStyle(DeskColor.secondaryInk)
+                        .textSelection(.enabled)
                 }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                .disabled(!model.canRunDoors)
-                Text(model.canRunDoors
-                     ? "Opens a terminal at the project root and runs the CLI's own check of this machine and this repository."
-                     : "A sample project has no folder, so there is nothing to check.")
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
             }
-            .frame(maxWidth: 700, alignment: .leading)
-            .padding(.top, 10)
+
+            if let model {
+                SettingCard("Diagnostics") {
+                    SettingRow("dev doctor",
+                               why: "Opens a terminal at the project root and runs the CLI's own check of this machine and this repository. Settings closes, because the terminal comes to the front.",
+                               unavailable: model.canRunDoors ? nil : "A sample project has no folder, so there is nothing to check.") {
+                        Button("Run dev doctor") {
+                            model.dismissSheet()
+                            model.runDoctor()
+                        }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    }
+                }
+            }
         }
     }
 }
+
+// MARK: - Appearance
 
 struct AppearancePane: View {
     @AppStorage(PreferenceKey.appearance) private var appearance = AppearanceChoice.system
@@ -121,210 +92,240 @@ struct AppearancePane: View {
     @AppStorage(PreferenceKey.terminalFontSize) private var terminalFontSize = 12.0
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Appearance", scope: .everyProject)
-            SettingsRow("Appearance") {
-                Picker("", selection: $appearance) {
-                    ForEach(AppearanceChoice.allCases, id: \.self) { Text($0.title).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 220)
-            }
-            .padding(.top, 16)
-            SettingsRow("App icon") {
-                HStack(spacing: 12) {
-                    Picker("", selection: $appIcon) {
-                        ForEach(AppIconChoice.allCases, id: \.self) { Text($0.title).tag($0) }
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("Appearance", scope: .everyProject,
+                       summary: "How Dev Desk is drawn on this Mac. Nothing here touches a project or a run.")
+
+            SettingCard("The window") {
+                SettingRow("Appearance",
+                           why: "Applied app-wide, not per window: alerts, open panels and the Open Project window follow it too. **System** tracks macOS.") {
+                    Picker("", selection: $appearance) {
+                        ForEach(AppearanceChoice.allCases, id: \.self) { Text($0.title).tag($0) }
                     }
                     .pickerStyle(.segmented)
-                    .labelsHidden()
-                    .frame(width: 220)
-                    // The artwork the choice resolves to, so both icons are visible while choosing.
-                    // Keyed on both preferences so a System choice repaints when Appearance changes.
-                    if let preview = AppIconStyle.resolvedImage() {
-                        Image(nsImage: preview)
-                            .resizable()
-                            .interpolation(.high)
-                            .frame(width: 64, height: 64)
-                            .id("\(appIcon.rawValue)-\(appearance.rawValue)")
+                    .settingPicker(width: 210)
+                    .accessibilityLabel("Appearance")
+                }
+                SettingBlockRow("App icon",
+                                why: "Which artwork the Dock and ⌘-Tab show. **System** follows the appearance above, so it changes when that does.") {
+                    HStack(spacing: 14) {
+                        Picker("", selection: $appIcon) {
+                            ForEach(AppIconChoice.allCases, id: \.self) { Text($0.title).tag($0) }
+                        }
+                        .pickerStyle(.segmented)
+                        .settingPicker(width: 210)
+                        .accessibilityLabel("App icon")
+                        // The artwork the choice resolves to, so both icons are visible while choosing.
+                        // Keyed on both preferences so a System choice repaints when Appearance changes.
+                        if let preview = AppIconStyle.resolvedImage() {
+                            Image(nsImage: preview)
+                                .resizable()
+                                .interpolation(.high)
+                                .frame(width: 44, height: 44)
+                                .id("\(appIcon.rawValue)-\(appearance.rawValue)")
+                                .accessibilityHidden(true)
+                        }
                     }
                 }
-            }
-            .padding(.top, 12)
-            // Both preferences feed the resolution, so either changing re-applies the icon. System's
-            // OS-driven case is re-applied by the effectiveAppearance observer in QuitGuard.
-            .onChange(of: appIcon) { AppIconStyle.apply() }
-            .onChange(of: appearance) { AppIconStyle.apply() }
-            SettingsRow("Terminal text size") {
-                Picker("", selection: $terminalFontSize) {
-                    ForEach(Array(stride(from: 11.0, through: 14.0, by: 1.0)), id: \.self) { size in
-                        Text("\(Int(size)) pt").tag(size)
+                SettingRow("Terminal text size",
+                           why: "The type inside every session tile. A terminal keeps its dark ground under Light, so only the size moves here.") {
+                    Picker("", selection: $terminalFontSize) {
+                        ForEach(Array(stride(from: 11.0, through: 14.0, by: 1.0)), id: \.self) { size in
+                            Text("\(Int(size)) pt").tag(size)
+                        }
                     }
+                    .settingPicker(width: 110)
+                    .accessibilityLabel("Terminal text size")
                 }
-                .labelsHidden()
-                .frame(width: 120)
             }
-            .padding(.top, 12)
         }
+        // Both preferences feed the resolution, so either changing re-applies the icon. System's
+        // OS-driven case is re-applied by the effectiveAppearance observer in QuitGuard.
+        .onChange(of: appIcon) { AppIconStyle.apply() }
+        .onChange(of: appearance) { AppIconStyle.apply() }
     }
 }
 
+// MARK: - Agents and defaults
+
 struct AgentsAndDefaultsPane: View {
-    @Bindable var model: ProjectWindowModel
+    /// nil on Home. The three defaults are preferences and need no project; what is installed and what each
+    /// CLI can do is read off a project's snapshot, so on Home those are absent rather than guessed at —
+    /// resolving availability against no connections would report every agent as missing.
+    let model: ProjectWindowModel?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @AppStorage(PreferenceKey.runMode) private var runMode = AgentDefaults.runMode
     @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Agents and defaults", scope: .everyProject)
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("Agents and defaults", scope: .everyProject,
+                       summary: "What a Start begins: which CLI it runs, which one answers a background run, and how much it is allowed to do before it asks.")
 
-            SettingsRow("App default connection") {
-                Picker("", selection: $defaultConnection) {
-                    ForEach(providers, id: \.self) { Text($0).tag($0) }
+            SettingCard("Defaults") {
+                SettingRow("Connection",
+                           why: "The agent a task, a door or a shell starts with unless the start sheet says otherwise. A change applies to the next start, never to one already running.",
+                           unavailable: defaultConnectionProblem) {
+                    Picker("", selection: $defaultConnection) {
+                        ForEach(providers, id: \.self) { Text(label(for: $0)).tag($0) }
+                    }
+                    .settingPicker(width: 200)
+                    .accessibilityLabel("Default connection")
                 }
-                .labelsHidden()
-                .frame(width: 200)
-            }
-            .padding(.top, 16)
-
-            SettingsRow("Background runs") {
-                Picker("", selection: Binding(
-                    get: { BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection) },
-                    set: { storedBackground = $0 })) {
-                    ForEach(BackgroundConnection.choices, id: \.self) { Text($0).tag($0) }
+                SettingRow("Background runs",
+                           why: "Tasks and doors run in a terminal with the connection above, any of the five. A background run — Findings or Ideation in the background, filing an issue, a diagram — needs a headless form this app can read, which only Claude and Codex have.") {
+                    Picker("", selection: backgroundBinding) {
+                        ForEach(BackgroundConnection.choices, id: \.self) { Text(label(for: $0)).tag($0) }
+                    }
+                    .settingPicker(width: 200)
+                    .accessibilityLabel("Background runs")
                 }
-                .labelsHidden()
-                .frame(width: 200)
-            }
-            .padding(.top, 12)
-            // Said beside the picker, because the reason it is a second setting is not visible anywhere else.
-            Text("Tasks and doors run in a terminal with the default connection, any of the five. Background runs — Findings or Ideation in the background, filing an issue, a diagram — need a headless form this app reads, which only Claude and Codex have.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 8)
-
-            SettingsRow("App default mode") {
-                Picker("", selection: $runMode) {
-                    ForEach(RunMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                SettingRow("Mode", why: modeDetail) {
+                    Picker("", selection: $runMode) {
+                        ForEach(RunMode.allCases, id: \.self) { Text($0.title).tag($0) }
+                    }
+                    .settingPicker(width: 200)
+                    .accessibilityLabel("Default mode")
                 }
-                .labelsHidden()
-                .frame(width: 200)
             }
-            .padding(.top, 12)
 
-            // Says what the mode above actually means, so it is never a name with no meaning. Both settings are
-            // the app's now — a per-project override was a second place to look for what a run would start, and
-            // the answer was never found there first. Either picker is free to change while work runs; a new
-            // value applies to the next start, never to one already going.
-            Text(RunModeChoice.current(for: model.ref).detail)
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 10)
-
-            SectionLabel("Capabilities of the selected connection").padding(.top, 18)
-            capabilitiesTable.padding(.top, 8)
-            // The models sentence used to be a section of its own, whose whole content was that it had none.
-            Text([model.snapshot?.capabilities.note,
-                  "Models are listed by the connected tool at runtime; Dev Desk stores no version names or pricing."]
-                .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " "))
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 10)
-
-            if isGitHubUnavailable(model) {
-                GitHubUnavailableNotice().padding(.top, 18)
+            // Was titled "Capabilities of the selected connection" over a table of every connection, which
+            // is a heading that describes a different table than the one under it (2026-09-20).
+            if let model {
+                SettingCard("What each connection can do", footer: capabilitiesNote) {
+                    SettingRowShell { capabilitiesTable(model) }
+                }
+                if isGitHubUnavailable(model) { GitHubUnavailableNotice() }
             }
         }
     }
 
-    /// Every agent a task can start with, installed or not: the start sheet says which are missing.
+    /// Every project shares the app default, so with no project open the resolved mode is the same sentence.
+    private var modeDetail: String {
+        RunModeChoice.resolve(override: "", appDefault: runMode).detail
+    }
+
+    private var backgroundBinding: Binding<String> {
+        Binding(get: { BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection) },
+                set: { storedBackground = $0 })
+    }
+
+    /// Every agent a task can start with, installed or not — the list has to hold the one already chosen even
+    /// when it has since been uninstalled, or the picker would silently show a different agent than is stored.
     private var providers: [String] { AgentLaunch.runnableKinds.map(AgentLaunch.connectionName) }
 
-    private var capabilitiesTable: some View {
-        let matrix = model.snapshot?.capabilities
-        return VStack(spacing: 0) {
-            HStack(spacing: 0) {
-                Text("Capability").frame(maxWidth: .infinity, alignment: .leading)
-                ForEach(matrix?.providers ?? [], id: \.self) { provider in
-                    Text(provider).frame(width: 110, alignment: .leading)
-                }
-            }
-            .font(.system(size: 11.5, design: .monospaced))
-            .foregroundStyle(DeskColor.mutedInk)
-            .padding(.vertical, 10)
-            .padding(.horizontal, 12)
-            .background(DeskColor.headerFill)
+    /// A connection that is not installed says so in the picker itself. It used to say so only in the start
+    /// sheet, which is one Start too late to find out.
+    private func label(for name: String) -> String {
+        switch availability(name) {
+        case .some(.ready), .none: return name
+        case .some(.unavailable): return "\(name) — unavailable"
+        }
+    }
 
-            ForEach(Array((matrix?.rows ?? []).enumerated()), id: \.element.id) { index, row in
-                if index > 0 { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
+    /// nil when there is no project to read the machine's connections from. Not "unavailable": an unknown
+    /// state annotated as a missing install is the exact lie this annotation exists to stop.
+    private func availability(_ name: String) -> AgentAvailability? {
+        guard let snapshot = model?.snapshot else { return nil }
+        return AgentAvailability.resolve(connectionName: name,
+                                         connections: snapshot.connections,
+                                         hasStandIn: DebugLaunch.agentExecutable != nil,
+                                         terminalAgents: snapshot.terminalAgents)
+    }
+
+    /// The reason the *chosen* connection cannot run, in the chosen connection's row — the CLI's own words
+    /// where it has them, since it knows better than this pane whether it is logged out or rate-limited.
+    private var defaultConnectionProblem: String? {
+        if case .some(.unavailable(let reason)) = availability(defaultConnection) { return reason }
+        return nil
+    }
+
+    private var capabilitiesNote: String {
+        [model?.snapshot?.capabilities.note,
+         "Models are listed by the connected tool at runtime; Dev Desk stores no version names or pricing."]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " ")
+    }
+
+    /// Scrolls sideways rather than squeezing: five columns do not fit a dialog's pane, and a truncated
+    /// capability is worse than one you have to reach for.
+    private func capabilitiesTable(_ model: ProjectWindowModel) -> some View {
+        let matrix = model.snapshot?.capabilities
+        return ScrollView(.horizontal, showsIndicators: true) {
+            VStack(spacing: 6) {
                 HStack(spacing: 0) {
-                    Text(row.name).frame(maxWidth: .infinity, alignment: .leading)
-                    ForEach(Array(row.values.enumerated()), id: \.offset) { _, value in
-                        Text(value.rawValue)
-                            .foregroundStyle(color(for: value))
-                            .frame(width: 110, alignment: .leading)
+                    Text("Capability").frame(width: 170, alignment: .leading)
+                    ForEach(matrix?.providers ?? [], id: \.self) { provider in
+                        Text(provider)
+                            .fontWeight(provider == defaultConnection ? .semibold : .regular)
+                            .foregroundStyle(provider == defaultConnection ? DeskColor.ink : DeskColor.mutedInk)
+                            .frame(width: 92, alignment: .leading)
                     }
                 }
-                .padding(.vertical, 10)
-                .padding(.horizontal, 12)
+                .font(DeskFont.mono(11.5))
+                .foregroundStyle(DeskColor.mutedInk)
+
+                ForEach(matrix?.rows ?? [], id: \.id) { row in
+                    Rectangle().fill(DeskColor.rowDivider).frame(height: 1)
+                    HStack(spacing: 0) {
+                        Text(row.name)
+                            .foregroundStyle(DeskColor.secondaryInk)
+                            .frame(width: 170, alignment: .leading)
+                        ForEach(Array(row.values.enumerated()), id: \.offset) { _, value in
+                            Text(value.rawValue)
+                                .foregroundStyle(color(for: value))
+                                .frame(width: 92, alignment: .leading)
+                        }
+                    }
+                    .font(DeskFont.mono(11.5))
+                }
             }
+            .padding(.vertical, 2)
         }
-        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
-        .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
     }
 
     private func color(for value: CapabilityValue) -> Color {
         switch value {
         case .yes: return DeskColor.tone(.running).foreground
-        case .sometimes: return DeskColor.tone(.waiting).dot
-        case .no: return DeskColor.tone(.failed).dot
+        case .sometimes: return DeskColor.tone(.waiting).foreground
+        case .no: return DeskColor.tone(.failed).foreground
         case .unknown, .notValidated: return DeskColor.faintInk
         }
     }
 }
 
+// MARK: - Accounts and connections
+
 struct AccountsPane: View {
-    @Bindable var model: ProjectWindowModel
+    let model: ProjectWindowModel
     @State private var signingOut: Connection?
     /// Set when Automation was refused and the command went to the clipboard instead, so the pane says so
     /// rather than appearing to do nothing.
     @State private var copied: String?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Accounts and connections", scope: .everyProject)
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("Accounts and connections", scope: .everyProject,
+                       summary: "Dev Desk never holds a credential: each CLI owns its own keychain, so signing in is that tool's own command, typed into a terminal you watch.")
 
-            VStack(alignment: .leading, spacing: 10) {
+            SettingCard("Connections", footer: model.snapshot?.connectionsNote ?? "") {
                 ForEach(model.snapshot?.connections ?? []) { connection in
-                    row(connection)
+                    SettingRowShell { row(connection) }
                 }
             }
-            .padding(.top, 16)
 
-            if let copied { copiedNotice(copied) }
-
-            Text(model.snapshot?.connectionsNote ?? "")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 12)
+            // Automation was refused, so the command went to the clipboard. Said here rather than nowhere,
+            // which is what a refused sign-in looked like: a button that did nothing.
+            if let copied {
+                NoticeBanner(tone: .info, title: "The command is on your clipboard",
+                             message: "Couldn't open your terminal, so `\(copied)` was copied instead — paste it into a terminal to finish.",
+                             style: .callout)
+            }
 
             if let account = model.snapshot?.projectFacts.first(where: { $0.key == "GitHub account" }) {
-                KeyValueTable(rows: [account]).padding(.top, 16)
+                KeyValueTable(rows: [account], keyWidth: 170)
             }
 
-            if isGitHubUnavailable(model) {
-                GitHubUnavailableNotice().padding(.top, 16)
-            }
+            if isGitHubUnavailable(model) { GitHubUnavailableNotice() }
         }
         .confirmationDialog("Sign out of \(signingOut?.name ?? "")?",
                             isPresented: Binding(get: { signingOut != nil }, set: { if !$0 { signingOut = nil } }),
@@ -336,45 +337,55 @@ struct AccountsPane: View {
         }
     }
 
-    /// One connection: what it is, who it is, and the one action it has. The app never sees a credential —
-    /// it types the tool's own command into a terminal at the project root (decision 14).
+    /// One connection: what it is, who it is, and the one action it has. A row with no action says why it has
+    /// none rather than showing a dead button — a CLI that is not installed has nothing to sign into.
     private func row(_ connection: Connection) -> some View {
-        HStack(spacing: 8) {
-            StatusDot(tone: tone(for: connection.state))
-            Text(connection.name)
-            Spacer(minLength: 8)
-            Text(connection.label)
-                .foregroundStyle(connection.isSignedOut ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .help(connection.detail ?? connection.label)
-            if let auth = connection.auth {
-                // An interactive sign-in never shows Sign out: Gemini's is `/auth logout` inside its own
-                // session, so there is no command here to run and a button would have to invent one.
-                if connection.isSignedOut || auth.isInteractive {
-                    Button(auth.isInteractive ? "Open…" : "Sign in…") { run(auth.signIn, for: connection) }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                        .help(auth.isInteractive
-                              ? "Opens \(auth.signIn) in your terminal, where you can sign in from its own menu"
-                              : "Runs \(auth.signIn) in your terminal")
-                } else if let signOut = auth.signOut {
-                    Button("Sign out…") { signingOut = connection }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
-                        .help("Runs \(signOut) in your terminal")
-                }
+        VStack(alignment: .leading, spacing: 5) {
+            HStack(spacing: 8) {
+                StatusDot(tone: tone(for: connection.state))
+                Text(connection.name)
+                    .font(DeskFont.body)
+                    .foregroundStyle(DeskColor.ink)
+                Spacer(minLength: 8)
+                Text(connection.label)
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(connection.isSignedOut ? DeskColor.tone(.failed).foreground : DeskColor.mutedInk)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(connection.detail ?? connection.label)
+                action(connection)
+            }
+            if let detail = connection.detail, detail != connection.label {
+                MarkdownText(detail, font: DeskFont.secondary, color: DeskColor.mutedInk)
+                    .lineSpacing(4)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
 
-    /// Automation was refused, so the command is on the clipboard. Its own view: inlining the interpolation
-    /// in `body` pushed this pane past what the type-checker would solve.
-    private func copiedNotice(_ command: String) -> some View {
-        let message = "Couldn't open your terminal, so `" + command
-            + "` is on the clipboard — paste it into a terminal to finish."
-        return Text(message)
-            .font(DeskFont.secondary)
-            .foregroundStyle(DeskColor.tone(.waiting).foreground)
-            .padding(.top, 12)
+    @ViewBuilder private func action(_ connection: Connection) -> some View {
+        if let auth = connection.auth {
+            // An interactive sign-in never shows Sign out: Gemini's is `/auth logout` inside its own
+            // session, so there is no command here to run and a button would have to invent one.
+            if connection.isSignedOut || auth.isInteractive {
+                Button(auth.isInteractive ? "Open…" : "Sign in…") { run(auth.signIn, for: connection) }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    .help(auth.isInteractive
+                          ? "Opens \(auth.signIn) in your terminal, where you can sign in from its own menu"
+                          : "Runs \(auth.signIn) in your terminal")
+            } else if let signOut = auth.signOut {
+                Button("Sign out…") { signingOut = connection }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    .help("Runs \(signOut) in your terminal")
+            }
+        } else {
+            // nil auth means there is nothing to sign into here. Saying so beats an empty column that reads
+            // as a button that failed to draw.
+            Text("no sign-in")
+                .font(DeskFont.mono(10.5))
+                .foregroundStyle(DeskColor.faintInk)
+                .help("This tool has no sign-in command Dev Desk can run.")
+        }
     }
 
     private func run(_ command: String?, for connection: Connection) {
@@ -399,82 +410,109 @@ struct AccountsPane: View {
     }
 }
 
+// MARK: - Notifications
+
 struct NotificationsPane: View {
-    private var permissionLabel: String {
-        switch permission {
-        case .authorized, .provisional, .ephemeral: return "Allowed"
-        case .denied: return "Off for Dev Desk in System Settings"
-        case .notDetermined: return "Not asked yet"
-        default: return "Checking…"
-        }
-    }
-
-    @MainActor private func readPermission() async {
-        permission = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
-    }
-
     @AppStorage(PreferenceKey.notifyDecisions) private var notifyDecisions = true
     @AppStorage(PreferenceKey.notifyCompletion) private var notifyCompletion = true
     @AppStorage(PreferenceKey.notifyFailures) private var notifyFailures = true
     @AppStorage(PreferenceKey.notifySound) private var sound = NotificationSound.defaultName
     @State private var permission: UNAuthorizationStatus?
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Notifications", scope: .everyProject)
-            // macOS asks once; a denial is never asked again, so the pane says where it is changed.
-            SettingsRow("Permission") {
-                HStack(spacing: 8) {
-                    Text(permissionLabel).foregroundStyle(DeskColor.secondaryInk)
-                    if permission == .notDetermined {
-                        Button("Allow…") {
-                            UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in
-                                Task { @MainActor in await readPermission() }
-                            }
-                        }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                    } else if permission == .denied {
-                        Button("Open System Settings") {
-                            if let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(Bundle.main.bundleIdentifier ?? "")") {
-                                NSWorkspace.shared.open(url)
-                            }
-                        }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                    }
-                }
-            }
-            .task { await readPermission() }
-            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
-                Task { await readPermission() }
-            }
-            VStack(alignment: .leading, spacing: 10) {
-                Toggle("Decisions that need you", isOn: $notifyDecisions)
-                Toggle("Completed work", isOn: $notifyCompletion)
-                Toggle("Failed runs", isOn: $notifyFailures)
-            }
-            .padding(.top, 16)
-            SettingsRow("Sound") {
-                HStack(spacing: 8) {
-                    Picker("", selection: $sound) {
-                        Text("None").tag("")
-                        ForEach(NotificationSound.choices, id: \.self) { Text($0).tag($0) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 160)
-                    Button("Preview") { NotificationSound.play(sound) }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                        .disabled(sound.isEmpty)
-                }
-            }
-            .padding(.top, 14)
-            Text("Background runs and terminal sessions both notify. Claude and Codex report exactly when they need you or finish a turn; other tools are heard through the terminal bell, which only guesses. The sound plays even when the session is already on screen.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .padding(.top, 12)
+    /// macOS asks once; a denial is never asked again. Every toggle below is inert until this is allowed, so
+    /// the denial is repeated onto each of them rather than stated once at the top and forgotten.
+    private var permissionProblem: String? {
+        switch permission {
+        case .denied: return "Notifications are off for Dev Desk in System Settings, so nothing below can show a banner. The sound still plays."
+        case .notDetermined: return "macOS hasn't been asked yet, so no banner appears until you allow it above."
+        default: return nil
         }
     }
+
+    private var permissionLabel: String {
+        switch permission {
+        case .authorized, .provisional, .ephemeral: return "Allowed"
+        case .denied: return "Off in System Settings"
+        case .notDetermined: return "Not asked yet"
+        default: return "Checking…"
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("Notifications", scope: .everyProject,
+                       summary: "When Dev Desk is allowed to interrupt you. Background runs and terminal sessions both notify.")
+
+            SettingCard("Permission") {
+                SettingRow("macOS", why: "Granted once, to the app. Dev Desk cannot ask again after a refusal — System Settings is the only way back.") {
+                    HStack(spacing: 8) {
+                        Text(permissionLabel)
+                            .font(DeskFont.secondary)
+                            .foregroundStyle(DeskColor.secondaryInk)
+                        if permission == .notDetermined {
+                            Button("Allow…") { ask() }
+                                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                        } else if permission == .denied {
+                            Button("Open System Settings") { openSystemSettings() }
+                                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                        }
+                    }
+                }
+            }
+
+            SettingCard("Tell me about",
+                        footer: "Claude and Codex report exactly when they need you or finish a turn; other tools are heard through the terminal bell, which only guesses.") {
+                SettingToggle(title: "Decisions that need you",
+                              why: "A run has stopped and is waiting on an answer. The one worth leaving on — nothing moves until you reply.",
+                              unavailable: permissionProblem, isOn: $notifyDecisions)
+                SettingToggle(title: "Completed work",
+                              why: "A task or a door finished on its own.",
+                              unavailable: permissionProblem, isOn: $notifyCompletion)
+                SettingToggle(title: "Failed runs",
+                              why: "A run ended with an error, in a session or in the background.",
+                              unavailable: permissionProblem, isOn: $notifyFailures)
+            }
+
+            SettingCard("Sound") {
+                SettingRow("Sound",
+                           why: "Played by the app, so it sounds even when the banner is skipped — including when the session is already on screen. **None** leaves the banner silent.") {
+                    HStack(spacing: 8) {
+                        Picker("", selection: $sound) {
+                            Text("None").tag("")
+                            ForEach(NotificationSound.choices, id: \.self) { Text($0).tag($0) }
+                        }
+                        .settingPicker(width: 150)
+                        .accessibilityLabel("Notification sound")
+                        Button("Preview") { NotificationSound.play(sound) }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                            .disabled(sound.isEmpty)
+                    }
+                }
+            }
+        }
+        .task { await readPermission() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            Task { await readPermission() }
+        }
+    }
+
+    private func ask() {
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) { _, _ in
+            Task { @MainActor in await readPermission() }
+        }
+    }
+
+    private func openSystemSettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.Notifications-Settings.extension?id=\(Bundle.main.bundleIdentifier ?? "")") else { return }
+        NSWorkspace.shared.open(url)
+    }
+
+    @MainActor private func readPermission() async {
+        permission = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+    }
 }
+
+// MARK: - Execution
 
 struct ExecutionPane: View {
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
@@ -484,58 +522,44 @@ struct ExecutionPane: View {
     @AppStorage(PreferenceKey.runMaxAgents) private var runMaxAgents = RunStops.defaultMaxAgents
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Execution", scope: .everyProject)
-            SettingsRow("Parallel task checkouts") {
-                HStack(spacing: 8) {
-                    TextField("", text: $worktreeLocation)
-                        .textFieldStyle(.plain)
-                        .padding(.horizontal, 10)
-                        .frame(width: 260, height: 28)
-                        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius)
-                            .strokeBorder(pathProblem == nil ? DeskColor.controlBorder : DeskColor.tone(.failed).dot))
-                    Button("Choose…") { chooseFolder() }
-                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("Execution", scope: .everyProject,
+                       summary: "Where parallel work is checked out, how much of it may run at once, and when this app talks to git and to you.")
+
+            SettingCard("Task checkouts") {
+                SettingBlockRow("Worktree location",
+                                why: "Task worktrees are created here when you start a shell or an agent for a task that isn't checked out yet, including a detached one for a task with no branch.",
+                                unavailable: pathProblem) {
+                    HStack(spacing: 8) {
+                        // A typo used to surface much later, as a git error when a session tried to start in it.
+                        TextField("", text: $worktreeLocation)
+                            .settingField(width: 280, isInvalid: pathProblem != nil)
+                            .accessibilityLabel("Worktree location")
+                        Button("Choose…") { chooseFolder() }
+                            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    }
                 }
             }
-            .padding(.top, 16)
-            // A typo used to surface much later, as a git error when a session tried to start in it.
-            Text(pathProblem ?? "Task worktrees are created here when you start a shell or an agent for a task that isn't checked out yet, including a detached one for a task with no branch.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(pathProblem == nil ? DeskColor.mutedInk : DeskColor.tone(.failed).dot)
-                .lineSpacing(4)
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 12)
-            Stepper(value: $agentLimit, in: AgentLimit.range) {
-                Text(agentLimit == 1 ? "Run at most 1 agent at once" : "Run at most \(agentLimit) agents at once")
+
+            SettingCard("How much runs at once") {
+                SettingStepper(title: "Agents at once",
+                               why: "Across every project and every window. A start beyond the limit queues instead of failing.",
+                               valueLabel: agentLimit == 1 ? "1 agent" : "\(agentLimit) agents",
+                               range: AgentLimit.range, value: $agentLimit)
+                SettingStepper(title: "Agents in one findings or ideation run",
+                               why: "Finders and checkers together (ADR 0043). A run whose plan needs more starts nothing and says why.",
+                               valueLabel: "\(runMaxAgents) agents",
+                               range: RunStops.maxAgentsRange, step: 5, value: $runMaxAgents)
             }
-            .fixedSize()
-            .padding(.top, 16)
-            Stepper(value: $runMaxAgents, in: RunStops.maxAgentsRange, step: 5) {
-                Text("A findings or ideation run may start at most \(runMaxAgents) agents")
+
+            SettingCard("This app") {
+                SettingToggle(title: "Reload every 2 minutes",
+                              why: "Off, the board is read again when you act — opening, ⌘R, a start, a stop, a move — and each of those first pulls from origin. The timed reload never pulls.",
+                              isOn: $autoReload)
+                SettingToggle(title: "Ask before quitting while something is running",
+                              why: "Quitting ends every session and background run. The question is only ever asked when one of them is live.",
+                              isOn: $confirmQuit)
             }
-            .fixedSize()
-            .padding(.top, 16)
-            Text("Finders and checkers together. A run whose plan needs more starts nothing and says why.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .padding(.top, 8)
-            Toggle("Reload every 2 minutes", isOn: $autoReload)
-                .padding(.top, 16)
-            Text("Off, the board is read again when you act — opening, ⌘R, a start, a stop, a move — and each of those first pulls from origin. The timed reload never pulls.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .padding(.top, 8)
-            Toggle("Ask before quitting while something is running", isOn: $confirmQuit)
-                .padding(.top, 16)
-            Text("Quitting ends every session and background run. The question is only ever asked when one of them is live.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .padding(.top, 8)
         }
     }
 
@@ -568,8 +592,10 @@ struct ExecutionPane: View {
     }
 }
 
+// MARK: - Project overrides
+
 struct ProjectOverridesPane: View {
-    @Bindable var model: ProjectWindowModel
+    let model: ProjectWindowModel
 
     /// What a reset would actually find here, so the button is not a mystery until it is pressed.
     private var resetSummary: String {
@@ -582,43 +608,37 @@ struct ProjectOverridesPane: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Project overrides", scope: .thisProject)
-            // Two different things sat under one caption: facts the repository owns, and preferences Dev Desk
-            // owns. The caption spoke for the first and denied the second, which was sitting right below it.
-            SectionLabel("From the repository").padding(.top, 18)
-            KeyValueTable(rows: model.snapshot?.projectFacts ?? [])
-                .padding(.top, 8)
-            Text("Read from the repository. Dev Desk never overrides the repository's own configuration.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .padding(.top, 10)
-            // Auto applies to local projects only.
-            if !model.ref.isSample {
-                SectionLabel("Dev Desk, for this project").padding(.top, 20)
-                Text("Kept on this Mac, not in the repository.")
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .padding(.top, 6)
-                AutoModeSetting(ref: model.ref)
-                    .padding(.top, 12)
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("Project overrides", scope: .thisProject,
+                       summary: "Two different things, kept apart: facts this repository owns, and the preferences Dev Desk keeps about it on this Mac.")
 
-                SectionLabel("Cleanup").padding(.top, 20)
-                HStack(spacing: 10) {
+            // The caption used to speak for the repository facts and deny the two Dev Desk preferences that
+            // were sitting right below it under the same heading.
+            VStack(alignment: .leading, spacing: 8) {
+                SectionLabel("From the repository")
+                // `KeyValueTable` is already a card of rows, so it stands where a `SettingCard` would.
+                if (model.snapshot?.projectFacts ?? []).isEmpty {
+                    UnavailableLine("Nothing read yet — a sample project has no repository to read from.")
+                } else {
+                    KeyValueTable(rows: model.snapshot?.projectFacts ?? [], keyWidth: 170)
+                }
+                SettingNote("Read from the repository. Dev Desk never overrides the repository's own configuration.")
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            // These were hidden outright for a sample, which reads as "this project has no Auto" rather than
+            // "a sample has nowhere to keep one" (2026-09-20).
+            SettingCard("Dev Desk, for this project", footer: "Kept on this Mac, not in the repository.") {
+                AutoModeSetting(ref: model.ref, unavailable: noFolderReason(model))
+                SettingRow("Reset findings",
+                           why: resetSummary + " Clears this project's findings reports and the findings you set aside, so the next run starts from nothing.",
+                           unavailable: noFolderReason(model)) {
                     Button("Reset findings…") {
                         model.dismissSheet()
                         model.present(.resetFindings)
                     }
                     .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                    Text(resetSummary)
-                        .font(DeskFont.secondary)
-                        .foregroundStyle(DeskColor.mutedInk)
-                        .lineSpacing(4)
-                        .fixedSize(horizontal: false, vertical: true)
                 }
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 10)
             }
         }
     }
@@ -629,23 +649,22 @@ private struct AutoModeSetting: View {
     @AppStorage private var autoMode: Bool
     @AppStorage(PreferenceKey.agentLimit) private var agentLimit = AgentLimit.defaultValue
     @State private var confirming = false
+    private let unavailable: String?
 
-    init(ref: ProjectRef) {
+    init(ref: ProjectRef, unavailable: String?) {
         _autoMode = AppStorage(wrappedValue: false, PreferenceKey.autoMode(ref))
+        self.unavailable = unavailable
     }
 
     var body: some View {
         let notice = AutoAgents.notice(limit: min(max(agentLimit, AgentLimit.range.lowerBound), AgentLimit.range.upperBound))
-        VStack(alignment: .leading, spacing: 0) {
-            Toggle("Auto", isOn: Binding(get: { autoMode }, set: { isOn in
+        SettingRow("Auto", why: notice, unavailable: unavailable) {
+            Toggle("", isOn: Binding(get: { autoMode }, set: { isOn in
                 if isOn { confirming = true } else { autoMode = false }
             }))
-            Text(verbatim: notice)
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .frame(maxWidth: 700, alignment: .leading)
-                .padding(.top, 8)
+            .toggleStyle(.switch)
+            .labelsHidden()
+            .accessibilityLabel("Auto")
         }
         .alert(Text(verbatim: notice), isPresented: $confirming) {
             Button("Turn on Auto") { autoMode = true }
@@ -654,6 +673,8 @@ private struct AutoModeSetting: View {
     }
 }
 
+// MARK: - Work
+
 /// Settings › Work (ADR 0046): this project's choices for the Work tab, kept in `.devdesk/work.json` beside the work.
 struct WorkSettingsPane: View {
     let model: ProjectWindowModel
@@ -661,37 +682,35 @@ struct WorkSettingsPane: View {
     @State private var loaded = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Work", scope: .thisProject)
-            SettingsRow("Next up follows") {
-                Picker("", selection: binding(\.nextUpFollows)) {
-                    Text("Top of the Plan").tag(WorkSettings.NextUpSource.plan)
-                    Text("Nearest due date").tag(WorkSettings.NextUpSource.dueDate)
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 300)
-            }
-            .padding(.top, 16)
-            note(settings.nextUpFollows == .plan
-                 ? "The milestone at the top of Work's list is Working now; Move to top changes it. With no order set yet, the nearest due date decides. dev:kanban reads the same choice."
-                 : "The open milestone due soonest is Working now, whatever order the list is in. dev:kanban reads the same choice.")
-            SettingsRow("Done shows") {
-                HStack(spacing: 8) {
-                    Stepper(value: binding(\.doneLimit), in: 0...100, step: 5) {
-                        Text(settings.doneLimit == 0 ? "everything" : "the latest \(settings.doneLimit)")
-                            .font(DeskFont.body)
+        VStack(alignment: .leading, spacing: 18) {
+            PaneHeader("Work", scope: .thisProject,
+                       summary: "How the Work tab decides what is next and what is finished. Kept in `.devdesk/work.json` beside the work, so `dev:kanban` reads the same choices.")
+
+            SettingCard("Next up") {
+                SettingRow("Working now follows",
+                           why: settings.nextUpFollows == .plan
+                                ? "The milestone at the top of Work's list is Working now; **Move to top** changes it. With no order set yet, the nearest due date decides."
+                                : "The open milestone due soonest is Working now, whatever order the list is in.",
+                           unavailable: unavailable) {
+                    Picker("", selection: binding(\.nextUpFollows)) {
+                        Text("Plan order").tag(WorkSettings.NextUpSource.plan)
+                        Text("Due date").tag(WorkSettings.NextUpSource.dueDate)
                     }
+                    .pickerStyle(.segmented)
+                    .settingPicker(width: 210)
+                    .accessibilityLabel("Working now follows")
                 }
             }
-            .padding(.top, 16)
-            note("Merged work past this count is summarised as “N more” at the foot of Done. 0 shows all of it.")
-            SettingsRow("Pull requests without an issue") {
-                Toggle("Show in Review", isOn: binding(\.showsPullRequestsWithoutIssue))
-                    .toggleStyle(.checkbox)
+
+            SettingCard("Done and Review") {
+                SettingStepper(title: "Done shows",
+                               why: "Merged work past this count is summarised as “N more” at the foot of Done. 0 shows all of it.",
+                               valueLabel: settings.doneLimit == 0 ? "everything" : "latest \(settings.doneLimit)",
+                               range: 0...100, step: 5, unavailable: unavailable, value: binding(\.doneLimit))
+                SettingToggle(title: "Pull requests without an issue",
+                              why: "A pull request with no issue behind it — a findings report, a docs edit — is not a task. Off keeps Review to tasks only.",
+                              unavailable: unavailable, isOn: binding(\.showsPullRequestsWithoutIssue))
             }
-            .padding(.top, 16)
-            note("A pull request with no issue behind it — a findings report, a docs edit — is not a task. Hide it to keep Review to tasks only.")
         }
         .onAppear {
             guard !loaded else { return }
@@ -700,20 +719,15 @@ struct WorkSettingsPane: View {
         }
     }
 
+    /// A sample has no `.devdesk` to write to, so every control here would change a value that is discarded
+    /// the moment the window reloads.
+    private var unavailable: String? { noFolderReason(model) }
+
     private func binding<T>(_ key: WritableKeyPath<WorkSettings, T>) -> Binding<T> {
         Binding(get: { settings[keyPath: key] }, set: { value in
             settings[keyPath: key] = value
             let saved = settings
             Task { await model.setWorkSettings(saved) }
         })
-    }
-
-    private func note(_ text: String) -> some View {
-        Text(text)
-            .font(DeskFont.secondary)
-            .foregroundStyle(DeskColor.mutedInk)
-            .lineSpacing(4)
-            .frame(maxWidth: 700, alignment: .leading)
-            .padding(.top, 10)
     }
 }

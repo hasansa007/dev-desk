@@ -16,8 +16,10 @@ struct HomeScreen: View {
                         ProjectFocusCard(workspace: workspace, context: focus, isFocus: true)
                         let rest = workspace.contextsInStripOrder.filter { $0.ref != focus.ref }
                         if !rest.isEmpty {
-                            // Two to a row: below three projects a grid of one column is just a list with gaps.
-                            LazyVGrid(columns: [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)],
+                            // Two to a row where there is room for two. `.flexible()` columns keep halving
+                            // whatever they are given, so at a narrow window each card was handed ~130 pt and
+                            // its words wrapped one letter to a line (2026-09-20, on screen).
+                            LazyVGrid(columns: [GridItem(.adaptive(minimum: ProjectFocusCard.minWidth), spacing: 14)],
                                       spacing: 14) {
                                 ForEach(rest) { context in
                                     ProjectFocusCard(workspace: workspace, context: context, isFocus: false)
@@ -40,6 +42,18 @@ struct HomeScreen: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(DeskColor.canvas)
+        .navigationTitle("Dev Desk")
+        .navigationSubtitle(workspace.refs.isEmpty ? "" : "\(workspace.refs.count) project\(workspace.refs.count == 1 ? "" : "s")")
+        // Home carried no toolbar at all, so macOS gave it a short, pale title bar of its own and the
+        // window's chrome changed height as you switched to it (2026-09-20, on screen). Open project moved
+        // up here from the page header rather than being drawn in both places.
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button("Open project") { workspace.isOpeningProject = true }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                    .help("⌘O")
+            }
+        }
     }
 
     private var header: some View {
@@ -48,8 +62,6 @@ struct HomeScreen: View {
             Text("home · \(workspace.refs.count) project\(workspace.refs.count == 1 ? "" : "s")")
                 .font(DeskFont.small).foregroundStyle(DeskColor.mutedInk)
             Spacer(minLength: 8)
-            Button("open project ⌘O") { workspace.isOpeningProject = true }
-                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
         }
         .padding(.leading, 18)
         .padding(.trailing, 14)
@@ -79,11 +91,19 @@ private struct ProjectFocusCard: View {
     let context: ProjectContext
     let isFocus: Bool
 
+    /// Narrower than this and the card cannot hold a name, a path and a button on one line, so it takes its
+    /// compact shape; it is also the grid's column floor, so a second card drops to the next row instead.
+    static let minWidth: CGFloat = 320
+
     private var model: ProjectWindowModel { context.model }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            header
+            // The full header, or the compact one when the card is too narrow to hold it.
+            ViewThatFits(in: .horizontal) {
+                header(isCompact: false)
+                header(isCompact: true)
+            }
             if isFocus, let task = waitingTask { decision(task) }
             counts
             sessions
@@ -98,17 +118,29 @@ private struct ProjectFocusCard: View {
         }
     }
 
-    private var header: some View {
+    /// Compact drops the path — the name and a way in are what a card is for, and a squeezed path is the
+    /// first thing that becomes unreadable.
+    private func header(isCompact: Bool) -> some View {
         HStack(spacing: 10) {
             ProjectBadge(ref: context.ref, name: context.name, size: 22)
             VStack(alignment: .leading, spacing: 2) {
-                Text(context.name).font(DeskFont.body.weight(.semibold)).foregroundStyle(DeskColor.ink)
-                Text([context.displayPath, context.branch].filter { !$0.isEmpty }.joined(separator: " · "))
-                    .font(DeskFont.small).foregroundStyle(DeskColor.mutedInk).lineLimit(1)
+                Text(context.name)
+                    .font(DeskFont.body.weight(.semibold))
+                    .foregroundStyle(DeskColor.ink)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                if !isCompact {
+                    Text([context.displayPath, context.branch].filter { !$0.isEmpty }.joined(separator: " · "))
+                        .font(DeskFont.small)
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .lineLimit(1)
+                        .truncationMode(.head)
+                }
             }
             Spacer(minLength: 8)
             Button("Open") { workspace.select(context.ref) }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                .fixedSize()
         }
     }
 
@@ -139,16 +171,18 @@ private struct ProjectFocusCard: View {
         }
     }
 
+    /// A flow, not an HStack: an HStack squeezes its children rather than wrapping, which turned
+    /// "in progress" into one letter a line on a narrow card (2026-09-20, on screen).
     private var counts: some View {
-        HStack(spacing: 18) {
+        FlowLayout(spacing: 16) {
             count(model.workCounts(in: .inProgress).total, "in progress")
             count(model.workCounts(in: .review).total, "in review")
             count(model.workCounts(in: .readyForDev).total, "next up")
             if isFocus, let findings = model.findingsCount, findings > 0 {
                 count(findings, "findings to decide")
             }
-            Spacer(minLength: 0)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func count(_ value: Int, _ label: String) -> some View {
@@ -156,6 +190,8 @@ private struct ProjectFocusCard: View {
             Text("\(value)").font(DeskFont.body.weight(.semibold)).foregroundStyle(DeskColor.ink)
             Text(label).font(DeskFont.small).foregroundStyle(DeskColor.mutedInk)
         }
+        // One count is one thing: it wraps to the next row whole or not at all.
+        .fixedSize()
     }
 
     @ViewBuilder private var sessions: some View {
@@ -167,7 +203,8 @@ private struct ProjectFocusCard: View {
                         Circle()
                             .fill(DeskColor.tone(model.waitingSessions.contains(row.id) ? .waiting : .running).dot)
                             .frame(width: 7, height: 7)
-                        Text(row.title).font(DeskFont.small).foregroundStyle(DeskColor.secondaryInk).lineLimit(1)
+                        Text(row.title).font(DeskFont.small).foregroundStyle(DeskColor.secondaryInk)
+                            .lineLimit(1).truncationMode(.middle)
                         Spacer(minLength: 0)
                     }
                 }

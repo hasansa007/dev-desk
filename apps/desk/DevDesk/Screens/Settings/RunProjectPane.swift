@@ -25,13 +25,32 @@ struct RunProjectPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            PaneTitle("Run project", scope: .thisProject)
-            Text("Rows run in order in the same shell and stop at the first failure.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .padding(.top, 8)
+            PaneHeader("Run project", scope: .thisProject,
+                       summary: "The commands that start this project from the toolbar. Rows run in order in the same shell and stop at the first failure; there is no Save — a pause in typing writes the file.")
+            // Only the EDITOR takes the lock. The notices and the footer used to take it too, under one
+            // `.disabled(isLocked)` with a `.disabled(false)` that cannot undo it — which disabled "Replace
+            // the file…", the one way out of the lock, and "Reveal in Finder", the other (2026-09-20).
+            notices
+            editor.disabled(isLocked)
+            footer.padding(.top, 22)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .onAppear(perform: load)
+        // Reading on disk is the only other writer: a file edited by hand, or replaced, is picked up when
+        // the pane is next shown, never while it is being typed into.
+        .onChange(of: draft) { _, _ in scheduleSave() }
+        .onDisappear { flush() }
+        .confirmationDialog("Replace \(ProjectRunFile.relativePath)?", isPresented: $confirmingReplace, titleVisibility: .visible) {
+            Button("Replace with an empty plan", role: .destructive) { replaceFile() }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("The file could not be read, so what it holds is not shown here. Replacing it discards its contents; fix it by hand instead if they matter.")
+        }
+    }
 
+    /// What is wrong, above the editor and outside its lock, because every action in here undoes the lock.
+    @ViewBuilder private var notices: some View {
+        VStack(alignment: .leading, spacing: 0) {
             if isSample {
                 NoticeBanner(tone: .info, title: "", message: "A sample has no folder, so there is no run plan to edit or to run.", style: .callout)
                     .padding(.top, 16)
@@ -48,8 +67,13 @@ struct RunProjectPane: View {
                 NoticeBanner(tone: .failed, title: "The file was not saved", message: saveError, style: .callout)
                     .padding(.top, 16)
             }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
 
-            setupCard.padding(.top, 20)
+    private var editor: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            setupCard.padding(.top, 18)
 
             SectionLabel("Run configurations").padding(.top, 22)
             if draft.configurations.isEmpty {
@@ -66,21 +90,8 @@ struct RunProjectPane: View {
                     .padding(.top, 10)
             }
 
-            footer.padding(.top, 22)
         }
-        .disabled(isLocked)
-        .frame(maxWidth: 700, alignment: .leading)
-        .onAppear(perform: load)
-        // Reading on disk is the only other writer: a file edited by hand, or replaced, is picked up when
-        // the pane is next shown, never while it is being typed into.
-        .onChange(of: draft) { _, _ in scheduleSave() }
-        .onDisappear { flush() }
-        .confirmationDialog("Replace \(ProjectRunFile.relativePath)?", isPresented: $confirmingReplace, titleVisibility: .visible) {
-            Button("Replace with an empty plan", role: .destructive) { replaceFile() }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("The file could not be read, so what it holds is not shown here. Replacing it discards its contents; fix it by hand instead if they matter.")
-        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     // MARK: - Setup
@@ -88,11 +99,7 @@ struct RunProjectPane: View {
     private var setupCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             SectionLabel("Setup")
-            Text("Runs once, the first time Dev Desk runs this project in a folder — an install, usually. The toolbar's menu can run it again at any time.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
+            SettingNote("Runs once, the first time Dev Desk runs this project in a folder — an install, usually. The toolbar's menu can run it again at any time.")
             CommandRows(rows: $draft.setup, placeholder: "cd web && npm install", addTitle: "Add command", onCommit: flush)
                 .padding(.top, 2)
         }
@@ -109,13 +116,7 @@ struct RunProjectPane: View {
             HStack(spacing: 8) {
                 if isLive { StatusDot(tone: .running, pulses: true) }
                 TextField("Name", text: configuration.name)
-                    .textFieldStyle(.plain)
-                    .font(DeskFont.body.weight(.semibold))
-                    .padding(.horizontal, 10)
-                    .frame(height: 28)
-                    .frame(maxWidth: 320)
-                    .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-                    .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
+                    .settingField(width: 260)
                     .onSubmit(flush)
                     .accessibilityLabel("Configuration name")
                 Spacer(minLength: 4)
@@ -144,11 +145,7 @@ struct RunProjectPane: View {
             Rectangle().fill(DeskColor.rowDivider).frame(height: 1)
             VStack(alignment: .leading, spacing: 6) {
                 SectionLabel("Stop")
-                Text("Runs before Dev Desk stops this run. With no rows, the run is interrupted (^C) and its shell ended.")
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineSpacing(4)
-                    .fixedSize(horizontal: false, vertical: true)
+                SettingNote("Runs before Dev Desk stops this run. With no rows, the run is interrupted (^C) and its shell ended.")
                 CommandRows(rows: configuration.stop, placeholder: "docker compose down", addTitle: "Add stop command", onCommit: flush)
                     .padding(.top, 2)
             }
@@ -178,14 +175,10 @@ struct RunProjectPane: View {
                     .disabled(isSample)
                     .help(isSample ? "A sample has no folder." : "Shows the file in Finder")
             }
-            Text("Committed with the project, so every clone and every worktree runs it the same way. Where setup has already run is Dev Desk's own note (`.devdesk/run-state.json`) and stays on this Mac.")
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineSpacing(4)
-                .fixedSize(horizontal: false, vertical: true)
+            SettingNote("Committed with the project, so every clone and every worktree runs it the same way. Where setup has already run is Dev Desk's own note (`.devdesk/run-state.json`) and stays on this Mac.")
         }
-        // The footer stays readable under a lock: it says where the file is, which is what a locked pane needs most.
-        .disabled(false)
+        // The footer stays live under a lock: it says where the file is and opens it, which is exactly what a
+        // pane locked by an unreadable file needs most.
     }
 
     // MARK: - Editing the draft
@@ -289,12 +282,7 @@ private struct CommandRows: View {
             ForEach(rows.indices, id: \.self) { index in
                 HStack(spacing: 6) {
                     TextField(placeholder, text: row(index))
-                        .textFieldStyle(.plain)
-                        .font(DeskFont.mono(12))
-                        .padding(.horizontal, 10)
-                        .frame(height: 28)
-                        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
+                        .settingField()
                         .onSubmit(onCommit)
                         .accessibilityLabel("Command \(index + 1)")
                     Button { remove(index) } label: {

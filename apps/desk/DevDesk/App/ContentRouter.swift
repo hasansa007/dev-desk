@@ -102,7 +102,9 @@ struct ContentRouter: View {
     /// Over the window rather than inside it: the scrim keeps the work visible behind the file, and dismisses it.
     private var floatingViewer: some View {
         ZStack(alignment: .leading) {
-            DeskColor.ink.opacity(0.18)
+            // A scrim is a ground, not ink: `DeskColor.ink` flips with the appearance, so under Light it
+            // would have washed the window pale instead of dimming it (2026-09-20).
+            Color.black.opacity(0.18)
                 .contentShape(Rectangle())
                 .onTapGesture { model.closeFile() }
             viewer
