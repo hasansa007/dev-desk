@@ -28,16 +28,30 @@ public enum AgentHooks {
     /// event reader skips it; the folder is deleted with the session, and the pid lets a reader ignore a marker a
     /// crashed app left behind.
     public static let workingMarker = ".working"
+    /// The same, for a session that has ASKED and is waiting for the answer. A question is unfinished work too:
+    /// quitting the app throws the pending decision away, which an install did on 2026-09-20 — the developer,
+    /// reading the loss: *"but it was in mid of questions"*. Cleared when the next turn begins, or at exit.
+    public static let askingMarker = ".asking"
 
     /// Writes or clears the marker for one event: a turn begun marks the session working; a finished turn, a
     /// question or an exit clears it. A bell says nothing about a turn and changes nothing.
     public static func markWorking(_ event: TerminalEvent, in directory: URL) {
-        let marker = directory.appendingPathComponent(workingMarker)
+        let working = directory.appendingPathComponent(workingMarker)
+        let asking = directory.appendingPathComponent(askingMarker)
+        let pid = Data(String(ProcessInfo.processInfo.processIdentifier).utf8)
         switch event {
         case .turnStarted:
-            try? Data(String(ProcessInfo.processInfo.processIdentifier).utf8).write(to: marker, options: .atomic)
-        case .turnFinished, .question, .exited:
-            try? FileManager.default.removeItem(at: marker)
+            try? pid.write(to: working, options: .atomic)
+            // Answering is what starts the next turn, so the question is answered by definition.
+            try? FileManager.default.removeItem(at: asking)
+        case .question:
+            try? FileManager.default.removeItem(at: working)
+            try? pid.write(to: asking, options: .atomic)
+        case .turnFinished:
+            try? FileManager.default.removeItem(at: working)
+        case .exited:
+            try? FileManager.default.removeItem(at: working)
+            try? FileManager.default.removeItem(at: asking)
         case .bell:
             break
         }

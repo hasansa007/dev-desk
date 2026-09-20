@@ -282,13 +282,14 @@ struct TerminalsScreen: View {
 
     /// A shell in the task's own worktree — what a recovered run leaves you: the folder it was working in, open,
     /// with its branch checked out. The agent's session is gone; the work it left on disk is not.
-    private func openTerminal(for task: DeskTask) {
+    private func openTerminal(for task: DeskTask, running line: String? = nil) {
         guard let terminals else { return }
         hasChosen = true
         if model.sessions.state(for: task.id).isLive {
             selection = .session(task.id)
             return
         }
+        let typed = line
         let location = worktreeLocation
         Task {
             await model.sessions.start(taskID: task.id, branch: task.branch, taskNumber: task.taskNumber,
@@ -300,6 +301,10 @@ struct TerminalsScreen: View {
             // "selection must name a row" rule, which left the click looking like nothing happened.
             selection = .session(task.id)
             model.selectedSessionID = task.id
+            guard let typed else { return }
+            // The same wait the other typed start uses: a login shell swallows a line typed before its prompt.
+            try? await Task.sleep(for: .milliseconds(700))
+            terminals.sendCommand(typed, to: task.id)
         }
     }
 
@@ -312,6 +317,15 @@ struct TerminalsScreen: View {
             // only the card's id left a recovered run with nothing but Dismiss.
             guard let task = model.tasks.first(where: { $0.id == record.id || DoorRuns.id(for: $0) == record.id })
             else { return nil }
+            // The CLI keeps its own conversation; Dev Desk keeps none. So a session that was running one offers
+            // that CLI's resume, typed into a shell in the same worktree, and anything else offers the shell alone.
+            if let resume = AgentResume.command(for: record.executable) {
+                return RecoveredTile.Handoff(title: "Resume \(resume.name)",
+                                             help: "Opens a shell in this task's worktree and runs `\(resume.line)`, which continues that CLI's own last conversation there.") {
+                    openTerminal(for: task, running: resume.line)
+                    dismiss(record)
+                }
+            }
             return RecoveredTile.Handoff(title: "Open a terminal",
                                          help: "Opens a shell in this task's worktree, where the run was working. It starts fresh — the agent's own conversation is not restored.") {
                 openTerminal(for: task)

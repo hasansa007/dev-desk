@@ -140,7 +140,10 @@ final class ShellTerminalRegistry {
     /// An empty command runs the login shell itself; otherwise the login shell runs the command.
     func start(taskID: String, folder: URL, command: [String] = []) {
         guard !isClosed else { return }
-        if let executable = command.first { executables[taskID] = executable }
+        if let executable = command.first {
+            executables[taskID] = executable
+            sessions.noteExecutable(executable, for: taskID)
+        }
         let terminal = terminal(for: taskID)
         runsCommand[taskID] = !command.isEmpty
         reportsThroughHooks[taskID] = AgentHooks.reports(command.first)
@@ -150,7 +153,12 @@ final class ShellTerminalRegistry {
     /// A door's command, typed into its shell with the agent's hooks added. `preamble` (a `cd … && `) goes in front
     /// after the hooks are added: the agent is found by the line starting with it.
     func sendCommand(_ line: String, to taskID: String, preamble: String = "") {
-        if AgentHooks.reports(line.split(separator: " ").first.map(String.init)) { reportsThroughHooks[taskID] = true }
+        let executable = line.split(separator: " ").first.map(String.init)
+        if AgentHooks.reports(executable) { reportsThroughHooks[taskID] = true }
+        if let executable, AgentKind(rawValue: executable) != nil {
+            executables[taskID] = executable
+            sessions.noteExecutable(executable, for: taskID)
+        }
         send(preamble + AgentHooks.inject(into: line) + "\n", to: taskID)
     }
 

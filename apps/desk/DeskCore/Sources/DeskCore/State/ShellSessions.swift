@@ -54,6 +54,10 @@ public final class ShellSessions {
     @ObservationIgnored public let journal: RunJournal?
     /// What each live session would be called in a recovered row, since nothing else on disk knows the task's title.
     @ObservationIgnored private var titles: [String: String] = [:]
+    /// The CLI each session runs, and what its journal record was written with, so a later `noteExecutable` can
+    /// rewrite that record rather than lose the branch and folder it already carried.
+    @ObservationIgnored private var executables: [String: String] = [:]
+    @ObservationIgnored private var records: [String: (branch: String?, path: String)] = [:]
     /// The last non-empty lines each ended session's process wrote, newest last — the same tail
     /// `JournalRecord.logTail` keeps for background runs, handed in by the app at exit (the terminal's own
     /// buffer is the capture; nothing taps the stream twice) and read back by whatever must say what a run
@@ -134,7 +138,18 @@ public final class ShellSessions {
         journal.write(JournalRecord(id: taskID, kind: .terminalSession, title: titles[taskID] ?? taskID,
                                     agent: isAgent ? "Agent" : "Terminal", directory: root.path,
                                     stateLabel: "Running", purpose: isAgent ? "agent" : "shell",
-                                    branch: branch, folderPath: folder.url.path))
+                                    branch: branch, folderPath: folder.url.path,
+                                    executable: executables[taskID]))
+        records[taskID] = (branch, folder.url.path)
+    }
+
+    /// Which CLI a session is running, told by the registry as it launches one: the journal is written when the
+    /// session starts, and the command is typed a moment later, so the record is rewritten rather than guessed.
+    public func noteExecutable(_ executable: String?, for taskID: String) {
+        guard executables[taskID] != executable else { return }
+        executables[taskID] = executable
+        guard let record = records[taskID] else { return }
+        self.record(taskID: taskID, branch: record.branch, folder: TaskFolder(url: URL(fileURLWithPath: record.path, isDirectory: true), note: nil, created: false))
     }
 
     /// How much context this task's agent is holding, or nil when nothing has been read for it.

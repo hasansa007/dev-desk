@@ -58,4 +58,23 @@ final class AgentHooksTests: XCTestCase {
         XCTAssertNil(AgentHooks.event(fileName: ".event.x", contents: Data()))
         XCTAssertNil(AgentHooks.event(fileName: "other.x", contents: Data()))
     }
+
+    /// A question is unfinished work: the marker outlives the turn that asked it, and the next turn clears it.
+    func testAQuestionLeavesTheAskingMarkerUntilTheNextTurn() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        func exists(_ name: String) -> Bool {
+            FileManager.default.fileExists(atPath: directory.appendingPathComponent(name).path)
+        }
+        AgentHooks.markWorking(.turnStarted, in: directory)
+        XCTAssertTrue(exists(AgentHooks.workingMarker))
+        AgentHooks.markWorking(.question("approve?"), in: directory)
+        XCTAssertFalse(exists(AgentHooks.workingMarker), "it is not working while it waits")
+        XCTAssertTrue(exists(AgentHooks.askingMarker))
+        AgentHooks.markWorking(.turnStarted, in: directory)
+        XCTAssertFalse(exists(AgentHooks.askingMarker), "answering is what starts the next turn")
+        AgentHooks.markWorking(.exited(0), in: directory)
+        XCTAssertFalse(exists(AgentHooks.workingMarker))
+    }
 }

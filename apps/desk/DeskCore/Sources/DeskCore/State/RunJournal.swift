@@ -42,12 +42,16 @@ public struct JournalRecord: Codable, Equatable, Identifiable {
     public var purpose: String?
     public var branch: String?
     public var folderPath: String?
+    /// The CLI the session was running (`claude`, `codex`), so a recovered row can offer that CLI's own resume.
+    /// Nil for a plain shell, and for a record written before this was kept.
+    public var executable: String?
 
     public init(id: String, kind: Kind, title: String, agent: String, directory: String,
                 startedAt: Date = Date(), lastSeenAt: Date = Date(), sessionID: String? = nil,
                 door: String? = nil, subject: String? = nil, permission: String? = nil, mode: String? = nil,
                 stateLabel: String, logTail: [String] = [], clean: Bool = false,
-                purpose: String? = nil, branch: String? = nil, folderPath: String? = nil) {
+                purpose: String? = nil, branch: String? = nil, folderPath: String? = nil,
+                executable: String? = nil) {
         self.id = id
         self.kind = kind
         self.title = title
@@ -66,6 +70,7 @@ public struct JournalRecord: Codable, Equatable, Identifiable {
         self.purpose = purpose
         self.branch = branch
         self.folderPath = folderPath
+        self.executable = executable
     }
 }
 
