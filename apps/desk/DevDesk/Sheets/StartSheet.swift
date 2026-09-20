@@ -72,7 +72,7 @@ struct StartSheet: View {
         HStack(alignment: .top, spacing: 10) {
             VStack(alignment: .leading, spacing: 6) {
                 Text(title)
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: 17, weight: .semibold, design: .monospaced))
                     .foregroundStyle(DeskColor.ink)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)

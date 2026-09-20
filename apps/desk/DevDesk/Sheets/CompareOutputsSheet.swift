@@ -32,7 +32,7 @@ struct CompareOutputsSheet: View {
             HStack(spacing: 8) {
                 Text(output.title).fontWeight(.semibold)
                 Text(output.stateLabel)
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(output.tone == .ended ? DeskColor.mutedInk : DeskColor.tone(output.tone).foreground)
             }
             .padding(.vertical, 10)

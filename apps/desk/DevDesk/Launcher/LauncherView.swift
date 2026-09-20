@@ -9,7 +9,6 @@ struct LauncherView: View {
     var onDismiss: () -> Void = {}
 
     @Environment(OpenProjectRegistry.self) private var registry
-    @Environment(\.openWindow) private var openWindow
     @Environment(\.dismiss) private var dismissWindow
     @AppStorage(PreferenceKey.showSamples) private var showSamples = true
     @State private var selectedID: String?
@@ -173,7 +172,7 @@ struct LauncherView: View {
                 Text("Missing").font(DeskFont.secondary).foregroundStyle(DeskColor.faintInk)
             } else {
                 Text(registry.isOpen(item.ref) ? "Open · focuses its window" : "Open")
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(DeskColor.tone(.info).foreground)
             }
         }
@@ -278,7 +277,7 @@ struct LauncherView: View {
     /// behind the project it opened, the way a welcome window does. It comes back with Open Project (⌘O),
     /// and as a sheet it is dismissed by its host instead.
     private func open(_ ref: ProjectRef) {
-        openWindow(value: ref)
+        Workspace.shared.open(ref)
         onDismiss()
         if context == .window { dismissWindow() }
     }

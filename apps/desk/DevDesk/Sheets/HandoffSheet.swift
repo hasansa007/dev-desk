@@ -47,7 +47,7 @@ struct HandoffSheet: View {
                 HStack(alignment: .firstTextBaseline, spacing: 0) {
                     Text(row.key).foregroundStyle(DeskColor.mutedInk).frame(width: 180, alignment: .leading)
                     Text(row.value)
-                        .font(row.monospaced ? DeskFont.mono(12.5) : .system(size: 12.5))
+                        .font(row.monospaced ? DeskFont.mono(12.5) : .system(size: 12.5, design: .monospaced))
                         .foregroundStyle(DeskColor.ink)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
@@ -62,20 +62,20 @@ struct HandoffSheet: View {
                         Button(provider) { selectedProvider = provider }
                     }
                 } label: {
-                    Text("\(selectedProvider) ▾").font(.system(size: 12.5)).foregroundStyle(DeskColor.ink)
+                    Text("\(selectedProvider) ▾").font(.system(size: 12.5, design: .monospaced)).foregroundStyle(DeskColor.ink)
                 }
                 .menuStyle(.borderlessButton)
                 .menuIndicator(.hidden)
                 .fixedSize()
                 Text("· capabilities shown in Settings")
-                    .font(.system(size: 12.5))
+                    .font(.system(size: 12.5, design: .monospaced))
                     .foregroundStyle(DeskColor.mutedInk)
             }
             .padding(.vertical, 9)
             .padding(.horizontal, 12)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .font(.system(size: 12.5))
+        .font(.system(size: 12.5, design: .monospaced))
         .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.cardRadius))
         .overlay(RoundedRectangle(cornerRadius: DeskMetric.cardRadius).strokeBorder(DeskColor.border))
     }

@@ -45,7 +45,12 @@ struct ContentRouter: View {
                 VStack(spacing: 0) {
                     content
                         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
-
+                    // The dock is the bottom edge of the work it came from (ADR 0021), holding several of this
+                    // project's sessions at once. Never on Sessions: that tab is the same sessions full size,
+                    // and one terminal cannot be hosted by two surfaces (ADR 0026).
+                    if model.destination != .terminals, case .loaded = model.loadState {
+                        SessionDock(model: model)
+                    }
                 }
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
                 if showsSplitViewer {

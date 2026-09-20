@@ -78,7 +78,7 @@ struct AddTaskSheet: View {
 
     private var destinationLine: some View {
         Text(destination.label)
-            .font(.system(size: 12, weight: .medium))
+            .font(.system(size: 12, weight: .medium, design: .monospaced))
             .foregroundStyle(destination.isGitHub ? DeskColor.secondaryInk : DeskColor.mutedInk)
             .help(destination.isGitHub
                   ? "Filed with gh issue create — no agent run and no labels; /dev or the board labels it."
@@ -96,7 +96,7 @@ struct AddTaskSheet: View {
         case .found(let found):
             VStack(alignment: .leading, spacing: 6) {
                 Text("May already exist")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundStyle(DeskColor.secondaryInk)
                 ForEach(found) { candidate in
                     HStack(spacing: 8) {
@@ -104,7 +104,7 @@ struct AddTaskSheet: View {
                             .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(DeskColor.mutedInk)
                         Text(candidate.title)
-                            .font(.system(size: 12))
+                            .font(.system(size: 12, design: .monospaced))
                             .foregroundStyle(DeskColor.ink)
                             .lineLimit(1)
                             .truncationMode(.tail)
@@ -122,7 +122,7 @@ struct AddTaskSheet: View {
     }
 
     private func note(_ text: String) -> some View {
-        Text(text).font(.system(size: 11)).foregroundStyle(DeskColor.faintInk)
+        Text(text).font(.system(size: 11, design: .monospaced)).foregroundStyle(DeskColor.faintInk)
     }
 
     private func row<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {

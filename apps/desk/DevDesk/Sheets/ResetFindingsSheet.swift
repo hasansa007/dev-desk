@@ -187,7 +187,7 @@ struct ResetFindingsSheet: View {
                     .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
                     .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
                 Text("dev:roadmap reads this comment back, so a closed direction is not proposed again. Reopening is `gh issue reopen`.")
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(DeskColor.faintInk)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -206,7 +206,7 @@ struct ResetFindingsSheet: View {
                     .accessibilityLabel(card.label.isEmpty ? "Move \(card.title) to the Trash" : "Close \(card.label) as not planned")
             } else if card.reset == .inProgress {
                 Image(systemName: "exclamationmark.triangle.fill")
-                    .font(.system(size: 10))
+                    .font(.system(size: 10, design: .monospaced))
                     .foregroundStyle(DeskColor.tone(.waiting).dot)
                     .frame(width: 18)
             } else {
@@ -232,7 +232,7 @@ struct ResetFindingsSheet: View {
                     .fixedSize()
             } else {
                 Text(rowNote(card))
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(DeskColor.faintInk)
                     .lineLimit(1)
                     .fixedSize()

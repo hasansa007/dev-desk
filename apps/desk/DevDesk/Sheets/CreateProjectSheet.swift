@@ -5,7 +5,6 @@ import SwiftUI
 struct CreateProjectSheet: View {
     var onDismiss: () -> Void
 
-    @Environment(\.openWindow) private var openWindow
     @State private var name = ""
     @State private var parent = Self.defaultParent()
     @State private var isCreating = false
@@ -80,7 +79,7 @@ struct CreateProjectSheet: View {
             let path = try await ProjectOperations.createProject(named: trimmed, in: parent)
             guard !Task.isCancelled else { return }
             isCreating = false
-            openWindow(value: ProjectRef.local(path: path.path))
+            Workspace.shared.open(.local(path: path.path))
             onDismiss()
         } catch {
             guard !Task.isCancelled else { return }

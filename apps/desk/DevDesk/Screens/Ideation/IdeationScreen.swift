@@ -112,16 +112,15 @@ private struct IdeationSplitView: View {
             .filter { $0.count > 0 }
     }
 
+    /// The queue on the left, the idea you are deciding on the right — the same shape Findings takes, because
+    /// both screens ask the same thing: one yes/no at a time, not a list of them (2026-09-20).
     private var split: some View {
         HStack(spacing: 0) {
             listPane
             Group {
                 if let selected {
-                    ScrollView {
-                        OpportunityDetail(opportunity: selected, model: model)
-                            .padding(18)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
+                    OpportunityFocus(opportunity: selected, model: model, next: next(after: selected),
+                                     skip: { if let next = next(after: selected) { model.selectedOpportunityID = next.id } })
                 } else {
                     Text("No opportunities match this filter.")
                         .font(DeskFont.body)
@@ -129,20 +128,32 @@ private struct IdeationSplitView: View {
                         .padding(18)
                 }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
+    }
+
+    /// The next idea in the run — what "Not now" moves to, so a pass is a step rather than a dead end.
+    private func next(after opportunity: Opportunity) -> Opportunity? {
+        let rest = visible.drop { $0.id != opportunity.id }.dropFirst()
+        return rest.first ?? visible.first { $0.id != opportunity.id }
     }
 
     private var listPane: some View {
         VStack(alignment: .leading, spacing: 0) {
+            Text("\(visible.count) idea\(visible.count == 1 ? "" : "s") in this run")
+                .font(DeskFont.mono(11.5))
+                .foregroundStyle(DeskColor.mutedInk)
+                .padding(EdgeInsets(top: 14, leading: 16, bottom: 10, trailing: 16))
             ScrollView {
-                LazyVStack(alignment: .leading, spacing: 0) {
+                LazyVStack(alignment: .leading, spacing: 2) {
                     ForEach(visible) { opportunity in
                         OpportunityRow(opportunity: opportunity, isSelected: opportunity.id == selected?.id) {
                             model.selectedOpportunityID = opportunity.id
                         }
                     }
                 }
+                .padding(.horizontal, 8)
+                .padding(.bottom, 12)
             }
         }
         .frame(width: 320, alignment: .leading)
@@ -155,7 +166,7 @@ private struct IdeationSplitView: View {
     }
 }
 
-
+/// One idea in the queue: how far it was verified, what it is called, and what it is worth against what it costs.
 private struct OpportunityRow: View {
     let opportunity: Opportunity
     let isSelected: Bool
@@ -163,80 +174,102 @@ private struct OpportunityRow: View {
 
     var body: some View {
         Button(action: action) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(opportunity.title)
-                    .font(DeskFont.body.weight(.semibold))
-                    .foregroundStyle(DeskColor.ink)
-                    .lineLimit(2)
-                Text(detail)
-                    .font(DeskFont.small)
-                    .foregroundStyle(DeskColor.secondaryInk)
+            HStack(spacing: 10) {
+                StatusDot(tone: OpportunityFocus.tone(of: opportunity.verdict), size: 7)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(opportunity.title)
+                        .font(.system(size: 12.5, weight: isSelected ? .semibold : .regular))
+                        .foregroundStyle(DeskColor.ink)
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                    Text(detail)
+                        .font(DeskFont.mono(11))
+                        .foregroundStyle(DeskColor.mutedInk)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
             }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .frame(minHeight: 48, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(EdgeInsets(top: 11, leading: 14, bottom: 11, trailing: 14))
+            .background(isSelected ? DeskColor.neutralChipFill : Color.clear,
+                        in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
             .contentShape(Rectangle())
-            .background(isSelected ? DeskColor.tone(.info).fill : Color.clear)
-            .overlay(alignment: .leading) {
-                if isSelected { Rectangle().fill(DeskColor.accent).frame(width: 3) }
-            }
-            .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
+            // An idea already decided against is still listed, faded — that is what says it was considered.
+            .opacity(opportunity.verdict == .refuted || opportunity.verdict == .declined ? 0.55 : 1)
         }
         .buttonStyle(.plain)
+        .help(opportunity.title)
+        .accessibilityLabel("\(opportunity.title), \(detail)")
     }
 
     /// Gain over cost is the ranking, so the row leads with both when the report gave them.
     private var detail: String {
-        let parts = [opportunity.gain.map { "gain \($0)" }, opportunity.cost.map { "cost \($0)" }].compactMap { $0 }
-        return parts.isEmpty ? opportunity.verdict.rawValue : "\(opportunity.verdict.rawValue) · \(parts.joined(separator: " · "))"
+        let parts = [opportunity.gain.map { "gain \($0.lowercased())" }, opportunity.cost.map { "cost \($0.lowercased())" }].compactMap { $0 }
+        let verdict = opportunity.verdict.rawValue.lowercased()
+        return parts.isEmpty ? verdict : "\(verdict) · \(parts.joined(separator: " · "))"
     }
 }
 
-private struct OpportunityDetail: View {
+/// One idea, in front of you, with its decision under it — file it, or not now. It was a detail pane beside a
+/// list, where the title, the numbers and the File button all read as the same weight; here the question is
+/// the biggest thing on the screen and the three numbers that answer it sit under it (2026-09-20).
+private struct OpportunityFocus: View {
     let opportunity: Opportunity
     let model: ProjectWindowModel
+    let next: Opportunity?
+    let skip: () -> Void
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
 
+    /// The width the eye reads a paragraph at, plus the three value tiles that sit under it.
+    private static let column: CGFloat = 720
+
+    /// Confirmed is a fact about the check, not about a run: blue, never the reserved green.
+    static func tone(of verdict: OpportunityVerdict) -> StatusTone {
+        switch verdict {
+        case .confirmed: return .info
+        case .plausible: return .waiting
+        case .refuted, .declined: return .neutral
+        case .tracked: return .ended
+        }
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(alignment: .top, spacing: 12) {
-                VStack(alignment: .leading, spacing: 6) {
-                    MarkdownText(opportunity.title, font: .system(size: 17, weight: .semibold), color: DeskColor.ink)
-                        .frame(maxWidth: 720, alignment: .leading)
-                    if let proposed = opportunity.proposed {
-                        MarkdownText("→ \(proposed)", color: DeskColor.secondaryInk)
-                            .lineSpacing(5)
-                            .frame(maxWidth: 720, alignment: .leading)
-                    }
-                    if !opportunity.summary.isEmpty {
-                        MarkdownText(opportunity.summary, color: DeskColor.secondaryInk)
-                            .lineSpacing(5)
-                            .frame(maxWidth: 720, alignment: .leading)
-                    }
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                HStack(spacing: 8) {
+                    StatusPill(badge: StatusBadge(Self.tone(of: opportunity.verdict), opportunity.verdict.rawValue))
+                    Spacer(minLength: 8)
+                    Text("run \(opportunity.runID)")
+                        .font(DeskFont.mono(11.5))
+                        .foregroundStyle(DeskColor.mutedInk)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                VStack(alignment: .trailing, spacing: 8) {
-                    PropertyChip(opportunity.verdict.rawValue, verticalPadding: 2, horizontalPadding: 9)
-                    if opportunity.verdict == .confirmed {
-                        Button("File…") { file() }
-                            .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
-                            .disabled(fileBlockedReason != nil)
-                            .help(fileBlockedReason
-                                  ?? model.backlogDestination)
-                    }
+                MarkdownText(opportunity.title, font: .system(size: 28, weight: .bold), color: DeskColor.ink)
+                    .lineSpacing(2)
+                if let proposed = opportunity.proposed {
+                    MarkdownText("→ \(proposed)", font: DeskFont.mono(13), color: DeskColor.tone(.info).foreground)
+                        .lineSpacing(4)
                 }
+                if !opportunity.summary.isEmpty {
+                    MarkdownText(opportunity.summary, font: .system(size: 15), color: DeskColor.secondaryInk)
+                        .lineSpacing(6)
+                }
+                HStack(alignment: .top, spacing: 12) {
+                    valueCard("Gain", opportunity.gain)
+                    valueCard("Cost", opportunity.cost)
+                    valueCard("Doing nothing", opportunity.doingNothing)
+                }
+                HStack(alignment: .top, spacing: 12) {
+                    locationsCard
+                    limitsCard
+                }
+                decisions
             }
-            HStack(alignment: .top, spacing: 14) {
-                valueCard("Gain", opportunity.gain ?? "not stated")
-                valueCard("Cost", opportunity.cost ?? "not stated")
-                valueCard("Doing nothing", opportunity.doingNothing ?? "not stated")
-            }
-            .padding(.top, 16)
-            HStack(alignment: .top, spacing: 14) {
-                locationsCard
-                limitsCard
-            }
-            .padding(.top, 14)
+            .frame(width: Self.column, alignment: .leading)
+            .padding(.vertical, 32)
+            .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
@@ -251,18 +284,39 @@ private struct OpportunityDetail: View {
         model.fileToBacklog(opportunity.backlogDraft, jobs: jobs, agent: defaultConnection)
     }
 
-    private func valueCard(_ title: String, _ value: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+    @ViewBuilder private var decisions: some View {
+        HStack(spacing: 10) {
+            if opportunity.verdict == .confirmed {
+                Button("File it…") { file() }
+                    .buttonStyle(DeskButtonStyle(kind: .primary, size: .decisionPrimary))
+                    .disabled(fileBlockedReason != nil)
+                    .help(fileBlockedReason ?? model.backlogDestination)
+            }
+            Button(opportunity.verdict == .confirmed ? "Not now" : "Next") { skip() }
+                .buttonStyle(DeskButtonStyle(kind: .secondary, size: .decision))
+                .disabled(next == nil)
+                .help(next.map { "Leave this one and read \($0.title)" } ?? "This is the last idea in the run")
+            Spacer(minLength: 8)
+            Text(next.map { "next: \($0.title)" } ?? "the last idea in this run")
+                .font(DeskFont.mono(11.5))
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineLimit(1)
+        }
+    }
+
+    /// The three numbers the decision rests on, read as numbers: the value large, the reason under it.
+    private func valueCard(_ title: String, _ value: String?) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
             SectionLabel(title)
-            MarkdownText(value, font: .system(size: 12.5), color: DeskColor.secondaryInk)
-                .lineSpacing(5)
+            MarkdownText(value ?? "—", font: DeskFont.mono(19, weight: .semibold), color: DeskColor.ink)
+                .lineSpacing(2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .deskCard(padding: 12)
+        .deskCard(padding: 14)
     }
 
     private var locationsCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Source locations")
             if opportunity.locations.isEmpty {
                 Text("No source locations recorded.")
@@ -272,22 +326,22 @@ private struct OpportunityDetail: View {
                 Text(opportunity.locations.joined(separator: "\n"))
                     .font(DeskFont.mono(11.5))
                     .foregroundStyle(DeskColor.secondaryInk)
-                    .lineSpacing(7)
+                    .lineSpacing(6)
                     .textSelection(.enabled)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .deskCard(padding: 12)
+        .deskCard(padding: 14)
     }
 
     private var limitsCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 6) {
             SectionLabel("Verification limits")
             MarkdownText(opportunity.limits, font: .system(size: 12.5), color: DeskColor.secondaryInk)
                 .lineSpacing(5)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .deskCard(padding: 12)
+        .deskCard(padding: 14)
     }
 }
 

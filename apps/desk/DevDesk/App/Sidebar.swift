@@ -2,14 +2,17 @@ import DeskCore
 import SwiftUI
 
 struct Sidebar: View {
-    let model: ProjectWindowModel
+    let context: ProjectContext
     /// Icons only. A narrow window takes this by itself; above the breakpoint it is the developer's choice.
     var isRail = false
+    @State private var isPickingIcon = false
+
+    private var model: ProjectWindowModel { context.model }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            openProjectButton
-            // Open project is not one of the places below it, so a line separates the action from the navigation.
+            projectIcon
+            // The project is not one of the places below it, so a line separates who you are in from where you go.
             Divider().overlay(DeskColor.border).padding(.horizontal, 8).padding(.top, 10).padding(.bottom, 4)
             if model.snapshot != nil {
                 destinations
@@ -29,30 +32,41 @@ struct Sidebar: View {
         }
     }
 
-    /// The one action that is not about this project, so it sits above everything that is — where a
-    /// sidebar's primary action belongs, rather than in the toolbar beside the panel toggles.
-    private var openProjectButton: some View {
-        Button { model.present(.openProject) } label: {
+    /// Which project you are in, at the top of its own rail. It was `+ Open project` — redundant the moment
+    /// the strip grew a `+` of its own — and the rail had nothing on it saying which project it belonged to.
+    /// Click it to change the project's image, its colour, or to put its initials back.
+    private var projectIcon: some View {
+        Button { isPickingIcon = true } label: {
             HStack(spacing: 10) {
-                Image(systemName: "plus.circle")
-                    .font(.system(size: 20))
-                    .frame(width: 24)
+                ProjectBadge(ref: context.ref, name: context.name, size: 32)
                 if !isRail {
-                    Text("Open project")
-                        .font(DeskFont.body.weight(.medium))
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(context.name)
+                            .font(DeskFont.body.weight(.medium))
+                            .foregroundStyle(DeskColor.ink)
+                            .lineLimit(1)
+                        if !context.branch.isEmpty {
+                            Text(context.branch)
+                                .font(DeskFont.small)
+                                .foregroundStyle(DeskColor.mutedInk)
+                                .lineLimit(1)
+                        }
+                    }
+                    Spacer(minLength: 4)
                 }
             }
-            .foregroundStyle(DeskColor.ink)
-            .frame(maxWidth: .infinity)
+            .frame(maxWidth: .infinity, alignment: isRail ? .center : .leading)
             // The same vertical padding and spacing a destination row has, so the two are one size in the rail.
-            .padding(.vertical, 10)
-            .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-            .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.border))
+            .padding(.vertical, 8)
+            .padding(.horizontal, isRail ? 0 : 8)
             .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
         }
         .buttonStyle(.plain)
-        .help(isRail ? "Open project (⌘O)" : "⌘O")
-        .accessibilityLabel("Open project")
+        .help("\(context.name) — change its icon")
+        .accessibilityLabel("\(context.name), change its icon")
+        .popover(isPresented: $isPickingIcon, arrowEdge: .trailing) {
+            ProjectIconPicker(ref: context.ref, name: context.name)
+        }
         .padding(.horizontal, isRail ? 8 : 12)
         .padding(.top, 12)
         .padding(.bottom, 4)
@@ -120,11 +134,13 @@ struct Sidebar: View {
                 }
             }
             .font(DeskFont.body)
-            .foregroundStyle(isSelected ? Color.white : DeskColor.navInk)
+            .foregroundStyle(isSelected ? DeskColor.ink : DeskColor.navInk)
             .padding(.vertical, 10)
             .padding(.horizontal, isRail ? 0 : 10)
             .frame(maxWidth: .infinity)
-            .background(isSelected ? DeskColor.accent : Color.clear, in: RoundedRectangle(cornerRadius: 6))
+            // A raised control, not an accent fill: the Console marks the place you are standing with a
+            // lighter ground and full-strength ink, and keeps the accent for things you can act on.
+            .background(isSelected ? DeskColor.neutralChipFill : Color.clear, in: RoundedRectangle(cornerRadius: 6))
             .contentShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
@@ -154,7 +170,7 @@ struct Sidebar: View {
     }
 
     private func badgeColor(isPending: Bool, isSelected: Bool) -> Color {
-        if isSelected { return .white }
+        if isSelected { return isPending ? DeskColor.tone(.waiting).dot : DeskColor.ink }
         return isPending ? DeskColor.tone(.waiting).dot : DeskColor.navInk
     }
 

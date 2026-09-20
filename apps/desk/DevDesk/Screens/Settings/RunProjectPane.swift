@@ -129,7 +129,7 @@ struct RunProjectPane: View {
                 }
                 Button { removeConfiguration(id) } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
                         .foregroundStyle(DeskColor.mutedInk)
                         .frame(width: 20, height: 20)
                         .contentShape(Rectangle())
@@ -299,7 +299,7 @@ private struct CommandRows: View {
                         .accessibilityLabel("Command \(index + 1)")
                     Button { remove(index) } label: {
                         Image(systemName: "xmark")
-                            .font(.system(size: 9, weight: .bold))
+                            .font(.system(size: 9, weight: .bold, design: .monospaced))
                             .foregroundStyle(DeskColor.mutedInk)
                             .frame(width: 18, height: 18)
                             .contentShape(Rectangle())

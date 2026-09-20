@@ -68,7 +68,7 @@ private struct TaskExternalConnectionPanel: View {
                 .help(checkoutExists ? "Reveal the checkout in Finder" : "This checkout does not exist on this Mac")
                 if !connection.handoffNote.isEmpty {
                     Text(connection.handoffNote)
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.mutedInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -93,13 +93,13 @@ private struct TaskConnectionLevelCard: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(level.name)
-                .font(.system(size: 12, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold, design: .monospaced))
                 .foregroundStyle(DeskColor.ink)
             Text(level.statusLabel)
                 .font(DeskFont.secondary)
                 .foregroundStyle(level.isAvailable ? DeskColor.tone(.running).foreground : DeskColor.faintInk)
             Text(level.detail)
-                .font(.system(size: 11))
+                .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(DeskColor.mutedInk)
                 .fixedSize(horizontal: false, vertical: true)
         }

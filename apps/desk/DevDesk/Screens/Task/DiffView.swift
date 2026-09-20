@@ -28,7 +28,7 @@ struct DiffView: View {
                         .fill(DeskColor.border)
                         .frame(height: 1)
                     Text("Diff truncated at 1,500 lines.")
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.mutedInk)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.vertical, 8)

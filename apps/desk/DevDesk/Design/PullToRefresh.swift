@@ -52,7 +52,7 @@ struct PullToRefresh: ViewModifier {
                     Text("Reloading…")
                 } else {
                     Image(systemName: offset > Self.threshold ? "arrow.clockwise" : "arrow.down")
-                        .font(.system(size: 10, weight: .bold))
+                        .font(.system(size: 10, weight: .bold, design: .monospaced))
                     Text(offset > Self.threshold ? "Release to reload" : "Pull to reload")
                 }
             }

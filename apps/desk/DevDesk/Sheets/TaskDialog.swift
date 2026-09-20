@@ -188,7 +188,7 @@ struct TaskDialog: View {
             PropertyChip("complexity \(task.complexity ?? "—")", fill: DeskColor.neutralChipFill2, verticalPadding: 1)
             Spacer(minLength: 8)
             Text(ageLine)
-                .font(.system(size: 11))
+                .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(DeskColor.faintInk)
                 .lineLimit(1)
         }

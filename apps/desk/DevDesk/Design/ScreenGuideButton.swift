@@ -51,14 +51,14 @@ struct ScreenGuideButton: View {
                 }
                 if showsFlow {
                     Text("Findings → Work → Sessions: decide, order, do.")
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.faintInk)
                         .padding(.top, 2)
                 }
                 if let extra, !extra.isEmpty {
                     Divider()
                     Text(extra)
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.mutedInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }

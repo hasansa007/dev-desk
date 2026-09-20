@@ -90,13 +90,14 @@ struct FilterPanel: View {
                     .frame(width: 28, height: DeskMetric.screenHeaderHeight)
                 if let clear, clear.count > 0 {
                     Text("\(clear.count)")
+                        // A count badge is the one face the Console prototype leaves non-mono: too small for a mono digit.
                         .font(.system(size: 10.5, weight: .bold))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(DeskColor.onColorInk)
                         .padding(.horizontal, 6).padding(.vertical, 1)
                         .background(Capsule().fill(DeskColor.accent))
                 }
                 Text(railTitle)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
                     .foregroundStyle(DeskColor.mutedInk)
                     .lineLimit(1)
                     .truncationMode(.tail)
@@ -126,7 +127,7 @@ struct FilterPanel: View {
     private var panel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(DeskColor.ink).lineLimit(1)
+                Text(title).font(.system(size: 14, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.ink).lineLimit(1)
                 if let guide { ScreenGuideButton(part: title, guide: guide) }
                 Spacer()
                 Button { isCollapsed = true } label: {
@@ -143,11 +144,11 @@ struct FilterPanel: View {
 
             if let clear, clear.count > 0 {
                 HStack {
-                    Text(clear.summary).font(.system(size: 12)).foregroundStyle(DeskColor.secondaryInk).lineLimit(1)
+                    Text(clear.summary).font(.system(size: 12, design: .monospaced)).foregroundStyle(DeskColor.secondaryInk).lineLimit(1)
                     Spacer()
                     Button("Clear all (\(clear.count))", action: clear.run)
                         .buttonStyle(.plain)
-                        .font(.system(size: 12))
+                        .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(DeskColor.accent)
                 }
                 .padding(.horizontal, 14).padding(.vertical, 8)
@@ -188,8 +189,8 @@ struct FilterPanel: View {
                 Button { flip(group.key, in: &foldedRaw) } label: {
                     HStack(spacing: 6) {
                         Image(systemName: isFolded ? "chevron.right" : "chevron.down")
-                            .font(.system(size: 9, weight: .bold)).foregroundStyle(DeskColor.faintInk).frame(width: 10)
-                        Text(group.title).font(.system(size: 12, weight: .semibold)).foregroundStyle(DeskColor.secondaryInk)
+                            .font(.system(size: 9, weight: .bold, design: .monospaced)).foregroundStyle(DeskColor.faintInk).frame(width: 10)
+                        Text(group.title).font(.system(size: 12, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.secondaryInk)
                             .lineLimit(1).fixedSize()
                     }
                     .contentShape(Rectangle())
@@ -199,13 +200,13 @@ struct FilterPanel: View {
                 if let guide = group.guide { ScreenGuideButton(part: group.title, guide: guide) }
                 Spacer(minLength: 4)
                 if group.kind == .filter, group.onCount > 0 {
-                    Text("\(group.onCount) on").font(.system(size: 11.5, weight: .semibold)).foregroundStyle(DeskColor.accent)
+                    Text("\(group.onCount) on").font(.system(size: 11.5, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.accent)
                 }
                 if let accessory = group.accessory { accessory }
                 // Chips or a menu: the same choices either way, remembered per group.
                 Button { flip(group.key, in: &menusRaw) } label: {
                     Image(systemName: asMenu ? "square.grid.2x2" : "list.bullet")
-                        .font(.system(size: 10.5)).foregroundStyle(DeskColor.faintInk)
+                        .font(.system(size: 10.5, design: .monospaced)).foregroundStyle(DeskColor.faintInk)
                         .frame(width: 20, height: 20).contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -218,7 +219,7 @@ struct FilterPanel: View {
                 if let footer = group.footer {
                     Button(footer.title, action: footer.run)
                         .buttonStyle(.plain)
-                        .font(.system(size: 12))
+                        .font(.system(size: 12, design: .monospaced))
                         .foregroundStyle(DeskColor.accent)
                         .padding(.top, 2)
                 }
@@ -258,9 +259,9 @@ struct FilterPanel: View {
             }
         } label: {
             HStack(spacing: 8) {
-                Text(label).font(.system(size: 12.5)).foregroundStyle(DeskColor.ink).lineLimit(1)
+                Text(label).font(.system(size: 12.5, design: .monospaced)).foregroundStyle(DeskColor.ink).lineLimit(1)
                 Spacer(minLength: 4)
-                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold)).foregroundStyle(DeskColor.faintInk)
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.faintInk)
             }
             .padding(.horizontal, 10)
             .frame(height: DeskMetric.chipHeight)

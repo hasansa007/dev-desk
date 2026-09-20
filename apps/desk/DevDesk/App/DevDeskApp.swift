@@ -10,37 +10,24 @@ struct DevDeskApp: App {
     @State private var jobs = JobRegistry(spawner: ProcessJobSpawner())
 
     var body: some Scene {
-        Window("Open Project", id: "launcher") {
-            LauncherView(context: .window)
+        // One window holds every project (ADR 0050). It was a `WindowGroup` keyed by `ProjectRef` — a window
+        // per project — and the launcher was a second window beside it; the strip replaced both, so Open
+        // project is a sheet on this one and Home is what it shows with nothing selected.
+        Window("Dev Desk", id: "workspace") {
+            WorkspaceWindow()
                 .environment(registry)
+                .environment(jobs)
                 .modifier(SnapshotBootstrap())
-                .modifier(AppliesAppearance())
-        }
-        // .contentSize pinned the launcher to its ideal size, so it could not be made smaller than
-        // the display it had to fit on.
-        .windowResizability(.contentMinSize)
-        .defaultPosition(.center)
-
-        WindowGroup(for: ProjectRef.self) { $ref in
-            Group {
-                if let ref {
-                    ProjectWindow(ref: ref)
-                } else {
-                    LauncherView(context: .window)
+                // AppKit makes the delegate before any scene exists, so it is told where the app's runs live.
+                .task {
+                    QuitGuard.jobs = jobs
+                    RunNotifications.attach(to: jobs)
+                    // The registry spans projects; a journal is one project's folder. The app is the only place
+                    // that can map one to the other, so it hands the registry the mapping (ADR 0031).
+                    jobs.journalFor = { directory in
+                        directory.isEmpty ? nil : RunJournal(projectRoot: URL(fileURLWithPath: directory, isDirectory: true))
+                    }
                 }
-            }
-            .environment(registry)
-            .environment(jobs)
-            // AppKit makes the delegate before any scene exists, so it is told where the app's runs live.
-            .task {
-                QuitGuard.jobs = jobs
-                RunNotifications.attach(to: jobs)
-                // The registry spans projects; a journal is one project's folder. The app is the only place
-                // that can map one to the other, so it hands the registry the mapping (ADR 0031).
-                jobs.journalFor = { directory in
-                    directory.isEmpty ? nil : RunJournal(projectRoot: URL(fileURLWithPath: directory, isDirectory: true))
-                }
-            }
         }
         .defaultSize(width: 1440, height: 900)
         .windowToolbarStyle(.unified(showsTitle: true))

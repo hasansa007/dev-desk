@@ -33,7 +33,7 @@ struct FilesPanel: View {
 
     private var header: some View {
         HStack(spacing: 8) {
-            Text("Files").font(.system(size: 13, weight: .semibold)).foregroundStyle(DeskColor.ink)
+            Text("Files").font(.system(size: 13, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.ink)
             Text(model.snapshot?.project.name ?? "")
                 .font(DeskFont.mono(11))
                 .foregroundStyle(DeskColor.mutedInk)

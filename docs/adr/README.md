@@ -58,3 +58,6 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0047](0047-diagrams-are-architecture-data-flow-and-one-sequence-per-flow.md) | Diagrams are Architecture, Data flow and one Sequence per flow — every flow source counts the same | Accepted |
 | [0048](0048-the-board-drops-the-p0-strip.md) | The Board drops the P0 strip | Accepted |
 | [0049](0049-a-ticket-fans-out-into-slices-under-an-orchestrator.md) | A ticket fans out into slices under an orchestrator, and its decisions are front-loaded | Accepted — design |
+| [0050](0050-one-window-holds-every-project-and-the-strip-switches-them.md) | One window holds every project, and the strip switches them | Accepted |
+| [0051](0051-in-progress-gets-the-width-and-a-card-has-a-second-shape.md) | In progress gets the width, and a card has a second shape | Accepted |
+| [0052](0052-the-bottom-edge-is-a-dock-that-holds-several-terminals.md) | The bottom edge is a dock that holds several terminals | Accepted |

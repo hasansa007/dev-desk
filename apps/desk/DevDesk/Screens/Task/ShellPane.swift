@@ -181,7 +181,7 @@ struct TaskRunningBar: View {
             HStack(spacing: 8) {
                 if let note {
                     Text(verbatim: note)
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.terminalDim2)
                         .lineLimit(1)
                         .truncationMode(.tail)
@@ -189,7 +189,7 @@ struct TaskRunningBar: View {
                 }
                 if let usage {
                     Text(usage.label)
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.terminalDim2)
                         .lineLimit(1)
                         .help("How much of its context this agent is holding, as its own CLI reports it")
@@ -269,7 +269,7 @@ private struct TaskDockControlBody: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: DeskMetric.controlRadius)
         configuration.label
-            .font(.system(size: 11))
+            .font(.system(size: 11, design: .monospaced))
             .foregroundStyle(DeskColor.terminalInk)
             .lineLimit(1)
             .padding(.horizontal, 8)

@@ -34,11 +34,11 @@ struct DeleteBranchSheet: View {
                     NoticeBanner(tone: .failed, title: warningTitle, message: warning, style: .compact)
                 } else {
                     Text("Its commits are in the base branch already, so nothing is lost.")
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.faintInk)
                 }
                 Text("Dev Desk deletes the local branch only. A branch pushed to GitHub stays there.")
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(DeskColor.faintInk)
                     .padding(.top, 2)
             }

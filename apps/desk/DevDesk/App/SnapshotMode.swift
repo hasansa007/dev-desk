@@ -211,16 +211,13 @@ struct SnapshotWindowHook: View {
     }
 }
 
-/// In snapshot mode the launcher window opens the project window and closes itself.
+/// In snapshot mode the one window selects the project being captured. It used to open a project window and
+/// dismiss the launcher; with the strip there is nothing to open and nothing to dismiss (ADR 0050).
 struct SnapshotBootstrap: ViewModifier {
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.dismissWindow) private var dismissWindow
-
     func body(content: Content) -> some View {
         content.onAppear {
             guard SnapshotMode.shared.isActive else { return }
-            openWindow(value: SnapshotMode.shared.ref)
-            dismissWindow(id: "launcher")
+            Workspace.shared.open(SnapshotMode.shared.ref)
         }
     }
 }

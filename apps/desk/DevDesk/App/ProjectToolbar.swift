@@ -30,17 +30,17 @@ struct ProjectToolbar: ToolbarContent {
         // Xcode 16.4 (macOS 15 SDK), where it does not exist to be referenced. Swift 6.2 ships with that SDK.
         #if compiler(>=6.2)
         if #available(macOS 26.0, *) {
-            // Run and the panel toggles are separate capsules: an action on the project is not a view of it.
-            // A ToolbarSpacer between them, fixed or flexible, left all four glyphs in one shared glass, so
-            // run opts out of the shared background and draws its own.
+            // Run and the panel toggles are separate items, and NEITHER takes a background. macOS 26 draws the
+            // toolbar as glass: a pale capsule per item and a pale shared one behind the group, which on the
+            // Console's near-black bar read as light chips floating in a dark strip (2026-09-20, on screen).
+            // The controls carry their own chrome in Dev Desk's own colours, so the system's is turned off.
             ToolbarItem(placement: .primaryAction) {
                 RunProjectControl(model: model, terminals: terminals)
-                    .padding(.horizontal, 6)
-                    .glassEffect(.regular.interactive(), in: .capsule)
             }
             .sharedBackgroundVisibility(.hidden)
             ToolbarSpacer(.fixed, placement: .primaryAction)
             panelToggles
+                .sharedBackgroundVisibility(.hidden)
         } else {
             legacyRunAndPanels
         }
@@ -88,7 +88,7 @@ private struct PanelToggle: View {
         Button(action: action) {
             // The size of the sidebar toggle macOS draws at the other end of the toolbar, so the two read as a pair.
             Image(systemName: symbol)
-                .font(.system(size: 15, weight: .regular))
+                .font(.system(size: 15, weight: .regular, design: .monospaced))
                 .foregroundStyle(isOn ? DeskColor.accent : DeskColor.navInk)
                 .overlay(alignment: .topTrailing) {
                     if badge > 0 {

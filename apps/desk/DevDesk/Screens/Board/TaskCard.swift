@@ -68,6 +68,12 @@ struct CardRunControls {
 
 /// One board card; reused wherever a task list needs the same summary (D:162–232).
 struct TaskCard: View {
+    /// One card component, two shapes. Work's In progress column gets the board's width (the Focus layout,
+    /// 2026-09-20), and a run that is being watched needs its stages, its last line and its answer button —
+    /// none of which fit a 248 pt column. Everything else — the menus, Start, the accessibility label — is
+    /// shared, so this is one card in two sizes rather than the per-column card ADR 0024 rejected.
+    enum Variant { case column, focus }
+
     let task: DeskTask
     let isLastOpened: Bool
     let action: () -> Void
@@ -94,22 +100,37 @@ struct TaskCard: View {
     /// commits is In Progress by git's rule (ADR 0011) — but git will not let it be deleted, so it says so
     /// rather than offering an action that can only fail.
     var isCheckedOut = false
+    /// Which shape this card takes; `.focus` is In progress, where the run is watched rather than listed.
+    var variant: Variant = .column
+    /// Where this task's run can be watched and answered. nil on a card with nothing live to open.
+    var showRun: (() -> Void)?
     @State private var startWidth: CGFloat = 0
 
     var body: some View {
         // The card is NOT a Button. It was, with Start and the menu as overlays on top — and SwiftUI gives the
         // click to the outer button, so Start did nothing when pressed. Reported four times before it was
         // believed. A tap gesture on the card's own shape leaves its controls as ordinary children that work.
-        content
+        card
             .opacity(task.isDimmed ? 0.72 : 1)
-            .overlay(alignment: .topTrailing) { movesMenu.padding(DeskMetric.cardPadding - 4) }
-            .overlay(alignment: .bottomTrailing) { startButton.padding(DeskMetric.cardPadding) }
             .onPreferenceChange(StartWidthKey.self) { startWidth = $0 }
             .onTapGesture(perform: action)
             .accessibilityElement(children: .contain)
             .accessibilityLabel(accessibilityLabel)
             .accessibilityAddTraits(.isButton)
             .accessibilityAction(named: "Open") { action() }
+    }
+
+    /// The column card keeps its two overlays (the menu and Start float over a fixed-height block); the focus
+    /// card lays both out in its own footer, because its height follows its content.
+    @ViewBuilder private var card: some View {
+        switch variant {
+        case .column:
+            content
+                .overlay(alignment: .topTrailing) { movesMenu.padding(DeskMetric.cardPadding - 4) }
+                .overlay(alignment: .bottomTrailing) { startButton.padding(DeskMetric.cardPadding) }
+        case .focus:
+            focusContent
+        }
     }
 
     @ViewBuilder private var movesMenu: some View {
@@ -210,6 +231,124 @@ struct TaskCard: View {
         }
         .frame(height: DeskMetric.cardContentHeight, alignment: .topLeading)
         .deskCard(padding: DeskMetric.cardPadding, isSelected: isLastOpened)
+    }
+
+    // MARK: - The focus card (In progress)
+
+    /// In progress gets the board's width, so its card says what a run needs said: what it is, how far the
+    /// pipeline got, its last line, and the one control — Answer, Show the run, or Start. The run that is
+    /// waiting on you is the only outlined card on the board.
+    private var focusContent: some View {
+        VStack(alignment: .leading, spacing: 11) {
+            HStack(alignment: .top, spacing: 10) {
+                Text(task.title)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(DeskColor.ink)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                if let badge = focusBadge {
+                    StatusPill(badge: badge)
+                }
+            }
+            stageChips
+            // The run's own last line, never truncated to one: on this card it is the sentence you read.
+            if let note = task.cardNote, !note.isEmpty {
+                Text(note)
+                    .font(.system(size: 12.5))
+                    .foregroundStyle(task.cardNoteIsWarning ? DeskColor.tone(.failed).dot : DeskColor.secondaryInk)
+                    .lineSpacing(3)
+                    .lineLimit(2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            focusFooter
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .deskCard(padding: DeskMetric.cardPadding, border: focusBorder, isSelected: isLastOpened)
+    }
+
+    /// Amber when it is waiting on you, green while it runs — the two reserved colours, on the one card they
+    /// are about. Every other card on the board keeps the hairline.
+    private var focusBorder: Color {
+        if isWaiting, activity != nil { return DeskColor.tone(.waiting).dot }
+        if activity != nil { return DeskColor.tone(.running).border }
+        return DeskColor.border
+    }
+
+    private var focusBadge: StatusBadge? {
+        if let activity {
+            return isWaiting ? StatusBadge(.waiting, "Needs a decision", symbol: "questionmark.diamond")
+                             : StatusBadge(.running, activity.label, pulses: true)
+        }
+        if isPaused { return StatusBadge(.waiting, "Paused") }
+        return task.cardBadge
+    }
+
+    /// The pipeline as the run's four steps, so how far it got is read at a glance rather than as "2/4".
+    /// The current step is the accent, not green: green says running, and a step is a place, not a state.
+    @ViewBuilder private var stageChips: some View {
+        if let stages = task.pipeline?.stages, !stages.isEmpty {
+            FlowLayout(spacing: 4) {
+                ForEach(stages, id: \.name) { stage in
+                    Text(stage.name)
+                        .font(DeskFont.mono(11))
+                        .foregroundStyle(stageInk(stage.state))
+                        .padding(.vertical, 2)
+                        .padding(.horizontal, 9)
+                        .background(stageFill(stage.state), in: RoundedRectangle(cornerRadius: 4))
+                }
+            }
+        }
+    }
+
+    private func stageInk(_ state: StageState) -> Color {
+        switch state {
+        case .done: return DeskColor.secondaryInk
+        case .current: return DeskColor.tone(.info).foreground
+        case .pending: return DeskColor.faintInk
+        }
+    }
+
+    private func stageFill(_ state: StageState) -> Color {
+        switch state {
+        case .done: return DeskColor.neutralChipFill
+        case .current: return DeskColor.tone(.info).fill
+        case .pending: return DeskColor.neutralChipFill2
+        }
+    }
+
+    /// The facts on one line and the one control at its end — the focus card's Start, Answer or Show the run.
+    private var focusFooter: some View {
+        HStack(spacing: 8) {
+            if let priority = task.priority {
+                PropertyChip(priority, tone: TaskCard.priorityTone(priority), verticalPadding: 0, horizontalPadding: 5)
+            }
+            if !metaText.isEmpty {
+                Text(metaText)
+                    .font(DeskFont.mono(11))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .lineLimit(1)
+            }
+            if !branchFacts.isEmpty {
+                Text(branchFacts)
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.faintInk)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 8)
+            focusAction
+            movesMenu
+        }
+    }
+
+    @ViewBuilder private var focusAction: some View {
+        if let showRun, activity != nil {
+            Button(isWaiting ? "Answer" : "Show the run") { showRun() }
+                .buttonStyle(DeskButtonStyle(kind: isWaiting ? .primary : .secondary, size: .small))
+                .help(isWaiting ? "The run stopped to ask something — answer it where it is waiting"
+                                : "Watch this run where it is")
+        } else {
+            startButton
+        }
     }
 
     /// Always present, so a card with something to say is not a different size from one without. The trailing

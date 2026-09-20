@@ -257,7 +257,7 @@ struct AgentsAndDefaultsPane: View {
                     Text(provider).frame(width: 110, alignment: .leading)
                 }
             }
-            .font(.system(size: 11.5))
+            .font(.system(size: 11.5, design: .monospaced))
             .foregroundStyle(DeskColor.mutedInk)
             .padding(.vertical, 10)
             .padding(.horizontal, 12)

@@ -58,7 +58,7 @@ struct RunFocusSheet: View {
                 if !isRoadmap { stopsPicker }
                 backgroundPicker
                 Text(footnote)
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(DeskColor.faintInk)
                     .lineSpacing(3)
                     .fixedSize(horizontal: false, vertical: true)
@@ -81,7 +81,7 @@ struct RunFocusSheet: View {
             stopRow("Walkthrough", choices: StopChoice.allCases, selection: $stops.walkthrough)
             stopRow("Filing", choices: StopChoice.allCases, selection: $stops.filing)
             Text("Limit: \(runMaxAgents) agents — a plan that needs more starts nothing and says why. Change it in Settings → Execution.")
-                .font(.system(size: 11))
+                .font(.system(size: 11, design: .monospaced))
                 .foregroundStyle(DeskColor.faintInk)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -156,7 +156,7 @@ struct RunFocusSheet: View {
                         }
                     }
                     Text(permission.detail)
-                        .font(.system(size: 11))
+                        .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.faintInk)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -264,7 +264,7 @@ struct FocusChip: View {
         Button(action: action) {
             Text(title)
                 .font(DeskFont.secondary)
-                .foregroundStyle(isOn ? Color.white : DeskColor.ink)
+                .foregroundStyle(isOn ? DeskColor.onColorInk : DeskColor.ink)
                 .padding(.vertical, 5)
                 .padding(.horizontal, 11)
                 .background(isOn ? DeskColor.accent : DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.pillRadius))

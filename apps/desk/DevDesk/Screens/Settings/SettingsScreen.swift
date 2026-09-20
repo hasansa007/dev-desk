@@ -51,7 +51,7 @@ struct SettingsScreen: View {
             Text(section.title)
                 .font(DeskFont.body)
                 .fontWeight(isSelected ? .semibold : .regular)
-                .foregroundStyle(isSelected ? Color.white : DeskColor.navInk)
+                .foregroundStyle(isSelected ? DeskColor.onColorInk : DeskColor.navInk)
                 .padding(.vertical, 7)
                 .padding(.horizontal, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)

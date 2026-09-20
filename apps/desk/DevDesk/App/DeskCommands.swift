@@ -3,7 +3,6 @@ import SwiftUI
 
 struct DeskCommands: Commands {
     @FocusedValue(\.projectModel) private var model: ProjectWindowModel?
-    @Environment(\.openWindow) private var openWindow
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     /// A narrow window takes the rail whatever this says; this is the choice at widths that have room.
     @AppStorage(PreferenceKey.sidebarRail) private var railMode = false
@@ -15,7 +14,8 @@ struct DeskCommands: Commands {
                 .disabled(model == nil)
         }
         CommandGroup(replacing: .newItem) {
-            Button("Open Project…") { openWindow(id: "launcher") }
+            // One window now (ADR 0050): Open project is the strip's `+`, raised as a dialog over it.
+            Button("Open Project…") { Workspace.shared.isOpeningProject = true }
                 .keyboardShortcut("o")
         }
         CommandMenu("Project") {

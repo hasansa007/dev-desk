@@ -55,7 +55,7 @@ struct StatusPill: View {
             }
             Text(badge.label)
         }
-        .font(.system(size: 11))
+        .font(.system(size: 11, design: .monospaced))
         .foregroundStyle(colors.foreground)
         .pill(fill: colors.fill, border: colors.border, vertical: verticalPadding, horizontal: horizontalPadding)
         .accessibilityElement(children: .combine)
@@ -81,7 +81,7 @@ struct PropertyChip: View {
     var body: some View {
         let colors = DeskColor.tone(tone)
         Text(text)
-            .font(.system(size: 11))
+            .font(.system(size: 11, design: .monospaced))
             .foregroundStyle(colors.foreground)
             .pill(fill: fill ?? colors.fill, border: colors.border, vertical: verticalPadding, horizontal: horizontalPadding)
     }
@@ -182,8 +182,8 @@ private struct DeskButtonBody: View {
     var body: some View {
         let shape = RoundedRectangle(cornerRadius: size.radius)
         configuration.label
-            .font(.system(size: size.fontSize, weight: kind == .primary ? .semibold : .regular))
-            .foregroundStyle(kind == .primary ? Color.white : DeskColor.ink)
+            .font(.system(size: size.fontSize, weight: kind == .primary ? .semibold : .regular, design: .monospaced))
+            .foregroundStyle(kind == .primary ? DeskColor.onColorInk : DeskColor.ink)
             .lineLimit(1)
             .padding(.horizontal, size.padding)
             .frame(height: size.height)

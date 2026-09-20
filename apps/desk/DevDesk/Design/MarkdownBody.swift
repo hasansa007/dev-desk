@@ -67,10 +67,10 @@ struct MarkdownBody: View {
 
     private static func headingFont(_ level: Int) -> Font {
         switch level {
-        case 1: .system(size: 16, weight: .semibold)
-        case 2: .system(size: 15, weight: .semibold)
-        case 3: .system(size: 14, weight: .semibold)
-        default: .system(size: 13, weight: .semibold)
+        case 1: .system(size: 16, weight: .semibold, design: .monospaced)
+        case 2: .system(size: 15, weight: .semibold, design: .monospaced)
+        case 3: .system(size: 14, weight: .semibold, design: .monospaced)
+        default: .system(size: 13, weight: .semibold, design: .monospaced)
         }
     }
 }

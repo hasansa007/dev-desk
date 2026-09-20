@@ -32,7 +32,7 @@ struct CancelTaskSheet: View {
                     .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
                     .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
                 Text("The reason is written as a comment on the issue. Reopening it is `gh issue reopen`.")
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(DeskColor.faintInk)
             }
         }

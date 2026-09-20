@@ -62,7 +62,7 @@ private struct TaskPipelineRow: View {
             }
             if let note = pipeline.note {
                 Text(note)
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(DeskColor.faintInk)
                     .fixedSize(horizontal: false, vertical: true)
             }

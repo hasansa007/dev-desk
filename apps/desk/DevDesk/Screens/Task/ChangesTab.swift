@@ -40,7 +40,7 @@ struct ChangesTab: View {
                 .background(DeskColor.surface, in: cardShape)
                 .overlay(cardShape.strokeBorder(DeskColor.border))
                 .padding(.top, 8)
-                MarkdownText(changeSet.baseNote, font: .system(size: 11), color: DeskColor.mutedInk)
+                MarkdownText(changeSet.baseNote, font: .system(size: 11, design: .monospaced), color: DeskColor.mutedInk)
                     .lineSpacing(3.4)
                     .fixedSize(horizontal: false, vertical: true)
                     .padding(.top, 10)

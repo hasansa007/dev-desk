@@ -34,7 +34,7 @@ struct DialogHeader: View {
         VStack(alignment: .leading, spacing: 9) {
             HStack(alignment: .top, spacing: 10) {
                 Text(title)
-                    .font(.system(size: 26, weight: .semibold))
+                    .font(.system(size: 26, weight: .semibold, design: .monospaced))
                     .foregroundStyle(DeskColor.ink)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
@@ -169,7 +169,7 @@ struct DialogFooter<Leading: View>: View {
             Spacer(minLength: 8)
             if let blocked = primary.blockedReason {
                 Text(blocked)
-                    .font(.system(size: 11))
+                    .font(.system(size: 11, design: .monospaced))
                     .foregroundStyle(DeskColor.faintInk)
                     .lineLimit(1)
             }

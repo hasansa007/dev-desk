@@ -100,7 +100,7 @@ struct SheetChrome<Content: View>: View {
     private var header: some View {
         HStack(alignment: .top, spacing: 10) {
             Text(title)
-                .font(.system(size: 17, weight: .semibold))
+                .font(.system(size: 17, weight: .semibold, design: .monospaced))
                 .foregroundStyle(DeskColor.ink)
                 .lineLimit(2)
                 .fixedSize(horizontal: false, vertical: true)

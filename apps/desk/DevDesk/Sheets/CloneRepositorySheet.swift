@@ -5,7 +5,6 @@ import SwiftUI
 struct CloneRepositorySheet: View {
     var onDismiss: () -> Void
 
-    @Environment(\.openWindow) private var openWindow
     @State private var urlText = ""
     @State private var destination = Self.defaultDestination()
     @State private var isCloning = false
@@ -81,7 +80,7 @@ struct CloneRepositorySheet: View {
             let path = try await ProjectOperations.cloneRepository(url: trimmed, into: destination)
             guard !Task.isCancelled else { return }
             isCloning = false
-            openWindow(value: ProjectRef.local(path: path.path))
+            Workspace.shared.open(.local(path: path.path))
             onDismiss()
         } catch {
             guard !Task.isCancelled else { return }

@@ -4,8 +4,22 @@ import SwiftUI
 
 struct BoardScreen: View {
     @Bindable var model: ProjectWindowModel
-    /// Done only grows; hiding it gives the other columns the width (ADR 0046 decision 16).
-    @AppStorage("workHidesDone") private var hidesDone = false
+    /// Done only grows, and merged work is the one column you never act on: it is a strip at the board's edge
+    /// until you ask for it (the Focus layout, 2026-09-20), which is what gives In progress the width.
+    @AppStorage("workHidesDone") private var hidesDone = true
+
+    /// The columns you scan; In progress takes everything they leave, so the run you are watching is the
+    /// widest thing on screen. `DeskMetric.boardColumnWidth` still sizes a board that is all columns.
+    static let sideColumnWidth: CGFloat = 248
+    /// What a side column may be squeezed to before In progress is asked to give up any width. With the
+    /// filter panel open on a 1100 pt window the fixed 248s left In progress 48 pt — a sliver where the
+    /// widest thing on screen was supposed to be (2026-09-20, on screen).
+    static let sideColumnMinWidth: CGFloat = 186
+    /// Below this In progress stops being the focus of anything, so the board goes back to equal columns
+    /// you scroll sideways rather than drawing four slivers.
+    static let focusMinWidth: CGFloat = 300
+    /// Done, closed: a count and its name turned on its side.
+    static let doneStripWidth: CGFloat = 52
 
     var body: some View {
         // Work (ADR 0046 decisions 13, 14): the one header and the filters span the tab; below them the milestones on
@@ -15,7 +29,6 @@ struct BoardScreen: View {
             filterPanel
             VStack(spacing: 0) {
                 header
-                boardBar
                 boardArea
             }
         }
@@ -200,33 +213,27 @@ struct BoardScreen: View {
                     .padding(16)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             } else {
+                // The Focus layout (2026-09-20): Next up and Review keep a column's width, In progress takes
+                // the rest, and Done is the strip at the edge. No column surface — the cards sit on the
+                // board's own ground, so the eye lands on the outlined run and not on four boxes.
                 GeometryReader { proxy in
-                    ScrollView([.horizontal, .vertical]) {
+                    // Wide enough for the Focus layout, or not: a flexible column between fixed ones starves
+                    // silently when the room runs out, so the fallback is chosen here rather than discovered
+                    // as a 48 pt In progress.
+                    let fits = Self.fitsFocusLayout(width: proxy.size.width, columns: columns.count)
+                    ScrollView(fits ? .vertical : [.vertical, .horizontal]) {
                         HStack(alignment: .top, spacing: 14) {
-                            // The headers are one pinned row, so a long Done column scrolls under its title
-                            // instead of taking it off screen. Spacing -1 lays each body's top border under
-                            // its header's bottom one, so the seam is a single line.
-                            LazyVStack(alignment: .leading, spacing: -1, pinnedViews: [.sectionHeaders]) {
-                                Section {
-                                    HStack(alignment: .top, spacing: 14) {
-                                        ForEach(columns) { entry in
-                                            BoardColumnView(column: entry.column, tasks: entry.tasks, model: model)
-                                        }
-                                    }
-                                } header: {
-                                    HStack(spacing: 14) {
-                                        ForEach(columns) { entry in
-                                            BoardColumnHeader(column: entry.column, model: model)
-                                        }
-                                    }
-                                    .padding(.top, 16)
-                                    .background(DeskColor.canvas)
-                                }
+                            ForEach(columns) { entry in
+                                BoardColumnView(column: entry.column, tasks: entry.tasks, model: model,
+                                                isCompact: !fits,
+                                                collapseDone: entry.column == .done ? { hidesDone = true } : nil)
                             }
-                            .fixedSize(horizontal: true, vertical: false)
+                            if hidesDone {
+                                doneStrip(count: doneCount(tasks))
+                            }
                         }
-                        .padding([.horizontal, .bottom], 16)
-                        .frame(minWidth: proxy.size.width, minHeight: proxy.size.height, alignment: .topLeading)
+                        .padding(16)
+                        .frame(minWidth: fits ? proxy.size.width : nil, alignment: .topLeading)
                         .pullToRefresh(isRefreshing: model.isRefreshing) { await model.sync() }
                     }
                     .pullToRefreshSpace()
@@ -235,24 +242,48 @@ struct BoardScreen: View {
         }
     }
 
+    /// Room for every side column at its floor, the Done strip, the gaps and the padding, and still
+    /// `focusMinWidth` left for In progress.
+    static func fitsFocusLayout(width: CGFloat, columns: Int) -> Bool {
+        let sides = CGFloat(max(columns - 1, 0)) * sideColumnMinWidth
+        let chrome = 32 + CGFloat(columns) * 14 + doneStripWidth
+        return width - sides - chrome >= focusMinWidth
+    }
+
     private var visibleColumns: [BoardColumn] {
         // No Backlog column: Work's milestone list is the backlog; Queued rides in the first column (ADR 0046).
         ProjectWindowModel.workColumns.filter { !(hidesDone && $0 == .done) }
     }
 
-    /// Above the columns: Hide Done, the one switch about the Board itself rather than what it holds.
-    private var boardBar: some View {
-        HStack {
-            Spacer()
-            Toggle("Hide Done", isOn: $hidesDone)
-                .toggleStyle(.switch)
-                .controlSize(.mini)
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.secondaryInk)
-                .help("Done only grows; hiding it gives the other columns the width")
+    private func doneCount(_ tasks: [DeskTask]) -> Int {
+        tasks.filter { model.inWorkColumn($0, .done) && matches($0) }.count
+    }
+
+    /// Done, closed: what merged, as a number you can open. It replaced a Hide Done switch above the board —
+    /// a switch that had to be found to give the board its width back, and said nothing while it was off.
+    private func doneStrip(count: Int) -> some View {
+        Button { hidesDone = false } label: {
+            VStack(spacing: 10) {
+                Text("\(count)")
+                    .font(DeskFont.mono(13, weight: .semibold))
+                    .foregroundStyle(DeskColor.tone(.ended).foreground)
+                Text(BoardColumn.done.title.uppercased())
+                    .font(DeskFont.label)
+                    .tracking(0.66)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .fixedSize()
+                    .rotationEffect(.degrees(90))
+                    .frame(width: 14, height: 56)
+                Spacer(minLength: 0)
+            }
+            .padding(.vertical, 12)
+            .frame(width: Self.doneStripWidth, alignment: .top)
+            .frame(maxHeight: .infinity, alignment: .top)
+            .deskCard(padding: 0)
         }
-        .padding(.horizontal, 16)
-        .padding(.top, 8)
+        .buttonStyle(.plain)
+        .help("Show Done — \(count) merged")
+        .accessibilityLabel("Show Done, \(count) merged")
     }
 
     private func matches(_ task: DeskTask) -> Bool {
@@ -272,15 +303,12 @@ private struct ColumnEntry: Identifiable {
     var id: BoardColumn { column }
 }
 
-/// A column's title row, pinned above the board's scroll so it stays on screen while its cards scroll under it.
+/// A column's title row: its name, what it holds, what is live in it, and the one control the column owns.
 private struct BoardColumnHeader: View {
     let column: BoardColumn
     let model: ProjectWindowModel
-
-    static let headerShape = UnevenRoundedRectangle(topLeadingRadius: DeskMetric.cardRadius,
-                                                    topTrailingRadius: DeskMetric.cardRadius)
-    static let bodyShape = UnevenRoundedRectangle(bottomLeadingRadius: DeskMetric.cardRadius,
-                                                  bottomTrailingRadius: DeskMetric.cardRadius)
+    /// Set on Done only: the way back to the strip it came out of.
+    var collapse: (() -> Void)?
 
     /// Over every card in the column, not the visible subset: a column filtered by the search box is still working.
     private var counts: (total: Int, live: Int) { model.workCounts(in: column) }
@@ -294,6 +322,16 @@ private struct BoardColumnHeader: View {
             }
             .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
             .help("Watch these \(model.parallelTasks.count) tasks run next to each other")
+        }
+        if let collapse {
+            Button { collapse() } label: {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .semibold))
+                    .foregroundStyle(DeskColor.mutedInk)
+            }
+            .buttonStyle(.plain)
+            .help("Close Done back to its strip")
+            .accessibilityLabel("Hide Done")
         }
     }
 
@@ -322,12 +360,8 @@ private struct BoardColumnHeader: View {
             Spacer(minLength: 0)
             columnControl
         }
-        .frame(height: DeskMetric.columnHeaderHeight)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
-        .background(DeskColor.surface, in: Self.headerShape)
-        .overlay(Self.headerShape.strokeBorder(DeskColor.border))
+        .frame(height: 28)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -335,6 +369,13 @@ private struct BoardColumnView: View {
     let column: BoardColumn
     let tasks: [DeskTask]
     let model: ProjectWindowModel
+    /// The board had no room for the Focus layout: every column is a column again and the board scrolls
+    /// sideways, so In progress keeps the wide card but not the width.
+    var isCompact = false
+    /// Done's way back to the strip; nil on every other column.
+    var collapseDone: (() -> Void)?
+    /// In progress is where a run is watched, so it takes the wide card and the width (the Focus layout).
+    private var isFocus: Bool { column == .inProgress }
     @State private var pending: PendingMove?
     /// Done keeps only the latest few (Settings › Work); the rest is a count, not a scroll.
     private var doneLimit: Int { model.snapshot?.workSettings.doneLimit ?? 10 }
@@ -492,7 +533,8 @@ private struct BoardColumnView: View {
     /// (ADR 0027), so a sample project — no folder on disk to write into — keeps the button visible but
     /// disabled, with the reason on it.
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: isFocus ? 10 : 8) {
+            BoardColumnHeader(column: column, model: model, collapse: collapseDone)
             ForEach(shownTasks) { task in
                 TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
@@ -506,20 +548,30 @@ private struct BoardColumnView: View {
                              model.settingsSection = .startWith
                              model.present(.settings)
                          },
-                         isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch)
+                         isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch,
+                         variant: isFocus ? .focus : .column,
+                         showRun: { model.selectedSessionID = task.id; model.go(.terminals) })
+            }
+            if shownTasks.isEmpty {
+                Text(column == .inProgress ? "Nothing is running. Start a task from Next up."
+                                           : "Nothing here.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DeskColor.faintInk)
+                    .padding(.horizontal, 2)
             }
             if hiddenCount > 0 {
                 Text("\(hiddenCount) more merged — Settings › Work sets how many Done shows")
                     .font(.system(size: 11))
                     .foregroundStyle(DeskColor.mutedInk)
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 2)
             }
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
-        .frame(width: DeskMetric.boardColumnWidth, alignment: .leading)
-        .background(DeskColor.surface, in: BoardColumnHeader.bodyShape)
-        .overlay(BoardColumnHeader.bodyShape.strokeBorder(DeskColor.border))
+        // Next up and Review are a column wide and compress to their floor; In progress takes everything
+        // they leave. On a board too narrow for that, every column is the full width and the board scrolls.
+        .frame(minWidth: isFocus ? BoardScreen.focusMinWidth
+                                 : (isCompact ? BoardScreen.sideColumnWidth : BoardScreen.sideColumnMinWidth),
+               maxWidth: isFocus && !isCompact ? .infinity : BoardScreen.sideColumnWidth,
+               alignment: .leading)
         .confirmationDialog(pending.map { TrackerWrite.confirmation(issue: $0.issue, slug: model.snapshot?.slug ?? "", action: $0.action) } ?? "",
                             isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
                             titleVisibility: .visible) {

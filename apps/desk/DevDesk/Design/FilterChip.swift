@@ -38,15 +38,16 @@ struct FilterChip: View {
                 if let tone { Circle().fill(DeskColor.tone(tone).dot).frame(width: 7, height: 7) }
                 if let badge {
                     Text(badge)
+                        // A count badge is the one face the Console prototype leaves non-mono: too small for a mono digit.
                         .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(Color.white)
+                        .foregroundStyle(DeskColor.onColorInk)
                         .padding(.horizontal, 5).padding(.vertical, 1)
                         .background(RoundedRectangle(cornerRadius: 5).fill(DeskColor.accent))
                 }
                 labelText
                 if let count {
                     Text(count)
-                        .font(.system(size: 12).monospacedDigit())
+                        .font(.system(size: 12, design: .monospaced).monospacedDigit())
                         .foregroundStyle(isOn ? DeskColor.accent.opacity(0.75) : DeskColor.faintInk)
                 }
             }
@@ -59,7 +60,7 @@ struct FilterChip: View {
 
 extension FilterChip {
     @ViewBuilder var labelText: some View {
-        let text = Text(label).font(.system(size: 13, weight: isOn ? .semibold : .regular)).lineLimit(1)
+        let text = Text(label).font(.system(size: 13, weight: isOn ? .semibold : .regular, design: .monospaced)).lineLimit(1)
         if let maxLabelWidth {
             // Its natural width up to the cap, then cut: `fixedSize` on the chip would otherwise ask for all of it.
             text.truncationMode(.tail).frame(maxWidth: min(maxLabelWidth, Self.width(of: label)), alignment: .leading)
