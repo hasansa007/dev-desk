@@ -47,13 +47,28 @@ struct HomeScreen: View {
         // Home carried no toolbar at all, so macOS gave it a short, pale title bar of its own and the
         // window's chrome changed height as you switched to it (2026-09-20, on screen). Open project moved
         // up here from the page header rather than being drawn in both places.
-        .toolbar {
-            ToolbarItem(placement: .primaryAction) {
-                Button("Open project") { workspace.isOpeningProject = true }
-                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
-                    .help("⌘O")
-            }
+        .toolbar { openProject }
+    }
+
+    /// The button carries Dev Desk's own chrome, so macOS 26's glass capsule behind it is turned off — the same
+    /// call `ProjectToolbar` makes, and for the same reason: two backgrounds around one label read as a tooltip.
+    @ToolbarContentBuilder private var openProject: some ToolbarContent {
+        #if compiler(>=6.2)
+        if #available(macOS 26.0, *) {
+            ToolbarItem(placement: .primaryAction) { openProjectButton }
+                .sharedBackgroundVisibility(.hidden)
+        } else {
+            ToolbarItem(placement: .primaryAction) { openProjectButton }
         }
+        #else
+        ToolbarItem(placement: .primaryAction) { openProjectButton }
+        #endif
+    }
+
+    private var openProjectButton: some View {
+        Button("Open project") { workspace.isOpeningProject = true }
+            .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+            .help("⌘O")
     }
 
     private var header: some View {
