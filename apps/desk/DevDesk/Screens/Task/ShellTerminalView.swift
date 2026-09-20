@@ -387,6 +387,13 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
     func start(in folder: URL, generation: Int, command: [String] = []) {
         guard view.process.shellPid == 0 else { return }
         self.generation = generation
+        // A view that has never been laid out — a session started from a tab that is not in front, or from the
+        // recovered list — can be sized 0×0, and the shell is handed a 0-column terminal: zsh draws its prompt,
+        // then its line editor fails with "error on TTY read: invalid argument" and exits 1 (2026-09-20). The
+        // frame is what SwiftTerm measures, so it is given a real one before the process starts.
+        if view.frame.width < 32 || view.frame.height < 32 {
+            view.frame = NSRect(x: 0, y: 0, width: 640, height: 240)
+        }
         let shell = LoginShell.path
         // The folder, the shell and each word of the command are arguments of their own, never text of the script.
         let script: [String]
