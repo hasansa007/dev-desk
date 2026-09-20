@@ -280,6 +280,24 @@ struct TerminalsScreen: View {
         }
     }
 
+    /// A shell in the task's own worktree — what a recovered run leaves you: the folder it was working in, open,
+    /// with its branch checked out. The agent's session is gone; the work it left on disk is not.
+    private func openTerminal(for task: DeskTask) {
+        guard let terminals else { return }
+        hasChosen = true
+        selection = .session(task.id)
+        model.selectedSessionID = task.id
+        guard !model.sessions.state(for: task.id).isLive else { return }
+        let location = worktreeLocation
+        Task {
+            await model.sessions.start(taskID: task.id, branch: task.branch, taskNumber: task.taskNumber,
+                                       noBranchNote: task.noBranchNote, worktreeLocation: location,
+                                       title: task.title, baseRef: task.baseRef)
+            guard case .running(let folder) = model.sessions.state(for: task.id) else { return }
+            terminals.start(taskID: task.id, folder: folder.url)
+        }
+    }
+
     /// The honest second best. It never claims the old conversation is back: a session is re-opened for the
     /// task, or the door is run again from its start.
     private func handoff(for record: JournalRecord) -> RecoveredTile.Handoff? {
@@ -289,9 +307,10 @@ struct TerminalsScreen: View {
             // only the card's id left a recovered run with nothing but Dismiss.
             guard let task = model.tasks.first(where: { $0.id == record.id || DoorRuns.id(for: $0) == record.id })
             else { return nil }
-            return RecoveredTile.Handoff(title: "Open the task",
-                                         help: "Opens the task so you can start a session again. It starts fresh — the agent's own conversation is not restored.") {
-                model.openTask(task.id)
+            return RecoveredTile.Handoff(title: "Open a terminal",
+                                         help: "Opens a shell in this task's worktree, where the run was working. It starts fresh — the agent's own conversation is not restored.") {
+                openTerminal(for: task)
+                dismiss(record)
             }
         case .backgroundRun:
             guard record.sessionID == nil, let door = record.door, !door.isEmpty, let jobs else { return nil }
