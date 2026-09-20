@@ -52,9 +52,18 @@ struct FindingFocus: View {
                         .lineSpacing(6)
                         .fixedSize(horizontal: false, vertical: true)
                 }
-                HStack(alignment: .top, spacing: 12) {
-                    verificationTile
-                    sourcesTile
+                // Side by side where there is room, stacked where there is not: a migration filename is one
+                // unbreakable word, and two tiles sharing a narrow pane pushed it past the right edge with the
+                // counter and the footer behind it (2026-09-20, on screen).
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .top, spacing: 12) {
+                        verificationTile
+                        sourcesTile
+                    }
+                    VStack(alignment: .leading, spacing: 12) {
+                        verificationTile
+                        sourcesTile
+                    }
                 }
                 decisions
                 footer
@@ -62,6 +71,7 @@ struct FindingFocus: View {
             // A maximum, not a width: a fixed column cannot give anything back, so with the filter panel
             // open the screen demanded more than the window had (2026-09-20, on screen).
             .frame(maxWidth: Self.column, alignment: .leading)
+            .padding(.horizontal, 24)
             .padding(.vertical, 32)
             .frame(maxWidth: .infinity, alignment: .center)
         }
@@ -111,11 +121,25 @@ struct FindingFocus: View {
 
     private var sourcesTile: some View {
         tile("Sources · \(finding.locations.count)") {
-            Text(finding.locations.isEmpty ? "No source locations recorded." : finding.locations.joined(separator: "\n"))
-                .font(DeskFont.mono(11.5))
-                .foregroundStyle(DeskColor.secondaryInk)
-                .lineSpacing(6)
+            if finding.locations.isEmpty {
+                Text("No source locations recorded.")
+                    .font(DeskFont.mono(11.5))
+                    .foregroundStyle(DeskColor.secondaryInk)
+            } else {
+                // One line each, cut in the middle: a path's head and its line numbers are what identify it,
+                // and selecting a truncated line still copies the whole of it.
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(finding.locations, id: \.self) { location in
+                        Text(location)
+                            .font(DeskFont.mono(11.5))
+                            .foregroundStyle(DeskColor.secondaryInk)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .help(location)
+                    }
+                }
                 .textSelection(.enabled)
+            }
         }
     }
 
@@ -150,22 +174,29 @@ struct FindingFocus: View {
                 }
             }
         } else {
-            HStack(alignment: .top, spacing: 12) {
-                decisionButton("File it", "A new issue, with the report's evidence attached", isPrimary: true,
-                               disabled: fileBlockedReason,
-                               action: { model.fileToBacklog(finding.backlogDraft, jobs: jobs, agent: backgroundConnection) })
-                if let issue = finding.reconcile?.candidateIssue {
-                    decisionButton("Add to #\(issue)", "Compare it with the issue that may already cover it",
-                                   action: { model.present(.reconcileFinding(finding.id)) })
-                }
-                if isIgnored {
-                    decisionButton("Bring it back", "Put it back among the findings waiting on you",
-                                   action: { model.restoreFinding(finding.id) })
-                } else {
-                    decisionButton("Drop it", "Ignored until you ask for ignored findings",
-                                   action: { model.ignoreFinding(finding.id) })
-                }
+            // The answers keep their full sentence: a row of them squeezed into a narrow pane cut the last
+            // one off rather than wrapping it (2026-09-20, on screen), so below that width they stack.
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 12) { decisionButtons }
+                VStack(alignment: .leading, spacing: 10) { decisionButtons }
             }
+        }
+    }
+
+    @ViewBuilder private var decisionButtons: some View {
+        decisionButton("File it", "A new issue, with the report's evidence attached", isPrimary: true,
+                       disabled: fileBlockedReason,
+                       action: { model.fileToBacklog(finding.backlogDraft, jobs: jobs, agent: backgroundConnection) })
+        if let issue = finding.reconcile?.candidateIssue {
+            decisionButton("Add to #\(issue)", "Compare it with the issue that may already cover it",
+                           action: { model.present(.reconcileFinding(finding.id)) })
+        }
+        if isIgnored {
+            decisionButton("Bring it back", "Put it back among the findings waiting on you",
+                           action: { model.restoreFinding(finding.id) })
+        } else {
+            decisionButton("Drop it", "Ignored until you ask for ignored findings",
+                           action: { model.ignoreFinding(finding.id) })
         }
     }
 
@@ -211,6 +242,9 @@ struct FindingFocus: View {
             Text(next.map { "decide each once · next: \($0.id)" } ?? "nothing left to decide")
                 .font(DeskFont.mono(11.5))
                 .foregroundStyle(DeskColor.mutedInk)
+                // The buttons are the row; this line is the one thing in it that can be cut short.
+                .lineLimit(1)
+                .layoutPriority(-1)
         }
     }
 }
