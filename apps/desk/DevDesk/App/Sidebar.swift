@@ -9,8 +9,8 @@ struct Sidebar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             openProjectButton
-            // The name and path are the window's own title and subtitle; the sidebar repeated them.
-            Color.clear.frame(height: 8)
+            // Open project is not one of the places below it, so a line separates the action from the navigation.
+            Divider().overlay(DeskColor.border).padding(.horizontal, 8).padding(.top, 10).padding(.bottom, 4)
             if model.snapshot != nil {
                 destinations
                 Spacer(minLength: 12)
@@ -59,7 +59,7 @@ struct Sidebar: View {
     }
 
     private var destinations: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 6) {
             ForEach(Destination.sidebar, id: \.self) { destination in
                 destinationButton(destination)
             }

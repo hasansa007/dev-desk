@@ -143,8 +143,10 @@ public enum DuplicateSearch {
 
 /// `gh issue create` for a draft — no agent run, no guessed labels (ADR 0045 step 4).
 public enum IssueCreate {
-    public static func arguments(slug: String, draft: TaskDraft, milestone: String?) -> [String] {
+    public static func arguments(slug: String, draft: TaskDraft, milestone: String?, labels: [String] = []) -> [String] {
         var arguments = ["issue", "create", "--repo", slug, "--title", draft.trimmedTitle, "--body", draft.body]
+        // The ratings the developer chose in the sheet, never guessed ones (ADR 0020).
+        if !labels.isEmpty { arguments += ["--label", labels.joined(separator: ",")] }
         if let milestone = milestone?.trimmingCharacters(in: .whitespacesAndNewlines), !milestone.isEmpty {
             arguments += ["--milestone", milestone]
         }

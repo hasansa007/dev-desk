@@ -15,7 +15,7 @@ public enum TrackerAction: Equatable, Hashable {
     case draftPullRequest
     /// The dialog's own edit: the issue's title, its body, and the `impact:`/`complexity:` labels that carry its
     /// ratings. What the developer typed is the confirmation, so this one is written without a dialog.
-    case edit(title: String, body: String, addLabels: [String], removeLabels: [String])
+    case edit(title: String, body: String, addLabels: [String], removeLabels: [String], milestone: String?)
 }
 
 public enum TrackerWriteError: Error, Equatable, LocalizedError {
@@ -69,12 +69,16 @@ public struct TrackerWrite {
         case .draftPullRequest:
             // `issue` carries the pull request number here: the write edits the PR, not the issue behind it.
             return ["pr", "ready", String(issue), "--repo", slug, "--undo"]
-        case .edit(let title, let body, let add, let remove):
+        case .edit(let title, let body, let add, let remove, let milestone):
             let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !title.isEmpty else { return nil }
             var arguments = ["issue", "edit", String(issue), "--repo", slug, "--title", title, "--body", body]
             if !add.isEmpty { arguments += ["--add-label", add.joined(separator: ",")] }
             if !remove.isEmpty { arguments += ["--remove-label", remove.joined(separator: ",")] }
+            // "" is the None row: the issue leaves its milestone. nil is "leave it alone".
+            if let milestone {
+                arguments += milestone.isEmpty ? ["--remove-milestone"] : ["--milestone", milestone]
+            }
             return arguments
         }
     }

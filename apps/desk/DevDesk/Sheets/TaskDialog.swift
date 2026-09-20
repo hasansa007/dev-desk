@@ -22,8 +22,7 @@ struct TaskDialog: View {
     /// The dialog's edit, open only for an issue: a local entry is still edited in its own file.
     @State private var edit: TaskEdit?
 
-    /// What an issue's ratings can be set to; "—" clears the label.
-    private static let ratings = ["—", "High", "Medium", "Low"]
+
 
     private var activity: TaskActivity? { model.activity(of: task) }
 
@@ -113,62 +112,68 @@ struct TaskDialog: View {
     @ViewBuilder private var editForm: some View {
         if let edit {
             VStack(alignment: .leading, spacing: 14) {
-                field("Title") {
-                    TextField("", text: Binding(get: { edit.title }, set: { self.edit?.title = $0 }))
-                        .textFieldStyle(.plain)
-                        .font(.system(size: 14, weight: .semibold))
-                        .padding(8)
-                        .controlChrome()
+                row("Title") {
+                    TextField("What needs doing", text: Binding(get: { edit.title }, set: { self.edit?.title = $0 }))
+                        .textFieldStyle(.roundedBorder)
                 }
-                HStack(spacing: 14) {
-                    field("Impact") { ratingPicker(get: { edit.impact }, set: { self.edit?.impact = $0 }) }
-                    field("Complexity") { ratingPicker(get: { edit.complexity }, set: { self.edit?.complexity = $0 }) }
-                    Spacer(minLength: 0)
+                row("Impact") { ratingPicker(get: { edit.impact }, set: { self.edit?.impact = $0 }) }
+                row("Complexity") { ratingPicker(get: { edit.complexity }, set: { self.edit?.complexity = $0 }) }
+                if !model.openMilestones.isEmpty {
+                    row("Milestone") {
+                        Picker("", selection: Binding(get: { edit.milestone }, set: { self.edit?.milestone = $0 })) {
+                            Text("None").tag("")
+                            // The one it is in may be closed and so absent from the open list; it is still where it is.
+                            ForEach(milestoneChoices, id: \.self) { Text($0).tag($0) }
+                        }
+                        .labelsHidden()
+                        .frame(maxWidth: 360, alignment: .leading)
+                    }
                 }
-                field("Description") {
-                    TextEditor(text: Binding(get: { edit.body }, set: { self.edit?.body = $0 }))
+                row("Description") {
+                    TextField("What it is and why", text: Binding(get: { edit.body }, set: { self.edit?.body = $0 }),
+                              axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
                         .font(DeskFont.mono(12))
-                        .scrollContentBackground(.hidden)
-                        .frame(minHeight: 320)
-                        .padding(6)
-                        .background(DeskColor.surface, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-                        .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius).strokeBorder(DeskColor.controlBorder))
+                        .lineLimit(12...30)
                 }
             }
         }
     }
 
-    private func field<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
-            Text(label.uppercased())
-                .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(DeskColor.faintInk)
+    private var milestoneChoices: [String] {
+        let open = model.openMilestones
+        guard let current = task.milestone, !current.isEmpty, !open.contains(current) else { return open }
+        return [current] + open
+    }
+
+    /// The Add Task sheet's row: one label column, so a task reads the same whether it is being made or changed.
+    private func row<Content: View>(_ label: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 14) {
+            Text(label).foregroundStyle(DeskColor.secondaryInk).frame(width: 130, alignment: .trailing)
             content()
         }
     }
 
     private func ratingPicker(get: @escaping () -> String, set: @escaping (String) -> Void) -> some View {
-        Picker("", selection: Binding(get: get, set: set)) {
-            ForEach(Self.ratings, id: \.self) { Text($0).tag($0) }
-        }
-        .labelsHidden()
-        .frame(width: 130)
+        TaskRatings.picker(selection: Binding(get: get, set: set))
     }
 
     private func beginEdit() {
         edit = TaskEdit(title: task.title,
                         body: task.requirements.value?.body ?? "",
-                        impact: task.impact ?? Self.ratings[0],
-                        complexity: task.complexity ?? Self.ratings[0])
+                        impact: task.impact ?? TaskRatings.none,
+                        complexity: task.complexity ?? TaskRatings.none,
+                        milestone: task.milestone ?? "")
     }
 
     private func saveEdit() {
         guard let edit else { return }
-        let rating = { (value: String) in value == Self.ratings[0] ? nil : value }
+
         self.edit = nil
         Task {
             await model.saveEdit(task, title: edit.title, body: edit.body,
-                                 impact: rating(edit.impact), complexity: rating(edit.complexity))
+                                 impact: TaskRatings.value(edit.impact), complexity: TaskRatings.value(edit.complexity),
+                                 milestone: edit.milestone)
         }
     }
 
@@ -366,4 +371,6 @@ private struct TaskEdit {
     var body: String
     var impact: String
     var complexity: String
+    /// "" is no milestone, which is also what the None row means.
+    var milestone: String
 }

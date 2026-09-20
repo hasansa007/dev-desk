@@ -67,14 +67,16 @@ public enum LocalBacklog {
     /// and a second press of the same button must not replace what the first one wrote.
     @discardableResult
     public static func write(projectPath: String, key: String, title: String, body: String,
-                             area: String? = nil, source: String? = nil) throws -> String {
+                             area: String? = nil, source: String? = nil,
+                             impact: String? = nil, complexity: String? = nil) throws -> String {
         let root = URL(fileURLWithPath: projectPath, isDirectory: true)
         let directory = root.appendingPathComponent(folder, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let name = fileName(key: key, title: title)
         let url = directory.appendingPathComponent("\(name).md")
         guard !FileManager.default.fileExists(atPath: url.path) else { return url.path }
-        let text = document(key: key, title: title, body: body, area: area, source: source)
+        let text = document(key: key, title: title, body: body, area: area, source: source,
+                            impact: impact, complexity: complexity)
         do {
             // Not `.atomic`: the guarantee that matters here is create-or-fail, and Foundation refuses to
             // combine the two. A replace-by-rename would be the one thing this must never do.
@@ -86,12 +88,13 @@ public enum LocalBacklog {
     }
 
     /// The entry itself: a header the app can read back, then the prose a person reads.
-    static func document(key: String, title: String, body: String, area: String?, source: String?) -> String {
+    static func document(key: String, title: String, body: String, area: String?, source: String?,
+                         impact: String? = nil, complexity: String? = nil) -> String {
         var header = ["---", "key: \(oneLine(key))", "title: \(oneLine(title))"]
         if let area { header.append("area: \(oneLine(area))") }
         // Proposals for the developer to correct, the same two a filed issue carries (ADR 0020).
-        header.append("impact: ")
-        header.append("complexity: ")
+        header.append("impact: \(oneLine(impact ?? ""))")
+        header.append("complexity: \(oneLine(complexity ?? ""))")
         if let source { header.append("source: \(oneLine(source))") }
         header.append("issue: ")
         header.append("---")

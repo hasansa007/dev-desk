@@ -981,11 +981,13 @@ public final class ProjectWindowModel {
     /// it was added from: Ready for dev records that stage; Backlog records nothing, being the absence of one.
     /// Returns the new card's id so Add & start can open its start sheet; nil when nothing was filed.
     @discardableResult
-    public func addTask(_ draft: TaskDraft, milestone: String?, column: BoardColumn) async -> String? {
+    public func addTask(_ draft: TaskDraft, milestone: String?, column: BoardColumn,
+                        impact: String? = nil, complexity: String? = nil) async -> String? {
         let title = draft.trimmedTitle
         guard !title.isEmpty, let root = snapshot?.repositoryRoot else { return nil }
+        let labels = [impact.map { "impact:\($0.lowercased())" }, complexity.map { "complexity:\($0.lowercased())" }].compactMap { $0 }
         if case .github(let slug) = addTaskDestination {
-            return await fileIssue(draft, slug: slug, milestone: milestone, column: column, root: root)
+            return await fileIssue(draft, slug: slug, milestone: milestone, column: column, root: root, labels: labels)
         }
         // Today's date is the entry's key — the date-led name the folder already sorts by — so a task
         // typed today never collides with one typed another day.
@@ -998,7 +1000,8 @@ public final class ProjectWindowModel {
             return nil
         }
         do {
-            let path = try LocalBacklog.write(projectPath: root, key: key, title: title, body: draft.body, source: nil)
+            let path = try LocalBacklog.write(projectPath: root, key: key, title: title, body: draft.body, source: nil,
+                                              impact: impact, complexity: complexity)
             let id = DeskTask.localPrefix + URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
             writeFailure = nil
             if column == .readyForDev { await setStage(.readyForDev, forTaskID: id) }
@@ -1011,11 +1014,11 @@ public final class ProjectWindowModel {
     }
 
     private func fileIssue(_ draft: TaskDraft, slug: String, milestone: String?, column: BoardColumn,
-                           root: String) async -> String? {
+                           root: String, labels: [String] = []) async -> String? {
         guard !isWritingTracker else { return nil }
         isWritingTracker = true
         defer { isWritingTracker = false }
-        let arguments = IssueCreate.arguments(slug: slug, draft: draft, milestone: milestone)
+        let arguments = IssueCreate.arguments(slug: slug, draft: draft, milestone: milestone, labels: labels)
         let result: CommandResult
         do {
             result = try await runner.run("gh", arguments, in: URL(fileURLWithPath: root, isDirectory: true),
@@ -1247,7 +1250,8 @@ public final class ProjectWindowModel {
 
     /// The dialog's own edit: the issue's title, body and two rating labels, written in one `gh issue edit`.
     /// What the developer typed is the confirmation, so unlike the moves this one asks nothing first.
-    public func saveEdit(_ task: DeskTask, title: String, body: String, impact: String?, complexity: String?) async {
+    public func saveEdit(_ task: DeskTask, title: String, body: String, impact: String?, complexity: String?,
+                         milestone: String?) async {
         guard let number = task.issueNumber else { return }
         var add: [String] = []
         var remove: [String] = []
@@ -1258,8 +1262,11 @@ public final class ProjectWindowModel {
             if let wanted, !existing.contains(where: { $0.lowercased() == wanted }) { add.append(wanted) }
             remove += existing.filter { label in wanted == nil || label.lowercased() != wanted }
         }
+        // Unchanged means unwritten: a milestone equal to the one the issue already has is left out of the command.
+        let milestoneChange = milestone == (task.milestone ?? "") ? nil : milestone
         await performTrackerWrite(issue: number,
-                                  action: .edit(title: title, body: body, addLabels: add, removeLabels: remove))
+                                  action: .edit(title: title, body: body, addLabels: add, removeLabels: remove,
+                                                milestone: milestoneChange))
     }
 
     /// Runs one bounded write from `dev:kanban` Phase 7, then reloads so the board shows what GitHub now says.

@@ -17,6 +17,9 @@ struct AddTaskSheet: View {
     @State private var bullets = ""
     @State private var notes = ""
     @State private var milestone = ""
+    /// The same two ratings the dialog's edit sets, chosen here rather than left for the board (ADR 0020).
+    @State private var impact = TaskRatings.none
+    @State private var complexity = TaskRatings.none
     /// `.failed` when the search itself did not answer — never shown as "no matches".
     @State private var matches: MatchState = .idle
     @FocusState private var titleFocused: Bool
@@ -49,6 +52,8 @@ struct AddTaskSheet: View {
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(3...8)
                 }
+                row("Impact") { TaskRatings.picker(selection: $impact) }
+                row("Complexity") { TaskRatings.picker(selection: $complexity) }
                 if destination.isGitHub, !model.openMilestones.isEmpty {
                     row("Milestone") {
                         Picker("", selection: $milestone) {
@@ -151,7 +156,9 @@ struct AddTaskSheet: View {
         let draft = draft
         let milestone = destination.isGitHub ? milestone : ""
         Task {
-            guard let id = await model.addTask(draft, milestone: milestone, column: column) else { return }
+            guard let id = await model.addTask(draft, milestone: milestone, column: column,
+                                               impact: TaskRatings.value(impact),
+                                               complexity: TaskRatings.value(complexity)) else { return }
             // The start sheet a card's first Start opens (ADR 0036): the agent and mode are chosen there, and
             // `/dev` cuts the branch at its first write — never at add time (ADR 0045).
             if start { model.present(.startTask(id)) } else { model.dismissSheet() }
