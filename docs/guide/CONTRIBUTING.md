@@ -34,13 +34,15 @@ standalone members start at 11 and not earlier, and why an epic cannot resume mi
 **4. Ceremony is the failure mode, not sloppiness.** *A slow pipeline that gets skipped protects
 nothing.* Every addition must earn the tier it lands in. Prefer conditional over mandatory.
 
-> **Budget: `shared/pipeline.md` stays at or under 995 lines** (995 at 2026-09-07). Not a style
-> preference — attention per rule falls as the file grows, and a rule nobody reaches is worth less
-> than no rule. At the ceiling, an addition is only allowed with a deletion in the same commit;
-> `wc -l shared/pipeline.md` before you write. The number stays deliberately close to current: this
-> file grew 685 → 1014 on rules alone before any ceiling existed, and an unstated ceiling is not a
-> ceiling. It has since lost rules — see the note below — which is the reason the gap is kept
-> tight rather than comfortable.
+> **Budget: the pipeline stays at or under 1122 lines** (1122 at 2026-09-21) — `shared/pipeline.md`
+> plus every `shared/pipeline/*.md`, summed. Not a style preference — attention per rule falls as the
+> rules grow, and a rule nobody reaches is worth less than no rule. Splitting one file into twenty
+> changes where a rule lives, not how many there are, so the budget counts the set. At the ceiling, an
+> addition is only allowed with a deletion in the same commit; `wc -l shared/pipeline.md
+> shared/pipeline/*.md` before you write. The number stays deliberately close to current: this content
+> grew 685 → 1014 on rules alone before any ceiling existed, and an unstated ceiling is not a ceiling.
+> It has since lost rules — see the notes below — which is the reason the gap is kept tight rather
+> than comfortable.
 >
 > **2026-08-23 — raised 950 → 975, because the cheaper move was worse.** Staying under 950 for the
 > Short Documentation rule was done by emptying Phase 9's Surgical Protocol into a pointer at the
@@ -78,6 +80,22 @@ nothing.* Every addition must earn the tier it lands in. Prefer conditional over
 > **2026-09-10 — that protocol now lives in `dev:code-review`.** Phase 13's prose was rewritten in
 > place at the same 995 lines to point at the door, so the reasoning above still holds and the
 > budget is unchanged. Phase 13 remains a poor deletion candidate for the same reason.
+>
+> **2026-09-21 — rebased onto the split layout, 995 → 1122, and it is not a raise (#90).** `aef0b8e`
+> made `shared/pipeline.md` a 29-line index on 2026-09-14 and moved the phases to `shared/pipeline/`.
+> The gate went on measuring the index alone, so it compared **29** against a stated 995 and failed
+> every run for a week — never once for a breach. Measured rather than asserted: 995 single-file
+> before the split, **1024** immediately after (so **29 lines are the index itself**, pure structure),
+> **1122** today — meaning **98 lines of rules landed unchecked** while the gate was red and nobody
+> could tell a breach from the stale number.
+>
+> **That is the 2026-09-06 failure by the opposite route.** Then, the check was never installed and a
+> breach ran silent for four PRs. This time it ran on every push and said nothing usable, because a
+> gate that is always red is a gate people scroll past. Both end with rules growing unwatched.
+>
+> The ceiling is set at current with **zero slack**, as on 2026-09-07: the next addition needs a
+> deletion in the same commit. The 98 unchecked lines are left in place — re-litigating merged rules
+> is a separate decision from restoring the gate, and doing both at once is how neither gets reviewed.
 
 **5. Decisions are not steps.** Automation may skip asking between mechanical stages. It may never
 skip a judgment — building, architecture, merging, promoting.
