@@ -8,11 +8,11 @@ Amends the design spec's §4, which recorded *"No GitHub Project v2 board"* as a
 
 ## Context
 
-`dev:kanban` renders the board as text. The recorded decision against a GitHub Projects v2 board had
+`dev:board` renders the board as text. The recorded decision against a GitHub Projects v2 board had
 two reasons: the `project` token scope is not granted here, and **a Project board stores state that
 can disagree with git.**
 
-The second reason is the real one. Every column `dev:kanban` shows is *recomputed* from `git` and
+The second reason is the real one. Every column `dev:board` shows is *recomputed* from `git` and
 `gh` on each run and therefore cannot be stale — that property is why 4.4's precedence rule exists
 (*"git wins and the row says the state file disagreed"*). A stored Status field is exactly the class
 of value that rule was written to distrust, and it is **more** dangerous than `.dev/` phase state,

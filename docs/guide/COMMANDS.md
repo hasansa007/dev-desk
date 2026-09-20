@@ -8,7 +8,7 @@ Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE
 
 ```text
 /dev
-/dev:kanban
+/dev:board
 /dev #496
 /dev:create-bug the course list loses its scroll position
 /dev:findings
@@ -17,7 +17,7 @@ Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE
 /dev:insights
 ```
 
-Bare `/dev` routes to `/dev:kanban` — the board. It shows the queue, what is in flight and what is
+Bare `/dev` routes to `/dev:board` — the board. It shows the queue, what is in flight and what is
 next, then asks. Its writes are bounded: move a card, cancel it with a reason, or delete it behind a
 hard gate. It never cuts a branch and never starts work.
 

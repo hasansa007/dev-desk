@@ -217,7 +217,7 @@
      "label": "cmd_board: gh issue list"
     },
     {
-     "path": "skills/kanban/SKILL.md",
+     "path": "skills/board/SKILL.md",
      "line": 263,
      "end_line": 271,
      "label": "bounded card writes"

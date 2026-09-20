@@ -144,7 +144,7 @@ cancel with no reason.
 
 ### 3.5 What the contract deliberately does not offer
 
-- No `delete` — 7.2's hard gate needs a conversation, and `dev:kanban` has it.
+- No `delete` — 7.2's hard gate needs a conversation, and `dev:board` has it.
 - No "run through the gates" flag. The four gates are why the pipeline is trusted.
 - Runner metadata must have a defined owner and location. Skill-authorized project edits and
   GitHub writes retain their existing scope; `.dev/` is not the only output of a skill run.
@@ -225,7 +225,7 @@ CLI on most PRs.
 | | Deliverable | Repo |
 |---|---|---|
 | A | `documentation/SYSTEM-MODEL.md` (section 2 as a page) + `docs/arch/dev-system.*` rendered with `dev:arch` | dev-skill |
-| B | `snapshot`, `jobs`, `events`, `board move`, `"contract": 1`, tests; the `/dev:ui` and `dev:kanban` doors learn the verbs (`/dev:ui` retired 2026-09-11, ADR 0014) | dev-skill |
+| B | `snapshot`, `jobs`, `events`, `board move`, `"contract": 1`, tests; the `/dev:ui` and `dev:board` doors learn the verbs (`/dev:ui` retired 2026-09-11, ADR 0014) | dev-skill |
 | C | Mac shell: project windows, Board, task details, agent outputs, Decisions, then remaining views from the latest UI note | `dev-skill` (`apps/desk/`, decided — ADR 0012) |
 
 Each was planned as its own PR. **A and C shipped together in one PR, at the developer's

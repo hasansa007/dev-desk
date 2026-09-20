@@ -1,5 +1,5 @@
 ---
-name: kanban
+name: board
 description: >
   The BOARD — what you are on, what is queued, what is next, and the shape of the backlog, in one
   screen, plus the bounded writes that move a card. Reads the repo's GitHub issues once and
@@ -11,12 +11,12 @@ description: >
   planned", reversible) · delete it (permanent, behind a hard gate). It still never cuts a branch
   and never starts work — naming an issue hands off to `/dev #N`.
   Trigger on: "what should I work on", "what's next", "show the issues", "show the board",
-  "show the backlog", "tracker", "kanban", "issue stats", "what's in flight", "how many open
+  "show the backlog", "tracker", "board", "issue stats", "what's in flight", "how many open
   issues", "what am I working on", "queue this", "move this card", "cancel that issue".
 allowed-tools: [gh, git]
 ---
 
-# kanban — the board, and the few writes that move a card
+# board — the board, and the few writes that move a card
 
 A **tool**, not a phase. It answers *"what should I work on?"* and hands off. **It never cuts a
 branch and never starts work** — that is `/dev #N`. It never *files* an issue either — that is

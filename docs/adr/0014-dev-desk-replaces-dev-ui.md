@@ -29,7 +29,7 @@ Two things stay:
   retirement message, so `/dev ui` gets an answer instead of becoming a feature title.
 - **The one board rule that only `dev ui` applied.** Without `--milestone`, `dev board` now resolves
   the active milestone by `dev:roadmap`'s rule, using `resolve_active_milestone` unchanged. So
-  `dev:kanban`'s QUEUE fills without the flag. `dev board --json` reports the choice as
+  `dev:board`'s QUEUE fills without the flag. `dev board --json` reports the choice as
   `active_milestone` and `active_why`. When the milestone read fails, the output says so instead of
   reporting "no milestone".
 
@@ -44,7 +44,7 @@ Two things stay:
 
 ## Consequences
 
-- **Card moves and cancels go through `/dev:kanban`, in conversation, with no drag.** Its Phase 7
+- **Card moves and cancels go through `/dev:board`, in conversation, with no drag.** Its Phase 7
   Move and Cancel tiers are unchanged; only the served board that also drove them is gone. The
   container spec's future `dev board move` (§3.4) can re-add `plan_board_move` as a CLI verb. The
   refusals it needs: git-derived columns, epic cancels, delete, and a cancel with no reason.
@@ -54,7 +54,7 @@ Two things stay:
   `PROJECT_MAP.md`.
 - **Linux and Windows users have no UI, including the Codex and Antigravity installs.** `dev ui`
   needed only `python3` and a browser; Dev Desk is a macOS app. Those users keep the text board
-  (`/dev:kanban`, `dev board`) and `dev project`'s mirror into GitHub Projects.
+  (`/dev:board`, `dev board`) and `dev project`'s mirror into GitHub Projects.
 - **`.dev/` still holds pipeline state:** `.dev/<branch>.json` from `dev state checkpoint`, and the
   `.dev/.gitignore` the CLI writes when it first creates the folder. Two tests used to pin that
   self-ignore through `dev ui`. They now pin it through `dev state checkpoint`, in

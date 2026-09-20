@@ -38,7 +38,7 @@ and Gemini are not supported — see ORPHANS.
 **One pipeline; every door is an entry into it at a different floor.**
 
 ```
-bare /dev ─▶ dev:kanban (board) ─▶ name an issue ─▶ /dev #N
+bare /dev ─▶ dev:board (board) ─▶ name an issue ─▶ /dev #N
 #N | free text ─▶ Phases 1-8 (reason) ─▶ 9-10 (build) ─▶ 11-13 (gates) ─▶ 14 (PR ▸ merge)
 ```
 
@@ -52,9 +52,9 @@ dev:findings  defects + architectural drift ─┐
 dev:ideation  perf / security / quality      ├─▶ docs/{findings,ideation}/<date>.md
                                              │
 dev:roadmap   reads those + the repo's own recorded gaps + ORPHANS & PENDING below
-              └─▶ milestone (= dev:kanban's QUEUE) + epic parents, PARENTS ONLY
+              └─▶ milestone (= dev:board's QUEUE) + epic parents, PARENTS ONLY
                   └─▶ /dev #E ─▶ Phase 5 cuts slices ─▶ children
-                      └─▶ dev:kanban 7.3 closes the epic, then the milestone
+                      └─▶ dev:board 7.3 closes the epic, then the milestone
 ```
 
 **Two axes on the board.** Columns come from `git`/`gh` and cannot be stale. The
@@ -82,7 +82,7 @@ ORPHANS).
 
 | | |
 |---|---|
-| `dev:kanban` Phase 7 | **first writes 2026-09-12**: six children of #59 closed as completed with per-criterion evidence, two held open with the gap named, the epic commented at 6/8. Move, cancel and delete are still unproven, as is the QUEUE column (this repo has no milestone) |
+| `dev:board` Phase 7 | **first writes 2026-09-12**: six children of #59 closed as completed with per-criterion evidence, two held open with the gap named, the epic commented at 6/8. Move, cancel and delete are still unproven, as is the QUEUE column (this repo has no milestone) |
 | `dev:ideation` | never run |
 | `dev:roadmap` | never written a milestone |
 | `dev:insights` | never run; this file is the first thing its Phase 5 would maintain |
@@ -94,7 +94,7 @@ ORPHANS).
   `impact:high|medium|low`, `complexity:high|medium|low` and `plan-not-final` exist since
   2026-09-12, created for epic #59 (ADR 0020).
 - **No `project` token scope**, so `dev project`'s live path — listing, field discovery and item edits — has never run. Its planning core is fixture-tested.
-- **0 milestones** — `dev:kanban`'s QUEUE column is decided by the active milestone, and none
+- **0 milestones** — `dev:board`'s QUEUE column is decided by the active milestone, and none
   exists, so every board render so far has put its 9 open issues in Backlog or later.
 - **`dev board` never reaches the `pr_created`/`human_review` columns.** `cmd_board`
   (`scripts/dev.py:371-383`) builds each issue's `facts` dict with only `unmerged` and

@@ -1,6 +1,6 @@
 import Foundation
 
-/// The bounded write set `dev:kanban` Phase 7 allows against a board. Delete is deliberately absent:
+/// The bounded write set `dev:board` Phase 7 allows against a board. Delete is deliberately absent:
 /// that tier keeps its hard gate in the door, where an epic's children are enumerated first.
 public enum TrackerAction: Equatable, Hashable {
     case queue(milestone: String)

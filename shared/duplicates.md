@@ -20,7 +20,7 @@ gh issue list --repo <owner/repo> --state open --search "<path | key phrase> in:
 Without one (ADR 0027) — the same words over `docs/backlog/*.md`, titles and bodies.
 
 **A failed search is not an empty one.** If `gh` errors, say so and stop: a failed dedupe files
-everything as new (`dev:kanban` Phase 3's rule).
+everything as new (`dev:board` Phase 3's rule).
 
 ## 2 — Decide, per match
 

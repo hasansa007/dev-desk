@@ -63,13 +63,13 @@ merged one); the active milestone decides Queued. A menu that set those would ma
 disagree with git, which is what ADR 0011 forbids. They appear disabled, each saying so.
 
 Queue and Return to backlog are a milestone edit; Cancel is a close as *not planned* with the reason
-written as a comment, exactly as `dev:kanban` Phase 7 defines them. Delete stays out of the app —
+written as a comment, exactly as `dev:board` Phase 7 defines them. Delete stays out of the app —
 that tier keeps its own hard gate in the door. This gives Dev Desk its first `gh` write; until now
 it wrote only `git clone`, `git init` and `git worktree add`.
 
 ```
 rejected: no writes, actions only — the menu becomes navigation and the move stays a conversation
-rejected: the menu proposes and /dev:kanban writes — an agent run for a one-line label edit
+rejected: the menu proposes and /dev:board writes — an agent run for a one-line label edit
 rejected: split by reversibility, app moves and door cancels — two mechanisms for one menu
 ```
 
@@ -78,7 +78,7 @@ rejected: split by reversibility, app moves and door cancels — two mechanisms 
 `impact:high|medium|low` and `complexity:high|medium|low`, created in this repository on 2026-09-12.
 Every filing door proposes both with its reasoning, marked as an assumption, and files what the
 developer confirms. A repository lacking the labels is offered them and never given them silently,
-which is the rule `dev:roadmap` already applies to `epic` and `dev:kanban` to `P1`–`P3`.
+which is the rule `dev:roadmap` already applies to `epic` and `dev:board` to `P1`–`P3`.
 
 The board shows both as chips, with a dash where an issue has neither, so a rated card and an
 unrated one are never confused.

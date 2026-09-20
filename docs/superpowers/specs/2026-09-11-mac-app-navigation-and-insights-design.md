@@ -33,7 +33,7 @@ It chooses explicit prototype defaults without treating open product choices as 
 
 | Main destination | Purpose |
 |---|---|
-| Board | Kanban view of tasks, their progress, dependencies, and next actions |
+| Board | Board view of tasks, their progress, dependencies, and next actions |
 | Roadmap | Considered and committed future work, grouped into themes, milestones, and epics |
 | Findings | Run Survey, inspect evidence, and reconcile findings with existing issues |
 | Decisions | Answer pending questions and inspect earlier decisions and their rationale |

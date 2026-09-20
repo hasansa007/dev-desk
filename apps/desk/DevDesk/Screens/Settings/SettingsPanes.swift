@@ -684,7 +684,7 @@ struct WorkSettingsPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             PaneHeader("Work", scope: .thisProject,
-                       summary: "How the Work tab decides what is next and what is finished. Kept in `.devdesk/work.json` beside the work, so `dev:kanban` reads the same choices.")
+                       summary: "How the Work tab decides what is next and what is finished. Kept in `.devdesk/work.json` beside the work, so `dev:board` reads the same choices.")
 
             SettingCard("Next up") {
                 SettingRow("Working now follows",

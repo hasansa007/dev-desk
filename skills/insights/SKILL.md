@@ -96,7 +96,7 @@ difference from here.
 | *what is broken* | `dev:findings` | findings need two adversarial checkers before anyone acts on them |
 | *what could be better / is it secure* | `dev:ideation` | same, plus the gain must carry a number |
 | *what should we build next* | `dev:roadmap` | a theme needs traceable evidence and a milestone to live in |
-| *what am I working on* | `dev:kanban` | the board is computed from git, not remembered |
+| *what am I working on* | `dev:board` | the board is computed from git, not remembered |
 | *are the docs current* | `dev:docs` | it owns ADRs and the staleness check |
 
 **A one-paragraph answer plus the offer is right. A half-findings run is not.** The line: describing what

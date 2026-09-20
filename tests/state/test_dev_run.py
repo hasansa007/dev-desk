@@ -30,7 +30,7 @@ class FakeRoot:
     def __enter__(self):
         self.dir = tempfile.mkdtemp()
         open(os.path.join(self.dir, "SKILL.md"), "w").write("# root\n")
-        for door in ("kanban", "roadmap"):
+        for door in ("board", "roadmap"):
             os.makedirs(os.path.join(self.dir, "skills", door))
             open(os.path.join(self.dir, "skills", door, "SKILL.md"), "w").write("# %s\n" % door)
         os.makedirs(os.path.join(self.dir, "skills", "notadoor"))
@@ -49,8 +49,8 @@ class DoorResolution(unittest.TestCase):
 
     def test_a_member_door_resolves_under_skills(self):
         with FakeRoot() as r:
-            self.assertEqual(resolve_door(r.dir, "kanban"),
-                             os.path.join(r.dir, "skills", "kanban", "SKILL.md"))
+            self.assertEqual(resolve_door(r.dir, "board"),
+                             os.path.join(r.dir, "skills", "board", "SKILL.md"))
 
     def test_unknown_door_resolves_to_nothing(self):
         with FakeRoot() as r:
@@ -65,7 +65,7 @@ class DoorListing(unittest.TestCase):
     def test_stray_files_are_not_listed_as_doors(self):
         with FakeRoot() as r:
             doors = list_doors(r.dir)
-            self.assertEqual(doors, ["kanban", "roadmap"])
+            self.assertEqual(doors, ["board", "roadmap"])
             self.assertNotIn(".DS_Store", doors)
             self.assertNotIn("notadoor", doors)
 
@@ -85,7 +85,7 @@ class CommandConstruction(unittest.TestCase):
         self.assertEqual(build_command("codex", "P"), ["codex", "exec", "P"])
 
     def test_the_prompt_names_the_door_path_so_the_agent_reads_the_real_file(self):
-        p = build_prompt("/x/SKILL.md", "kanban", [])
+        p = build_prompt("/x/SKILL.md", "board", [])
         self.assertIn("/x/SKILL.md", p)
         self.assertNotIn("Arguments:", p)
 

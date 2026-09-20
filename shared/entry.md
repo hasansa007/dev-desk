@@ -118,7 +118,7 @@ that branch deliberately, say so in the PR body, and target the PR at it. The ru
 > dependency nobody agreed to.**
 
 > **2026-08-05 → 06 — read-boundary written, write-boundary missing.** A boundary rule was added to
-> `dev:kanban`'s predecessor after it rendered another repo's board — read-only, and the user still had to ask
+> `dev:board`'s predecessor after it rendered another repo's board — read-only, and the user still had to ask
 > *"what branch, what repo?"*. Hours later the same session opened and merged **two PRs** into that
 > other repo on a two-word instruction, without naming the repo first. Both were docs-only; both
 > reached `main` via a promotion, and in that repo merging to `main` auto-deploys production.
@@ -208,7 +208,7 @@ this pipeline exists to refuse.
 | `dev:launch` | — | **nothing** — it is a tool, not a phase; it detects the project and launches it |
 | `dev:launch-kill` | — | **nothing** — a tool; it reads `dev:launch`'s discovery, not this pipeline |
 | `dev:shots` | — | **nothing** — a tool; it reads `dev:launch`'s discovery and that skill's Phase 3, not this pipeline's |
-| `dev:kanban` | — | **Universal Rules only** (`18-output-and-universal-rules.md`) — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
+| `dev:board` | — | **Universal Rules only** (`18-output-and-universal-rules.md`) — it skips Right-Size (ceremony on a board) but consumes *never guess ticket content* |
 | `dev:comment-budget` | — | **Guiding Principles + Universal Rules only** (`00-principles.md` + `18-output-and-universal-rules.md`) — a tool, so it skips Right-Size, but it APPLIES Short Documentation and cannot improvise a rule it never read |
 | `dev:arch` | — | **Guiding Principles + Universal Rules only** (`00-principles.md` + `18-output-and-universal-rules.md`) — a tool, so it skips Right-Size; it consumes Simplicity First, which is what lets it REFUSE a diagram the target does not need |
 | `dev:findings` · `dev:ideation` | — | **Guiding Principles + Universal Rules + Right-Size** (`00-principles.md` + `18-output-and-universal-rules.md`) — the family's largest fan-out reads the rule that governs fan-outs. Not Phase 0: it delegates filing to the `dev:create-*` doors, which load it themselves |
@@ -284,7 +284,7 @@ fields you inferred rather than resolved.
 | `dev:launch` | — | a project to launch | **tool** |
 | `dev:launch-kill` | — | a project to stop | **tool** |
 | `dev:shots` | — | a running app | **tool** |
-| `dev:kanban` | — | the repo's tracker | **tool** |
+| `dev:board` | — | the repo's tracker | **tool** |
 | `dev:comment-budget` | — | a repo or a path | **tool** |
 | `dev:arch` | — | a system to draw | **tool** |
 | `dev:findings` | — | an existing app | **tool** → feeds Phase 0 |

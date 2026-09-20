@@ -953,7 +953,7 @@ public final class ProjectWindowModel {
     public var openMilestones: [String] { snapshot?.openMilestones ?? [] }
 
     /// Open items that may already be this task (ADR 0045 step 3) — a proposal, never a decision. Nil when the
-    /// search itself failed: that must read differently from "nothing matches" (`dev:kanban` Phase 3's rule).
+    /// search itself failed: that must read differently from "nothing matches" (`dev:board` Phase 3's rule).
     public func possibleDuplicates(for title: String) async -> [DuplicateCandidate]? {
         switch addTaskDestination {
         case .github(let slug):
@@ -1275,7 +1275,7 @@ public final class ProjectWindowModel {
                                                 milestone: milestoneChange))
     }
 
-    /// Runs one bounded write from `dev:kanban` Phase 7, then reloads so the board shows what GitHub now says.
+    /// Runs one bounded write from `dev:board` Phase 7, then reloads so the board shows what GitHub now says.
     /// A sample project, or a repository with no GitHub remote, is refused rather than half-written.
     public func performTrackerWrite(issue: Int, action: TrackerAction) async {
         guard !isWritingTracker else { return }

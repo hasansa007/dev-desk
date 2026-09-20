@@ -197,7 +197,7 @@ it closed as `not planned` so Phase 2 reads it back and the next run does not re
 **`--file` applies exactly as in `dev:findings` Phase 9.** Under `alert`, ask before filing anything. Then, for the confirmed set:
 
 - **`dev:create-issue`, labelled `enhancement`.** Never `dev:create-bug`. Filing an improvement as a
-  defect makes the board lie about how broken the app is, and `dev:kanban` ranks from that board.
+  defect makes the board lie about how broken the app is, and `dev:board` ranks from that board.
 - **The measured current behaviour and the claimed gain go in the body**, with the `file:line`. An
   enhancement whose body says only "improve performance" is a task nobody can start.
 - **Name this run in `## Suspected`, and say what the verdict does NOT cover:** *"found by
@@ -206,7 +206,7 @@ it closed as `not planned` so Phase 2 reads it back and the next run does not re
   the adversarial verification is spent twice.
 - **Touched files go in `## Scope`.** Two issues touching one file are **conflicting, not
   blocking** — say so in both and let whoever starts second rebase.
-- **Set a priority label from the Phase 6 ranking.** `dev:kanban` Phase 5 orders the backlog by
+- **Set a priority label from the Phase 6 ranking.** `dev:board` Phase 5 orders the backlog by
   `P1 → P2 → P3` then slice then oldest; ten issues filed the same minute share a timestamp, so
   without labels the ranking dies in the report.
 - **Carry Phase 6's two numbers into labels:** the gain becomes `impact:`, the cost becomes

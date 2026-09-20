@@ -48,7 +48,7 @@ behaviour was read rather than inferred. Its `roadmap/roadmap.json` recorded `pr
 
 | Door | Status | Replaces |
 |---|---|---|
-| `dev:kanban` | new | `dev:issues` (deleted) |
+| `dev:board` | new | `dev:issues` (deleted) |
 | `dev:ideation` | new | — (**added beside** `dev:survey`, which stays) |
 | `dev:roadmap` | new | — |
 | `dev:insights` | new, **low priority** | — |
@@ -58,8 +58,8 @@ knowingly.
 
 ### Routing changes (`SKILL.md` Entry 1)
 
-- Bare `/dev` routes to **`dev:kanban`** (was `dev:issues`).
-- The one-word guard gains `kanban`, `ideation`, `insights`, `roadmap` **and keeps `issues` and
+- Bare `/dev` routes to **`dev:board`** (was `dev:issues`).
+- The one-word guard gains `board`, `ideation`, `insights`, `roadmap` **and keeps `issues` and
   `survey` as retired-name aliases.** Not optional: the guard already carries a scar from exactly
   this, when `trim` → `comment-budget`. A retired name dropped from the guard means `/dev issues`
   cuts a branch called "issues".
@@ -75,7 +75,7 @@ justify setting priority labels at all.
 ### The one clause that cannot be ported
 
 `dev:issues` `## Never` opens with *"Never cut a branch, never edit an issue, never start work.
-**Read-only is the whole contract.**"* `dev:kanban` breaks that by design. Everything else in that
+**Read-only is the whole contract.**"* `dev:board` breaks that by design. Everything else in that
 list survives verbatim; this clause is **rewritten into bounded-write rules**, and it is the single
 place where the port can quietly become a downgrade.
 
@@ -272,7 +272,7 @@ support that already works.
 
 ## 8. Door phase lists
 
-### `dev:kanban` — 8 phases
+### `dev:board` — 8 phases
 
 | Phase | Origin |
 |---|---|
@@ -304,7 +304,7 @@ in three other files, and it is more accurate.
 | 6 — Architecture pass | verbatim — count before recommending; produces an ADR or an epic |
 | 7 — Write the report | `docs/ideation/<date>.md` |
 | 8 — Walk it through | verbatim, incl. *never show the fix before asking for theirs* |
-| 9 — Offer to file | verbatim — max 10 per run, priority labels, conflicting-vs-blocking. **Cross-reference retargets to `dev:kanban` Phase 5** |
+| 9 — Offer to file | verbatim — max 10 per run, priority labels, conflicting-vs-blocking. **Cross-reference retargets to `dev:board` Phase 5** |
 
 Opportunities multiply findings, and Phase 5 costs two checkers each — the declared estimate needs
 re-baselining.
@@ -315,11 +315,11 @@ re-baselining.
 |---|---|
 | 1 — Arguments | *(none)* → propose · `themes` · horizon filter |
 | 2 — Read what exists | open milestones, epics, backlog, **and rejected themes** — extend, never duplicate |
-| 3 — Discover from evidence | the repo's recorded gaps (`dev:kanban` 6b's greps), `PROJECT_MAP.md` `ORPHANS & PENDING`, prior `docs/ideation/` reports |
+| 3 — Discover from evidence | the repo's recorded gaps (`dev:board` 6b's greps), `PROJECT_MAP.md` `ORPHANS & PENDING`, prior `docs/ideation/` reports |
 | 4 — Propose themes | ranked, **ranking marked as a claim** with a because-clause |
 | 5 — Confirm | nothing reaches GitHub without a yes |
 | 6 — Write | milestones + epic parents via `dev:create-epic`. **Parent only** — slices cut at Phase 5 |
-| 7 — Render and hand off | to `/dev #N` or `dev:kanban` |
+| 7 — Render and hand off | to `/dev #N` or `dev:board` |
 
 ### `dev:insights` — 6 phases *(low priority)*
 
@@ -366,7 +366,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
                          │  a childless epic IS startable (4.1)
                     /dev #E1 ─▶ Phase 5 decomposes → children `- [ ] #C`
                          │  E1 drops out of NEXT, shows as progress 0/k
-                    dev:kanban offers C1 (slice order)
+                    dev:board offers C1 (slice order)
                          │
                     /dev #C1 … Phase 14 merge, `Closes #C1`
                          ▼  NEW: last-sibling check → close E1
@@ -374,10 +374,10 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
                     dev:ideation ─▶ docs/ideation/<date>.md ─▶ dev:roadmap §3
 ```
 
-- **Close-the-parent lives in `dev:kanban`** — it already computes `0/4` and is now a writing door.
+- **Close-the-parent lives in `dev:board`** — it already computes `0/4` and is now a writing door.
   At `n/n` it offers to close the parent; when a milestone's epics all close, it offers to close
   the milestone. `dev:pre-prod` gets a one-line nudge at the moment the last sibling merges.
-- **Rejected themes** are filed, closed `not planned` with the why-comment (`dev:kanban`'s cancel
+- **Rejected themes** are filed, closed `not planned` with the why-comment (`dev:board`'s cancel
   path exactly), labelled, and read back by `dev:roadmap` §2 — so a declined direction is not
   re-proposed next quarter. One source of truth, no new store.
 
@@ -389,7 +389,7 @@ dev:roadmap §6  ─▶  milestone M + epic parents E1…En (childless)
 |---|---|---|
 | **0 — Portability** | ✅ paths → install path (31 occurrences, 13 files). `LICENSE` deferred with publishing | **everything** — doors written after are portable from birth |
 | **1 — CLI v0** | ✅ complete. `dev state` · `doctor` · `board` (`scripts/dev.py`, stdlib, 41 tests) · CI runs all 4 suites · `pr-gates.sh` asks on STALE state | Stage 2's phase column; `--continue` |
-| **2 — `dev:kanban`** | ✅ `skills/kanban/SKILL.md` (8 phases); `dev:issues` deleted; 7 cross-references swept; guard keeps `issues` as a retired-name alias | — |
+| **2 — `dev:board`** | ✅ `skills/board/SKILL.md` (8 phases); `dev:issues` deleted; 7 cross-references swept; guard keeps `issues` as a retired-name alias | — |
 | **3 — `dev:ideation`** | ✅ `skills/ideation/SKILL.md` (9 phases, opportunities only). `dev:survey` **kept**, restored byte-identical after a same-day merge-and-revert; ADR 0008 records both | — |
 | **4 — `dev:roadmap`** | ✅ `skills/roadmap/SKILL.md` (7 phases). Read commands verified live against an empty tracker; `epic` and `roadmap-declined` labels confirmed absent here, which is why Phase 6 reads `gh label list` rather than assuming | — |
 | **5 — `dev:insights`** | ✅ `skills/insights/SKILL.md` (6 phases). Answer → route → fold durable into `PROJECT_MAP.md`; `map` audits drift without writing | — |

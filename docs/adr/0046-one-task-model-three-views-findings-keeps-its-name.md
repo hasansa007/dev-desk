@@ -185,5 +185,5 @@ and a filing status it could not read — not its name.
 - A reorder in Plan changes the Board immediately and touches nothing on GitHub.
 - Findings never compete with Plan for priority: a finding has none until it is filed, and filing is where it
   gets a label and a milestone. Ranking lives in one place.
-- The kanban door's QUEUE (`dev:kanban`) still reads the active milestone by due date; it learns `.devdesk/`'s
+- The board door's QUEUE (`dev:board`) still reads the active milestone by due date; it learns `.devdesk/`'s
   order in the same step as Plan, or the two disagree.

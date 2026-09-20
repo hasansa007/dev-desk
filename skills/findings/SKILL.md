@@ -5,7 +5,7 @@ description: >
   drift between the patterns actually in use — then files the confirmed ones. It suggests and never
   implements: no fix, no refactor, no rewrite.
   Every finding is adversarially verified against the code before it can be filed, because a tracker
-  full of plausible-but-wrong issues is worse than an empty one and `dev:kanban` will rank it either
+  full of plausible-but-wrong issues is worse than an empty one and `dev:board` will rank it either
   way. Unverified findings are held in the report with the reason, never filed.
   Writes `docs/findings/<date>.md` first; filing to GitHub is a separate confirmed step. Fans out one
   finder per flow, and shapes what it files so several issues can be started at once.
@@ -17,7 +17,7 @@ allowed-tools: [git, gh, rg, grep, Read, Write, Agent]   # Read: every verdict i
 
 # findings — read the app, report what is wrong, file the confirmed
 
-A **tool**, not a phase, and it sits **upstream of Phase 0**. `dev:kanban` renders the board;
+A **tool**, not a phase, and it sits **upstream of Phase 0**. `dev:board` renders the board;
 nothing stocked it. Every door from Phase 0 on assumes you already know what is wrong — this is the
 one that finds out.
 
@@ -99,7 +99,7 @@ behind, which `shared/entry.md`'s *scope limiter* rule forbids relying on. `--re
 because the repo being read is the resolved one, not whatever `cwd` points at.
 
 **If `gh` errors or the repo has Issues disabled, say so and stop.** An empty result and a failed
-query must never render the same — `dev:kanban` Phase 3's rule, and the reason it exists is that a
+query must never render the same — `dev:board` Phase 3's rule, and the reason it exists is that a
 failed dedupe files every finding as new.
 
 When a match is uncertain, file nothing and report **possible duplicate of #N**: a wrong merge hides
@@ -478,7 +478,7 @@ Ask before filing anything (under `alert`). Then, for the confirmed set:
 - **Starting over adopts what already started.** Before filing, match every entry against open
   issues and `docs/backlog/` by key and title. A ticket already in progress or done is adopted — its
   group and order are recorded on it — never filed a second time.
-- **Set a priority label on each filed issue, from the cost ranking.** `dev:kanban` Phase 5 orders
+- **Set a priority label on each filed issue, from the cost ranking.** `dev:board` Phase 5 orders
   NEXT by `P1 → P2 → P3`, then slice, then oldest `updatedAt` — ten issues filed the same minute
   share a timestamp, so without labels the order it shows is arbitrary and this phase's ranking dies
   in the report. If the repo has no priority labels, say so: the ranking then lives only here.
@@ -493,7 +493,7 @@ Ask before filing anything (under `alert`). Then, for the confirmed set:
   milestones here** — themes are `dev:roadmap`'s decision, with its per-theme yes. Scar, 2026-09-17:
   10 bugs filed, 0 in a milestone, while 3 open milestones covered 5 of them.
 - **File at most 10 top-level items per run — a group counts as one — and name what was held.**
-  `dev:kanban` shows the top 2–3 of BACKLOG, so ten is already more board than anyone reads at once;
+  `dev:board` shows the top 2–3 of BACKLOG, so ten is already more board than anyone reads at once;
   thirty is a backlog that gets skipped wholesale. Rank by cost-if-it-bites — say which one you ranked first and why, so it is a claim
   that can be argued with. The rest stay in the report, which is why the report is written first.
 
@@ -515,5 +515,5 @@ Ask before filing anything (under `alert`). Then, for the confirmed set:
 Under `decide` or `skip` at every stop, end with the report's path and what it holds — never a question.
 Otherwise: report written → **walk the findings through (Phase 8)** → offer the filing, naming the branch it would cut. Filed → name the first issue by
 cost and hand to `/dev #N`. **Nothing found → say so plainly, name what was covered and what was
-not, and offer `dev:kanban`** — a clean findings run is a real answer, but the board may still hold work,
+not, and offer `dev:board`** — a clean findings run is a real answer, but the board may still hold work,
 and stopping at "nothing" makes the developer remember there is somewhere else to look.

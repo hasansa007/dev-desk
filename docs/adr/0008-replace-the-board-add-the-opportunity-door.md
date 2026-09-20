@@ -27,7 +27,7 @@ tracker. Whatever happened had to carry all of it.
 
 **Different answers for the two doors, because the problems were different.**
 
-**`dev:kanban` REPLACES `dev:issues`.** The name asserted the contract that was changing, so both
+**`dev:board` REPLACES `dev:issues`.** The name asserted the contract that was changing, so both
 had to go together. Every rule marked *verbatim* is copied unchanged, scars included. The read-only
 clause is **replaced, not dropped**: Phase 7 defines three write tiers (move · cancel ·
 delete-behind-a-gate) and `## Never` states outright that these supersede the old contract — so a
@@ -49,7 +49,7 @@ Consequences accepted deliberately:
 - **`dev:survey` is the single source of truth for the shared protocol** (Phases 2, 3, 4, 5, 8).
   `dev:ideation` cross-references it rather than copying ~200 lines that would drift, the same way
   `dev:survey` already delegates ADRs to `dev:docs`.
-- **Retired names stay in the Entry 1 guard as aliases.** `/dev issues` maps to `dev:kanban`.
+- **Retired names stay in the Entry 1 guard as aliases.** `/dev issues` maps to `dev:board`.
   Without it, it falls through to "free text" and cuts a branch named `issues` — the rule `trim`
   earned on 2026-09-07. `survey` needs no alias: it is a live door again.
 - **`docs/` gains a fourth owned sibling:** `ideation/` (`dev:ideation`), joining `adr/`
@@ -75,5 +75,5 @@ compatibility, no sweep. Lost because it produces two boards answering the same 
 for a reader to know which is current. The surveyor case is different precisely because the two
 doors answer **different** questions.
 
-**Keep the old names, change only the behaviour.** A name is part of the contract. `kanban` says
+**Keep the old names, change only the behaviour.** A name is part of the contract. `board` says
 what the board now does; `ideation` says what the new door asks.

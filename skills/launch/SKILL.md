@@ -87,7 +87,7 @@ than inferring it from names:
 |---|---|
 | `dev.sh`, `bin/dev`, `scripts/dev*` | `.vscode/launch.json` · `.xcscheme` · `.idea/runConfigurations` (2.2a) |
 | a hardcoded store dimension | the device's native resolution (`dev:shots` Phase 5) |
-| `grep '#[0-9]+'` over an epic body | its `- [ ] #N` task list (`dev:kanban` 4.1) |
+| `grep '#[0-9]+'` over an epic body | its `- [ ] #N` task list (`dev:board` 4.1) |
 | `[ -d "$dir/.git" ]` | `git rev-parse --show-toplevel` (2.1) |
 
 > **2026-08-05 — four instances, one root.** `adb` present but off `PATH`; `simctl` present but not

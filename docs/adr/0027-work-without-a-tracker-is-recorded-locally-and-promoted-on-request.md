@@ -33,7 +33,7 @@ and the answer has to hold for all three.
 ## Alternatives rejected
 
 - **Local always owns it, GitHub mirrors it.** Every door in the family is built on GitHub being the
-  tracker — `closes #N`, `gh-N-` branches, the milestone as the Queue column, `dev:kanban`. This would
+  tracker — `closes #N`, `gh-N-` branches, the milestone as the Queue column, `dev:board`. This would
   replace that everywhere, not in one screen, and an edit on github.com would be overwritten or drift.
 - **Two-way sync.** No good answer to an item edited in both places, and the failure is silently
   rewriting an issue. Its cost is the largest of the three for a single developer's tool.

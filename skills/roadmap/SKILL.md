@@ -4,7 +4,7 @@ description: >
   Proposes what to build NEXT, from evidence the repo already wrote down — its recorded gaps,
   PROJECT_MAP's ORPHANS & PENDING, and prior `dev:findings` / `dev:ideation` reports — then writes the
   accepted themes as GitHub MILESTONES with EPIC PARENTS underneath. The milestone is what
-  `dev:kanban` reads as its QUEUE column, so this is the door that makes a queue exist.
+  `dev:board` reads as its QUEUE column, so this is the door that makes a queue exist.
   Files PARENTS ONLY: slices are cut at Phase 5 on the first `/dev #E`, where investigation has
   actually happened. Declined themes are recorded as closed `not planned`, so a rejected direction
   is never re-proposed.
@@ -40,14 +40,14 @@ the repo's own recorded gaps ─────────────────
                               milestone M ─┬─ epic E1  (parent only)
                                            └─ epic E2
                                                   │
-                            dev:kanban QUEUE ◀────┘  (M is the queue)
+                            dev:board QUEUE ◀────┘  (M is the queue)
                                                   │
                       /dev #E1 → Phase 5 cuts slices → children
                                                   │
-                       dev:kanban 7.3 closes E1, then closes M
+                       dev:board 7.3 closes E1, then closes M
 ```
 
-`dev:kanban` **7.3 owns the closing**, not this door. This one opens containers; that one notices
+`dev:board` **7.3 owns the closing**, not this door. This one opens containers; that one notices
 when they are done.
 
 ## Phase 1 — Arguments
@@ -81,11 +81,11 @@ Four things come out of this, and all four constrain Phase 4:
 4. **`roadmap-declined`** — themes you already said no to. **A decision is not a gap.**
 
 **If `gh` errors or Issues are disabled, say so and stop.** An empty tracker and a failed query must
-never render the same — `dev:kanban` Phase 3's rule.
+never render the same — `dev:board` Phase 3's rule.
 
 ### The active milestone
 
-`dev:kanban`'s QUEUE column is *the active milestone's members*, so exactly one milestone is active
+`dev:board`'s QUEUE column is *the active milestone's members*, so exactly one milestone is active
 at a time. **Active = the top open milestone of Dev Desk's Plan order (`.devdesk/plan.json`, ADR 0046)**
 when one is stored; otherwise the open milestone with the nearest `due_on`, and if none has a due date, the
 oldest open one. `scripts/dev.py board` applies the same rule. Say which one you resolved and why. If two are equally near, **ask** — a queue that
@@ -160,7 +160,7 @@ For each proposed theme:
 
 **Rank them, and mark the ranking as YOURS.** Say why in a clause — *"first because it is the only
 one here that loses data"* — so it reads as a claim that can be argued with rather than a priority
-handed down. This is `dev:kanban` 6b's rule applied at theme scale.
+handed down. This is `dev:board` 6b's rule applied at theme scale.
 
 **Three to five themes, not twelve.** A roadmap nobody can hold in their head is a backlog with
 headings.
@@ -231,11 +231,11 @@ would be *imagined from a description*, and a wrong slice boundary is expensive 
 becomes a branch, a PR and a promotion. Phase 5 of the pipeline cuts them on the first `/dev #E`,
 after context load, stack discovery and investigation have run.
 
-**`## Done when` is the epic's completion condition, and `dev:kanban` 7.3 is what evaluates it.**
+**`## Done when` is the epic's completion condition, and `dev:board` 7.3 is what evaluates it.**
 Write it so it can be: observable, epic-level, true only when every child is closed.
 
 **Labels are read, never assumed** — `gh label list`. If the repo has no `epic` label, offer to
-create it; `dev:kanban` 4.1 keys on it, and without it an epic parent will be offered as startable
+create it; `dev:board` 4.1 keys on it, and without it an epic parent will be offered as startable
 work. Same for `roadmap-declined`, and for `impact:` and `complexity:`, which every parent carries at
 epic level — proposed from the theme's own evidence and corrected by the developer, never invented
 (`docs/guide/WORKFLOW.md` → *Rating an issue*).
@@ -245,7 +245,7 @@ epic level — proposed from the theme's own evidence and corrected by the devel
 ```
 ## <repo> — roadmap
 
-ACTIVE    <milestone>            3 epics · 0/9 slices · due <date>      ← dev:kanban QUEUE
+ACTIVE    <milestone>            3 epics · 0/9 slices · due <date>      ← dev:board QUEUE
 NEXT      <milestone>            2 epics · not started
 LATER     <milestone>            1 epic
 
@@ -262,7 +262,7 @@ NET       opened <n> · adopted existing <n> · attached as sub-issue <n> · ope
 **The `NET` line is not optional.** Issue numbers only grow; the open count is what this door can
 make worse, and a run that opened 13 parents to plan 9 existing issues must say so on screen.
 
-**End by asking, never by listing** — `dev:kanban` Phase 6's rule. Naming an epic hands to
+**End by asking, never by listing** — `dev:board` Phase 6's rule. Naming an epic hands to
 `/dev #E`, which decomposes it at Phase 5. This door does not start work.
 
 ## Never
@@ -275,7 +275,7 @@ make worse, and a run that opened 13 parents to plan 9 existing issues must say 
   decomposition.
 - **Never write without an explicit yes per theme** (Phase 5). Batching is not consent.
 - **Never re-propose a `roadmap-declined` theme.** A decision is not a gap.
-- **Never close a milestone or an epic** — `dev:kanban` 7.3 owns that, because it is the door that
+- **Never close a milestone or an epic** — `dev:board` 7.3 owns that, because it is the door that
   computes `n/n`.
 - **Never make two milestones active.** QUEUE is one column; ambiguity there breaks the board.
 - **Never do competitor or market analysis.** Nothing in the repo can verify it.
@@ -298,7 +298,7 @@ make worse, and a run that opened 13 parents to plan 9 existing issues must say 
 
 **2026-09-10 — written to close a loop that had no terminator.** Before this door, nothing in the
 family created a milestone: the only mention of the word in the real files was a `gh issue view
---json …,milestone` in `SKILL.md` that fetched the field and never used it. `dev:kanban`'s QUEUE
+--json …,milestone` in `SKILL.md` that fetched the field and never used it. `dev:board`'s QUEUE
 column existed but had never rendered, because nothing made a queue.
 
 **The reference framework this was modelled on generated roadmaps with competitor analysis** — 17

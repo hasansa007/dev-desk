@@ -56,7 +56,7 @@ so it is defined once there and never duplicated here.
 |---|---|
 | **Nothing at all** | **Entry 0 — Orient**: detect where this repo actually is, then offer the two or three doors that fit it |
 | `#N`, `github.com/.../issues/N`, GitHub issue URL | **GitHub** flow |
-| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `kanban`, `issues`, `findings`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, `ui` | **Confirm the handoff** — see the guard below |
+| A bare family name — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `trim`, `board`, `issues`, `findings`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, `ui` | **Confirm the handoff** — see the guard below |
 | Any other free text | **Generic** flow |
 
 ### The empty-input row is a guard, not a convenience
@@ -72,7 +72,7 @@ read-only** answer turns the emptiest input into the most useful one, and the wo
 question instead of a branch.
 
 **2026-09-10 — the fixed destination was wrong for half the repos it met.** Empty input routed
-straight to `dev:kanban`. That is the right answer for a repo with a stocked tracker and useless for
+straight to `dev:board`. That is the right answer for a repo with a stocked tracker and useless for
 the other three cases: a fresh install where nothing is configured, a codebase whose tracker is
 empty, and a run that stopped halfway and wants resuming. A board rendering `0 open` is a true
 answer to a question the developer did not ask. Entry 0 keeps the guard — still read-only, still
@@ -109,7 +109,7 @@ Then match the FIRST situation that applies:
 | Situation | Detected by | Offer |
 |---|---|---|
 | **1 · Work in flight** | `.dev/<branch>.json` exists, or a branch carries commits not in the base | **Resume it.** Name the branch, the phase it reached, and what comes next. `/dev --continue`, or the door for that phase |
-| **2 · The board has work** | tracker reachable and has open issues | `dev:kanban` — the board, then pick one |
+| **2 · The board has work** | tracker reachable and has open issues | `dev:board` — the board, then pick one |
 | **3 · Code, but an empty tracker** | commits exist, tracker reachable and empty | `dev:findings` (what is wrong) · `dev:ideation` (what is worth doing) · `dev:roadmap` (group it into milestones) |
 | **4 · A fresh or empty project** | no commits, or no remote, or `gh` not authenticated | Say exactly what is missing and how to fix it, then offer `/dev <description>` to build the first thing |
 
@@ -119,7 +119,7 @@ Then match the FIRST situation that applies:
   starts work — naming a choice hands off to the door that owns it.
 - **Never render another repo's state** (`shared/entry.md`, write boundary). An empty tracker here
   is the answer; another repo's fuller one is a sentence you may say, never a board you render.
-- **Never invent work to fill situation 3.** `dev:kanban` 6b's rule applies: surface only what the
+- **Never invent work to fill situation 3.** `dev:board` 6b's rule applies: surface only what the
   repo already wrote down, and *"this repo records no gaps"* is a complete answer.
 - **Situation 1 outranks the rest.** Unfinished work is the thing most likely to be forgotten, and
   the thing most expensive to rediscover.
@@ -132,20 +132,20 @@ a **feature name**: `/dev run` would branch `feature/run` and start building a f
 
 Before routing to Generic, STOP if the argument is:
 
-- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `kanban`, `findings`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, with or without the
+- **a family name** — `run`, `prod`, `pre-prod`, `rollback`, `audit`, `verify`, `docs`, `review`, `comment-budget`, `board`, `findings`, `ideation`, `roadmap`, `insights`, `code-review`, `arch`, with or without the
   `dev-` prefix. Name the sibling it maps to and confirm:
   *"`/dev run` isn't a subcommand — did you mean `/dev:launch`?"*
 - **a RENAMED family name.** `trim` is still the advertised trigger (*"trim the comments"*) after the
   door became `comment-budget` on 2026-09-07, so `/dev trim` must map, not fall through:
   *"`/dev trim` isn't a subcommand — did you mean `/dev:comment-budget`?"* A rename that drops the
   old name from this guard while leaving it in the triggers turns it into a feature title.
-  **`issues` is the same case** after the board became `dev:kanban` on 2026-09-10 — "show the
+  **`issues` is the same case** after the board became `dev:board` on 2026-09-10 — "show the
   issues" is still how anyone asks for it, so `/dev issues` must map:
-  *"`/dev issues` isn't a subcommand — did you mean `/dev:kanban`?"*
+  *"`/dev issues` isn't a subcommand — did you mean `/dev:board`?"*
 - **a RETIRED family name.** `ui` was retired on 2026-09-11, and "open the ui" is still how anyone
   would ask, so `/dev ui` must answer rather than fall through:
   *"`/dev:ui` was retired on 2026-09-11 — Dev Desk (`apps/desk/`) shows the board and roadmap; card
-  moves are `/dev:kanban`."* A retired name dropped from this guard becomes a feature title, exactly
+  moves are `/dev:board`."* A retired name dropped from this guard becomes a feature title, exactly
   as a renamed one does.
 - **a single word with no verb and no object** (`deploy`, `test`, `fix`). Far likelier a mistyped
   command than a feature brief.
@@ -217,7 +217,7 @@ directly when the work already exists and only that phase is needed:
 | `dev:ideation` | — | an existing app | "what could we improve" — perf/security/quality opportunities, files the confirmed |
 | `dev:roadmap` | — | the repo's own evidence | "what should we build next" — themes → milestones + epic parents; **makes the QUEUE exist** |
 | `dev:insights` | — | a question | "how does this work?" — cited answer, routes to the owning door, folds durable findings into `PROJECT_MAP.md` |
-| `dev:kanban` | — | the repo's tracker | "what should I work on?" — the board, plus bounded card writes; bare `/dev` offers it when the tracker has work |
+| `dev:board` | — | the repo's tracker | "what should I work on?" — the board, plus bounded card writes; bare `/dev` offers it when the tracker has work |
 
 They all read the same `shared/pipeline.md`; none of them copies it. **Phases 1–8 have no sibling on
 purpose** — they pass reasoning rather than artifacts, so there is nothing to hand a fresh session.

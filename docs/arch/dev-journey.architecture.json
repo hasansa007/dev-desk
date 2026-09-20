@@ -74,9 +74,9 @@
    "tag": "Phase 0"
   },
   {
-   "id": "kanban",
+   "id": "board",
    "type": "cloud",
-   "label": "4 · dev:kanban",
+   "label": "4 · dev:board",
    "sublabel": "what next?",
    "pos": [
     680,
@@ -88,7 +88,7 @@
    ],
    "sources": [
     {
-     "path": "skills/kanban/SKILL.md",
+     "path": "skills/board/SKILL.md",
      "label": "the tracker view"
     }
    ],
@@ -418,7 +418,7 @@
    "wraps": [
     "survey",
     "create",
-    "kanban"
+    "board"
    ]
   },
   {
@@ -462,13 +462,13 @@
   {
    "id": "create-issues",
    "from": "create",
-   "to": "kanban",
+   "to": "board",
    "label": "lands on the board",
    "labelDy": -34
   },
   {
    "id": "issues-dev",
-   "from": "kanban",
+   "from": "board",
    "to": "dev",
    "label": "pick one",
    "variant": "emphasis",
@@ -541,7 +541,7 @@
    "title": "Step 1 — /dev orients",
    "items": [
     "Work in flight → resume it (branch, phase, what is next)",
-    "Board stocked → dev:kanban, then pick one",
+    "Board stocked → dev:board, then pick one",
     "Code but empty tracker → dev:survey · dev:ideation · dev:roadmap",
     "Fresh project → /dev <description>. Read-only until you choose"
    ]

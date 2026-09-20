@@ -35,7 +35,7 @@ become a confirmed finding, an approved plan, or a completed task.
 - Make the task-and-agent workspace the distinctive visual element. Keep surrounding chrome
   calm, with useful density, careful alignment, and clear separation of navigation and content.
 - Prefer lists, split views, and inspectors where they suit the information. Reserve cards
-  for the Kanban board and content that benefits from grouping.
+  for the Board board and content that benefits from grouping.
 - Support a 1440 × 900 reference window and a compact laptop layout around 1100 × 720.
   Collapse optional inspectors and docks before making primary content unusable.
 - Include visible keyboard focus, accessible contrast, reduced motion, and meaningful empty
@@ -78,7 +78,7 @@ below. Do not add a second Findings destination called Survey or rename Findings
 
 ## Board and task workspace
 
-Use Kanban columns that distinguish queued work, work in progress, review, and completed work,
+Use Board columns that distinguish queued work, work in progress, review, and completed work,
 with a clear backlog filter or area. Treat these as prototype labels pending the repository's
 actual status mapping. Do not imply dragging a card alone proves implementation or review.
 

@@ -36,18 +36,20 @@ It's ad-hoc signed rather than notarized, so the first time you open it, right-c
 
 **Claude Code — install it as a plugin.** This is the better path, because a plugin carries the
 [hooks](hooks/README.md) as well as the doors; the symlink below cannot. The repo is its own
-marketplace, so point Claude Code at your clone:
+marketplace — `.claude-plugin/marketplace.json` — so point Claude Code at it on GitHub:
 
 ```text
-/plugin marketplace add ~/Developer/skills/dev-skill     # the path you cloned into
+/plugin marketplace add hasansa007/dev-skill
 /plugin install dev@dev-skill
 ```
 
-Then restart Claude Code and check that `/dev` and one door — say `/dev:kanban` — both appear.
-Four hooks come with it: `branch-guard` denies a write on a protected branch, `pr-gates` checks a PR
-body and a push, `teardown` blocks a stop while debug Chrome is alive, and `context-load` injects
-PROJECT_MAP at session start. `branch-guard` becomes global this way, which is safe — it exempts
-the repo it ships in — but it means every repo you work in gets the protected-branch rule.
+Restart Claude Code, then check the doors are there — `/dev:board`, say. The root door is
+**`/dev:dev`** on this path, not `/dev`: a plugin namespaces every skill under its own name, and the
+root `SKILL.md` is a skill like the rest. Four hooks come with it: `branch-guard` denies a write on a
+protected branch, `pr-gates` checks a PR body and a push, `teardown` blocks a stop while debug Chrome
+is alive, and `context-load` injects PROJECT_MAP at session start. `branch-guard` becomes global this
+way, which is safe — it exempts the repo it ships in — but it means every repo you work in gets the
+protected-branch rule.
 
 **Codex, Antigravity, or Claude Code without the plugin:**
 
@@ -57,21 +59,12 @@ dev-skill/install.sh
 
 The installer links the checkout into existing skill directories for **Claude Code, Codex, and
 Antigravity**, skipping any that are missing. It is safe to rerun, and it **skips Claude Code when
-the plugin is installed**, so the two never give you every door twice. Installed this way, the hooks
-are not installed with it — see [hooks/README.md](hooks/README.md).
+the plugin is installed**, so the two never give you every door twice. Installed this way the hooks
+do not come with it, and `/dev` keeps its bare name — see [hooks/README.md](hooks/README.md).
 
 **Installing is required, not optional.** Every path inside the family resolves through the install root (`~/.claude/skills/dev/…`), which is what lets it run on any machine regardless of where you cloned it. A clone that has never been installed has no root to resolve against.
 
 Reload skills with `/reload-skills` in Claude Code, or restart your CLI. Check the loaded skill list.
-
-**Or install it as a Claude Code plugin.** The repo is also a Claude Code plugin — `.claude-plugin/plugin.json` defines the `dev` plugin, and `.claude-plugin/marketplace.json` makes the repo its own marketplace. In Claude Code:
-
-```text
-/plugin marketplace add hasansa007/dev-skill
-/plugin install dev@dev-skill
-```
-
-The plugin route is Claude Code only; for Codex and Antigravity, use `install.sh` as above.
 
 **New here?** [Getting started](docs/guide/GETTING-STARTED.md) walks through the first run and the four situations you can be in — a fresh project, one you know, one you inherited, and picking work up again.
 
@@ -99,7 +92,7 @@ Bare `/dev` **orients**: it detects where the repo actually is and offers the tw
 | `/dev:create-issue` | File a work item for later. |
 | `/dev:create-bug` | File a bug report without implementing the fix. |
 | `/dev:create-epic` | File a parent epic; split it during planning. |
-| `/dev:kanban` | Show current work, the queue, next tasks and statistics; move, cancel or delete a card. |
+| `/dev:board` | Show current work, the queue, next tasks and statistics; move, cancel or delete a card. |
 | `/dev:findings` | Inspect an app for defects and architectural drift; file the confirmed. |
 | `/dev:ideation` | Inspect an app for performance, security and quality opportunities; file the confirmed. |
 | `/dev:roadmap` | Propose themes from the repo's own evidence; write milestones and epic parents. |

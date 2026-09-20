@@ -39,6 +39,13 @@ ROOT=$(git -C "$DIR" rev-parse --show-toplevel 2>/dev/null) || exit 0
 # The dev-skill repo is not gated by the pipeline it defines (its CLAUDE.md, 2026-09-13).
 SELF=$(cd "$(dirname "$(readlink -f "$0" 2>/dev/null || echo "$0")")/.." && pwd -P)
 [ "$(cd "$ROOT" && pwd -P)" = "$SELF" ] && { log self "$ROOT"; exit 0; }
+# Installed as a PLUGIN, SELF is the cache copy, so the path above never matches the working repo
+# and the admin rule silently stopped applying (2026-09-20, first write after the plugin install).
+# Identity, not path: the source repo is the one declaring the same plugin as the copy this hook
+# ships in.
+SELF_PLUGIN=$(jq -r '.name // empty' "$SELF/.claude-plugin/plugin.json" 2>/dev/null)
+ROOT_PLUGIN=$(jq -r '.name // empty' "$ROOT/.claude-plugin/plugin.json" 2>/dev/null)
+[ -n "$SELF_PLUGIN" ] && [ "$SELF_PLUGIN" = "$ROOT_PLUGIN" ] && { log self "$ROOT"; exit 0; }
 
 # --show-current, not rev-parse HEAD: the latter fails on an unborn branch,
 # which would let the very first write into a fresh repo's main through.

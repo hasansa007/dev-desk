@@ -28,7 +28,7 @@ The same week showed what filing without a duplicate check costs: a roadmap run 
 **Add Task has four steps, the same with or without GitHub; only the destination changes.**
 
 1. **Input: title, bullets, description.** The bullets are the task's `## Done when` — the list `/dev` reads
-   as its acceptance criteria and `dev:kanban` 7.3 evaluates. The description is the prose around them.
+   as its acceptance criteria and `dev:board` 7.3 evaluates. The description is the prose around them.
 2. **Destination, resolved when the sheet opens, and shown before anything is typed.** ADR 0027's three
    "no GitHub" situations plus one:
 
@@ -40,7 +40,7 @@ The same week showed what filing without a duplicate check costs: a roadmap run 
    | …and Issues are enabled | disabled → local |
 
    The sheet prints the result — **→ GitHub issue in owner/repo** or **→ docs/backlog (signed out)**. A failed
-   check never renders as an empty tracker (`dev:kanban` Phase 3's rule).
+   check never renders as an empty tracker (`dev:board` Phase 3's rule).
 3. **Duplicate check, before the confirm button means anything.** As the title settles, the sheet runs a
    plain search — `gh issue list --state open --search "<title words> in:title,body"` with a tracker,
    `docs/backlog/*.md` titles and bodies without one — and lists what it found under the fields:
@@ -66,7 +66,7 @@ none (`LocalBacklog`: *"a local card has no branch"*). Promoting it later adds `
 its name, because renaming a branch that has work on it breaks every worktree and remote that tracks it.
 
 **Add files no labels.** Priority, impact and complexity are judgments, and Add runs no agent. An unlabelled
-issue is honest; a guessed `P1` ranks the board wrong. `/dev`'s Phase 0 or `dev:kanban` labels it.
+issue is honest; a guessed `P1` ranks the board wrong. `/dev`'s Phase 0 or `dev:board` labels it.
 
 ## Alternatives rejected
 

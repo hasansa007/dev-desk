@@ -7,7 +7,7 @@ Commit:  (this branch)  ·  `feat/macos-app-missing-features`
 ## Context
 
 A board can be ranked here by one thing: the priority label, `P1`–`P3`. Priority answers *when*,
-and it is read that way — `dev:kanban` Phase 5 orders NEXT by it. Nothing records what an issue is
+and it is read that way — `dev:board` Phase 5 orders NEXT by it. Nothing records what an issue is
 **worth** or how **big** it is, so those two live only in whoever filed it.
 
 `dev:ideation` already computes both. Its Phase 6 ranks every opportunity by gain over cost, and its
@@ -24,12 +24,12 @@ Two label families, `impact:high|medium|low` and `complexity:high|medium|low`, c
 repository on 2026-09-12.
 
 - **Impact is the gain; complexity is the cost.** Priority is unchanged and still means urgency, so
-  `dev:kanban`'s ordering is untouched.
+  `dev:board`'s ordering is untouched.
 - **Every filing door proposes both, marked as an assumption**, for the developer to correct:
   `create-issue`, `create-bug`, `create-epic`, `survey`, `ideation` and `roadmap`. `dev:ideation`
   carries its own two numbers across rather than inventing new ones.
 - **A repository lacking a label is offered it, never given it silently** — the rule `dev:roadmap`
-  already applies to `epic` and `dev:kanban` to `P1`–`P3`, which also refuses to bulk-relabel a
+  already applies to `epic` and `dev:board` to `P1`–`P3`, which also refuses to bulk-relabel a
   tracker because applying a rating to 200 issues invents 200 ratings.
 - **Dev Desk shows a dash for an unrated issue**, so a rated card and an unrated one are never
   confused. The vocabulary is documented in `docs/guide/WORKFLOW.md` → *Rating an issue*.
@@ -60,7 +60,7 @@ repository on 2026-09-12.
   states, where an addition demands a deletion in the same commit, so the vocabulary lives in the
   guide and each door references it.
 - **A rating is a proposal until the developer confirms it.** A door that files one unconfirmed has
-  invented a number, which is the failure `dev:kanban`'s never-bulk-relabel rule exists to prevent.
+  invented a number, which is the failure `dev:board`'s never-bulk-relabel rule exists to prevent.
 
 ## Evidence
 

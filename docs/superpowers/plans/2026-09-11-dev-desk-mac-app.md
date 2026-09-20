@@ -1820,7 +1820,7 @@ schemes:
 
 ### Task 3: Real data — git and GitHub for an opened folder
 
-Replaces the interim `LocalGitDataSource.load()` with the full read-only mapping, and adds the Clone and Create operations the launcher calls. Board classification mirrors `scripts/dev.py` (`classify`, `build_board`, `resolve_active_milestone`, lines 269–317 and 587–598) so the app and `dev:kanban` agree. Read those functions before writing `BoardBuilder`.
+Replaces the interim `LocalGitDataSource.load()` with the full read-only mapping, and adds the Clone and Create operations the launcher calls. Board classification mirrors `scripts/dev.py` (`classify`, `build_board`, `resolve_active_milestone`, lines 269–317 and 587–598) so the app and `dev:board` agree. Read those functions before writing `BoardBuilder`.
 
 **Files:**
 - Modify: `apps/desk/DeskCore/Sources/DeskCore/Local/LocalGitDataSource.swift` (replace `load()`; keep `identity()`, `git(_:)`, `abbreviate`)
@@ -1880,7 +1880,7 @@ Per-task fields:
 - **dependencies.** From the body: `(?i)\b(blocked by|depends on)\s+#(\d+)` → "Blocked by [#N](desk://task/N)"; `(?i)\bblocks\s+#(\d+)` → "Blocks [#N](desk://task/N)"; taskID "N".
 
 boardNote:
-- GitHub ready: "Columns follow dev:kanban's rules: git decides In progress and Review, and the active milestone decides Queued.", then either " Active milestone: <title> (<why>)." or " No active milestone, so Queued is empty.".
+- GitHub ready: "Columns follow dev:board's rules: git decides In progress and Review, and the active milestone decides Queued.", then either " Active milestone: <title> (<why>)." or " No active milestone, so Queued is empty.".
 - GitHub not ready: "GitHub is unavailable (<reason>), so only local branches are shown."
 
 `ActiveMilestone.resolve(_:) -> (title: String?, why: String)` is dev.py's rule verbatim: nearest `due_on`, where a same-day tie on the first 10 characters gives nil with "<a> and <b> are due the same day"; else the oldest `created_at` "oldest open milestone; none has a due date"; empty gives nil "no open milestone".

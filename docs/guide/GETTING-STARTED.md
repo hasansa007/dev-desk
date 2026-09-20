@@ -174,7 +174,7 @@ separate door for it.
 
 ```text
 /dev                 orients, and offers to resume anything in flight
-/dev:kanban          the board: queued, in flight, in review, done
+/dev:board          the board: queued, in flight, in review, done
 ```
 
 The board's columns are computed from `git` and `gh` every run, so they cannot go stale. If a run
@@ -187,13 +187,13 @@ checkpointed its phase into `.dev/`, the card also shows `planning` / `coding` /
 Dev Desk, the Mac app in `apps/desk/`, shows the board and the roadmap. It also runs a shell and the
 task's agent in each task's own folder. See [its README](../../apps/desk/README.md) and
 [System model](SYSTEM-MODEL.md). To move a card between QUEUE and BACKLOG, or cancel one with a
-reason, ask `/dev:kanban`: its Move and Cancel happen in the conversation. Ideation reports and the
+reason, ask `/dev:board`: its Move and Cancel happen in the conversation. Ideation reports and the
 project map have no screen yet — read them where they live, `docs/ideation/<date>.md` and
 `PROJECT_MAP.md`.
 
 ### Seeing it as a real board on github.com
 
-The `/dev:kanban` board is text. If you want a draggable one, `dev project` mirrors the same columns into a
+The `/dev:board` board is text. If you want a draggable one, `dev project` mirrors the same columns into a
 GitHub Projects v2 board. **One-time setup:**
 
 ```bash

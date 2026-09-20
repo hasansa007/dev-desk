@@ -222,7 +222,7 @@ class ActiveMilestone(unittest.TestCase):
 
 
 class BoardResolvesTheQueue(unittest.TestCase):
-    """`dev board` without --milestone applies that rule, so dev:kanban's QUEUE needs no flag."""
+    """`dev board` without --milestone applies that rule, so dev:board's QUEUE needs no flag."""
 
     def setUp(self):
         self.dir, self.cwd = tempfile.mkdtemp(), os.getcwd()

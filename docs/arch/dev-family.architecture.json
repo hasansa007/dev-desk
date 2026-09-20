@@ -98,9 +98,9 @@
    "tag": "tool"
   },
   {
-   "id": "kanban",
+   "id": "board",
    "type": "cloud",
-   "label": "dev:kanban",
+   "label": "dev:board",
    "sublabel": "the board",
    "pos": [
     835,
@@ -112,7 +112,7 @@
    ],
    "sources": [
     {
-     "path": "skills/kanban/SKILL.md",
+     "path": "skills/board/SKILL.md",
      "label": "the door"
     },
     {
@@ -721,7 +721,7 @@
     "launchkill",
     "launch",
     "shots",
-    "kanban",
+    "board",
     "survey",
     "trim",
     "arch"
@@ -890,7 +890,7 @@
    "title": "What each tool loads",
    "items": [
     "launch · launch-kill · shots — nothing",
-    "kanban — Universal Rules only",
+    "board — Universal Rules only",
     "comment-budget · arch — Guiding Principles + Universal Rules",
     "survey · ideation — those plus Right-Size, the widest fan-out"
    ]
@@ -919,7 +919,7 @@
    "items": [
     "dev:survey finds defects; dev:ideation finds opportunities",
     "dev:roadmap turns their reports into milestones + epic parents",
-    "The milestone IS dev:kanban's QUEUE column",
+    "The milestone IS dev:board's QUEUE column",
     "All three file through dev:create-* — never directly"
    ]
   },
