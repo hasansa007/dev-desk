@@ -20,8 +20,10 @@ struct ProjectStrip: View {
     var body: some View {
         VStack(spacing: DeskMetric.stripGap) {
             homeButton
-            // Home is not one of the projects, so a line separates the place from the list.
-            Rectangle().fill(DeskColor.divider).frame(width: 28, height: 1)
+            // Home is not one of the projects, so a line separates the place from the list. `border`, not
+            // `divider`: the strip is the window's floor, and in light mode a divider sits three shades from
+            // it — the line was there all along and only dark mode ever showed it (2026-09-20, on screen).
+            Rectangle().fill(DeskColor.border).frame(width: 28, height: 1)
             ForEach(workspace.contextsInStripOrder) { context in
                 projectButton(context)
             }
