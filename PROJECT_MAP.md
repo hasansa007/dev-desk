@@ -23,7 +23,7 @@ small deterministic helper.
 | Hooks | `hooks/*.sh` — bash + `jq`, installed into `~/.claude/hooks/` |
 | Tests | stdlib `unittest`, one file per script under `tests/<area>/test_*.py`, run as `PYTHONPATH=. python3 <file>` |
 | Mac app | `apps/desk/` — Dev Desk, a native macOS app: SwiftUI with AppKit where needed, macOS 14+, Swift 5 mode. `project.yml` generates the Xcode project with xcodegen (gitignored, not committed); `DeskCore` is the local Swift package — models, sample data, the git/GitHub reader, task folders and shell state — tested with `swift test --package-path apps/desk/DeskCore` (see [ADR 0012](docs/adr/0012-the-mac-app-lives-in-apps-desk.md)). One dependency, SwiftTerm 1.11.2, in the app target only; DeskCore has none ([ADR 0016](docs/adr/0016-dev-desk-embeds-a-terminal-with-swiftterm.md)). **SwiftTerm is on its way out**: [ADR 0036](docs/adr/0036-agents-run-over-a-protocol-and-the-terminal-leaves-the-app.md) reverses 0016 — task agents move to the Agent Client Protocol and the pty leaves the app, taking the dependency with it. The client is hand-rolled in DeskCore, which stays dependency-free |
-| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**`: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `hooks/pr-gates.yml`, beside the `pr-gates.sh` hook that mirrors it, is a template for *other* repos and is deliberately never installed here |
+| CI | `.github/workflows/` — `line-budget.yml`, `tests.yml`, and `desk.yml` (path-filtered to `apps/desk/**` and `shared/board-rules.json`, which DeskCore's conformance test reads: DeskCore's `swift test` and an `xcodebuild` of the app; first run green on PR #50). Each installed **on its own**; `hooks/pr-gates.yml`, beside the `pr-gates.sh` hook that mirrors it, is a template for *other* repos and is deliberately never installed here |
 | Install | `install.sh` symlinks the clone into each CLI's skills dir as `dev`, maintains the family's root at `~/.claude/.dev-root`, and links `scripts/dev.py` as the `dev` command into `~/.local/bin` (or `~/bin`) when one is already on `PATH`. A **plugin** install creates no per-CLI link, so `context-load.sh` maintains the same root from its SessionStart hook ([ADR 0054](docs/adr/0054-the-install-root-is-one-hidden-symlink-not-a-skills-directory.md)). **`apps/desk/install.sh` is a different thing**: it builds Dev Desk Release, ad-hoc signed, into `~/Applications` — the bundle you actually open, which is not the DerivedData one Xcode builds (ADR 0024's context) |
 
 **Paths inside the family are the INSTALL ROOT** (`~/.claude/.dev-root/…`), never the clone path.
@@ -114,7 +114,12 @@ ORPHANS).
 - **Auto starts from Ready for dev**, which holds the active milestone's issues and every card moved
   there by hand (ADR 0035); a repo with neither gives Auto nothing to start (ADR 0018).
 - **The board rules are duplicated**, in `apps/desk/DeskCore/Sources/DeskCore/Local/BoardBuilder.swift`,
-  mirroring `scripts/dev.py` by hand (ADR 0013) — a rule change needs both, and the app's board has
+  mirroring `scripts/dev.py` by hand (ADR 0013) — but the mirror is no longer held by memory: `shared/board-rules.json`
+  is a **registry** of the seven shared rules as 49 cases, and both suites fail on a rule they do not bind
+  (ADR 0055), so a rule added to one reader alone cannot go green. Measured at 42 inputs before it was written:
+  zero divergences, so this is a ratchet rather than a repair. It covers rules, never column vocabulary, and
+  `resolve_base`'s declared divergence stays out. A rule that exists in one reader and is never registered is
+  still invisible. The app's board has
   since grown columns of its own (`Ready for dev` and the stored stages, ADR 0035) that `dev board`
   deliberately does not show. Both measure a branch
   against `origin/<base>`, never a local copy that can lag. One rule is Dev Desk's alone: a branch
