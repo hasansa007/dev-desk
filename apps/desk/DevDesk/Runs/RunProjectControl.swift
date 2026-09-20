@@ -152,6 +152,23 @@ struct RunProjectControl: View {
     /// sidebar itself has already given up its labels.
     private var isWide: Bool { windowSize.width >= DeskMetric.railBreakpoint }
 
+    /// Where a press of play actually runs. The label read `projectFolderTarget` — the FOLDER's branch —
+    /// while ⌘R has always run `runTarget`, the worktree of the session in front when there is one: the
+    /// button said "main" and ran somewhere else (2026-09-20). Both read this now, so the control names the
+    /// worktree it will run in, and work happens in worktrees (ADR 0053).
+    private var target: RunTarget? { model.runTarget }
+
+    /// Every folder a run can be started in: the project folder, then one per worktree this project is working.
+    private var runnableTargets: [RunTarget] {
+        guard let folder = model.projectFolderTarget else { return [] }
+        let worktrees = model.tasks.compactMap { task -> RunTarget? in
+            guard let path = task.worktreePath else { return nil }
+            let url = URL(fileURLWithPath: path, isDirectory: true)
+            return RunTarget(folder: url, branch: task.branch ?? RunTarget.branch(in: url), isProjectFolder: false)
+        }
+        return [folder] + worktrees
+    }
+
     var body: some View {
         HStack(spacing: 2) {
             Button(action: primaryAction) { primaryLabel }
@@ -180,12 +197,18 @@ struct RunProjectControl: View {
             Image(systemName: isRunning ? "stop.fill" : "play.fill")
                 .imageScale(.medium)
                 .foregroundStyle(isRunning ? DeskColor.tone(.running).dot : DeskColor.navInk)
-            if !isRunning, isWide, !isSample, let branch = model.projectFolderTarget?.branch {
-                Text(branch)
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineLimit(1)
-                    .frame(maxWidth: 160)
+            if !isRunning, isWide, !isSample, let target {
+                HStack(spacing: 4) {
+                    // A worktree is named by its branch and marked as one; the folder is just its branch.
+                    if !target.isProjectFolder {
+                        Image(systemName: "arrow.trianglehead.branch").font(.system(size: 9))
+                    }
+                    Text(target.branch)
+                }
+                .font(DeskFont.secondary)
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineLimit(1)
+                .frame(maxWidth: 160)
             }
             if isRunning {
                 StatusDot(tone: .running, pulses: true)
@@ -204,7 +227,9 @@ struct RunProjectControl: View {
         if isRunning { return "Stop \(liveName)" }
         if let blockedReason { return blockedReason }
         let name = runs.plan.defaultConfiguration?.name ?? ""
-        return "Run \(name) on \(model.projectFolderTarget?.branch ?? "the project folder") — the project folder (⌘R runs the Terminals tab in front when it has a worktree)"
+        guard let target else { return "Run \(name)" }
+        let place = target.isProjectFolder ? "the project folder" : "the \(target.branch) worktree"
+        return "Run \(name) in \(place) — \(target.folder.path)"
     }
 
     private func primaryAction() {
@@ -212,19 +237,37 @@ struct RunProjectControl: View {
         if let liveSessionID {
             model.stopProjectRun(sessionID: liveSessionID, terminals: terminals)
         } else {
-            guard let target = model.projectFolderTarget else { return }
+            guard let target else { return }
             model.requestProjectRun(target: target, terminals: terminals, worktreeLocation: worktreeLocation)
         }
     }
 
-    private func run(_ configurationID: String?, intent: ProjectRunIntent = .run) {
+    private func run(_ configurationID: String?, intent: ProjectRunIntent = .run, in override: RunTarget? = nil) {
         guard let terminals else { return }
-        guard let target = model.projectFolderTarget else { return }
+        guard let target = override ?? target else { return }
         model.requestProjectRun(configurationID: configurationID, intent: intent, target: target, terminals: terminals,
                                 worktreeLocation: worktreeLocation)
     }
 
     @ViewBuilder private var menuItems: some View {
+        // Which folder, before which configuration: a run belongs to a checkout, and the worktrees are where
+        // the work is (ADR 0053). One entry when nothing is checked out anywhere else.
+        if runnableTargets.count > 1 {
+            Section("Run in") {
+                ForEach(runnableTargets, id: \.folder) { option in
+                    Button {
+                        run(nil, in: option)
+                    } label: {
+                        let name = option.isProjectFolder ? "\(option.branch) — the project folder" : "\(option.branch) — worktree"
+                        if option.folder.standardizedFileURL == target?.folder.standardizedFileURL {
+                            Label(name, systemImage: "checkmark")
+                        } else {
+                            Text(name)
+                        }
+                    }
+                }
+            }
+        }
         ForEach(runs.plan.configurations) { configuration in
             let isLive = runs.isRunning(configurationID: configuration.id)
             Button { run(configuration.id) } label: {
