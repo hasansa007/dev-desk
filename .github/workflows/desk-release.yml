@@ -61,7 +61,7 @@ jobs:
           {
             echo "Dev Desk is ad-hoc signed and not notarized. The first time you open it, right-click the app and choose **Open** — or run \`xattr -dr com.apple.quarantine \"/Applications/Dev Desk.app\"\`."
             echo
-            echo "Requires macOS 14 or later."
+            echo "Requires macOS 14 or later. Dev Desk is a Mac app — there is no Windows or Linux build."
             echo
             echo "This repo is private, so downloading the release needs GitHub access, for example: \`gh release download ${{ steps.version.outputs.tag }} -R hasansa007/dev-skill -p 'Dev-Desk-*.dmg'\`."
           } > notes.md
