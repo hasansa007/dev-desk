@@ -609,20 +609,9 @@ final class FocusingTerminalView: LocalProcessTerminalView {
     /// Every keystroke and every typed line reaches the process through here, so this is where Dev Desk learns
     /// that a turn has begun — without a hook, for any CLI. Return is the send; the rest is composing.
     override func send(source: Terminal, data: ArraySlice<UInt8>) {
-        if Self.carriesReturn(data) { onSend?() }
+        // Return, and only Return: the LF that ⇧↩ sends is a line break inside the message, not the message going.
+        if data.contains(0x0d) { onSend?() }
         super.send(source: source, data: data)
-    }
-
-    /// True when the bytes carry a Return the program will act on. The one ⇧↩ sends does not count: it is ESC CR,
-    /// a newline typed INTO the agent's prompt (`performKeyEquivalent`), and reading it as a turn begun lit the
-    /// session up as working while the user was still writing the message.
-    private static func carriesReturn(_ data: ArraySlice<UInt8>) -> Bool {
-        var previous: UInt8 = 0
-        for byte in data {
-            if byte == 0x0d, previous != 0x1b { return true }
-            previous = byte
-        }
-        return false
     }
 
     /// macOS dictation — and any input method that commits styled text — hands `insertText` an NSAttributedString.
@@ -692,11 +681,11 @@ final class FocusingTerminalView: LocalProcessTerminalView {
         let option = modifiers.contains(.option)
         let command = modifiers.contains(.command)
         // ⇧↩ and ⌥↩ open a new line in the agent's prompt instead of sending the message. Both reach the pty as a
-        // plain Return otherwise — the modifier is not in the byte — so each is sent as ESC CR, which is exactly what
-        // Claude Code's own `/terminal-setup` writes into iTerm2 and VS Code for ⇧↩, and what Codex reads as a
-        // newline too. A shell that does not know the sequence ignores it rather than running the line.
+        // plain Return otherwise — the modifier is not in the byte — so each is sent as LF, which is the byte ⌃J
+        // sends and the one Claude Code's own docs name as the line break that "works in every terminal with no
+        // setup". ESC CR was tried first, on the assumption that ⌥↩ meant meta-Return; it does nothing (2026-09-21).
         if event.keyCode == KeyCode.ret, !command, option || modifiers.contains(.shift) {
-            send(txt: "\u{1b}\r")
+            send(txt: "\n")
             return true
         }
         switch (event.keyCode, option, command) {
