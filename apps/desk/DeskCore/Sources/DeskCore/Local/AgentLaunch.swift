@@ -40,12 +40,13 @@ public enum AgentLaunch {
 
     /// Where the family is installed for this agent, as `skill_root(agent)` in scripts/dev.py has it.
     /// install.sh writes one copy per agent, and an agent can only read its own: pointing Codex at
-    /// `~/.claude/skills/dev` asks it to read a door it may not have.
+    /// Claude Code's root asks it to read a door it may not have.
     /// install.sh writes no copy for Gemini, opencode or Antigravity, so they read Claude's — the path each was
     /// verified reading on 2026-09-16.
-    public static func skillRoot(for agent: AgentKind) -> String {
-        let owner = agent.runsInBackground ? agent.rawValue : AgentKind.claude.rawValue
-        return NSString(string: "~/.\(owner)/skills/dev").expandingTildeInPath
+    public static func skillRoot(for agent: AgentKind, home: String = NSHomeDirectory(),
+                                 exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) -> String {
+        let declared = agent == .codex ? InstallRoot.codex : InstallRoot.claude
+        return "\(home)/\(InstallRoot.resolve(declared, home: home, exists: exists))"
     }
 
     /// The agents a Start may offer, in the order the sheet lists them.

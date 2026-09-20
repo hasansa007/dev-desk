@@ -7,7 +7,7 @@ final class DoorRunsTests: XCTestCase {
 
     func testClaudeReadsTheDoorFromItsOwnInstallRoot() {
         XCTAssertEqual(DoorCommand.build(door: "findings", agent: "Claude", home: home),
-                       "claude 'Read /Users/tester/.claude/skills/dev/skills/findings/SKILL.md and execute it exactly as written, "
+                       "claude 'Read /Users/tester/.claude/.dev-root/skills/findings/SKILL.md and execute it exactly as written, "
                        + "following every phase and gate it defines.'")
     }
 
@@ -17,8 +17,8 @@ final class DoorRunsTests: XCTestCase {
     }
 
     func testTheRootDoorIsTheFamilysOwnSkillFile() {
-        XCTAssertEqual(DoorCommand.doorPath("dev", root: ".claude/skills/dev", home: home),
-                       "/Users/tester/.claude/skills/dev/SKILL.md")
+        XCTAssertEqual(DoorCommand.doorPath("dev", root: InstallRoot.claude, home: home),
+                       "/Users/tester/.claude/.dev-root/SKILL.md")
     }
 
     func testArgumentsAreAppendedForTheDoorToRead() {
@@ -49,7 +49,7 @@ final class DoorRunsTests: XCTestCase {
     /// exactly as written — only the way its steps are carried out changes.
     func testDelegateModeAppendsTheDelegationInstructionAfterTheArguments() throws {
         let prompt = try XCTUnwrap(DoorCommand.prompt(door: "dev", agent: "Claude", arguments: ["#12"], home: home, mode: .delegate))
-        XCTAssertEqual(prompt.hasPrefix("Read /Users/tester/.claude/skills/dev/SKILL.md and execute it exactly as written, "
+        XCTAssertEqual(prompt.hasPrefix("Read /Users/tester/.claude/.dev-root/SKILL.md and execute it exactly as written, "
                                         + "following every phase and gate it defines. Arguments: #12 "), true)
         XCTAssertEqual(prompt.hasSuffix(DoorCommand.delegationInstruction), true)
         XCTAssertTrue(prompt.contains("worker subagent"))

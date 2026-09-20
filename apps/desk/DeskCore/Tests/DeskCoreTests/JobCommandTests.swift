@@ -17,7 +17,7 @@ final class JobCommandTests: XCTestCase {
         XCTAssertEqual(Array(job.arguments.prefix(8)),
                        ["-p", "--output-format", "stream-json", "--verbose", "--session-id", "fixed-id",
                         "--permission-mode", "acceptEdits"])
-        XCTAssertEqual(job.arguments.last?.hasPrefix("Read /Users/tester/.claude/skills/dev/skills/findings/SKILL.md"), true)
+        XCTAssertEqual(job.arguments.last?.hasPrefix("Read /Users/tester/.claude/.dev-root/skills/findings/SKILL.md"), true)
     }
 
     func testEachPermissionLevelMapsToTheFlagsItsCliActuallyHas() throws {

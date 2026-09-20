@@ -14,22 +14,22 @@ final class TaskLaunchTests: XCTestCase {
     }
 
     func testThePromptIsTheOneScriptsDevPyBuilds() {
-        let expected = "Read /Users/tester/.claude/skills/dev/SKILL.md and execute it exactly as written, "
+        let expected = "Read /Users/tester/.claude/.dev-root/SKILL.md and execute it exactly as written, "
             + "following every phase and gate it defines. Arguments: #212"
         XCTAssertEqual(launch().prompt(home: home), expected)
     }
 
-    /// The defect this type removes: AgentLaunch.prompt sent both CLIs to ~/.claude/skills/dev, and
+    /// The defect this type removes: AgentLaunch.prompt sent both CLIs to Claude Code's root, and
     /// scripts/dev.py did the same, so a Codex run read the Claude copy of the door.
     func testEachAgentIsSentToItsOwnSkillRoot() {
-        XCTAssertEqual(launch(agent: .claude).prompt(home: home)?.contains("/.claude/skills/dev/SKILL.md"), true)
+        XCTAssertEqual(launch(agent: .claude).prompt(home: home)?.contains("/.claude/.dev-root/SKILL.md"), true)
         XCTAssertEqual(launch(agent: .codex).prompt(home: home)?.contains("/.codex/skills/dev/SKILL.md"), true)
         XCTAssertNotEqual(launch(agent: .claude).prompt(home: home), launch(agent: .codex).prompt(home: home))
     }
 
     func testADoorThatIsNotTheRootReadsItsOwnSkillFile() {
         let prompt = launch(door: "findings", arguments: []).prompt(home: home)
-        XCTAssertEqual(prompt?.contains("/.claude/skills/dev/skills/findings/SKILL.md"), true)
+        XCTAssertEqual(prompt?.contains("/.claude/.dev-root/skills/findings/SKILL.md"), true)
         XCTAssertEqual(prompt?.contains("Arguments:"), false, "no arguments means no arguments clause")
     }
 
