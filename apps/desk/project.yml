@@ -30,7 +30,7 @@ targets:
         # before TCC is consulted — no prompt, no entry in the log — so TerminalHandoff fell through
         # to the clipboard every single time and Open… could never open anything. Found 2026-09-16.
         INFOPLIST_KEY_NSAppleEventsUsageDescription: "Dev Desk opens your terminal to run a sign-in or hand off a session, so no credential passes through the app."
-        MARKETING_VERSION: "0.1.0"
+        MARKETING_VERSION: "0.2.1"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"

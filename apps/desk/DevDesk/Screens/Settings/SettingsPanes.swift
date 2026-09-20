@@ -44,8 +44,6 @@ struct GeneralPane: View {
     /// nil on Home, where no project is selected: the Dev Desk card is app-wide and stands on its own, and
     /// the Diagnostics card simply is not there — dev doctor runs at a project root or not at all.
     let model: ProjectWindowModel?
-    @AppStorage(PreferenceKey.showSamples) private var showSamples = true
-
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
     }
@@ -53,12 +51,9 @@ struct GeneralPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
             PaneHeader("General", scope: .everyProject,
-                       summary: "This app itself: what the project picker offers, which build is running, and the CLI's own check of the machine.")
+                       summary: "This app itself: which build is running, and the CLI's own check of the machine.")
 
             SettingCard("Dev Desk") {
-                SettingToggle(title: "Show sample projects",
-                              why: "The built-in read-only projects in the picker and the project strip. Off leaves only the repositories you have opened.",
-                              isOn: $showSamples)
                 SettingRow("Version", why: "The build installed in ~/Applications. `apps/desk/install.sh` replaces it.") {
                     Text(version)
                         .font(DeskFont.mono(12))

@@ -5,7 +5,6 @@ enum PreferenceKey {
     static let appearance = "desk.appearance"
     static let appIcon = "desk.appIcon"
     static let terminalFontSize = "desk.terminalFontSize"
-    static let showSamples = "desk.showSamples"
     static let defaultConnection = "desk.defaultConnection"
     static let runMode = "desk.runMode"
     static let notifyDecisions = "desk.notifyDecisions"

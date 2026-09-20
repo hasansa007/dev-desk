@@ -10,7 +10,7 @@ import SwiftUI
 enum SettingsIndex {
     static func blurb(_ section: SettingsSection) -> String {
         switch section {
-        case .general: return "Samples, version, dev doctor"
+        case .general: return "Version, dev doctor"
         case .appearance: return "Light or dark, app icon, terminal size"
         case .agentsAndDefaults: return "Which agent a run starts, and in what mode"
         case .startWith: return "Other apps and commands a task can open in"
@@ -43,7 +43,7 @@ enum SettingsIndex {
     static func terms(_ section: SettingsSection) -> [String] {
         switch section {
         case .general:
-            return ["sample projects", "version", "dev doctor", "diagnostics", "about"]
+            return ["version", "dev doctor", "diagnostics", "about"]
         case .appearance:
             return ["light mode", "dark mode", "theme", "colour scheme", "app icon", "terminal text size", "font size"]
         case .agentsAndDefaults:

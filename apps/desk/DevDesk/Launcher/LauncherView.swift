@@ -10,7 +10,6 @@ struct LauncherView: View {
 
     @Environment(OpenProjectRegistry.self) private var registry
     @Environment(\.dismiss) private var dismissWindow
-    @AppStorage(PreferenceKey.showSamples) private var showSamples = true
     @State private var selectedID: String?
     /// The recents live in UserDefaults, which SwiftUI does not observe; a removal bumps this so the list redraws.
     @State private var recentsRevision = 0
@@ -118,6 +117,16 @@ struct LauncherView: View {
     private var recentList: some View {
         let shape = RoundedRectangle(cornerRadius: DeskMetric.cardRadius)
         return VStack(spacing: 0) {
+            if rows.isEmpty {
+                // With the samples gone this box is empty on a fresh install, and an empty bordered
+                // rectangle reads as a bug rather than as a state.
+                Text("No projects yet. Open, clone or create one on the right.")
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .padding(.vertical, 22)
+                    .padding(.horizontal, 12)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
             ForEach(Array(rows.enumerated()), id: \.element.id) { index, item in
                 if index > 0 { Rectangle().fill(DeskColor.rowDivider).frame(height: 1) }
                 row(item)
@@ -147,7 +156,7 @@ struct LauncherView: View {
             return .handled
         }
         .onKeyPress(.delete) {
-            guard let item = rows.first(where: { $0.id == selectedID }), !item.isSample else { return .ignored }
+            guard let item = rows.first(where: { $0.id == selectedID }) else { return .ignored }
             removeRecent(item)
             return .handled
         }
@@ -159,10 +168,7 @@ struct LauncherView: View {
         let isSelected = selectedID == item.id
         return HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
-                HStack(spacing: 6) {
-                    Text(item.name).font(DeskFont.body.weight(.semibold)).foregroundStyle(DeskColor.ink)
-                    if item.isSample { PropertyChip("Sample") }
-                }
+                Text(item.name).font(DeskFont.body.weight(.semibold)).foregroundStyle(DeskColor.ink)
                 Text(item.path)
                     .font(DeskFont.mono(11))
                     .foregroundStyle(DeskColor.mutedInk)
@@ -185,9 +191,7 @@ struct LauncherView: View {
         .onTapGesture(count: 2) { if !item.isMissing { open(item.ref) } }
         .onTapGesture(count: 1) { select(item) }
         .contextMenu {
-            if !item.isSample {
-                Button("Remove from Recent Projects") { removeRecent(item) }
-            }
+            Button("Remove from Recent Projects") { removeRecent(item) }
         }
         .accessibilityElement(children: .combine)
         .accessibilityAddTraits(isSelected ? [.isButton, .isSelected] : .isButton)
@@ -213,23 +217,17 @@ struct LauncherView: View {
         let ref: ProjectRef
         let name: String
         let path: String
-        let isSample: Bool
         let isMissing: Bool
         var id: String { ref.id }
     }
 
+    /// Only projects that have actually been opened. The picker listed two built-in samples above these
+    /// until 2026-09-20; a fresh install now shows the empty list and Start something, which is the truth.
     private var rows: [LauncherRow] {
-        var list: [LauncherRow] = []
-        if showSamples {
-            list += SampleProject.allCases.map {
-                LauncherRow(ref: .sample($0), name: $0.title, path: $0.displayPath, isSample: true, isMissing: false)
-            }
-        }
         _ = recentsRevision
-        list += AppServices.recents.entries.map { entry in
-            LauncherRow(ref: entry.ref, name: entry.name, path: entry.displayPath, isSample: false, isMissing: !isAvailable(entry.ref))
+        return AppServices.recents.entries.map { entry in
+            LauncherRow(ref: entry.ref, name: entry.name, path: entry.displayPath, isMissing: !isAvailable(entry.ref))
         }
-        return list
     }
 
     private func isAvailable(_ ref: ProjectRef) -> Bool {
