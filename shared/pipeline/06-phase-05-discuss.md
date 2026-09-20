@@ -9,6 +9,12 @@ is cheap and reversible. An approach committed to without discussion is neither.
 Use `superpowers:brainstorming` — explore intent, requirements and shape **in plain language**,
 then get an **EXPLICIT go-ahead** before producing a plan or touching code.
 
+**This stop and Phase 6's are the same stop — the decision pack.** Do not hand back here, take an
+answer, and hand back again for the architecture: run Phase 6's fan-out while you have the
+conversation, and present the clarifications, the approaches with your recommendation, and the slice
+plan (count and bill, Phase 8) in ONE message. Two hand-backs bought nothing but latency — ADR 0049.
+When Phase 6 does not apply the pack is just this gate, unchanged.
+
 **Skip only for trivial changes** (typo, copy edit, dependency bump). A plan written without this
 step is a guess with formatting on it.
 
@@ -59,12 +65,13 @@ an epic. **Skip** when it is one task, which is most of them.
 
 This is the only phase that can do it. Phase 0 filed the item before anything was known; by here,
 context load, discovery and investigation have all run, so the seams are **observed rather than
-imagined** — and a wrong seam is expensive, because each slice becomes its own branch, PR and
-promotion.
+imagined** — and a wrong seam is expensive, because each child becomes its own branch, PR and
+promotion. (These are epic CHILDREN, not Phase 9's in-ticket slices: a child ships on its own, a
+slice cannot.)
 
-1. **Propose the slices in plain language** — with dependencies and the order you would take them.
-   Each must be **independently shippable**. A slice that cannot reach pre prod without another is
-   not a slice; fold it into the one it depends on.
+1. **Propose the children in plain language** — with dependencies and the order you would take them.
+   Each must be **independently shippable**. A child that cannot reach pre prod without another is
+   not a child; fold it into the one it depends on.
 2. **Wait.** Phase 5 is a stop-gate and filing children is a write.
 3. **Then file each as its own labelled issue and attach it to the parent:**
 
@@ -76,7 +83,7 @@ gh api repos/<owner>/<repo>/issues/<PARENT>/sub_issues -F sub_issue_id="$(gh api
    **`sub_issue_id` is the issue's DATABASE id, never its number** — and `gh issue create` has no
    `--json`, so the id is read back with `gh api`. Verified 2026-09-12, gh 2.92.0, filing #60–#67.
 
-4. **Never `- [ ]` checkbox lines for slices.** A checklist in the parent body is invisible to every
+4. **Never `- [ ]` checkbox lines for children.** A checklist in the parent body is invisible to every
    board query, carries no label, and cannot be worked by `/dev #N`.
 5. **Continue this run on the FIRST child, and say which.** The parent is a tracker — it takes no
    branch and stays open until its children close. Later children are their own `/dev #N` runs: the

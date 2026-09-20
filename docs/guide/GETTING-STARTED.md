@@ -235,13 +235,12 @@ issue or when an epic still has open children.
 
 ## 6. What it will always stop and ask you
 
-Four gates, by design. Running "automatically" means it does not ask between mechanical steps — it
+Three gates, by design. Running "automatically" means it does not ask between mechanical steps — it
 never means unattended.
 
 | Gate | Why it cannot be automatic |
 |---|---|
-| Phase 5 — discuss | the go-ahead is yours by definition |
-| Phase 6 — architecture | the approaches genuinely differ; you pick |
+| Phases 5+6 — the decision pack | the go-ahead is yours by definition, the approaches genuinely differ, and the slice plan says how many agents will write — asked once, together |
 | Phase 14 — merge | the release decision, made once against the evidence |
 | Phase 16 — production | never autonomous |
 

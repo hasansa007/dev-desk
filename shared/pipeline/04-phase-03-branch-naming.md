@@ -41,6 +41,7 @@ A ticket filed by `dev:findings` carries `group:`, `needs:` and `shares:` in its
 | `needs: <id>` (ungrouped) | that ticket's branch, once its agent has finished | the base branch, after that ticket merges |
 | `shares … same code, after <id>` | as `needs` | as `needs` |
 | only `shares … different code`, or nothing | the base branch, now | the base branch |
+| nothing — but Phase 9 fanned the ticket out | `group/<slug>`, cut here and holding the root tasks; one branch off it per slice | `group/<slug>`, then the base branch as one PR — the ticket is reviewed once |
 
 **Before landing, dry-run the merge:** `git merge-tree --write-tree <target> HEAD`. Clean → land it.
 Conflicts → rebase onto the target, re-run the Phase 10 checks, then land. A branch cut from another

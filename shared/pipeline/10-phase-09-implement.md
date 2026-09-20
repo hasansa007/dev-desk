@@ -19,13 +19,39 @@ Before touching any file:
 - **Commitment to flow.** Every single line of code must serve the user journey defined in `SYSTEM_FLOW`. If a line does not, delete it.
 
 ### Task Execution
-- For complex tasks (3+ files touched): use the `subagent-driven-development` skill to dispatch implementer + reviewer subagents per task
+- Single-lane by default. A fan-out is Deep-tier only and has its own section below; at Light tier there are no subagent writers at all
 - When the user requests TDD or the task involves critical logic: follow the `test-driven-development` skill (red → green → refactor cycle)
 - **Postgres / Supabase in the diff** — schema, migrations, RLS, auth, storage, edge functions: use the `supabase` skill for the mechanics and `supabase-postgres-best-practices` for any query, index or schema-shape decision. A migration is a Deep-tier change by definition, whatever the diff size — it is the one edit that can take production down without a code bug.
 - Mark each `[x]` when complete
 - Commit after each logical task (new commit — never amend)
 - Prefer editing existing files over creating new ones
 - Mirror existing patterns — do not invent new conventions
+
+### Fan-out — slices under an orchestrator (Deep tier only, ADR 0049)
+
+**When:** Deep tier, Phase 8's graph has 2+ independent leaves, and the decision pack declared the
+count. Standard fans out only on request; Light never does. One leaf, one lane — skip all of this.
+
+You are the orchestrator. **Write the root tasks yourself** — everything the leaves need exists
+before any of them starts — then, per leaf:
+
+1. **Write its contract first: acceptance criteria and a FAILING test**, committed on the base. A
+   slice is reviewed against its contract, never against what you meant. No contract, no dispatch.
+2. **Give it a worktree and a branch of its own.** `superpowers:using-git-worktrees`; it branches
+   off `group/<slug>` and lands back there, by Phase 3's table. N writers in one checkout is a class of bug with
+   no test — one agent reads a file another is mid-write in, and nothing observes it happen.
+3. **Dispatch, then let it run.** A dispatched agent cannot be steered mid-turn; do not poll its
+   transcript and guess. Progress is its `dev.py state checkpoint` lines and nothing else.
+
+Then:
+
+- **Two strikes and it surfaces.** A slice that fails its contract twice comes back as a finding for
+  the developer — not a third attempt. The other slices carry on and land without it.
+- **Integrate yourself.** `git merge-tree --write-tree <target> HEAD` per slice before landing; the
+  group branch **merges** its base in, never rebases, or every agent on it is stranded.
+- **The writer is never the reviewer** (as Phase 13). Nothing a slice reports about its own diff
+  counts as review, and the fan-out saves writing time only — Phase 13 still reads every line.
+- **Report the shape in the PR's `## PIPELINE` section:** slices dispatched, landed, surfaced.
 
 ### Post-task — Self-Verification
 - Does the code handle errors and edge cases? (Production-Ready rule)

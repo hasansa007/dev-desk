@@ -102,7 +102,8 @@ they point, never duplicate.
 
 ## What not to change without a strong reason
 
-- **The four always-stop gates.** They are the difference between a workflow and an autopilot.
+- **The three always-stop gates.** They are the difference between a workflow and an autopilot.
+  ADR 0049 merged 5 and 6 into one decision pack; it did not remove a stop, and merging two more would.
 - **The write boundary** (`shared/entry.md`). Name the target `owner/repo` before acting; never write
   outside the resolved repo without an explicit yes naming it; always cut a branch, from the
   resolved pre-prod branch and not from what is checked out. Paid for on

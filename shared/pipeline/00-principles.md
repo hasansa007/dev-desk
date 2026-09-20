@@ -38,9 +38,9 @@ app-wide auth redirect.
 
 | Tier | When | Process |
 |---|---|---|
-| **Light** (default) | Small diff, low blast radius, no money/security/migration | Existing test suite + a quick self-review of the diff. NO subagent reviews, NO browser-automation pass, no checklist ceremony. Phase 4 = only as much investigation as the bug demands. |
-| **Standard** | Multi-file features, user-visible flows | Tests + run the ONE most valuable live check (the bug repro or the new flow), not the full matrix. Self-review; subagent review only if something feels off. |
-| **Deep** | Money paths, auth/security, migrations, wide refactors, novel-design features — or the developer asks | Maximum **evidence and rigor**: the full evidence ladder, an agent-run checklist, verified AI review, and a security pass. The Phase 2 explorers stay **conditional**. Phase 6 is **required for every Deep feature** (see Phase 6); Deep work that is not a feature and has one obvious shape (a fix, a migration, a rename) skips both. Beyond that, Deep buys care, not agents. |
+| **Light** (default) | Small diff, low blast radius, no money/security/migration | Existing test suite + a quick self-review of the diff. NO subagent reviews, NO subagent WRITERS, NO browser-automation pass, no checklist ceremony. Phase 4 = only as much investigation as the bug demands. |
+| **Standard** | Multi-file features, user-visible flows | Tests + run the ONE most valuable live check (the bug repro or the new flow), not the full matrix. Self-review; subagent review only if something feels off; no Phase 9 fan-out unless the developer asks. |
+| **Deep** | Money paths, auth/security, migrations, wide refactors, novel-design features — or the developer asks | Maximum **evidence and rigor**: the full evidence ladder, an agent-run checklist, verified AI review, and a security pass. The Phase 2 explorers stay **conditional**. Phase 6 is **required for every Deep feature** (see Phase 6); Deep work that is not a feature and has one obvious shape (a fix, a migration, a rename) skips both. Phase 9 may fan its slices out (ADR 0049). Beyond that, Deep buys care, not agents. |
 
 When in doubt between two tiers, pick the lighter one — the developer can always say "go deeper". A slow pipeline that gets skipped protects nothing.
 
@@ -55,10 +55,11 @@ Without it, a reader cannot tell whether a thin verification section means *low 
 *skipped work*.
 
 **Deep tier declares its cost BEFORE spending it.** Deep spawns 2–3 explorer agents (Phase 2),
-2–3 architect agents (Phase 6) and a review fan-out (Phase 13) — real time, real money. Say what it
-will cost and get a word first:
+2–3 architect agents (Phase 6), up to `--max-agents` slice writers (Phase 9) and a review fan-out
+(Phase 13) — real time, real money. Say what it will cost and get a word first, **with the slice
+count**, since that one is a write:
 
-> "Deep tier: ~3 explorers + ~3 architects + the review fan-out. Go, or lighter?"
+> "Deep tier: ~3 explorers + ~3 architects + 3 slice writers + the review fan-out. Go, or lighter?"
 
 Never open a fan-out on the developer's behalf and report the bill afterwards. If they say lighter,
 they are right, and the task is Standard from then on — the tier is a proposal, not a verdict.
@@ -82,14 +83,13 @@ genuinely need the developer are enumerated below and they stop on their own, so
 delayed work the developer had already approved. Observed 2026-08-04: a mode ask and a Phase 5 ask
 arrived back to back before a single file changed.
 
-### Four gates stop anyway
+### Three gates stop anyway
 
 These are **decisions, not steps**, and running automatically never covers a decision:
 
 | Phase | Why it cannot be automatic |
 |---|---|
-| **5 — Discuss Before Building** | the go-ahead is the developer's by definition; nothing is consent to build |
-| **6 — Architecture Alternatives** | the approaches genuinely differ — they pick, you recommend |
+| **5+6 — the decision pack** | one stop, not two: the clarifications, the architecture pick and the slice plan are answered together, because they are one decision and a second hand-back buys nothing (ADR 0049). Nothing is consent to build; the approaches genuinely differ, so they pick and you recommend |
 | **14 — merge to pre prod** | the prod decision, made once against the evidence |
 | **16 — promotion to prod** | never autonomous |
 
