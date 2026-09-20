@@ -30,6 +30,7 @@ struct ShellTerminalView: NSViewRepresentable {
 final class ShellTerminalHost: NSView {
     private var clickMonitor: LocalEventMonitor?
     private var scrollMonitor: LocalEventMonitor?
+    private var keyMonitor: LocalEventMonitor?
 
     func show(_ terminal: NSView) {
         guard terminal.superview !== self else { return }
@@ -73,6 +74,12 @@ final class ShellTerminalHost: NSView {
         scrollMonitor = window == nil ? nil : LocalEventMonitor(filtering: .scrollWheel) { [weak self] event in
             guard let self, let terminal = terminal(under: event) else { return event }
             return terminal.forwardScroll(event) ? nil : event
+        }
+        keyMonitor = window == nil ? nil : LocalEventMonitor(filtering: .keyDown) { [weak self] event in
+            guard let self, let window, event.window === window,
+                  let terminal = subviews.first as? FocusingTerminalView,
+                  window.firstResponder === terminal else { return event }
+            return terminal.handle(event) ? nil : event
         }
     }
 
@@ -663,28 +670,26 @@ final class FocusingTerminalView: LocalProcessTerminalView {
         static let ret: UInt16 = 36
     }
 
-    /// Word and line motion, which macOS puts on ⌥/⌘ with the arrows and delete, and which SwiftTerm sends
-    /// nothing for: Option types characters here rather than acting as Meta (`optionAsMetaKey` stays false, as
-    /// Terminal has it by default), so ⌥← used to insert a stray character and ⌘← to do nothing at all. Each
-    /// combination is sent as the sequence readline and zsh already answer — typed into the shell, exactly as
-    /// the user would. Anything else is the terminal's own business.
+    /// Word and line motion, which macOS puts on ⌥/⌘ with the arrows and delete, and the line break ⇧↩ means —
+    /// none of which SwiftTerm sends anything for. Option types characters here rather than acting as Meta
+    /// (`optionAsMetaKey` stays false, as Terminal has it by default), so ⌥← used to insert a stray character and
+    /// ⌘← to do nothing at all. Each combination is sent as the sequence readline and zsh already answer.
+    /// True means the key was answered here and goes no further.
     ///
-    /// It is answered here rather than in `keyDown`, which SwiftTerm declares public but not open and so cannot
-    /// be overridden from this module: the window offers every key-down to its view hierarchy as a possible key
-    /// equivalent first, which is early enough, and the guard keeps a terminal that is not being typed into from
-    /// answering for one that is.
-    override func performKeyEquivalent(with event: NSEvent) -> Bool {
-        guard event.type == .keyDown, window?.firstResponder === self else {
-            return super.performKeyEquivalent(with: event)
-        }
+    /// The host's local monitor calls this, and it must: `keyDown` is public but not open in SwiftTerm and so
+    /// cannot be overridden from this module, and `performKeyEquivalent` — where this lived until 2026-09-21 —
+    /// is not offered Return at all. Every modifier with ↩ reached the pty as a plain `\r` through it, which is
+    /// why ⇧↩, ⌥↩, ⌃↩ and ⌘↩ all behaved identically and none of them worked. A monitor runs before AppKit
+    /// dispatches the event anywhere, so nothing upstream can take a key from it.
+    func handle(_ event: NSEvent) -> Bool {
         let modifiers = event.modifierFlags.intersection(.deviceIndependentFlagsMask)
         let option = modifiers.contains(.option)
         let command = modifiers.contains(.command)
-        // ⇧↩ and ⌥↩ open a new line in the agent's prompt instead of sending the message. Both reach the pty as a
-        // plain Return otherwise — the modifier is not in the byte — so each is sent as LF, which is the byte ⌃J
-        // sends and the one Claude Code's own docs name as the line break that "works in every terminal with no
-        // setup". ESC CR was tried first, on the assumption that ⌥↩ meant meta-Return; it does nothing (2026-09-21).
-        if event.keyCode == KeyCode.ret, !command, option || modifiers.contains(.shift) {
+        // ⇧↩, ⌥↩ and ⌃↩ open a line in the agent's prompt instead of sending the message. LF is the byte ⌃J sends,
+        // which Claude Code's docs name as the line break that works "in every terminal with no setup". A bare ↩
+        // still sends the message, and ⌘↩ is left alone: it is Start Task in the menu, and a monitor runs before
+        // the menu does, so taking it here would be taking it from the whole app.
+        if event.keyCode == KeyCode.ret, !modifiers.isDisjoint(with: [.shift, .option, .control]) {
             send(txt: "\n")
             return true
         }
@@ -695,7 +700,7 @@ final class FocusingTerminalView: LocalProcessTerminalView {
         case (KeyCode.right, false, true): send(txt: "\u{05}")    // ⌘→ Ctrl-E, the end of the line
         case (KeyCode.delete, true, false): send(txt: "\u{17}")   // ⌥⌫ Ctrl-W, the word behind the caret
         case (KeyCode.delete, false, true): send(txt: "\u{15}")   // ⌘⌫ Ctrl-U, back to the start of the line
-        default: return super.performKeyEquivalent(with: event)
+        default: return false
         }
         return true
     }
