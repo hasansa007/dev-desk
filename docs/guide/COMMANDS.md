@@ -17,9 +17,13 @@ Examples use Claude Code syntax. For other agents, see [CLI compatibility](GUIDE
 /dev:insights
 ```
 
-Bare `/dev` routes to `/dev:board` — the board. It shows the queue, what is in flight and what is
-next, then asks. Its writes are bounded: move a card, cancel it with a reason, or delete it behind a
-hard gate. It never cuts a branch and never starts work.
+Bare `/dev` **orients**: one detection pass over the repo, then the two or three doors that fit it —
+resume a branch with work on it, open the board when the tracker is stocked, stock an empty tracker,
+or say what a fresh project is still missing. It is read-only: it never cuts a branch and never
+starts work.
+
+`/dev:board` is the board itself. It shows the queue, what is in flight and what is next, then asks.
+Its writes are bounded: move a card, cancel it with a reason, or delete it behind a hard gate.
 
 Findings writes provenance into each issue's `## Suspected` section. Its code inspection does not replace runtime verification.
 

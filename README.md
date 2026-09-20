@@ -98,7 +98,7 @@ Bare `/dev` **orients**: it detects where the repo actually is and offers the tw
 
 | Command | Purpose |
 | --- | --- |
-| `/dev` | Show current issues and suggested next work. |
+| `/dev` | Orient: detect where the repo is and offer the two or three doors that fit. Read-only. |
 | `/dev <issue or description>` | Start the full development workflow. |
 | `/dev:create-issue` | File a work item for later. |
 | `/dev:create-bug` | File a bug report without implementing the fix. |

@@ -144,7 +144,7 @@ document.addEventListener("click",e=>{
  render();
 });
 document.addEventListener("keydown",e=>{if(e.target.tagName==="INPUT"||e.target.tagName==="TEXTAREA")return;
- if(/^[1-5]$/.test(e.key)&&!isHome()){proj().tab=["Findings","Work","Sessions","Ideation","Diagrams"][e.key-1];render();}
+ if(/^[1-5]$/.test(e.key)&&!isHome()){proj().tab=TABS[e.key-1];render();}
  if(e.key==="j"){setOpen(!dockOpen());render();}
  if(e.key==="h"){S.cur="home";render();}
  if(e.key==="s"){S.wide=!S.wide;render();}});
