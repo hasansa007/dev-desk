@@ -72,16 +72,16 @@ public final class DoorRuns {
 public enum DoorCommand {
     /// Display name, executable, and the path install.sh links the family to for that CLI.
     public static let agents: [(name: String, executable: String, root: String)] = [
-        ("Claude", "claude", ".claude/skills/dev"),
-        ("Codex", "codex", ".codex/skills/dev"),
+        ("Claude", "claude", InstallRoot.claude),
+        ("Codex", "codex", InstallRoot.codex),
     ]
 
     /// Terminal runs only. Their root is Claude's: install.sh writes the family for Claude and Codex alone, and these
     /// read it from there (verified 2026-09-16).
     public static let terminalOnlyAgents: [(name: String, executable: String, root: String)] = [
-        ("Gemini", "gemini", ".claude/skills/dev"),
-        ("opencode", "opencode", ".claude/skills/dev"),
-        ("Antigravity", "agy", ".claude/skills/dev"),
+        ("Gemini", "gemini", InstallRoot.claude),
+        ("opencode", "opencode", InstallRoot.claude),
+        ("Antigravity", "agy", InstallRoot.claude),
     ]
 
     /// Any agent a door or task may run with in a terminal.
@@ -95,8 +95,10 @@ public enum DoorCommand {
     }
 
     /// `dev` is the family's root SKILL.md; every other door is `skills/<door>/SKILL.md` beneath the same root.
-    public static func doorPath(_ door: String, root: String, home: String) -> String {
-        let base = "\(home)/\(root)"
+    /// The root is resolved rather than joined, so a machine installed before ADR 0054 still gets a path that exists.
+    public static func doorPath(_ door: String, root: String, home: String,
+                                exists: (String) -> Bool = { FileManager.default.fileExists(atPath: $0) }) -> String {
+        let base = "\(home)/\(InstallRoot.resolve(root, home: home, exists: exists))"
         return door == "dev" ? "\(base)/SKILL.md" : "\(base)/skills/\(door)/SKILL.md"
     }
 

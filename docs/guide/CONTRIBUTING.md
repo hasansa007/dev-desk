@@ -95,6 +95,7 @@ skip a judgment — building, architecture, merging, promoting.
 | A new **tool** (no phase) | Same, but it points at another tool rather than at `pipeline.md` — `launch-kill` reads `launch`'s Phase 2 for discovery. The no-copy rule is the same rule |
 | A per-type issue template | the `dev:create-*` member itself — templates are the only thing those three doors hold |
 | Dev Desk, the Mac app | `apps/desk/` — board rules mirror `scripts/dev.py` (ADR 0013) — change both |
+| Where the family is installed | `scripts/dev.py` (`ROOTS`/`FALLBACKS`) **and** `apps/desk/DeskCore/Sources/DeskCore/Local/InstallRoot.swift` — one per language, and nothing else in either may spell a root as a literal. ADR 0054 moved Claude Code's root and only the Python copy followed; six Swift literals then named a path a plugin install never creates |
 | Entry routing | `SKILL.md` |
 
 Members are ~60-line doors into the pipeline. **A member that copies pipeline content is a bug** —

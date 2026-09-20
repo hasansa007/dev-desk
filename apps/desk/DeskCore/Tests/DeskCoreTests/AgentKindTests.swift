@@ -37,8 +37,8 @@ final class AgentKindTests: XCTestCase {
     /// A door run in a terminal with Gemini types the verified form, reading the family from Claude's root.
     func testATerminalDoorRunUsesTheVerifiedCommand() {
         let line = DoorCommand.build(door: "dev", agent: "Gemini", arguments: ["#9"], home: "/Users/me")
-        XCTAssertEqual(line, "gemini --include-directories '/Users/me/.claude/skills/dev' -i "
-            + "'Read /Users/me/.claude/skills/dev/SKILL.md and execute it exactly as written, following every phase "
+        XCTAssertEqual(line, "gemini --include-directories '/Users/me/.claude/.dev-root' -i "
+            + "'Read /Users/me/.claude/.dev-root/SKILL.md and execute it exactly as written, following every phase "
             + "and gate it defines. Arguments: #9'")
     }
 

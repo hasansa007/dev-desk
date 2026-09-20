@@ -121,7 +121,12 @@ ORPHANS).
   still at a merged pull request's head goes to Done, which covers squash merges. `dev board` reads
   no merged pull requests, so it can't apply it.
 - **The agent prompt is duplicated.** `AgentLaunch.prompt` mirrors `scripts/dev.py`'s `build_prompt`
-  byte for byte (ADR 0018), so a change to one needs both.
+  byte for byte (ADR 0018), so a change to one needs both. The **install root** it is built from is no
+  longer duplicated inside the app: `InstallRoot` is DeskCore's one authority and every builder resolves
+  through it, mirroring `skill_root`'s preference for `~/.claude/.dev-root` with a fallback to the
+  per-CLI link for a machine installed before ADR 0054. It is still one copy per language — #89 covers
+  the cross-language authority and the CI check that would have caught this. The template drifting
+  while the argument fed to it moved is exactly what "byte for byte" could not watch (#88).
 - **`docs/arch/dev-system.html` needs a re-pin.** Its Container node still cites the design brief
   rather than `apps/desk/` (merged in #50), and its `scripts/dev.py` citations moved when `dev ui`
   was removed (ADR 0014). The folder reorganisation (ADR 0015) moved none of its cited paths, so
