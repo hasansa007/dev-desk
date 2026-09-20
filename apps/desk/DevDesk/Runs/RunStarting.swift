@@ -299,9 +299,12 @@ extension ProjectWindowModel {
             .first { number in tasks.contains { $0.issueNumber == number && $0.column != .done } }
     }
 
+    /// Why a folderless sample can start nothing — read by any screen that blocks before it resolves an agent.
+    static let sampleReason = "Sample projects have no folder, so there is nothing to run in."
+
     /// Why the button that would start `agent` is disabled, or nil when it can run.
     func runBlockedReason(agent: String) -> String? {
-        if !canRunDoors { return "Sample projects have no folder, so there is nothing to run in." }
+        if !canRunDoors { return Self.sampleReason }
         if DoorCommand.agent(named: agent) == nil {
             return "\(agent) has no invocation this family has verified. Choose another agent in Settings."
         }

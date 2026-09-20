@@ -259,7 +259,8 @@ private struct FindingsFocus: View {
             }
             .pullToRefreshSpace()
         }
-        .frame(width: Self.queueWidth, alignment: .leading)
+        // Compresses before the finding itself does: the queue is titles, the focus column is the decision.
+        .frame(minWidth: 210, idealWidth: Self.queueWidth, maxWidth: Self.queueWidth, alignment: .leading)
         .background(DeskColor.sidebar)   // an inner list is navigation, like Work's milestones
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
     }

@@ -59,24 +59,39 @@ struct FindingFocus: View {
                 decisions
                 footer
             }
-            .frame(width: Self.column, alignment: .leading)
+            // A maximum, not a width: a fixed column cannot give anything back, so with the filter panel
+            // open the screen demanded more than the window had (2026-09-20, on screen).
+            .frame(maxWidth: Self.column, alignment: .leading)
             .padding(.vertical, 32)
             .frame(maxWidth: .infinity, alignment: .center)
         }
     }
 
+    /// The id and the counter never wrap: they are four characters each, and a squeezed row was spelling
+    /// them one letter to a line while the pill beside them kept its full width (2026-09-20, on screen).
+    /// The pill is the one thing here that can afford to be cut short.
     private var identity: some View {
         HStack(spacing: 8) {
             Text(finding.id)
                 .font(DeskFont.mono(11.5))
                 .foregroundStyle(DeskColor.mutedInk)
+                .lineLimit(1)
+                .fixedSize()
             StatusPill(badge: StatusBadge(FindingTone.of(finding), finding.listDetail))
+                .lineLimit(1)
+                .layoutPriority(-1)
             PropertyChip(finding.kind.rawValue, fill: DeskColor.neutralChipFill2, verticalPadding: 1)
-            if isIgnored { StatusPill(badge: StatusBadge(.neutral, "Dropped")) }
+                .lineLimit(1)
+                .fixedSize()
+            if isIgnored {
+                StatusPill(badge: StatusBadge(.neutral, "Dropped")).fixedSize()
+            }
             Spacer(minLength: 8)
             Text("\(position.index) of \(position.total)")
                 .font(DeskFont.mono(11.5))
                 .foregroundStyle(DeskColor.mutedInk)
+                .lineLimit(1)
+                .fixedSize()
         }
     }
 

@@ -36,10 +36,13 @@ struct DiagramsScreen: View {
     /// validated against this project's detected connections — rather than a raw preference string that fell back
     /// to Codex. `_ = defaultConnection` keeps the view re-resolving when the default changes.
     /// A generate is a background run, so it uses the Background runs setting, never a terminal-only default.
-    private var agentName: String? {
+    private var agentChoice: AgentChoice {
         let name = BackgroundConnection.resolve(stored: storedBackground, defaultConnection: defaultConnection)
-        guard case .ready(let agent) = AgentChoice.resolve(override: "", defaultConnection: name,
-                                                           connections: model.snapshot?.connections ?? []) else { return nil }
+        return AgentChoice.resolve(override: "", defaultConnection: name, connections: model.snapshot?.connections ?? [])
+    }
+
+    private var agentName: String? {
+        guard case .ready(let agent) = agentChoice else { return nil }
         return AgentLaunch.connectionName(agent)
     }
 
@@ -379,11 +382,16 @@ struct DiagramsScreen: View {
 
     // MARK: - Actions
 
+    /// A folderless sample fails agent resolution too, so its own reason is read FIRST: otherwise the banner
+    /// sends you to Settings to fix an agent that is installed and signed in. Past that, `AgentAvailability`'s
+    /// words — not installed, signed out, rate-limited — beat a generic sentence that names neither.
     private var blockedReason: String? {
-        guard let agentName else {
-            return "No agent is available. Choose Claude or Codex in Settings."
+        if !model.canRunDoors { return ProjectWindowModel.sampleReason }
+        switch agentChoice {
+        case .unavailable(let reason): return reason
+        case .ready(let agent):
+            return model.diagramGenerateBlockedReason(kind: selectedKey, agent: AgentLaunch.connectionName(agent))
         }
-        return model.diagramGenerateBlockedReason(kind: selectedKey, agent: agentName)
     }
 
     private func generate() {

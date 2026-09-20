@@ -156,7 +156,7 @@ private struct IdeationSplitView: View {
                 .padding(.bottom, 12)
             }
         }
-        .frame(width: 320, alignment: .leading)
+        .frame(minWidth: 210, idealWidth: 320, maxWidth: 320, alignment: .leading)
         .background(DeskColor.sidebar)   // an inner list is navigation, like Work's milestones
         .overlay(alignment: .trailing) { Rectangle().fill(DeskColor.divider).frame(width: 1) }
     }
@@ -267,7 +267,7 @@ private struct OpportunityFocus: View {
                 }
                 decisions
             }
-            .frame(width: Self.column, alignment: .leading)
+            .frame(maxWidth: Self.column, alignment: .leading)
             .padding(.vertical, 32)
             .frame(maxWidth: .infinity, alignment: .center)
         }

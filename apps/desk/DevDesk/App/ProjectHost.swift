@@ -36,8 +36,14 @@ struct ProjectHost: View {
         return HStack(spacing: 0) {
             Sidebar(context: context, isRail: isRail)
                 .frame(width: isRail ? DeskMetric.sidebarRailWidth : DeskMetric.sidebarWidth)
+                // The rail is never squeezed and never covered. A screen whose content is wider than the
+                // window made the HStack overflow, and an overflowing HStack centres itself — so Findings
+                // with its filter panel open drew straight over the rail and the tabs vanished
+                // (2026-09-20, on screen). Priority keeps the width; the clip on the content keeps the paint.
+                .layoutPriority(1)
             ContentRouter(model: model)
                 .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity)
+                .clipped()
         }
         .animation(.easeOut(duration: 0.14), value: isRail)
         .toolbar { railToggleItem }
