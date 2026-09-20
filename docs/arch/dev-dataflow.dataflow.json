@@ -1,0 +1,351 @@
+{
+  "schema_version": 1,
+  "diagram_type": "dataflow",
+  "meta": {
+    "title": "dev-desk — how data moves through the family",
+    "subtitle": "One intent becomes one prompt, one agent run, three stores, and two boards that must agree",
+    "output": "dev-dataflow.html",
+    "viewBox": [
+      1240,
+      900
+    ],
+    "quality_profile": "standard",
+    "views": [
+      {
+        "id": "start-a-task",
+        "label": "Start a task",
+        "focus": [
+          "desk",
+          "devrun",
+          "agent",
+          "state",
+          "screens"
+        ],
+        "note": "A click in Dev Desk becomes dev run's built prompt, an agent in the task folder, and a phase checkpoint."
+      },
+      {
+        "id": "run-a-door",
+        "label": "Run a door",
+        "focus": [
+          "cli",
+          "contract",
+          "door",
+          "agent"
+        ],
+        "note": "A typed /dev door: the agent loads the shared contract, then the door's own phases, then executes them."
+      },
+      {
+        "id": "draw-a-diagram",
+        "label": "Draw a diagram",
+        "focus": [
+          "agent",
+          "docs",
+          "screens"
+        ],
+        "note": "dev:arch writes the HTML and its IR sidecar into docs/arch/; the Diagrams screen lists what it finds."
+      },
+      {
+        "id": "read-the-board",
+        "label": "Read the board",
+        "focus": [
+          "state",
+          "tracker",
+          "board",
+          "screens"
+        ],
+        "note": "dev board and Dev Desk read the same issues, pull requests and .dev state, and are meant to agree."
+      },
+      {
+        "id": "file-an-issue",
+        "label": "File an issue",
+        "focus": [
+          "agent",
+          "tracker",
+          "board"
+        ],
+        "note": "The create-* doors write to the tracker, which is what the next run reads back as its input."
+      }
+    ]
+  },
+  "stages": [
+    {
+      "label": "Sources"
+    },
+    {
+      "label": "Load"
+    },
+    {
+      "label": "Execute"
+    },
+    {
+      "label": "Store"
+    },
+    {
+      "label": "Read back"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "desk",
+      "type": "frontend",
+      "label": "Dev Desk",
+      "sublabel": "apps/desk, macOS",
+      "stage": 0,
+      "row": 0,
+      "tag": "a click"
+    },
+    {
+      "id": "cli",
+      "type": "frontend",
+      "label": "Agent CLI",
+      "sublabel": "claude · codex",
+      "stage": 0,
+      "row": 1,
+      "tag": "a typed door"
+    },
+    {
+      "id": "contract",
+      "type": "security",
+      "label": "Shared contract",
+      "sublabel": "entry.md · pipeline/",
+      "stage": 0,
+      "row": 3,
+      "tag": "write boundary"
+    },
+    {
+      "id": "hook",
+      "type": "security",
+      "label": "SessionStart hook",
+      "sublabel": "reads PROJECT_MAP.md",
+      "stage": 1,
+      "row": 4,
+      "tag": "injected"
+    },
+    {
+      "id": "devrun",
+      "type": "backend",
+      "label": "dev run",
+      "sublabel": "scripts/dev.py",
+      "stage": 1,
+      "row": 0,
+      "tag": "builds one prompt"
+    },
+    {
+      "id": "door",
+      "type": "backend",
+      "label": "The door",
+      "sublabel": "skills/<name>/SKILL.md",
+      "stage": 1,
+      "row": 3,
+      "tag": "21 doors"
+    },
+    {
+      "id": "agent",
+      "type": "cloud",
+      "label": "The agent run",
+      "sublabel": "reads code, writes files",
+      "stage": 2,
+      "row": 2,
+      "tag": "17 phases"
+    },
+    {
+      "id": "state",
+      "type": "database",
+      "label": "Phase state",
+      "sublabel": ".dev/<branch>.json",
+      "stage": 3,
+      "row": 0,
+      "tag": "git-ignored"
+    },
+    {
+      "id": "docs",
+      "type": "database",
+      "label": "Written artifacts",
+      "sublabel": "arch · findings · adr",
+      "stage": 3,
+      "row": 2,
+      "tag": "committed"
+    },
+    {
+      "id": "tracker",
+      "type": "external",
+      "label": "GitHub tracker",
+      "sublabel": "issues · PRs · milestones",
+      "stage": 3,
+      "row": 4,
+      "tag": "shared"
+    },
+    {
+      "id": "board",
+      "type": "backend",
+      "label": "dev board",
+      "sublabel": "the board as text",
+      "stage": 4,
+      "row": 1,
+      "tag": "CLI"
+    },
+    {
+      "id": "screens",
+      "type": "frontend",
+      "label": "Dev Desk screens",
+      "sublabel": "Work · Diagrams · Reports",
+      "stage": 4,
+      "row": 3,
+      "tag": "app"
+    }
+  ],
+  "flows": [
+    {
+      "id": "desk-start",
+      "from": "desk",
+      "to": "devrun",
+      "label": "door, task, agent",
+      "classification": "intent",
+      "variant": "emphasis"
+    },
+    {
+      "id": "cli-typed",
+      "from": "cli",
+      "to": "agent",
+      "label": "a typed /dev door",
+      "classification": "intent"
+    },
+    {
+      "id": "contract-rules",
+      "from": "contract",
+      "to": "door",
+      "label": "workspace + write boundary",
+      "classification": "rules",
+      "variant": "security",
+      "labelAt": [
+        208,
+        542
+      ]
+    },
+    {
+      "id": "hook-context",
+      "from": "hook",
+      "to": "agent",
+      "label": "PROJECT_MAP slices",
+      "classification": "context",
+      "variant": "dashed"
+    },
+    {
+      "id": "built-prompt",
+      "from": "devrun",
+      "to": "agent",
+      "label": "the built prompt",
+      "classification": "one command",
+      "variant": "emphasis"
+    },
+    {
+      "id": "door-phases",
+      "from": "door",
+      "to": "agent",
+      "label": "the phases to execute",
+      "classification": "prose",
+      "variant": "emphasis"
+    },
+    {
+      "id": "checkpoint",
+      "from": "agent",
+      "to": "state",
+      "label": "phase checkpoints",
+      "classification": "machine-local"
+    },
+    {
+      "id": "artifacts",
+      "from": "agent",
+      "to": "docs",
+      "label": "reports, ADRs, diagrams",
+      "classification": "tracked",
+      "variant": "emphasis",
+      "labelAt": [
+        638,
+        428
+      ]
+    },
+    {
+      "id": "tracker-write",
+      "from": "agent",
+      "to": "tracker",
+      "label": "issues, PRs, comments",
+      "classification": "outbound"
+    },
+    {
+      "id": "state-to-board",
+      "from": "state",
+      "to": "board",
+      "label": "phase per branch",
+      "classification": "read-only"
+    },
+    {
+      "id": "tracker-to-board",
+      "from": "tracker",
+      "to": "board",
+      "label": "open issues + PRs",
+      "classification": "read-only",
+      "variant": "emphasis",
+      "labelDy": -44
+    },
+    {
+      "id": "state-to-screens",
+      "from": "state",
+      "to": "screens",
+      "label": "phase per branch",
+      "classification": "read-only"
+    },
+    {
+      "id": "docs-to-screens",
+      "from": "docs",
+      "to": "screens",
+      "label": "reports and diagrams",
+      "classification": "read-only",
+      "variant": "emphasis",
+      "labelAt": [
+        853,
+        542
+      ]
+    },
+    {
+      "id": "tracker-to-screens",
+      "from": "tracker",
+      "to": "screens",
+      "label": "issues, PRs",
+      "classification": "read-only",
+      "labelAt": [
+        853,
+        612
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "slate",
+      "title": "UNEVIDENCED — read, not proven",
+      "items": [
+        "Drawn by dev:arch from reading the code at dev-desk b9f8c01, 2026-09-21",
+        "Archify's repository evidence is architecture-only, so no node here is pinned to a file and line",
+        "Nothing re-checks this drawing; treat every node as an assertion, not a citation"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "One intent, one prompt",
+      "items": [
+        "Dev Desk never runs a door itself — it shells out dev run, which builds the prompt",
+        "A typed /dev door skips dev run and reaches the same agent with the same words",
+        "The door is prose the agent executes; the shared contract is what bounds where it may write"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Three stores, two readers",
+      "items": [
+        ".dev/<branch>.json is machine-local and self-ignored; docs/ is committed; the tracker is shared",
+        "dev board and Dev Desk read the same three and are meant to render the same board",
+        "The tracker closes the loop: what a create-* door writes is what the next run reads as input"
+      ]
+    }
+  ]
+}

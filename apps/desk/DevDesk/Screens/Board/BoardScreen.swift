@@ -89,8 +89,7 @@ struct BoardScreen: View {
         }
         return FilterGroup(key: "work.milestone", title: "Milestone", kind: .filter, options: options,
                            toggle: { model.toggleWorkMilestone($0) }, guide: WorkGuides.milestone,
-                           accessory: AnyView(DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)
-                               .fixedSize()),
+                           accessory: AnyView(DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)),
                            maxLabelWidth: 190)
     }
 
