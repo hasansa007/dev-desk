@@ -74,8 +74,8 @@ const P={
    {id:3,t:"zsh",dot:"#5A606A",shown:false,body:"studyhub main ❯ ▍"}],
    resume:[{k:"r1",t:"#66 thumbnail-cache · Claude",title:"#66 Cache lesson thumbnails",sub:"Paused at Planned · feat/66-thumbnail-cache",dot:"#E7C067",body:"feat/66-thumbnail-cache · ~/.devdesk/wt/studyhub-66\nResumed at Planned · phase 2 of 4\n▍"},
            {k:"r2",t:"ideation run",title:"Ideation run",sub:"Was running when Dev Desk last closed",dot:"#5A606A",body:"Running the door again…\n▍"}]},
- "dev-skill":{code:"DS",color:"#F2A7C3",path:"~/Developer/skills/dev-skill",tab:"Findings",open:true,sessions:[
-   {id:4,t:"zsh",dot:"#7FD19B",shown:true,body:"dev-skill main ❯ apps/desk/install.sh\n[build output]\n▍"}],resume:[]},
+ "dev-desk":{code:"DS",color:"#F2A7C3",path:"~/Developer/skills/dev-desk",tab:"Findings",open:true,sessions:[
+   {id:4,t:"zsh",dot:"#7FD19B",shown:true,body:"dev-desk main ❯ apps/desk/install.sh\n[build output]\n▍"}],resume:[]},
  "studyhub-deploy":{code:"SD",color:"#B8A7F2",path:"~/Developer/studyhub-deploy",tab:"Diagrams",open:false,sessions:[],resume:[]}
 };
 const S={cur:"studyhub",scope:"project",menu:false,homeOpen:false};

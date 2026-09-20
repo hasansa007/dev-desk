@@ -229,7 +229,7 @@ def add_task(T, layout):
 # ───────────── Launcher ─────────────
 STARTS = [("Open local folder…", "Opens read-only. No agent is launched."), ("Clone repository…", "Choose a destination folder and branch."),
           ("Create new project…", "Initialises a folder and PROJECT_MAP.md.")]
-RECENT = [("studyhub", "~/Developer/studyhub", "main"), ("dev-skill", "~/Developer/skills/dev-skill", "main"), ("[project]", "[~/path/to/project]", "[branch]")]
+RECENT = [("studyhub", "~/Developer/studyhub", "main"), ("dev-desk", "~/Developer/skills/dev-desk", "main"), ("[project]", "[~/path/to/project]", "[branch]")]
 
 
 def launcher(T, layout):

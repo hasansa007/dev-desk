@@ -4,8 +4,8 @@ import os
 from gen import OUT, MONO_B as M, SANS, B_BTN, B_PRI, page, svg, b_shell, b_header, b_filter, dock_pane, dock_strip, PLUS_BTN, T42, T57, ACC_HOLE as ACC
 from gen2 import d_work, small_card, big_card, col_head, pill, CARD, INK, MUTED, BODY, LINE, SURF, RAISED, TONE
 
-PROJECTS = [("SH", "studyhub", "#E7C067", True), ("DS", "dev-skill", "#7FD19B", False), ("SD", "studyhub-deploy", "", False)]
-COLOR = {"studyhub": "#9CC0FF", "dev-skill": "#F2A7C3", "studyhub-deploy": "#B8A7F2"}
+PROJECTS = [("SH", "studyhub", "#E7C067", True), ("DS", "dev-desk", "#7FD19B", False), ("SD", "studyhub-deploy", "", False)]
+COLOR = {"studyhub": "#9CC0FF", "dev-desk": "#F2A7C3", "studyhub-deploy": "#B8A7F2"}
 HOME = "M4 11l8-7 8 7M6 10v9h12v-9M10 19v-5h4v5"
 RAIL_MARK = '    <div style="width: 64px; flex-shrink: 0;'
 BODY_MARK = '  <div style="flex-grow: 1; min-height: 0; display: flex;">'
@@ -83,7 +83,7 @@ def e_strip_labels():
 # E3 — strip, global dock
 def global_dock():
     tabs = ""
-    for proj, label, dot, on in [("studyhub", "#42 course-list", ACC, True), ("studyhub", "#57 exam-recovery", "#E7C067", True), ("dev-skill", "zsh", ACC, True), ("studyhub-deploy", "dev server", "#5A606A", False)]:
+    for proj, label, dot, on in [("studyhub", "#42 course-list", ACC, True), ("studyhub", "#57 exam-recovery", "#E7C067", True), ("dev-desk", "zsh", ACC, True), ("studyhub-deploy", "dev server", "#5A606A", False)]:
         fg, bg = (INK, RAISED) if on else (MUTED, "transparent")
         tabs += (f'<button style="display: flex; align-items: center; gap: 7px; height: 24px; padding: 0 10px; border: 0; border-radius: 4px; background: {bg}; color: {fg}; font-size: 11.5px;">'
                  f'<span style="width: 6px; height: 6px; border-radius: 3px; background: {dot};"></span><span style="color: {MUTED};">{proj} ·</span><span>{label}</span></button>')
@@ -95,9 +95,9 @@ def global_dock():
                 f'<span style="font-weight: 600;">{title}</span><span style="font-size: 11px; color: {MUTED};">{sub}</span></span>{k}</button>')
     lab = f"padding: 4px 10px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: {MUTED};"
     menu = (f'<div style="position: absolute; left: 0; top: 28px; z-index: 5; width: 340px; display: flex; flex-direction: column; gap: 1px; padding: 6px; border: 1px solid #343A44; border-radius: 6px; background: {RAISED}; box-shadow: 0 12px 40px rgba(0,0,0,0.55);">'
-            f'<div style="{lab}">New session in</div>' + item("studyhub", "this project · ~/Developer/studyhub", ACC, "⌘T") + item("dev-skill", "~/Developer/skills/dev-skill", "#5A606A") + item("studyhub-deploy", "~/Developer/studyhub-deploy", "#5A606A")
+            f'<div style="{lab}">New session in</div>' + item("studyhub", "this project · ~/Developer/studyhub", ACC, "⌘T") + item("dev-desk", "~/Developer/skills/dev-desk", "#5A606A") + item("studyhub-deploy", "~/Developer/studyhub-deploy", "#5A606A")
             + f'<div style="height: 1px; background: #343A44; margin: 4px 2px;"></div><div style="{lab}">Resume</div>' + item("studyhub · #66 Cache lesson thumbnails", "Paused at Planned", "#E7C067") + "</div>")
-    devskill = ['<span style="color: #7C8796;">~/Developer/skills/dev-skill · main</span>', '<span style="color: #7ED492;">❯</span> apps/desk/install.sh', '[build output]', '<span style="color: #7ED492;">▍</span>']
+    devdesk = ['<span style="color: #7C8796;">~/Developer/skills/dev-desk · main</span>', '<span style="color: #7ED492;">❯</span> apps/desk/install.sh', '[build output]', '<span style="color: #7ED492;">▍</span>']
     return f"""<div data-dock="open" style="height: 250px; flex-shrink: 0; display: flex; flex-direction: column; border-top: 1px solid #343A44; background: #0B0D10; font-family: {M}; font-size: 12px;">
         <div style="height: 34px; flex-shrink: 0; display: flex; align-items: center; gap: 4px; padding: 0 10px; border-bottom: 1px solid #1E2228; background: #14171B;">
           <button style="display: flex; align-items: center; gap: 7px; padding: 0 6px 0 2px; border: 0; background: transparent; color: {INK}; font-size: 11.5px;"><span style="color: {MUTED};">▾</span><span>all sessions</span><span style="color: {MUTED};">4</span></button>
@@ -109,7 +109,7 @@ def global_dock():
         <div style="flex-grow: 1; min-height: 0; display: flex;">
           {dock_pane("studyhub · #42 Preserve course-list position", "", ACC, T42[1:])}
           {dock_pane("studyhub · #57 Improve exam recovery", "", "#E7C067", T57[1:4])}
-          {dock_pane("dev-skill · zsh", "", ACC, devskill)}
+          {dock_pane("dev-desk · zsh", "", ACC, devdesk)}
         </div>
       </div>"""
 
@@ -135,8 +135,8 @@ def e_tabs():
 
 # E5 — one merged board
 def e_merged():
-    groups = [("project", [("all", 19, True), ("studyhub", 8, False), ("dev-skill", 7, False), ("studyhub-deploy", 4, False)]),
-              ("milestone", [("studyhub / reliable-study…", 8, False), ("studyhub / offline-first", 6, False), ("dev-skill / [milestone]", 5, False), ("deploy / [milestone]", 4, False), ("none", 9, False)]),
+    groups = [("project", [("all", 19, True), ("studyhub", 8, False), ("dev-desk", 7, False), ("studyhub-deploy", 4, False)]),
+              ("milestone", [("studyhub / reliable-study…", 8, False), ("studyhub / offline-first", 6, False), ("dev-desk / [milestone]", 5, False), ("deploy / [milestone]", 4, False), ("none", 9, False)]),
               ("priority", [("P0", 2, False), ("P1", 6, False), ("P2", 7, False), ("P3", 4, False)])]
     tools = f'<button style="{B_PRI}">New task in…</button>'
     body = f"""{b_filter(groups)}
@@ -146,14 +146,14 @@ def e_merged():
         <div style="width: 248px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
           {col_head("Next up", 7)}
           {small_card("studyhub #65", "Reduce initial bundle size", "P1", "no agent", "Start")}
-          {small_card("dev-skill #[n]", "[task title]", "P1", "no agent", "Start")}
+          {small_card("dev-desk #[n]", "[task title]", "P1", "no agent", "Start")}
           {small_card("studyhub #68", "Flashcard deck import", "P2", "waits for #59", "Start")}
           {small_card("deploy #[n]", "[task title]", "P2", "no agent", "Start")}
         </div>
         <div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 10px;">
           {col_head("In progress", 5)}
           {big_card("studyhub · #57", "Improve exam recovery", "Needs a decision", "wait", 1, "Waiting for a decision before implementation continues.", "P0", "feat/57-exam-recovery", "1d ago", "Answer", True, True)}
-          {big_card("dev-skill · #[n]", "[task title]", "Running", "run", 2, "[last activity line]", "P1", "[branch]", "[age]", "Show the run", False, False)}
+          {big_card("dev-desk · #[n]", "[task title]", "Running", "run", 2, "[last activity line]", "P1", "[branch]", "[age]", "Show the run", False, False)}
           {big_card("studyhub · #42", "Preserve course-list position", "Running", "run", 2, "11:12 · Codex patched useScrollRestore.ts.", "P1", "fix/42-course-scroll", "3d ago", "Show the run", False, False)}
         </div>
         <div style="width: 248px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px;">
@@ -190,7 +190,7 @@ def proj_card(name, path, branch, counts, need, lines, hot):
 def e_home():
     left = proj_card("studyhub", "~/Developer/studyhub", "main", [("in progress", 3), ("in review", 1), ("next up", 3), ("findings to decide", 3)],
                      "#57 Improve exam recovery", [(ACC, "#42 · Codex patched useScrollRestore.ts"), ("#E7C067", "#57 · waiting for input"), ("#5A606A", "zsh")], True)
-    right = (proj_card("dev-skill", "~/Developer/skills/dev-skill", "main", [("in progress", "[n]"), ("in review", "[n]"), ("next up", "[n]")], "", [(ACC, "zsh · apps/desk/install.sh")], False)
+    right = (proj_card("dev-desk", "~/Developer/skills/dev-desk", "main", [("in progress", "[n]"), ("in review", "[n]"), ("next up", "[n]")], "", [(ACC, "zsh · apps/desk/install.sh")], False)
              + proj_card("studyhub-deploy", "~/Developer/studyhub-deploy", "[branch]", [("in progress", "[n]"), ("in review", "[n]"), ("next up", "[n]")], "", [("#5A606A", "nothing running")], False))
     inner = f"""
   <div style="height: 40px; flex-shrink: 0; box-sizing: border-box; padding: 0 14px 0 18px; display: flex; align-items: center; gap: 10px; border-bottom: 1px solid {LINE}; background: #14171B; font-family: {M}; font-size: 12px;">
