@@ -6,7 +6,7 @@ It's a first build of the container described in the [container spec](../../docs
 
 ## Download
 
-A prebuilt release is quicker than building. Releases are ad-hoc signed DMGs, published to GitHub Releases when a `desk-v*` tag is pushed:
+A prebuilt release is quicker than building. Releases are ad-hoc signed DMGs, published to [GitHub Releases](https://github.com/hasansa007/dev-desk/releases/latest) when a `desk-v*` tag is pushed — or with the CLI:
 
 ```bash
 gh release download -R hasansa007/dev-desk -p 'Dev-Desk-*.dmg'
@@ -14,7 +14,7 @@ gh release download -R hasansa007/dev-desk -p 'Dev-Desk-*.dmg'
 
 Open the DMG and drag **Dev Desk.app** onto the `/Applications` symlink inside it.
 
-The first launch needs one extra step, because the app isn't notarized: right-click **Dev Desk.app** and choose **Open**, or run `xattr -dr com.apple.quarantine "/Applications/Dev Desk.app"`. It needs macOS 14 or later.
+Because the app isn't notarized, macOS refuses the first launch with "Apple could not verify Dev Desk is free of malware" and offers only *Done* and *Move to Trash*. Right-clicking and choosing Open no longer gets past that on macOS 15 and later, so clear the quarantine flag once — `xattr -dr com.apple.quarantine "/Applications/Dev Desk.app"` — or use System Settings → Privacy & Security → **Open Anyway** right after the refusal. It needs macOS 14 or later.
 
 ## Requirements
 

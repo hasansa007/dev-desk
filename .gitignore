@@ -41,3 +41,7 @@ apps/desk/icon/AppIcon-dark-1024.png
 # Workflow viewer artifacts, written at the repo root by whatever ran last.
 dev-task-start.html
 dev-task-start.workflow.json
+
+# Hyperframes / brag movie working directory. Holds captured app screenshots, which can show
+# other projects' issue titles — never committed, least of all to a public repo.
+/brag-output/

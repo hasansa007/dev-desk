@@ -77,7 +77,7 @@ A different defect in the same component remains independently tracked.
 
 ## Existing behavior and gaps
 
-- [Survey Phase 2](../../../skills/survey/SKILL.md) already searches open issues by file path
+- [Survey Phase 2](../../../skills/findings/SKILL.md) already searches open issues by file path
   and symptom and holds uncertain matches. It does not yet define the reconciliation model above.
 - [Ideation Phase 2](../../../skills/ideation/SKILL.md) also searches closed issues and respects
   prior declines. Its explanation that a closed bug is fixed is too strong for this design.
