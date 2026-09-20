@@ -59,7 +59,13 @@ jobs:
       - name: Write release notes
         run: |
           {
-            echo "Dev Desk is ad-hoc signed and not notarized. The first time you open it, right-click the app and choose **Open** — or run \`xattr -dr com.apple.quarantine \"/Applications/Dev Desk.app\"\`."
+            echo "Dev Desk is ad-hoc signed and not notarized, so Gatekeeper refuses the downloaded copy with \"Apple could not verify Dev Desk is free of malware\" and offers only **Done** and **Move to Trash**. Right-clicking and choosing Open no longer gets past that on macOS 15 and later. Drag the app to /Applications, then run:"
+            echo
+            echo '```'
+            echo 'xattr -dr com.apple.quarantine "/Applications/Dev Desk.app"'
+            echo '```'
+            echo
+            echo "It opens normally from then on. (System Settings → Privacy & Security → **Open Anyway**, right after the refusal, does the same thing.)"
             echo
             echo "Requires macOS 14 or later. Dev Desk is a Mac app — there is no Windows or Linux build."
             echo
