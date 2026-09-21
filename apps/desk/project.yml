@@ -34,7 +34,7 @@ targets:
         # outright — the same shape of failure as the Apple events one above.
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Dev Desk listens only while you hold the mic open over a session, and types what you said at the agent's prompt for you to check before sending."
         INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Dev Desk turns what you dictate into a session into text, on this Mac wherever it can."
-        MARKETING_VERSION: "0.2.3"
+        MARKETING_VERSION: "0.2.4"
         CURRENT_PROJECT_VERSION: "1"
         SWIFT_VERSION: "5.0"
         MACOSX_DEPLOYMENT_TARGET: "14.0"
