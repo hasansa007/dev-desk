@@ -164,6 +164,36 @@ Then state it in the form **`<result> — from <command>, which covers <domain>`
 > **No hook can enforce this** — it is about interpretation, not a tool boundary. It raises the
 > floor; it does not seal it.
 
+## A written claim carries its evidence
+
+The rule above governs a command's output. This one governs what gets **written down** — an ADR, a
+NOTES/README line, a commit message, a test's fake — because prose outlives the session that could
+have checked it, and a reader cannot tell a checked sentence from a plausible one.
+
+1. **Name the evidence level of every factual claim:** `claimed` · `read in code` · `tested` ·
+   `reproduced at runtime`. Write the level only when it is below `tested`; an unmarked claim reads
+   as checked, so it must be.
+2. **A fake encodes an assumption about the real dependency — observe it once before writing it.**
+   Run the framework path for real (a fresh install, a denied permission, a thrown error) and cite
+   what you saw beside the fake. A stub can be no more correct than the belief it was written from.
+3. **A regression test is seen failing once.** Break the code it guards, watch it go red, restore.
+   A test that cannot fail is decoration.
+4. **Each promise the README makes gets one test written from the user's side** — realistic inputs
+   (the formats people type, the fields people leave empty), not the code's current behaviour. A test
+   written after a refactor pins what the code does, bugs included.
+5. **A commit labelled as a baseline is byte-identical to what was received.** Diff it against the
+   source before naming it "as inherited", "original" or "unchanged".
+6. **Intent and history are claims too.** "Deliberately", "as designed", "removed the X trap" are
+   checked against the record — git, the diff, a probe — not against how the sentence reads.
+
+> **2026-09-22 — a submitted take-home carried four plausible sentences, none checked.** A baseline
+> commit labelled "as inherited" already contained a changed build setting; an ADR called that change
+> "deliberately" made when it was an experiment left unreverted; a note claimed a migration "removed
+> the `@StateObject` trap" that `@State` has too. And the permission-denial test passed against a fake
+> returning `false` where the real API **throws** — the stub encoded the same wrong belief as the
+> code, so the bug shipped behind a green test. Every sentence was written with AI assistance and read
+> as true; each failed the first time it was checked against git, the compiler or the framework.
+
 ---
 
 ## What to load from `shared/pipeline/`

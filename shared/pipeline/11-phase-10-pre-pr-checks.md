@@ -1,6 +1,6 @@
 ## Phase 10 — Pre-PR Quality Checks
 
-Scoped to `git diff <BASE_BRANCH>...HEAD`.
+Scoped to `git diff <BASE_BRANCH>...HEAD`. Every build-settings/project-file hunk in it is one the ticket needs — an experiment you forgot to revert shows up here or nowhere (2026-09-22).
 
 ### PROJECT_MAP.md Sync
 Update `PROJECT_MAP.md` to reflect the current state of the project:

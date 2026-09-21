@@ -114,6 +114,14 @@ describing a rail the dialog no longer has. One mention had been fixed, three ha
 sweep is indistinguishable from a complete one from the outside**, so the pass criterion is the
 reread, not the edit.
 
+**Claims about intent and history get checked against the record, not reread for plausibility.**
+"Deliberately", "as inherited", "removed the X trap", "verified" — each is checked against git, the
+diff or a probe before this gate passes (`shared/entry.md` → *A written claim carries its evidence*).
+Observed 2026-09-22: an ADR said a build setting was "deliberately changed" while the baseline
+commit it described was labelled "as inherited"; the setting was an experiment left unreverted. Both
+sentences survived a reread because each was plausible alone. Only `git show <baseline>` against
+the received source could have caught it.
+
 ## Committed diagrams — the one doc check that is mechanical
 
 `dev:arch` lands evidenced architecture diagrams in `docs/arch/` as a `.html` beside the
