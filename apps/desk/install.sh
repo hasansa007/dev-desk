@@ -153,7 +153,9 @@ if [ "$OPEN_AFTER" -eq 0 ]; then
 fi
 
 echo "==> Launching"
-open -a "$DEST/$APP_NAME"
+# -n: LaunchServices can still count the quit app as running, and a plain `open` then starts nothing while
+# exiting 0 (2026-09-21). The quit above waited for every process to exit, so -n cannot make a second one.
+open -n "$DEST/$APP_NAME"
 sleep 2
 # Say which bundle is actually running, rather than assuming `open` did what was asked.
 # By pid, not by scanning every command line: this script's own invocation contains the app's path, so a
