@@ -97,9 +97,33 @@ public enum AgentHooks {
         }
     }
 
-    /// The same, for a line typed into a shell — a door's command is typed rather than exec'd.
-    public static func inject(into line: String) -> String {
-        for (executable, flag, value) in [("claude", "--settings", claudeSettings), ("codex", "-c", codexNotify)]
+    /// Where a typed line's Claude settings live. `claude --settings` takes a path as readily as JSON.
+    public static var defaultSettingsDirectory: URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support")
+        return base.appendingPathComponent("DevDesk", isDirectory: true)
+    }
+
+    /// `claudeSettings` written to a file, rewritten only when it differs; nil when it can't be written.
+    public static func claudeSettingsFile(in directory: URL = defaultSettingsDirectory) -> URL? {
+        let file = directory.appendingPathComponent("claude-hooks.json")
+        let data = Data(claudeSettings.utf8)
+        if (try? Data(contentsOf: file)) == data { return file }
+        do {
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try data.write(to: file, options: .atomic)
+            return file
+        } catch {
+            return nil
+        }
+    }
+
+    /// The same, for a line typed into a shell — a door's command is typed rather than exec'd. Claude's settings
+    /// go by file: inline they made the line ~920 bytes, and a tty holds 1024 for a line typed before the shell's
+    /// line editor reads it — past that its Return is dropped and the line sits on the prompt, never run (2026-09-21).
+    public static func inject(into line: String, settingsDirectory: URL = defaultSettingsDirectory) -> String {
+        let settings = claudeSettingsFile(in: settingsDirectory)?.path ?? claudeSettings
+        for (executable, flag, value) in [("claude", "--settings", settings), ("codex", "-c", codexNotify)]
         where line.hasPrefix(executable + " ") {
             return "\(executable) \(flag) \(DoorCommand.quoted(value))" + line.dropFirst(executable.count)
         }

@@ -108,9 +108,7 @@ struct ShellPane: View {
             guard case .running(let folder) = sessions.state(for: id) else { return }
             terminals.start(taskID: id, folder: folder.url)
             guard let command else { return }
-            // A login shell reads nothing until it has drawn its first prompt; typed sooner, the line is swallowed.
-            try? await Task.sleep(for: .milliseconds(700))
-            terminals.sendCommand(command, to: id)
+            await terminals.sendCommand(command, to: id)
         }
     }
 

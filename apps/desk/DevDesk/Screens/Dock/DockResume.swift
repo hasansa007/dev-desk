@@ -111,10 +111,7 @@ enum DockResume {
             terminals.start(taskID: task.id, folder: folder.url)
             show(task.id)
             guard let line else { return }
-            // A login shell reads nothing until it has drawn its first prompt; typed sooner the line is
-            // swallowed, and zsh mid-setup answers with "error on TTY read: invalid argument" and exits 1.
-            try? await Task.sleep(for: .milliseconds(700))
-            terminals.sendCommand(line, to: task.id)
+            await terminals.sendCommand(line, to: task.id)
         }
     }
 }

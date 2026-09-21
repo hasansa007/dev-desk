@@ -170,7 +170,10 @@ final class ShellTerminalRegistry {
 
     /// A door's command, typed into its shell with the agent's hooks added. `preamble` (a `cd … && `) goes in front
     /// after the hooks are added: the agent is found by the line starting with it.
-    func sendCommand(_ line: String, to taskID: String, preamble: String = "") {
+    /// Typed only once the shell is at its prompt. A fixed 700 ms was the wait until 2026-09-21, when a relaunch of a
+    /// task sat on the prompt, typed out and never run, until the project was force-closed.
+    func sendCommand(_ line: String, to taskID: String, preamble: String = "") async {
+        await terminals[taskID]?.waitForPrompt()
         let executable = line.split(separator: " ").first.map(String.init)
         if AgentHooks.reports(executable) { reportsThroughHooks[taskID] = true }
         if let executable, AgentKind(rawValue: executable) != nil {
@@ -410,6 +413,26 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
     }
 
     var isRunning: Bool { view.process.shellPid != 0 && !hasExited }
+
+    /// The shell's line editor is reading: the tty is out of canonical mode and the shell itself holds the
+    /// foreground. Until then a typed line waits in the kernel's canonical buffer, which drops a Return past 1024 bytes.
+    var isAtPrompt: Bool {
+        let fd = view.process.childfd
+        let pid = view.process.shellPid
+        guard isRunning, fd >= 0, tcgetpgrp(fd) == pid else { return false }
+        var modes = termios()
+        guard tcgetattr(fd, &modes) == 0 else { return false }
+        return modes.c_lflag & tcflag_t(ICANON) == 0
+    }
+
+    /// Returns once the shell is at its prompt, or after `limit` — a shell whose prompt never turns raw (a plain
+    /// `sh`, a slow ~/.zshrc) still gets the line, as it always did.
+    func waitForPrompt(limit: Duration = .seconds(10)) async {
+        let deadline = ContinuousClock.now + limit
+        while !isAtPrompt, isRunning, ContinuousClock.now < deadline {
+            try? await Task.sleep(for: .milliseconds(50))
+        }
+    }
 
     /// True while a job group signalled earlier still has its leader in the shell's session.
     var hasLiveJobs: Bool {

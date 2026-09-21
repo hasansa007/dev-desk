@@ -302,9 +302,7 @@ struct TerminalsScreen: View {
             selection = .session(task.id)
             model.selectedSessionID = task.id
             guard let typed else { return }
-            // The same wait the other typed start uses: a login shell swallows a line typed before its prompt.
-            try? await Task.sleep(for: .milliseconds(700))
-            terminals.sendCommand(typed, to: task.id)
+            await terminals.sendCommand(typed, to: task.id)
         }
     }
 
@@ -648,12 +646,9 @@ private struct SessionPane: View {
                     preamble = "echo \(ShellQuote.single(reason)); "
                 }
             }
-            // A login shell reads nothing until it has drawn its first prompt; typed sooner the line is swallowed,
-            // and zsh mid-setup answers with "error on TTY read: invalid argument" and exits 1 (seen 2026-09-20).
-            // The pane's own start has always waited; this one did not.
-            try? await Task.sleep(for: .milliseconds(700))
             // Through sendCommand, not send: a plain send typed the agent without its hooks, so it never notified.
-            terminals.sendCommand(command, to: id, preamble: preamble)
+            // It also waits for the shell's prompt, which a line typed sooner can lose.
+            await terminals.sendCommand(command, to: id, preamble: preamble)
         }
     }
 

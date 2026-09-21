@@ -10,12 +10,25 @@ final class AgentHooksTests: XCTestCase {
         XCTAssertEqual(AgentHooks.inject(into: [String]()), [])
     }
 
-    func testATypedLineGetsTheHooksQuoted() {
-        let line = AgentHooks.inject(into: "claude 'read it'")
+    func testATypedLineGetsTheHooksQuoted() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let line = AgentHooks.inject(into: "claude 'read it'", settingsDirectory: directory)
         XCTAssertTrue(line.hasPrefix("claude --settings '"))
         XCTAssertTrue(line.hasSuffix(" 'read it'"))
-        XCTAssertEqual(AgentHooks.inject(into: "claudette x"), "claudette x")
-        XCTAssertEqual(AgentHooks.inject(into: "gemini -i 'x'"), "gemini -i 'x'")
+        XCTAssertEqual(AgentHooks.inject(into: "claudette x", settingsDirectory: directory), "claudette x")
+        XCTAssertEqual(AgentHooks.inject(into: "gemini -i 'x'", settingsDirectory: directory), "gemini -i 'x'")
+    }
+
+    /// A typed line names the settings file rather than carrying ~780 bytes of JSON, so a long prompt still fits
+    /// the 1024 bytes a tty holds for a line typed before the shell reads it.
+    func testATypedClaudeLineNamesTheSettingsFile() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let line = AgentHooks.inject(into: "claude 'p'", settingsDirectory: directory)
+        let file = directory.appendingPathComponent("claude-hooks.json")
+        XCTAssertEqual(line, "claude --settings '\(file.path)' 'p'")
+        XCTAssertEqual(try String(contentsOf: file, encoding: .utf8), AgentHooks.claudeSettings)
     }
 
     /// Claude's settings are JSON with Notification, Stop and UserPromptSubmit hooks; Codex's TOML literal carries no quote that would end it.
