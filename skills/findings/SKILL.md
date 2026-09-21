@@ -192,6 +192,16 @@ press back"* is a finding; *"navigation seems fragile"* is a feeling. This is `d
 `## Steps` standard applied one step earlier, and it is the whole difference between a findings run and a
 vibe.
 
+**Each finder walks its flow as a user, with realistic inputs — not only as a reader of the code.**
+Its prompt names them: the formats people type (a local vs international phone number), the fields
+people leave empty (a birthday with no year, a contact with no name), and first-run paths (a denied
+permission on a fresh install). A code-first pass finds smells; behaviour bugs have none.
+Observed 2026-09-22: a code-first audit of a contacts app found concurrency and duplication and
+missed a search that could not find `054…` for `+972 54…`; per-flow finders prompted with inputs
+found it, a yearless birthday rendering as year 1, and a denial screen showing "Something Went Wrong".
+**Every CONFIRMED verdict is `read in code`**, never `reproduced at runtime`, unless a checker ran it —
+the report says which, per `shared/entry.md` → *A written claim carries its evidence*.
+
 ## Phase 5 — Verify adversarially, before anything is filed
 
 **Never skipped.** `--arch` skips the bug *hunt*, not the verification: Phase 6's counts and drift

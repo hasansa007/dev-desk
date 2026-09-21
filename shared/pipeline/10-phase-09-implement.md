@@ -59,7 +59,7 @@ Then:
 
 ### Post-task — Self-Verification
 - Does the code handle errors and edge cases? (Production-Ready rule)
-- Are there automated tests for the new logic? (Self-Verification rule)
+- Are there tests for the new logic — each seen failing once, each fake observed against the real dependency first? (`entry.md` → *A written claim carries its evidence*)
 - Did I leave any orphaned symbols? (Clean Your Own Mess)
 - Is every change strictly in scope? (Prevent Feature Creep)
 
