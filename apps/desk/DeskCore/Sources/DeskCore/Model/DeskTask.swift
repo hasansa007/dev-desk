@@ -395,6 +395,9 @@ public struct DeskTask: Identifiable, Hashable {
     public var isFinishedReport: Bool = false
     /// A Done card's leftover worktree: its branch is merged and still checked out in a folder of its own.
     public var worktreePath: String?
+    /// The worktree this card's branch is checked out in, whatever its column; nil when it is checked out nowhere
+    /// but the opened folder. What lets a run started for one card be found working on this one's branch.
+    public var checkoutPath: String?
 
     /// A local branch with no issue and no pull request behind it — the only card whose branch this app may delete.
     public var isBranchCard: Bool { id.hasPrefix("branch:") }

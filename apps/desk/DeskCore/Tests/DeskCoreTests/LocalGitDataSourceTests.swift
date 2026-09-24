@@ -92,7 +92,7 @@ final class LocalGitDataSourceTests: XCTestCase {
             activeAuth: .ok("github.com\n  ✓ Logged in to github.com account octo (keyring)\n"),
             issueList: .ok("[]"),
             openPRs: .ok("[]"),
-            "gh pr list --repo acme/app --state merged --limit 10 --json number,title,headRefName,isCrossRepository,mergedAt,url,headRefOid": .ok("[]"),
+            "gh pr list --repo acme/app --state merged --limit 100 --json number,title,headRefName,isCrossRepository,mergedAt,url,headRefOid": .ok("[]"),
             "gh api repos/acme/app/milestones?state=open": .ok("[]"),
             "which claude": .ok("/usr/local/bin/claude\n"),
         ])

@@ -272,6 +272,19 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(built["branch:spike/z"]?.worktreePath, "only a Done card offers removal")
     }
 
+    /// #752's run checked out #779's branch on 2026-09-24; the board finds that run by the folder #779's card names.
+    func testEveryCardCarriesTheWorktreeItsBranchIsCheckedOutIn() throws {
+        var input = fixture
+        input.git?.branches.append(BranchFacts(name: "feat/onboarding", unmerged: 0, counted: true, worktree: "/wt/app-onboarding"))
+        let index = try XCTUnwrap(input.git?.branches.firstIndex { $0.name == "spike/z" })
+        input.git?.branches[index].worktree = "/wt/app-spike"
+        let built = tasks(input)
+        XCTAssertEqual(built["branch:spike/z"]?.checkoutPath, "/wt/app-spike", "an In progress card names its checkout")
+        XCTAssertNil(built["branch:spike/z"]?.worktreePath, "which is still not a Done card's leftover to remove")
+        XCTAssertEqual(built["merged:9"]?.checkoutPath, "/wt/app-onboarding")
+        XCTAssertNil(built["pr:20"]?.checkoutPath, "a branch checked out nowhere else has no path")
+    }
+
     /// #802 on 2026-09-17: merged to staging as #805, still open, with an abandoned gh-802- branch two commits ahead.
     func testAnOpenIssueWhoseBranchMergedIsItsMergedCardNotInProgress() {
         let input = BoardInput(
@@ -287,6 +300,21 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertNil(built.first { $0.id == "802" }, "the merged card is the issue's card")
         XCTAssertEqual(built.first { $0.id == "merged:805" }?.column, .done)
         XCTAssertNil(built.first { $0.id == "branch:gh-802-model-band-per-row" }, "an abandoned attempt is the issue's, not a card")
+    }
+
+    /// The same branch once #802 closed (2026-09-24): no open issue claims it, and it still sat in In progress.
+    func testALeftoverBranchOfAClosedIssueWhoseWorkMergedIsNotInProgress() {
+        let input = BoardInput(
+            git: GitFacts(base: "staging", baseRef: "refs/remotes/origin/staging", baseShort: "f4a6202", branches: [
+                BranchFacts(name: "gh-802-model-band-per-row", unmerged: 2, counted: true, worktree: nil),
+                BranchFacts(name: "gh-827-obsidian-export", unmerged: 3, counted: true, worktree: nil),
+            ]),
+            github: GitHubData(slug: "a/b", account: nil, issues: [], openPullRequests: [],
+                               mergedPullRequests: [GitHubMergedPullRequest(number: 805, title: "#802: bands", headRefName: "gh-802-build-model-bands")]),
+            activeMilestone: nil)
+        let built = BoardBuilder.build(input)
+        XCTAssertNil(built.first { $0.id == "branch:gh-802-model-band-per-row" }, "the merge speaks for #802")
+        XCTAssertEqual(built.first { $0.id == "branch:gh-827-obsidian-export" }?.column, .inProgress, "a branch with no merge is still work")
     }
 
     func testMergedPullRequestIsDimmedDone() throws {

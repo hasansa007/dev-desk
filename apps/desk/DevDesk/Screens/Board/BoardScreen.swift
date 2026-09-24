@@ -399,8 +399,9 @@ private struct BoardColumnView: View {
     /// Stop what this card has live, or continue it. An issue card continues by running its door again; a
     /// branch card has no issue for `/dev` to open, so it continues in its own agent, where Start is one press.
     private func runControls(for task: DeskTask) -> CardRunControls? {
-        guard task.column != .done else { return nil }
-        let live = model.activity(of: task) != nil
+        guard task.column != .done, model.runHost(of: task) == nil else { return nil }
+        let live = model.cardActivity(of: task) != nil
+        let guests = model.runGuests(of: task)
         // Only the "no issue number" case belongs to the agent fallback: a sample project or an unverified
         // connection blocks the agent for the same reason, so offering it there just moves the refusal.
         let canStartDoor = task.taskNumber != nil && model.startBlockedReason(for: task, agent: defaultConnection) == nil
@@ -411,6 +412,11 @@ private struct BoardColumnView: View {
                 terminals?.end(taskID: task.id)
                 terminals?.end(taskID: task.id)
                 if let number = task.taskNumber { terminals?.end(taskID: DoorRuns.id(task: number)) }
+                // Stopping the card stops the run working it, whichever card it was started from.
+                for guest in guests {
+                    terminals?.end(taskID: guest.id)
+                    if let id = DoorRuns.id(for: guest) { terminals?.end(taskID: id) }
+                }
             },
             resume: {
                 if canStartDoor {
@@ -472,7 +478,24 @@ private struct BoardColumnView: View {
     /// A card offers Start only when pressing it would actually run something; the dialog still explains why
     /// not. Backlog offers none: starting is what moves a card to In progress (ADR 0035), and the flow says
     /// a card reaches a run through Ready for dev.
+    /// A card whose run is working another card's branch says so where its note goes; the run itself is on that card.
+    private func noted(_ task: DeskTask) -> DeskTask {
+        guard let host = model.runHost(of: task) else { return task }
+        var task = task
+        task.cardNote = "Running as \(host.issueLabel.isEmpty ? host.title : host.issueLabel) — its card shows the run"
+        task.cardNoteIsWarning = false
+        return task
+    }
+
+    /// The session "Show the run" opens: the card's own, or the live run of another card working this one's branch.
+    private func runSessionID(for task: DeskTask) -> String {
+        guard model.activity(of: task) == nil, let guest = model.runGuests(of: task).first else { return task.id }
+        return [DoorRuns.id(for: guest), guest.id].compactMap { $0 }.first { model.sessions.state(for: $0).isLive } ?? guest.id
+    }
+
     private func start(for task: DeskTask) -> (() -> Void)? {
+        // A card whose run is working elsewhere is not idle, even though its own card shows nothing running.
+        guard model.runHost(of: task) == nil else { return nil }
         guard column != .done, column != .backlog,
               model.startBlockedReason(for: task, agent: defaultConnection) == nil else { return nil }
         // The sheet on a task's FIRST start, and whenever ⌥ asks for it; after that the remembered launch
@@ -535,9 +558,9 @@ private struct BoardColumnView: View {
         VStack(alignment: .leading, spacing: isFocus ? 10 : 8) {
             BoardColumnHeader(column: column, model: model, collapse: collapseDone)
             ForEach(shownTasks) { task in
-                TaskCard(task: task, isLastOpened: task.id == model.lastOpenedTaskID,
+                TaskCard(task: noted(task), isLastOpened: task.id == model.lastOpenedTaskID,
                          action: { model.openTask(task.id) }, moves: moves(for: task),
-                         activity: model.activity(of: task), isWaiting: model.isWaiting(task), start: start(for: task),
+                         activity: model.cardActivity(of: task), isWaiting: model.isCardWaiting(task), start: start(for: task),
                          branchActions: branchActions(for: task),
                          localActions: localActions(for: task),
                          runControls: runControls(for: task),
@@ -549,7 +572,7 @@ private struct BoardColumnView: View {
                          },
                          isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch,
                          variant: isFocus ? .focus : .column,
-                         showRun: { model.selectedSessionID = task.id; model.go(.terminals) })
+                         showRun: { model.selectedSessionID = runSessionID(for: task); model.go(.terminals) })
             }
             if shownTasks.isEmpty {
                 Text(column == .inProgress ? "Nothing is running. Start a task from Next up."

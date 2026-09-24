@@ -237,11 +237,16 @@ private struct BoardContext {
         let mergedPullRequests = input.github?.mergedPullRequests ?? []
         // A squash merge leaves a branch's own commits outside the base, so a branch still at a merged head is that merge, not new work.
         let mergedHeads = Set(mergedPullRequests.compactMap(\.headRefOid))
+        // The issues whose work has merged. A gh-N- branch left beside that merge is an abandoned attempt whether the
+        // issue is still open (claimed above) or closed since — gh-802-model-band-per-row sat in In progress, 2 ahead,
+        // for a week after #802 merged as #805 and closed.
+        let mergedIssues = Set(mergedPullRequests.filter { !$0.isCrossRepository }.compactMap { DeskTask.ghNumber($0.headRefName) })
         let pullRequestTasks = openPullRequests.filter { !claimedPullRequests.contains($0.number) }.map(pullRequestTask)
         let branchTasks = branches.filter { branch in
             branch.unmerged > 0 && !claimedBranches.contains(branch.name) && !heads.contains(branch.name)
                 && !(branch.head.map(mergedHeads.contains) ?? false)
                 && branch.name != input.currentBranch
+                && !(DeskTask.ghNumber(branch.name).map(mergedIssues.contains) ?? false)
         }.map(branchTask)
         let unmergedNames = Set(branches.filter { $0.unmerged > 0 }.map(\.name))
         let merged = mergedPullRequests.map(mergedTask)
@@ -253,6 +258,7 @@ private struct BoardContext {
             task.baseRef = input.git?.baseRef
             task.baseShort = input.git?.baseShort
             if task.column == .done, let branch = task.branch { task.worktreePath = branchByName[branch]?.worktree }
+            task.checkoutPath = task.branch.flatMap { branchByName[$0]?.worktree }
             return task
         }
     }

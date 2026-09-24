@@ -170,6 +170,11 @@ struct GitHubReader {
     let directory: URL
     let runner: CommandRunner
 
+    /// How many merged pull requests are read. An issue stays open after its merge until the release closes it, and
+    /// only a merge in this window says so — at 10, hotfixes and staging promotions pushed a day-old merge out and its
+    /// issue came back as live work (#837, 2026-09-24). Done still shows only as many as Settings › Work asks.
+    static let mergedWindow = 100
+
     /// `remote` is the origin URL in any form GitRemote accepts; nil when the repository has none.
     func read(remote: String?) async -> GitHubState {
         guard let remote else { return .unavailable("no GitHub remote") }
@@ -192,7 +197,7 @@ struct GitHubReader {
                               ["pr", "list", "--repo", slug, "--state", "open", "--limit", "100", "--json",
                                "number,title,headRefName,isCrossRepository,reviewDecision,isDraft,url,body"])
         async let merged = list([GitHubMergedPullRequest].self, "merged pull requests",
-                                ["pr", "list", "--repo", slug, "--state", "merged", "--limit", "10", "--json", "number,title,headRefName,isCrossRepository,mergedAt,url,headRefOid"])
+                                ["pr", "list", "--repo", slug, "--state", "merged", "--limit", String(Self.mergedWindow), "--json", "number,title,headRefName,isCrossRepository,mergedAt,url,headRefOid"])
         async let milestones = list([GitHubMilestone].self, "milestones", ["api", "repos/\(slug)/milestones?state=open"])
         do {
             data.issues = try await issues

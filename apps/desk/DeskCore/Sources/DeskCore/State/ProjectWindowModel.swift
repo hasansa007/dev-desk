@@ -925,7 +925,7 @@ public final class ProjectWindowModel {
     /// A Work column's count under the selection — every card in it, filters aside, and how many are running.
     public func workCounts(in column: BoardColumn) -> (total: Int, live: Int) {
         let cards = tasks.filter { inWorkColumn($0, column) }
-        return (cards.count, cards.filter { isTaskRunning($0) }.count)
+        return (cards.count, cards.filter { cardActivity(of: $0) != nil }.count)
     }
 
     /// Tasks In progress that change code `task` says it will (ADR 0046): same function asks before Start.
@@ -1212,6 +1212,41 @@ public final class ProjectWindowModel {
 
     public func isTaskRunning(_ task: DeskTask) -> Bool { activity(of: task) != nil }
 
+    /// The card whose branch this task's live run is working, when it is another card's — #752 was started, and
+    /// its agent took #779's slice and checked out gh-779- (2026-09-24). It is #779's commits and checkpoints
+    /// that move, so the board shows the run on #779 and leaves #752 saying where its run went.
+    public func runHost(of task: DeskTask) -> DeskTask? {
+        for id in [DoorRuns.id(for: task), task.id].compactMap({ $0 }) {
+            guard case .running(let folder) = sessions.state(for: id) else { continue }
+            let path = folder.url.resolvingSymlinksInPath().standardizedFileURL.path
+            if let host = tasks.first(where: { other in
+                // A merged card's leftover worktree is not work: a run still in it is shown as its own.
+                other.id != task.id && other.column != .done && other.branch != task.branch
+                    && other.checkoutPath.map { URL(fileURLWithPath: $0).resolvingSymlinksInPath().standardizedFileURL.path } == path
+            }) { return host }
+        }
+        return nil
+    }
+
+    /// The cards whose live runs are working this card's branch — the other side of `runHost(of:)`.
+    public func runGuests(of task: DeskTask) -> [DeskTask] {
+        guard task.checkoutPath != nil else { return [] }
+        return tasks.filter { $0.id != task.id && runHost(of: $0)?.id == task.id }
+    }
+
+    /// What a board card shows as live: its own run, unless that run is working another card's branch, plus any
+    /// run working this card's branch from another. `activity(of:)` stays the task's own, for its dialog and sessions.
+    public func cardActivity(of task: DeskTask) -> TaskActivity? {
+        if runHost(of: task) != nil { return nil }
+        return activity(of: task) ?? runGuests(of: task).lazy.compactMap { self.activity(of: $0) }.first
+    }
+
+    /// `isWaiting`, following the run to the card it is working, as `cardActivity(of:)` does.
+    public func isCardWaiting(_ task: DeskTask) -> Bool {
+        if runHost(of: task) != nil { return false }
+        return isWaiting(task) || runGuests(of: task).contains { isWaiting($0) }
+    }
+
     /// Sessions whose agent has ended its turn and is waiting for a message — by its own hooks, so only an agent that
     /// reports them is ever in here. A live session that is not is working, or is a plain shell that never says.
     public private(set) var waitingSessions: Set<String> = []
@@ -1244,7 +1279,7 @@ public final class ProjectWindowModel {
     /// A header describes its column, not the search box, so both numbers count every card in it.
     public func counts(in column: BoardColumn) -> (total: Int, live: Int) {
         let cards = tasks.filter { $0.column == column }
-        return (cards.count, cards.filter { isTaskRunning($0) }.count)
+        return (cards.count, cards.filter { cardActivity(of: $0) != nil }.count)
     }
 
     private static func isLive(_ state: ShellSessionState) -> Bool {
