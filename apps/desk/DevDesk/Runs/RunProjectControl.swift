@@ -158,12 +158,19 @@ struct RunProjectControl: View {
     /// worktree it will run in, and work happens in worktrees (ADR 0053).
     private var target: RunTarget? { model.runTarget }
 
-    /// Every folder a run can be started in: the project folder, then one per worktree this project is working.
+    /// Every folder a run can be started in: the project folder, then one per worktree this project is working,
+    /// most recently committed first. It read `worktreePath`, which only a Done card carries — a merged branch's
+    /// leftover folder — so the menu listed every finished worktree and none of the live ones (2026-09-24).
     private var runnableTargets: [RunTarget] {
         guard let folder = model.projectFolderTarget else { return [] }
-        let worktrees = model.tasks.compactMap { task -> RunTarget? in
-            guard let path = task.worktreePath else { return nil }
+        let live = model.tasks
+            .filter { $0.column != .done && !$0.isMerged && $0.checkoutPath != nil }
+            .sorted { ($0.lastCommit ?? .distantPast) > ($1.lastCommit ?? .distantPast) }
+        var seen: Set<URL> = [folder.folder.standardizedFileURL]
+        let worktrees = live.compactMap { task -> RunTarget? in
+            guard let path = task.checkoutPath else { return nil }
             let url = URL(fileURLWithPath: path, isDirectory: true)
+            guard seen.insert(url.standardizedFileURL).inserted else { return nil }
             return RunTarget(folder: url, branch: task.branch ?? RunTarget.branch(in: url), isProjectFolder: false)
         }
         return [folder] + worktrees
