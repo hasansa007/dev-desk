@@ -50,6 +50,27 @@ ADR is part of the diff.
 | work deliberately deferred | `ORPHANS & PENDING` — not a memory of it |
 | a moved/renamed/deleted file that any `docs/arch/*.json` cites | the diagram — re-pin it, or delete it |
 
+## Front matter sits on line 1
+
+Obsidian and GitHub read front matter only when `---` is the file's first line; a link or title above
+the block turns `type:` / `reviewed:` into plain text and the doc falls out of every view that reads
+them (observed prototyping #95: a `↩ [Map]` link above the block, in a project repo). Flag every
+Markdown file the diff touches — untracked new ones included — that carries those keys but does not
+open with `---`:
+
+```bash
+: "${PRE_PROD:?set to the pre-prod branch entry.md resolved}"
+{ git diff --name-only "$(git merge-base "origin/$PRE_PROD" HEAD)" -- '*.md'; git ls-files --others --exclude-standard -- '*.md'; } |
+while read -r f; do [ -f "$f" ] && [ "$(head -1 "$f")" != "---" ] && grep -qE '^(type|reviewed):' "$f" && echo "FRONT MATTER NOT ON LINE 1: $f"; done
+```
+
+A hit fails the gate: move the block to the top.
+
+**The vault view.** When the repo has `docs/` or `specs/` but no `*.base` at its root, offer once to
+copy `~/.claude/.dev-root/skills/docs/docs.base` there — opening the repo root in Obsidian then shows
+a **Needs review** table of the living docs, oldest `reviewed:` first. Folder types are in
+`docs/guide/SYSTEM-MODEL.md` → *Where the doors write*. Copy it only on a yes.
+
 ## Where ADRs live — this skill owns it
 
 `skills/findings/SKILL.md` delegates here explicitly: *"`dev:docs` owns ADRs — their numbering and

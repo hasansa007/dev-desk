@@ -1,0 +1,45 @@
+# Folder → type mapping is stated once in docs/guide/SYSTEM-MODEL.md, "Where the doors write".
+filters:
+  and:
+    - file.ext == "md"
+    - or:
+        - file.inFolder("docs")
+        - file.inFolder("specs")
+        - file.path == "PROJECT_MAP.md"
+formulas:
+  kind: 'if(note.type, note.type, if(file.inFolder("specs"), "spec", if(file.inFolder("docs/findings"), "findings", if(file.inFolder("docs/ideation"), "ideation", if(file.inFolder("docs/adr"), "adr", if(file.path == "PROJECT_MAP.md", "map", "untagged"))))))'
+  days_since_review: 'if(note.reviewed, ((now() - date(note.reviewed)) / 86400000).floor(), "")'
+properties:
+  formula.kind:
+    displayName: Type
+  formula.days_since_review:
+    displayName: Days since review
+  note.reviewed:
+    displayName: Reviewed
+views:
+  - type: table
+    name: Needs review
+    filters:
+      and:
+        - 'formula.kind != "spec"'
+        - 'formula.kind != "findings"'
+        - 'formula.kind != "ideation"'
+        - 'formula.kind != "adr"'
+    order:
+      - file.name
+      - formula.kind
+      - note.reviewed
+      - formula.days_since_review
+    sort:
+      - property: formula.days_since_review
+        direction: DESC
+  - type: table
+    name: All docs
+    groupBy:
+      property: formula.kind
+      direction: ASC
+    order:
+      - file.name
+      - formula.kind
+      - note.reviewed
+      - formula.days_since_review

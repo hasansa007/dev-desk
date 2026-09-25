@@ -18,6 +18,20 @@ The family is a set of doors — `/dev` and 21 siblings — that run one shared 
 
 Each layer is authoritative over every layer numbered above it, so when a checkpoint, a map or the app disagrees with git, git wins.
 
+### Where the doors write
+
+A doc's type comes from its `type:` front matter, else from its folder, so a frozen artifact is typed without ever being edited. [`skills/docs/docs.base`](../../skills/docs/docs.base) is the Obsidian Base that reads this mapping; `dev:docs` offers to copy it into a repo.
+
+| Folder | Written by | Type | Reviewed? |
+| --- | --- | --- | --- |
+| `specs/` | Phase 7 | `spec` | no — frozen |
+| `docs/findings/` | `dev:findings` | `findings` | no — frozen |
+| `docs/ideation/` | `dev:ideation` | `ideation` | no — frozen |
+| `docs/adr/` | Phase 12, `dev:docs` | `adr` | no — superseded, never edited |
+| `docs/arch/` | `dev:arch` | — (HTML/JSON; the Base shows Markdown only) | re-pinned by Phase 12 |
+| `PROJECT_MAP.md` | Phase 10, `dev:insights` | `map` | yes |
+| anything else in `docs/` without `type:` | the repo | `untagged` | yes |
+
 ## The container today
 
 Dev Desk is a native Mac app in `apps/desk/`. It lives in this repository ([ADR 0012](../adr/0012-the-mac-app-lives-in-apps-desk.md)).
