@@ -480,11 +480,33 @@ private struct BoardColumnView: View {
     /// a card reaches a run through Ready for dev.
     /// A card whose run is working another card's branch says so where its note goes; the run itself is on that card.
     private func noted(_ task: DeskTask) -> DeskTask {
+        if let queued = queueWait(for: task) {
+            var task = task
+            task.cardNote = queued.note
+            task.cardNoteIsWarning = queued.isBlocked
+            return task
+        }
         guard let host = model.runHost(of: task) else { return task }
         var task = task
         task.cardNote = "Running as \(host.issueLabel.isEmpty ? host.title : host.issueLabel) — its card shows the run"
         task.cardNoteIsWarning = false
         return task
+    }
+
+    /// Why a queued card is still waiting, instead of one note that reads the same whether every slot is busy or the
+    /// card can never be released. The queue skips a card `startBlockedReason` refuses, so that card says why here.
+    /// `help` is the Start button's hover: pressing Start on a queued card only parks it again, so that is where it is read.
+    private func queueWait(for task: DeskTask) -> (note: String, help: String, isBlocked: Bool)? {
+        guard task.column == .queued, task.cardNote == DeskTask.queuedNote else { return nil }
+        if let reason = model.startBlockedReason(for: task, agent: defaultConnection) {
+            return (reason, reason, true)
+        }
+        let limit = AgentLimit.current
+        let busy = LiveShells.shared.agentCount
+        guard busy >= limit else { return nil }
+        return ("All \(limit) agents busy — starts when one finishes",
+                "\(busy) of \(limit) agent slots are in use, across every open project. This card starts on its own when one finishes. A terminal you opened yourself does not take a slot. Raise the limit in Settings → Execution.",
+                false)
     }
 
     /// The session "Show the run" opens: the card's own, or the live run of another card working this one's branch.
@@ -565,7 +587,7 @@ private struct BoardColumnView: View {
                          localActions: localActions(for: task),
                          runControls: runControls(for: task),
                          startWith: startWithItems(for: task),
-                         startNote: sameFileNote(for: task),
+                         startNote: queueWait(for: task)?.help ?? sameFileNote(for: task),
                          editStartWith: {
                              model.settingsSection = .startWith
                              model.present(.settings)

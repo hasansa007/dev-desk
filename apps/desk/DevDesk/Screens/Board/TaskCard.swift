@@ -362,6 +362,8 @@ struct TaskCard: View {
                     .font(.system(size: 11))
                     .foregroundStyle(task.cardNoteIsWarning ? DeskColor.tone(.failed).dot : DeskColor.mutedInk)
                     .lineLimit(1)
+                    // One line beside Start cuts most notes short; the whole sentence is a hover away.
+                    .help(task.cardNote ?? "")
                 if let stages = task.pipeline?.stages, !stages.isEmpty {
                     Spacer(minLength: 4)
                     Text("\(stages.filter { $0.state == .done }.count)/\(stages.count)")

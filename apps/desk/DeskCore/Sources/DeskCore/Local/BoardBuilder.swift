@@ -604,3 +604,8 @@ private struct BoardContext {
         return formatter
     }
 }
+
+extension DeskTask {
+    /// The note the board gives a card parked in Queued, so the app can tell that card apart and say why it waits.
+    public static let queuedNote = BoardBuilder.queuedNote
+}
