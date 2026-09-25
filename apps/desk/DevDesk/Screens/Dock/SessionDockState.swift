@@ -72,6 +72,18 @@ final class SessionDockState {
         shownByProject[ref.id] = Array(chosen.suffix(Self.maxTiles))
     }
 
+    /// Where ⌘] last landed in this project's dock, so the next press moves on from it.
+    private var currentByProject: [String: String] = [:]
+
+    func current(for ref: ProjectRef) -> String? { currentByProject[ref.id] }
+
+    /// A step lands on a session and shows it: already a tile, it stays where it is; otherwise it is raised, and
+    /// the oldest tile yields as it would to any session asked for.
+    func step(to id: String, for ref: ProjectRef, among ids: [String]) {
+        currentByProject[ref.id] = id
+        if !isShown(id, for: ref, among: ids) { raise(id, for: ref, among: ids) }
+    }
+
     func hide(_ id: String, for ref: ProjectRef, among ids: [String]) {
         shownByProject[ref.id] = shown(for: ref, among: ids).filter { $0 != id }
     }

@@ -241,6 +241,12 @@ final class ShellTerminalRegistry {
         terminals[taskID]?.end()
     }
 
+    /// Keyboard focus to a terminal already on screen. One that does not exist is not made for the asking.
+    func focus(taskID: String) {
+        guard let view = terminals[taskID]?.view, let window = view.window else { return }
+        window.makeFirstResponder(view)
+    }
+
     /// Types into a running shell, exactly as the user would; a shell that has not started, or has exited, gets nothing.
     func send(_ text: String, to taskID: String) {
         guard let terminal = terminals[taskID], terminal.isRunning else { return }

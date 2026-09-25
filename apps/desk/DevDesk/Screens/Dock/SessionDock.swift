@@ -44,6 +44,16 @@ struct SessionDock: View {
             }
         }
         .background(DeskColor.strip)
+        // ⌘] and ⌘[ while the dock is open: the next session along the bar, shown if it was not, and its
+        // terminal takes the keys. The menu only offers the keys with the dock open, so a closed one never hears it.
+        .onChange(of: model.sessionStep) { _, request in
+            guard let request, isOpen else { return }
+            model.sessionStep = nil
+            let ids = self.rows.map(\.id)
+            guard let id = request.target(from: dock.current(for: model.ref), among: ids) else { return }
+            dock.step(to: id, for: model.ref, among: ids)
+            terminals?.focus(taskID: id)
+        }
     }
 
     private var heightBinding: Binding<Double> {
@@ -233,7 +243,8 @@ struct SessionDock: View {
             HStack(spacing: 0) {
                 ForEach(Array(tiles.enumerated()), id: \.element.id) { index, row in
                     if index > 0 { Rectangle().fill(DeskColor.divider).frame(width: 1) }
-                    DockTile(model: model, row: row, isWaiting: model.waitingSessions.contains(row.id)) {
+                    DockTile(model: model, row: row, isWaiting: model.waitingSessions.contains(row.id),
+                             isCurrent: dock.current(for: model.ref) == row.id) {
                         dock.hide(row.id, for: model.ref, among: ids)
                     } openFullSize: {
                         model.selectedSessionID = row.id

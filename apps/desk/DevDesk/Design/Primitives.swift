@@ -99,6 +99,23 @@ extension View {
     }
 }
 
+/// The ⌘ key that reaches a place, as a keycap at its icon's bottom-left (#96) — the corner no count or dot uses.
+struct KeyHint: View {
+    let key: String
+
+    var body: some View {
+        Text(verbatim: "⌘" + key.uppercased())
+            .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
+            .foregroundStyle(DeskColor.mutedInk)
+            .padding(.horizontal, 3)
+            .padding(.vertical, 1.5)
+            .background(DeskColor.surface.opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
+            .overlay(RoundedRectangle(cornerRadius: 4).strokeBorder(DeskColor.controlBorder, lineWidth: 1))
+            .fixedSize()
+            .accessibilityHidden(true)
+    }
+}
+
 struct SectionLabel: View {
     let text: String
 

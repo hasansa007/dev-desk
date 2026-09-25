@@ -70,6 +70,15 @@ struct TerminalsScreen: View {
             hasChosen = true
             selection = .session(id)
         }
+        // ⌘] and ⌘[: the tab beside the one in front, wrapping, and its terminal takes the keys.
+        .onChange(of: model.sessionStep) { _, request in
+            guard let request else { return }
+            model.sessionStep = nil
+            guard let id = request.target(from: selectedRow?.id, among: rows.map(\.id)) else { return }
+            hasChosen = true
+            selection = .session(id)
+            terminals?.focus(taskID: id)
+        }
         // A session can leave the list without being closed from here — a door run cleared, a job removed in
         // another screen. The tab in front cannot point at nothing, so it falls to whatever is left.
         .onChange(of: rows.map(\.id)) { _, ids in

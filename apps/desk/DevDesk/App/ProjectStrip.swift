@@ -24,8 +24,8 @@ struct ProjectStrip: View {
             // `divider`: the strip is the window's floor, and in light mode a divider sits three shades from
             // it — the line was there all along and only dark mode ever showed it (2026-09-20, on screen).
             Rectangle().fill(DeskColor.border).frame(width: 28, height: 1)
-            ForEach(workspace.contextsInStripOrder) { context in
-                projectButton(context)
+            ForEach(Array(workspace.contextsInStripOrder.enumerated()), id: \.element.id) { index, context in
+                projectButton(context, number: index < 9 ? index + 1 : nil)
             }
             Spacer(minLength: 8)
             openProjectButton
@@ -58,13 +58,17 @@ struct ProjectStrip: View {
         .accessibilityAddTraits(workspace.isHome ? .isSelected : [])
     }
 
-    private func projectButton(_ context: ProjectContext) -> some View {
+    /// `number` is the project's ⌘ key, which only the first nine have.
+    private func projectButton(_ context: ProjectContext, number: Int?) -> some View {
         let isSelected = workspace.selection == context.ref
         return Button { workspace.select(context.ref) } label: {
             ProjectBadge(ref: context.ref, name: context.name, size: DeskMetric.stripBadge)
                 .overlay(alignment: .leading) { selectionMark(isSelected) }
                 // The count wins when both are true: a run that has stopped to ask you something is not
                 // news that the project is busy, it is news that it is stuck on you.
+                .overlay(alignment: .bottomLeading) {
+                    if let number { KeyHint(key: String(number)).offset(x: -5, y: 4) }
+                }
                 .overlay(alignment: .bottomTrailing) {
                     if context.waitingCount > 0 {
                         waitingCount(context.waitingCount)
@@ -75,7 +79,7 @@ struct ProjectStrip: View {
                 .contentShape(RoundedRectangle(cornerRadius: DeskMetric.stripBadgeRadius))
         }
         .buttonStyle(.plain)
-        .help(helpText(context))
+        .help(helpText(context) + (number.map { " (⌘\($0))" } ?? ""))
         .accessibilityLabel(accessibilityLabel(context))
         .accessibilityAddTraits(isSelected ? .isSelected : [])
         .contextMenu {

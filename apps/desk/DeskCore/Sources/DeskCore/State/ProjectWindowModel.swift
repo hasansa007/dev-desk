@@ -3,7 +3,7 @@ import Observation
 
 public enum Destination: String, CaseIterable, Codable, Hashable {
     // The order the work moves in (ADR 0046): decide (Findings, Ideation) → order (Plan) → do (Board, Sessions) →
-    // see (Diagrams). It drives the sidebar and the ⌘ numbers; the raw values, which windows restore from, are unchanged.
+    // see (Diagrams). It drives the sidebar; the raw values, which windows restore from, are unchanged.
     case findings, ideation, roadmap, board, terminals, diagrams
 
     /// What the sidebar calls each place. The raw values are what a window restores its place from, so a
@@ -18,10 +18,21 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    /// The places the sidebar lists and ⌘1… reach: the daily flow first (Findings → Work → Sessions), then the
+    /// The places the sidebar lists: the daily flow first (Findings → Work → Sessions), then the
     /// occasional tools (Ideation, Diagrams). Ideation second read as a step every task passes through; it is not.
     /// `roadmap` is not listed: it opens Work.
     public static let sidebar: [Destination] = [.findings, .board, .terminals, .ideation, .diagrams]
+
+    /// The ⌘ letter that opens the place, named for it rather than numbered: ⌘1… switch projects (#96).
+    public var key: Character {
+        switch self {
+        case .findings: return "f"
+        case .board, .roadmap: return "b"
+        case .terminals: return "s"
+        case .ideation: return "i"
+        case .diagrams: return "d"
+        }
+    }
 
     /// One line for the sidebar's tooltip: what the place is for, in the flow's words (ADR 0046).
     public var hint: String {
@@ -618,6 +629,9 @@ public final class ProjectWindowModel {
     public var pendingRunReplacement: RunReplacement?
     /// ⌘R / ⌘. from the menu, carried out by the window that owns the terminals.
     public var windowCommand: WindowCommandRequest?
+    /// ⌘] / ⌘[ from the menu, carried out by whichever surface is showing this project's sessions: the Sessions
+    /// tab, or the dock when it is open on any other tab.
+    public var sessionStep: SessionStepRequest?
     /// The last action's fetch, so a failed one can be said rather than silently leaving the board stale.
     public private(set) var lastSync: OriginSync.Result?
 
@@ -1562,4 +1576,24 @@ public final class ProjectWindowModel {
         formatter.dateFormat = "HH:mm"
         return formatter
     }()
+}
+
+/// One step through the sessions, next or previous. The id makes a second press of the same key a change the
+/// surface hears, as `WindowCommandRequest`'s does.
+public struct SessionStepRequest: Equatable {
+    public let offset: Int
+    public let id = UUID()
+
+    public init(_ offset: Int) { self.offset = offset }
+
+    /// The session `offset` places from `current` among `ids`, wrapping at both ends — from nothing, a step
+    /// forward lands on the first and a step back on the last.
+    public func target(from current: String?, among ids: [String]) -> String? {
+        guard !ids.isEmpty else { return nil }
+        guard let current, let index = ids.firstIndex(of: current) else {
+            return offset >= 0 ? ids.first : ids.last
+        }
+        let count = ids.count
+        return ids[((index + offset) % count + count) % count]
+    }
 }

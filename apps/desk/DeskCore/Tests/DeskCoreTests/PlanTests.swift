@@ -139,6 +139,13 @@ final class WorkScopeTests: XCTestCase {
         XCTAssertEqual(Destination.board.title, "Work")
         XCTAssertEqual(Destination.roadmap.title, "Work")
     }
+
+    /// #96's keys, each place its own, and none already taken by the Project menu's ⌘T, ⌘R, ⌘., ⌘[ or ⌘].
+    func testEachSidebarPlaceHasItsOwnLetterKey() {
+        XCTAssertEqual(Destination.sidebar.map(\.key), ["f", "b", "s", "i", "d"])
+        XCTAssertEqual(Destination.roadmap.key, Destination.board.key, "roadmap opens Work")
+        XCTAssertTrue(Set(Destination.sidebar.map(\.key)).isDisjoint(with: ["t", "r", ".", "[", "]", "o", "w", ","]))
+    }
 }
 
 /// Settings › Work (ADR 0046): stored per project, tolerant of old files, and honoured by Work.

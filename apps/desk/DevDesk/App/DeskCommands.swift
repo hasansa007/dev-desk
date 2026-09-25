@@ -25,11 +25,20 @@ struct DeskCommands: Commands {
             Button("Open Project…") { Workspace.shared.isOpeningProject = true }
                 .keyboardShortcut("o")
         }
+        // ⌘1…⌘9 are the strip's projects, as they are a browser's tabs (#96). In Window rather than Project, which
+        // is disabled on Home — the one screen a project is most often switched to from.
+        CommandGroup(before: .windowArrangement) {
+            ForEach(Array(workspace.contextsInStripOrder.prefix(9).enumerated()), id: \.element.id) { index, context in
+                Button(context.name) { workspace.select(context.ref) }
+                    .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
+            }
+            Divider()
+        }
         CommandMenu("Project") {
             Group {
-                ForEach(Array(Destination.sidebar.enumerated()), id: \.element) { index, destination in
+                ForEach(Destination.sidebar, id: \.self) { destination in
                     Button(destination.title) { model?.go(destination) }
-                        .keyboardShortcut(KeyEquivalent(Character(String(index + 1))))
+                        .keyboardShortcut(KeyEquivalent(destination.key))
                 }
                 Divider()
                 // The card has had a Start button since the gaps epic; what it had no way to do was start
@@ -39,6 +48,15 @@ struct DeskCommands: Commands {
                     .disabled(startableTask == nil)
                 Button("New Terminal") { newTerminal() }
                     .keyboardShortcut("t")
+                // Safari's and Xcode's keys for the tab beside this one. Only where sessions are on screen — the
+                // Sessions tab, or the dock opened on any other — since a step through sessions you cannot see
+                // would change what the dock shows behind your back.
+                Button("Next Session") { model?.sessionStep = SessionStepRequest(1) }
+                    .keyboardShortcut("]")
+                    .disabled(!showsSessions)
+                Button("Previous Session") { model?.sessionStep = SessionStepRequest(-1) }
+                    .keyboardShortcut("[")
+                    .disabled(!showsSessions)
                 Toggle("Compact Sidebar", isOn: $railMode)
                     .keyboardShortcut("s", modifiers: [.command, .shift])
                 Divider()
@@ -60,6 +78,11 @@ struct DeskCommands: Commands {
             }
             .disabled(model == nil)
         }
+    }
+
+    private var showsSessions: Bool {
+        guard let model, case .loaded = model.loadState else { return false }
+        return model.destination == .terminals || SessionDockState.shared.isOpen(model.ref)
     }
 
     private func closeProject() {

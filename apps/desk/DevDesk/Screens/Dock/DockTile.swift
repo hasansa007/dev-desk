@@ -13,6 +13,8 @@ struct DockTile: View {
     /// Amber where the run is waiting on an answer, green while it works — the bar's chip says the same thing
     /// about the same session, so the two never disagree.
     let isWaiting: Bool
+    /// Where ⌘] last landed: an accent along the tile's top, so a step to a pane with no cursor still shows.
+    var isCurrent = false
     let hide: () -> Void
     let openFullSize: () -> Void
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
@@ -71,6 +73,7 @@ struct DockTile: View {
         .padding(.horizontal, 10)
         .frame(height: DockMetric.tileHeaderHeight)
         .background(DeskColor.headerFill)
+        .overlay(alignment: .top) { if isCurrent { Rectangle().fill(DeskColor.accent).frame(height: 2) } }
     }
 
     @ViewBuilder private func body(for kind: SessionRow.Kind) -> some View {

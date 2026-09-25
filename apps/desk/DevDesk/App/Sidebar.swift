@@ -95,6 +95,7 @@ struct Sidebar: View {
                                 .offset(x: 5, y: -3)
                         }
                     }
+                    .overlay(alignment: .bottomLeading) { KeyHint(key: String(destination.key)).offset(x: -7, y: 6) }
                 if !isRail {
                     Text(destination.title)
                     Spacer(minLength: 4)
@@ -117,8 +118,8 @@ struct Sidebar: View {
             .contentShape(RoundedRectangle(cornerRadius: 6))
         }
         .buttonStyle(.plain)
-        .help(isRail ? (badge.map { "\(destination.title) · \($0.count)" } ?? destination.title) + " — " + destination.hint
-              : destination.hint)
+        .help((isRail ? (badge.map { "\(destination.title) · \($0.count)" } ?? destination.title) + " — " + destination.hint
+               : destination.hint) + " (⌘\(destination.key.uppercased()))")
         .accessibilityLabel(badge.map { "\(destination.title), \($0.count)" } ?? destination.title)
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
