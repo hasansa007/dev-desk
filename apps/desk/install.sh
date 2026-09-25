@@ -34,7 +34,15 @@ fi
 LOG=$(mktemp -t dev-desk-install)
 # Deliberately NOT removed on failure: two messages below tell the reader to open it.
 
-if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
+# The running app's pids, from `ps`, never `pgrep`/`pkill`. From inside Claude Code's sandbox, pgrep listed only
+# processes the sandbox had started itself (2026-09-25): the developer's running app, and the runs it hosted, were
+# invisible to it while `ps` listed them. So the live-work check and the quit below were both skipped, and
+# `open -n` started a second copy beside the first. `comm` is the executable's full path; match its last part.
+desk_pids() {
+    ps -axo pid=,comm= | awk '{ pid = $1; sub(/^ *[0-9]+ /, ""); if ($0 == "Dev Desk" || $0 ~ /\/Dev Desk$/) print pid }'
+}
+
+if [ -n "$(desk_pids)" ] && [ "$FORCE" -eq 0 ]; then
     # What counts as running is WORK, not a process (2026-09-19): a Claude session that finished its turn stays
     # alive at its prompt with its MCP helpers, and counting processes blocked installs on sessions that had been
     # idle for hours. Two things are work:
@@ -46,7 +54,7 @@ if pgrep -x "Dev Desk" >/dev/null 2>&1 && [ "$FORCE" -eq 0 ]; then
     #   3. a session running a CLI that reports nothing — gemini, opencode, antigravity. `AgentProtocol` is the
     #      table: a CLI that never reports the end of a turn is marked working from its start until it exits, so
     #      such a session shows up above as `.working` rather than being guessed idle.
-    ROOTS="$(pgrep -x 'Dev Desk' | tr '\n' ' ')"
+    ROOTS="$(desk_pids | tr '\n' ' ')"
     EVENTS="$(getconf DARWIN_USER_TEMP_DIR 2>/dev/null || echo "${TMPDIR:-/tmp}/")devdesk-events"
     WORKING=0
     ASKING=0
@@ -112,7 +120,7 @@ SRC="$BUILT/$APP_NAME"
 wait_for_exit() {
     local deadline=$1
     while [ "$deadline" -gt 0 ]; do
-        pgrep -x "Dev Desk" >/dev/null 2>&1 || return 0
+        [ -n "$(desk_pids)" ] || return 0
         sleep 0.5
         deadline=$((deadline - 1))
     done
@@ -123,10 +131,10 @@ wait_for_exit() {
 # live door run with it, both times because a human eye judged "probably finished". The check is cheap and
 # the loss is not, so it is the script's job, and --force is the way to say you meant it.
 # Refusal observed working 2026-09-12, against a real live run.
-if pgrep -x "Dev Desk" >/dev/null 2>&1; then
+if [ -n "$(desk_pids)" ]; then
     echo "==> Quitting the running Dev Desk"
     osascript -e 'tell application "Dev Desk" to quit' >/dev/null 2>&1 || true
-    wait_for_exit 20 || { pkill -x "Dev Desk" || true; wait_for_exit 10; } || { pkill -9 -x "Dev Desk" || true; wait_for_exit 6; } || {
+    wait_for_exit 20 || { kill $(desk_pids) 2>/dev/null || true; wait_for_exit 10; } || { kill -9 $(desk_pids) 2>/dev/null || true; wait_for_exit 6; } || {
         echo "Dev Desk is still running; refusing to replace the bundle underneath it." >&2
         exit 1
     }
@@ -160,7 +168,7 @@ sleep 2
 # Say which bundle is actually running, rather than assuming `open` did what was asked.
 # By pid, not by scanning every command line: this script's own invocation contains the app's path, so a
 # grep over `ps -eo command` matches itself and reports "a different bundle is running".
-RUNNING=$(pgrep -x "Dev Desk" | head -1 | xargs -I{} ps -p {} -o comm= 2>/dev/null || true)
+RUNNING=$(desk_pids | head -1 | xargs -I{} ps -p {} -o comm= 2>/dev/null || true)
 case "$RUNNING" in
     "$DEST/$APP_NAME"*) echo "    running: $DEST/$APP_NAME" ;;
     "")                 echo "    warning: Dev Desk does not appear to be running" >&2 ;;
