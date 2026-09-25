@@ -99,9 +99,12 @@ public final class ShellSessions {
     /// `refusingRoot`, which Auto passes, fails the session with the note instead when the folder falls back to the project root, whether
     /// the plan said so or git refused the worktree, so nothing is launched there.
     /// `title` is carried only so a recovered row reads as the work it was rather than as a task id.
+    /// `executable` is the CLI the session is started to run, nil for a plain shell. It is set here, not when the
+    /// command is typed, so a start still preparing already counts as an agent and a shell reopened on an ended
+    /// agent's id does not.
     public func start(taskID: String, purpose: SessionPurpose = .shell, branch: String?, taskNumber: Int?,
                       noBranchNote: String? = nil, worktreeLocation: String, title: String? = nil,
-                      baseRef: String? = nil, refusingRoot: Bool = false) async {
+                      baseRef: String? = nil, refusingRoot: Bool = false, executable: String? = nil) async {
         guard let resolver = resolver(worktreeLocation) else { return }
         switch state(for: taskID) {
         case .preparing, .running: return
@@ -109,6 +112,7 @@ public final class ShellSessions {
         }
         states[taskID] = .preparing
         purposes[taskID] = purpose
+        executables[taskID] = executable
         let plan = await readPlan(resolver, purpose: purpose, branch: branch, taskNumber: taskNumber,
                                   noBranchNote: noBranchNote, baseRef: baseRef)
         let folder = await resolver.materialise(plan, for: purpose)
@@ -225,9 +229,10 @@ public final class ShellSessions {
         }.sorted()
     }
 
-    /// Tasks running an agent, which is what Auto's limit counts — a shell you opened is not one of its slots.
+    /// Tasks running an agent, which is what the agent limit counts — a shell you opened is not one of its slots,
+    /// even when `claude` is typed into it by hand. A door run is a shell running an agent CLI, so it counts.
     public var activeAgentTaskIDs: [String] {
-        activeTaskIDs.filter { purposes[$0] == .agent }
+        activeTaskIDs.filter { purposes[$0] == .agent || AgentKind(rawValue: executables[$0] ?? "") != nil }
     }
 
     /// Tasks whose session is preparing or running: a start still waiting on git already holds one of Auto's slots.

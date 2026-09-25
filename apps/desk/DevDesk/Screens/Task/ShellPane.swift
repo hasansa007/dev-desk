@@ -104,7 +104,8 @@ struct ShellPane: View {
         let command = self.command
         let location = worktreeLocation
         Task {
-            await sessions.start(taskID: id, branch: branch, taskNumber: taskNumber, noBranchNote: note, worktreeLocation: location)
+            await sessions.start(taskID: id, branch: branch, taskNumber: taskNumber, noBranchNote: note, worktreeLocation: location,
+                                 executable: command?.split(separator: " ").first.map(String.init))
             guard case .running(let folder) = sessions.state(for: id) else { return }
             terminals.start(taskID: id, folder: folder.url)
             guard let command else { return }

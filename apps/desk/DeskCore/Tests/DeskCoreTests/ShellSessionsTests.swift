@@ -364,4 +364,20 @@ final class ShellSessionsTests: XCTestCase {
         XCTAssertEqual(agents.activeTaskIDs, [])
         XCTAssertEqual(agents.runningTaskIDs, [])
     }
+
+    func testOnlySessionsStartedToRunAnAgentHoldAnAgentSlot() async throws {
+        let location = try TempGitRepo()
+        let runner = FakeRunner([Self.listKey: .ok(Self.mainOnly)])
+        let sessions = ShellSessions(projectRoot: Self.root, runner: runner)
+        await sessions.start(taskID: "door:dev", branch: nil, taskNumber: nil, worktreeLocation: location.url.path, executable: "claude")
+        await sessions.start(taskID: "scratch", branch: nil, taskNumber: nil, worktreeLocation: location.url.path)
+        await sessions.start(taskID: "doctor", branch: nil, taskNumber: nil, worktreeLocation: location.url.path, executable: "dev")
+        XCTAssertEqual(sessions.activeTaskIDs, ["doctor", "door:dev", "scratch"])
+        XCTAssertEqual(sessions.activeAgentTaskIDs, ["door:dev"], "a plain shell, even one someone typed claude into, is not a slot")
+
+        // A shell reopened on an ended agent's id is a shell again.
+        sessions.markEnded(taskID: "door:dev", status: 0, generation: sessions.generation(for: "door:dev"))
+        await sessions.start(taskID: "door:dev", branch: nil, taskNumber: nil, worktreeLocation: location.url.path)
+        XCTAssertEqual(sessions.activeAgentTaskIDs, [])
+    }
 }

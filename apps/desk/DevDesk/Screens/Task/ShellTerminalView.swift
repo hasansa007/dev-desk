@@ -213,7 +213,7 @@ final class ShellTerminalRegistry {
             let previous = sessions.generation(for: task.id)
             await sessions.start(taskID: task.id, branch: task.branch, taskNumber: task.taskNumber, noBranchNote: task.noBranchNote,
                                  worktreeLocation: worktreeLocation, title: task.title, baseRef: task.baseRef,
-                                 refusingRoot: refusingRoot)
+                                 refusingRoot: refusingRoot, executable: agent.rawValue)
             // An unchanged generation means this start ran nothing: another start had the session, or the root was refused.
             guard sessions.generation(for: task.id) != previous, case .running(let folder) = sessions.state(for: task.id) else {
                 if refusingRoot, case .failed = sessions.state(for: task.id) { return .refusedAtRoot }
@@ -304,8 +304,9 @@ final class LiveShells {
     }
 
     /// Agents preparing their folder or running, in every window, plus starts about to prepare: what Auto's limit counts.
+    /// A plain shell is not one, so a terminal left open never parks a card in Queued.
     var agentCount: Int {
-        pendingAgentStarts + agentSessions.reduce(0) { $0 + ($1.sessions?.activeTaskIDs.count ?? 0) }
+        pendingAgentStarts + agentSessions.reduce(0) { $0 + ($1.sessions?.activeAgentTaskIDs.count ?? 0) }
     }
 
     func insert(_ shell: ShellTerminal) { shells[ObjectIdentifier(shell)] = shell }
