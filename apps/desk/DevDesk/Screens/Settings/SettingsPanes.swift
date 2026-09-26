@@ -153,6 +153,7 @@ struct AgentsAndDefaultsPane: View {
     @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
     @AppStorage(PreferenceKey.sessionAgents) private var sessionAgents = SessionAgents.defaultBuiltIns
     @AppStorage(PreferenceKey.customSessionAgents) private var customSessionAgents = Data()
+    @AppStorage(PreferenceKey.defaultSessionAgent) private var defaultSessionAgent = ""
     @State private var newAgentName = ""
     @State private var newAgentCommand = ""
 
@@ -208,7 +209,15 @@ struct AgentsAndDefaultsPane: View {
     private var sessionAgentsCard: some View {
         let custom = SessionAgents.decodeCustom(customSessionAgents)
         return SettingCard("Session agents",
-                           footer: "What Sessions offers under Start with and behind the + after its tabs. A plain terminal is always listed.") {
+                           footer: "What Sessions offers behind the + after its tabs. A plain terminal is always listed.") {
+            SettingRow("Default",
+                       why: "What Sessions opens whenever nothing is open in it. One that cannot start here opens a plain terminal instead.") {
+                Picker("", selection: defaultSessionBinding) {
+                    ForEach(offeredSessionChoices, id: \.key) { Text($0.name).tag($0.key) }
+                }
+                .settingPicker(width: 200)
+                .accessibilityLabel("Default session agent")
+            }
             ForEach(AgentLaunch.runnableKinds, id: \.self) { agent in
                 SettingToggle(title: AgentLaunch.displayName(agent), why: sessionAgentNote(agent),
                               isOn: builtInBinding(agent))
@@ -248,6 +257,16 @@ struct AgentsAndDefaultsPane: View {
                 }
             }
         }
+    }
+
+    private var offeredSessionChoices: [StarterChoice] {
+        StarterChoice.offered(builtIns: sessionAgents, custom: customSessionAgents)
+    }
+
+    /// Shows the choice an empty Sessions would actually open, so an unticked default never leaves the picker blank.
+    private var defaultSessionBinding: Binding<String> {
+        Binding(get: { SessionAgents.defaultChoice(stored: defaultSessionAgent, offered: offeredSessionChoices.map(\.key)) },
+                set: { defaultSessionAgent = $0 })
     }
 
     private func builtInBinding(_ agent: AgentKind) -> Binding<Bool> {

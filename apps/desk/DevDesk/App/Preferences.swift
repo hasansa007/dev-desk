@@ -27,6 +27,8 @@ enum PreferenceKey {
     static let sessionAgents = "desk.sessionAgents"
     /// The developer's own Sessions agents, as `SessionAgents.encodeCustom` JSON, for every project.
     static let customSessionAgents = "desk.customSessionAgents"
+    /// What an empty Sessions opens, as a `StarterChoice.key`; unset is the first choice offered.
+    static let defaultSessionAgent = "desk.defaultSessionAgent"
     /// Which agent background runs use: Claude or Codex, apart from the default connection.
     static let backgroundConnection = "desk.backgroundConnection"
 

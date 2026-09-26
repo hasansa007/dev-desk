@@ -37,6 +37,18 @@ public enum SessionAgents {
         return (try? JSONDecoder().decode([CustomSessionAgent].self, from: data)) ?? []
     }
 
+    /// The key of the plain terminal, the one choice that is always offered.
+    public static let terminalKey = "terminal"
+
+    /// The key a custom agent is stored under as the default, apart from the built-ins' raw values.
+    public static func customKey(_ agent: CustomSessionAgent) -> String { "custom:\(agent.id)" }
+
+    /// What an empty Sessions opens: the stored default while it is still offered, else the first choice offered —
+    /// an agent before the terminal. Unset (`""`) is that first choice too, so a new install opens Claude.
+    public static func defaultChoice(stored: String, offered: [String]) -> String {
+        offered.contains(stored) ? stored : offered.first ?? terminalKey
+    }
+
     public static func encodeCustom(_ agents: [CustomSessionAgent]) -> Data {
         (try? JSONEncoder().encode(agents)) ?? Data()
     }

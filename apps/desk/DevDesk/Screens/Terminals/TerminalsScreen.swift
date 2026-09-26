@@ -21,14 +21,15 @@ struct TerminalsScreen: View {
     /// What the + lists, from Settings › Agents and defaults.
     @AppStorage(PreferenceKey.sessionAgents) private var sessionAgents = SessionAgents.defaultBuiltIns
     @AppStorage(PreferenceKey.customSessionAgents) private var customSessionAgents = Data()
+    /// What an empty Sessions opens, from the same Settings card.
+    @AppStorage(PreferenceKey.defaultSessionAgent) private var defaultSessionAgent = ""
     /// Where a new terminal's worktree would go, read here because opening one starts its shell at once.
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @Environment(\.terminals) private var terminals
 
-    /// What is in front: one of the sessions, or the starter — the pane a session is typed into being in,
-    /// which is what a window with no sessions opens on. The starter has no tab of its own: the "+" after the last
-    /// tab opens a session outright, and the starter is where the screen lands when there is no session to show.
+    /// What is in front: one of the sessions, or the starter — nothing, for the moment between the last session
+    /// going and the default one opening in its place (or for good, when no shell can start here).
     private enum Selection: Hashable {
         case starter
         case session(String)
@@ -60,6 +61,11 @@ struct TerminalsScreen: View {
         .background(DeskColor.canvas)
         .onAppear(perform: syncSelection)
         .onAppear(perform: loadRecovered)
+        // Sessions is never an empty screen: with nothing open, the default agent opens, as a new tab in a
+        // terminal app does. The explanatory pane that stood here was one more click to the only thing to do.
+        .onChange(of: rows.isEmpty, initial: true) { _, isEmpty in
+            if isEmpty { openDefault() }
+        }
         // Initial too: the menu can ask from another screen, before this one exists to hear it change.
         .onChange(of: model.terminalAwaitingStart, initial: true) { _, id in
             guard let id else { return }
@@ -99,6 +105,15 @@ struct TerminalsScreen: View {
         startTerminal(id, choice: choice)
     }
 
+    /// The default from Settings, or a plain terminal when that agent cannot start here — never a session that
+    /// opens only to fail. Nothing at all when no shell can start; the pane says why.
+    private func openDefault() {
+        guard model.sessions.startRefusal(for: .shell) == nil else { return }
+        let key = SessionAgents.defaultChoice(stored: defaultSessionAgent, offered: offeredChoices.map(\.key))
+        let choice = offeredChoices.first { $0.key == key && availability($0) == nil } ?? .terminal
+        open(choice)
+    }
+
     /// The same start the pane's Start button made for a scratch row — the registry resolves the folder, the
     /// project root for a scratch session, and the shell opens in it. The menu item is disabled under a
     /// refusal, but the guard stays: a menu built a moment before the registry changed its mind still lands here.
@@ -133,9 +148,7 @@ struct TerminalsScreen: View {
     /// Everything the + lists, in its order: the built-in agents Settings ticks, the developer's own, then a
     /// plain terminal, which needs no install and so is always there.
     private var offeredChoices: [StarterChoice] {
-        SessionAgents.builtIns(sessionAgents).map(StarterChoice.agent)
-            + SessionAgents.decodeCustom(customSessionAgents).map(StarterChoice.custom)
-            + [.terminal]
+        StarterChoice.offered(builtIns: sessionAgents, custom: customSessionAgents)
     }
 
     /// Why a choice cannot start here: an agent's own reason, or the shell's refusal for anything typed into one.
@@ -198,8 +211,10 @@ struct TerminalsScreen: View {
     /// What the × on a tab does: the same action that row's header carried before the tabs, under a smaller
     /// glyph. Nothing here means anything new — a live run is stopped, a finished background run is taken off
     /// the list, a scratch session is closed — and a row with none of those, a door or a task that is not
-    /// running, gets no × at all rather than one that would have to invent a meaning.
+    /// running, gets no × at all rather than one that would have to invent a meaning. Neither does a lone tab:
+    /// the screen has no empty state to fall back to, so the last session stays.
     private func tabClose(for row: SessionRow) -> TabClose? {
+        guard rows.count > 1 else { return nil }
         func closing(_ help: String, isEnabled: Bool = true, _ run: @escaping () -> Void) -> TabClose {
             TabClose(help: help, isEnabled: isEnabled) {
                 let fallback = neighbour(of: row.id)
@@ -250,32 +265,14 @@ struct TerminalsScreen: View {
 
     // MARK: - Nothing open
 
-    /// The starter: the pane a window with no sessions opens on, saying what a session here is.
+    /// Only ever seen when no shell can start here — otherwise the default session has already taken its place.
     private var starter: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    SectionLabel("Start a session")
-                    Text("Start a task from the board, run a door from Findings, Ideation or Roadmap, or press + above to open one here. Whether it takes a terminal or runs in the background, it is a session here.")
-                        .font(DeskFont.body)
-                        .foregroundStyle(DeskColor.mutedInk)
-                        .lineSpacing(3)
-                        .fixedSize(horizontal: false, vertical: true)
-                    // Only while there is nothing to switch to: with sessions listed above, the board is one
-                    // click away in the sidebar and this would be a second door to it. Starting one is the + above.
-                    if rows.isEmpty {
-                        Button("Go to the board") { model.go(.board) }
-                            .buttonStyle(DeskButtonStyle(kind: .secondary))
-                            .padding(.top, 6)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
+        Text(model.sessions.startRefusal(for: .shell) ?? "")
+            .font(DeskFont.body)
+            .foregroundStyle(DeskColor.mutedInk)
+            .padding(12)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .padding(12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(DeskColor.canvas)
+            .background(DeskColor.canvas)
     }
 
     /// Which tab is in front on arriving. A card or a door start lands on that session; otherwise the first
@@ -834,6 +831,23 @@ enum StarterChoice: Hashable {
     case agent(AgentKind)
     case custom(CustomSessionAgent)
     case terminal
+
+    /// Everything the + lists, in its order: the built-in agents Settings ticks, the developer's own, then a
+    /// plain terminal, which needs no install and so is always there.
+    static func offered(builtIns: String, custom: Data) -> [StarterChoice] {
+        SessionAgents.builtIns(builtIns).map(StarterChoice.agent)
+            + SessionAgents.decodeCustom(custom).map(StarterChoice.custom)
+            + [.terminal]
+    }
+
+    /// How Settings stores this as the default.
+    var key: String {
+        switch self {
+        case .agent(let agent): return agent.rawValue
+        case .custom(let custom): return SessionAgents.customKey(custom)
+        case .terminal: return SessionAgents.terminalKey
+        }
+    }
 
     var name: String {
         switch self {

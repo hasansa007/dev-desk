@@ -18,4 +18,13 @@ final class SessionAgentsTests: XCTestCase {
         XCTAssertEqual(SessionAgents.decodeCustom(SessionAgents.encodeCustom(agents)), agents)
         XCTAssertEqual(SessionAgents.decodeCustom(Data("not json".utf8)), [])
     }
+
+    /// A default that is no longer offered — unticked, removed — falls to the first choice, never to nothing.
+    func testTheDefaultIsTheStoredChoiceWhileOfferedElseTheFirst() {
+        let offered = ["claude", "custom:a", SessionAgents.terminalKey]
+        XCTAssertEqual(SessionAgents.defaultChoice(stored: "custom:a", offered: offered), "custom:a")
+        XCTAssertEqual(SessionAgents.defaultChoice(stored: "", offered: offered), "claude")
+        XCTAssertEqual(SessionAgents.defaultChoice(stored: "codex", offered: offered), "claude")
+        XCTAssertEqual(SessionAgents.defaultChoice(stored: "codex", offered: []), SessionAgents.terminalKey)
+    }
 }
