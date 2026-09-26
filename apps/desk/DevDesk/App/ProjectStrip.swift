@@ -33,6 +33,7 @@ struct ProjectStrip: View {
             // the project — and hid it entirely on Home, where the rail does not exist. The strip is the one
             // column every screen has, so the dialog every screen can open belongs at the foot of it.
             settingsButton
+            versionLabel
         }
         .padding(.vertical, 10)
         .frame(width: DeskMetric.stripWidth)
@@ -118,6 +119,18 @@ struct ProjectStrip: View {
         .buttonStyle(.plain)
         .help("Settings (⌘,)")
         .accessibilityLabel("Settings")
+    }
+
+    /// Which build is running, always in sight: Settings › General says it too, but only once you go looking.
+    private var versionLabel: some View {
+        let version = Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+        return Text("v\(version)")
+            .font(DeskFont.mono(9.5))
+            .foregroundStyle(DeskColor.faintInk)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .help("Dev Desk \(version)")
+            .accessibilityLabel("Dev Desk version \(version)")
     }
 
     /// In the strip's own gutter, not flush with its edge: the prototype sits it at x=0, which on a macOS

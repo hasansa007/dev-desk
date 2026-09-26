@@ -163,9 +163,9 @@ struct VoiceButton: View {
                 voice.toggle(typing: type)
             } label: {
                 Image(systemName: voice.isListening ? "mic.fill" : "mic")
-                    .font(.system(size: 12))
+                    .font(.system(size: 16, weight: .medium))
                     .foregroundStyle(voice.isListening ? DeskColor.onColorInk : DeskColor.terminalInk)
-                    .frame(width: 26, height: 26)
+                    .frame(width: 38, height: 38)
                     .background(voice.isListening ? DeskColor.accent : DeskColor.terminalControlFill, in: Circle())
                     .overlay(Circle().strokeBorder(DeskColor.terminalControlBorder))
             }
@@ -173,7 +173,9 @@ struct VoiceButton: View {
             .help(voice.isListening ? "Stop dictating and type what was heard" : "Dictate into this session")
             .accessibilityLabel(voice.isListening ? "Stop dictating" : "Dictate")
         }
-        .padding(10)
+        // Clear of the terminal's scroller and its last row, which a flat 10 pt left it sitting on.
+        .padding(.trailing, 32)
+        .padding(.bottom, 28)
         .onDisappear { voice.cancel() }
     }
 
