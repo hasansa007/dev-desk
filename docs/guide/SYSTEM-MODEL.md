@@ -35,7 +35,7 @@ A doc's type comes from its `type:` front matter, else from its folder, so a fro
 | `docs/adr/` | Phase 12, `dev:docs` | `adr` | no — superseded, never edited |
 | `docs/arch/` | `dev:arch` | — (HTML/JSON; the Base shows Markdown only) | re-pinned by Phase 12 |
 | `PROJECT_MAP.md` | Phase 10, `dev:insights` | `map` | yes |
-| a report or a mockup, by `type: report` / `type: design` | the repo | `report`, `design` | no — frozen |
+| a report, a mockup, a decision log or a snapshot, by `type:` | the repo | `report`, `design`, `history`, `artifact` | no — frozen |
 | anything else in `docs/` without `type:` | the repo | `untagged` | yes |
 
 A frozen doc is a record: it is never reviewed, and never deleted as "old" — the Base keeps it out of *Needs review* instead. A living doc carries `reviewed:`, which `dev:docs` stamps when it confirms the doc current.

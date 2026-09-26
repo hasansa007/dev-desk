@@ -1,4 +1,4 @@
-# dev:docs docs.base rev 3 — dev:docs offers to refresh a copy whose rev is older; delete this line to keep your own.
+# dev:docs docs.base rev 4 — dev:docs offers to refresh a copy whose rev is older; delete this line to keep your own.
 # Folder → type mapping is stated once in docs/guide/SYSTEM-MODEL.md, "Where the doors write".
 filters:
   and:
@@ -28,6 +28,8 @@ views:
         - 'formula.kind != "adr"'
         - 'formula.kind != "report"'
         - 'formula.kind != "design"'
+        - 'formula.kind != "history"'
+        - 'formula.kind != "artifact"'
     order:
       - file.name
       - formula.kind

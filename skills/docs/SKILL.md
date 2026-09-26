@@ -80,7 +80,7 @@ a **Needs review** table of the living docs, oldest `reviewed:` first. Folder ty
   that the diff touches and this gate finds current, set `reviewed:` to today, adding a `type:` /
   `reviewed:` block on line 1 if it has none. A doc the gate did not actually check keeps its old date —
   the date says someone looked, not that the file changed.
-- **Frozen docs are not "old".** A spec, findings, ideation, ADR, report or design doc is never
+- **Frozen docs are not "old".** A spec, findings, ideation, ADR, report, design, history or artifact doc is never
   proposed for deletion as outdated or unused, however stale it looks: it is the record, and the Base
   already keeps it out of *Needs review*. Observed 2026-09-26 — a "delete old content" cleanup in a
   project repo queued `specs/archive/` and `docs/findings/` for `git rm`.
