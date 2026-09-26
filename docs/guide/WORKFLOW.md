@@ -1,3 +1,8 @@
+---
+type: guide
+reviewed: 2026-09-20
+---
+
 # Development workflow
 
 The pipeline takes a task through investigation, planning, implementation, verification, documentation, review, and release. Its authoritative procedures live in [`shared/pipeline.md`](../../shared/pipeline.md).

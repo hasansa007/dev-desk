@@ -71,6 +71,20 @@ copy `~/.claude/.dev-root/skills/docs/docs.base` there — opening the repo root
 a **Needs review** table of the living docs, oldest `reviewed:` first. Folder types are in
 `docs/guide/SYSTEM-MODEL.md` → *Where the doors write*. Copy it only on a yes.
 
+**Keep the vault current** — only in a repo with a `*.base` at its root:
+
+- **Refresh the Base.** The family's Base opens with `# dev:docs docs.base rev N`; a copy whose first line
+  is `# Folder → type mapping …` is rev 1. When the repo's copy has an older rev, show `diff` against
+  the family's and offer once to replace it. A Base without either line is the repo's own — leave it.
+- **Stamp what you confirmed.** For each living doc (a type not listed frozen in *Where the doors write*)
+  that the diff touches and this gate finds current, set `reviewed:` to today, adding a `type:` /
+  `reviewed:` block on line 1 if it has none. A doc the gate did not actually check keeps its old date —
+  the date says someone looked, not that the file changed.
+- **Frozen docs are not "old".** A spec, findings, ideation, ADR, report or design doc is never
+  proposed for deletion as outdated or unused, however stale it looks: it is the record, and the Base
+  already keeps it out of *Needs review*. Observed 2026-09-26 — a "delete old content" cleanup in a
+  project repo queued `specs/archive/` and `docs/findings/` for `git rm`.
+
 ## Where ADRs live — this skill owns it
 
 `skills/findings/SKILL.md` delegates here explicitly: *"`dev:docs` owns ADRs — their numbering and

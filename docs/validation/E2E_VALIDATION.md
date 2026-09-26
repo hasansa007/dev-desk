@@ -1,3 +1,7 @@
+---
+type: report
+---
+
 # End-to-End Validation Report — Greenfield New Project to First Feature
 
 **Date:** 2026-09-10  

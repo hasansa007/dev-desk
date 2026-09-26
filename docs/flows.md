@@ -1,3 +1,8 @@
+---
+type: flows
+reviewed: 2026-09-21
+---
+
 # Flows
 
 The things a developer does with the dev family, end to end — one line each. Every door and screen calls a flow

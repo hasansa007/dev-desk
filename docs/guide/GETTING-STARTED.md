@@ -1,3 +1,8 @@
+---
+type: guide
+reviewed: 2026-09-20
+---
+
 # Getting started
 
 First install, first run, and the four situations you can be in.

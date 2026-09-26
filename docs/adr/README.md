@@ -1,3 +1,8 @@
+---
+type: index
+reviewed: 2026-09-26
+---
+
 # Architecture Decision Records
 
 One file per decision, `NNNN-kebab-title.md`. The number is allocated by reading this directory,

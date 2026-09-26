@@ -1,3 +1,7 @@
+---
+type: report
+---
+
 # Root Cause Analysis: Pipeline Phase 1 Context Load Behavior
 
 **Date:** 2026-09-10  

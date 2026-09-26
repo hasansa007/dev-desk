@@ -1,3 +1,7 @@
+---
+type: report
+---
+
 # Root Cause Analysis: Mobile MASTER_PROMPT Bootstrap Failures
 
 **Date:** 2026-09-09  

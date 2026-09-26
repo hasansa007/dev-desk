@@ -1,3 +1,8 @@
+---
+type: guide
+reviewed: 2026-09-20
+---
+
 # Using dev-desk
 
 Start with a task, let the agent investigate, and agree on the approach before it writes code.

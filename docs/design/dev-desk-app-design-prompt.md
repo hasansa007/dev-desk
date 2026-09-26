@@ -1,3 +1,7 @@
+---
+type: design
+---
+
 # Dev Desk — macOS app design prompt
 
 Design a polished native macOS application for developers who manage projects and work with

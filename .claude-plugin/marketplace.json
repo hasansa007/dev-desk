@@ -9,7 +9,7 @@
       "name": "dev",
       "source": "./",
       "description": "Personal development workflow: a GitHub issue or a plain description taken from \"what should this do?\" to production, through gates that do not get skipped.",
-      "version": "1.2.4"
+      "version": "1.2.5"
     }
   ]
 }

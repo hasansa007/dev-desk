@@ -1,3 +1,8 @@
+---
+type: guide
+reviewed: 2026-09-25
+---
+
 # System model
 
 What dev-desk is made of, which part holds what, and which part wins when two disagree.
@@ -24,13 +29,16 @@ A doc's type comes from its `type:` front matter, else from its folder, so a fro
 
 | Folder | Written by | Type | Reviewed? |
 | --- | --- | --- | --- |
-| `specs/` | Phase 7 | `spec` | no — frozen |
+| `specs/`, `docs/superpowers/` | Phase 7; the superpowers brainstorming and planning skills | `spec` | no — frozen |
 | `docs/findings/` | `dev:findings` | `findings` | no — frozen |
 | `docs/ideation/` | `dev:ideation` | `ideation` | no — frozen |
 | `docs/adr/` | Phase 12, `dev:docs` | `adr` | no — superseded, never edited |
 | `docs/arch/` | `dev:arch` | — (HTML/JSON; the Base shows Markdown only) | re-pinned by Phase 12 |
 | `PROJECT_MAP.md` | Phase 10, `dev:insights` | `map` | yes |
+| a report or a mockup, by `type: report` / `type: design` | the repo | `report`, `design` | no — frozen |
 | anything else in `docs/` without `type:` | the repo | `untagged` | yes |
+
+A frozen doc is a record: it is never reviewed, and never deleted as "old" — the Base keeps it out of *Needs review* instead. A living doc carries `reviewed:`, which `dev:docs` stamps when it confirms the doc current.
 
 ## The container today
 

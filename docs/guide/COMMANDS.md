@@ -1,3 +1,8 @@
+---
+type: guide
+reviewed: 2026-09-21
+---
+
 # Command reference
 
 Every door, what it takes, what it gives back, and how it is typed. New here?

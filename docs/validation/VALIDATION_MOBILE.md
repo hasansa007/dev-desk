@@ -1,3 +1,7 @@
+---
+type: report
+---
+
 # Mobile Bootstrap Flow Validation — iOS, Android, KMP
 
 **Date:** 2026-09-10  

@@ -1,3 +1,8 @@
+---
+type: map
+reviewed: 2026-09-21
+---
+
 # PROJECT_MAP
 
 The pipeline's memory. Phase 1 loads it; Phase 4 skips its exploration fan-out when this file

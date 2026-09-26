@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/plugin.schema.json",
   "name": "dev",
-  "version": "1.2.4",
+  "version": "1.2.5",
   "description": "Personal development workflow: a GitHub issue or a plain description taken from \"what should this do?\" to production, through gates that do not get skipped. The root skill runs the full pipeline; the members are doors into it at later phases.",
   "author": { "name": "Hasan", "email": "hasansa007@gmail.com" },
   "license": "MIT",

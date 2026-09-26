@@ -1,3 +1,7 @@
+---
+type: report
+---
+
 # Web Bootstrap Flow Validation — Next.js, React, Vue
 
 **Date:** 2026-09-10  
