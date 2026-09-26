@@ -45,3 +45,6 @@ dev-task-start.workflow.json
 # Hyperframes / brag movie working directory. Holds captured app screenshots, which can show
 # other projects' issue titles — never committed, least of all to a public repo.
 /brag-output/
+
+# Obsidian vault state — per machine; docs.base is the shared part
+.obsidian/
