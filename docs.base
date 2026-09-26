@@ -1,4 +1,4 @@
-# dev:docs docs.base rev 2 — dev:docs offers to refresh a copy whose rev is older; delete this line to keep your own.
+# dev:docs docs.base rev 3 — dev:docs offers to refresh a copy whose rev is older; delete this line to keep your own.
 # Folder → type mapping is stated once in docs/guide/SYSTEM-MODEL.md, "Where the doors write".
 filters:
   and:
@@ -9,7 +9,7 @@ filters:
         - file.path == "PROJECT_MAP.md"
 formulas:
   kind: 'if(note.type, note.type, if(file.inFolder("specs") || file.inFolder("docs/superpowers"), "spec", if(file.inFolder("docs/findings"), "findings", if(file.inFolder("docs/ideation"), "ideation", if(file.inFolder("docs/adr"), "adr", if(file.path == "PROJECT_MAP.md", "map", "untagged"))))))'
-  days_since_review: 'if(note.reviewed, ((now() - date(note.reviewed)) / 86400000).floor(), "")'
+  days_since_review: 'if(note.reviewed, (now() - date(note.reviewed)).days.floor(), "")'
 properties:
   formula.kind:
     displayName: Type
