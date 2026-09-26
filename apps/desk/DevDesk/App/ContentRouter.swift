@@ -88,12 +88,12 @@ struct ContentRouter: View {
         window.width - (model.filesOpen ? filesColumnWidth : 0) - viewerWidth >= window.width * 0.33
     }
 
-    private var hasSelectedFile: Bool { model.selectedFilePath != nil && model.projectRoot != nil }
+    private var hasSelectedFile: Bool { model.selectedFilePath != nil && model.filesRoot != nil }
     private var showsSplitViewer: Bool { hasSelectedFile && !fileViewerExpanded && fitsBesideContent }
     private var showsFloatingViewer: Bool { hasSelectedFile && (fileViewerExpanded || !fitsBesideContent) }
 
     @ViewBuilder private var viewer: some View {
-        if let path = model.selectedFilePath, let root = model.projectRoot {
+        if let path = model.selectedFilePath, let root = model.filesRoot {
             FileViewerPane(model: model, path: path, url: model.selectedFileURL, root: root,
                            isExpanded: $fileViewerExpanded)
         }

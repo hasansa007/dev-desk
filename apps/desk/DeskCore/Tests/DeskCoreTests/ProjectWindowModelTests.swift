@@ -295,6 +295,30 @@ final class ProjectWindowModelTests: XCTestCase {
         XCTAssertTrue(url.absoluteString.hasPrefix("file:///"), "a relative URL is not something the system can open")
     }
 
+    func testFilesFollowTheChosenWorktreeAndFallBackWhenItIsGone() async throws {
+        let root = try temporaryDirectory()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let list = FakeRunner.gitRead("worktree list --porcelain -z")
+        let runner = FakeRunner([list: .ok("worktree \(root.path)\0HEAD a\0branch refs/heads/main\0\0"
+                                           + "worktree /wt/app-42\0HEAD b\0branch refs/heads/gh-42-x\0\0")])
+        let model = ProjectWindowModel(ref: .local(path: root.path), source: FixedSource(snapshot: trackerSnapshot()),
+                                       insightsDelay: .zero, runner: runner)
+        await model.loadFilesWorktrees()
+        XCTAssertEqual(model.filesWorktrees.map(\.branch), ["main", "gh-42-x"])
+        XCTAssertTrue(model.isProjectFolder(model.filesWorktrees[0]))
+        XCTAssertEqual(model.filesRoot?.path, root.path, "nil is the project folder")
+
+        model.selectedFilePath = "README.md"
+        model.filesWorktreePath = "/wt/app-42"
+        XCTAssertEqual(model.filesRoot?.path, "/wt/app-42")
+        XCTAssertNil(model.selectedFilePath, "a file of the old tree is not a file of the new one")
+
+        runner.script(list, .ok("worktree \(root.path)\0HEAD a\0branch refs/heads/main\0\0"))
+        await model.loadFilesWorktrees()
+        XCTAssertNil(model.filesWorktreePath, "a removed worktree falls back to the project folder")
+        XCTAssertEqual(model.filesRoot?.path, root.path)
+    }
+
     func testAPathThatEscapesTheRootHasNoURLAndIsReportedNotIgnored() throws {
         let root = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: root) }

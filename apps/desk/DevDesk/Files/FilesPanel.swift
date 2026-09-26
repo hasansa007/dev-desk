@@ -1,18 +1,16 @@
 import DeskCore
 import SwiftUI
 
-/// The project's own files, down the right of whatever you are looking at. Listed one directory at a time,
-/// so a repository carrying node_modules opens as fast as an empty one. Tapping one selects it; reading it
-/// is `FileViewerPane`'s job, which `ContentRouter` places beside the work rather than under the tree.
+/// The project's own files, down the right of whatever you are looking at — the project folder's, or one of its
+/// worktrees', picked in the header. Listed one directory at a time, so a repository carrying node_modules opens
+/// as fast as an empty one. Tapping one selects it; reading it is `FileViewerPane`'s job, which `ContentRouter`
+/// places beside the work rather than under the tree. A listing is a snapshot: Refresh reads it again.
 struct FilesPanel: View {
     @Bindable var model: ProjectWindowModel
     @State private var expanded: Set<String> = []
     @State private var children: [String: [FileEntry]] = [:]
 
-    private var root: URL? {
-        if case .local(let path) = model.ref { return URL(fileURLWithPath: path, isDirectory: true) }
-        return nil
-    }
+    private var root: URL? { model.filesRoot }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -28,18 +26,34 @@ struct FilesPanel: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(DeskColor.surface)
         .overlay(alignment: .leading) { Rectangle().fill(DeskColor.border).frame(width: 1) }
-        .task(id: model.ref.id) { if let root { loadRoot(root) } }
+        .task(id: model.ref.id) { await model.loadFilesWorktrees() }
+        // Another worktree is another tree: nothing listed or expanded in the old one carries over.
+        .task(id: root?.path) {
+            expanded = []
+            children = [:]
+            if let root { children[""] = FileTree.list(root, within: root) }
+        }
     }
 
     private var header: some View {
         HStack(spacing: 8) {
             Text("Files").font(.system(size: 13, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.ink)
-            Text(model.snapshot?.project.name ?? "")
-                .font(DeskFont.mono(11))
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineLimit(1)
-                .truncationMode(.head)
+            if model.filesWorktrees.count > 1 {
+                worktreeMenu
+            } else {
+                Text(model.snapshot?.project.name ?? "")
+                    .font(DeskFont.mono(11))
+                    .foregroundStyle(DeskColor.mutedInk)
+                    .lineLimit(1)
+                    .truncationMode(.head)
+            }
             Spacer(minLength: 8)
+            if let root {
+                Button { Task { await refresh(root) } } label: { Image(systemName: "arrow.clockwise").imageScale(.small) }
+                    .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    .help("Read the folder again")
+                    .accessibilityLabel("Refresh")
+            }
             Button("Close") { model.toggleFiles() }
                 .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
         }
@@ -47,6 +61,61 @@ struct FilesPanel: View {
         .padding(.horizontal, 12)
         .background(DeskColor.surface)
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+    }
+
+    /// Which worktree the tree shows, named by its branch — the branch is what you are choosing between.
+    private var worktreeMenu: some View {
+        Menu {
+            ForEach(model.filesWorktrees, id: \.path) { worktree in
+                let tag = model.isProjectFolder(worktree) ? nil : worktree.path
+                Button {
+                    model.filesWorktreePath = tag
+                } label: {
+                    if tag == model.filesWorktreePath { Label(label(worktree), systemImage: "checkmark") } else { Text(label(worktree)) }
+                }
+                .help(worktree.path)
+            }
+        } label: {
+            Text("\(currentLabel) ▾")
+                .font(DeskFont.mono(11))
+                .foregroundStyle(DeskColor.ink)
+                .lineLimit(1)
+                .truncationMode(.middle)
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize(horizontal: false, vertical: true)
+        .help(root?.path ?? "")
+    }
+
+    private var currentLabel: String {
+        let current = model.filesWorktrees.first { worktree in
+            model.isProjectFolder(worktree) ? model.filesWorktreePath == nil : worktree.path == model.filesWorktreePath
+        }
+        return current.map(label) ?? (root?.lastPathComponent ?? "")
+    }
+
+    /// The branch, or the folder's name when it has none (a detached HEAD).
+    private func label(_ worktree: Worktree) -> String {
+        let folder = URL(fileURLWithPath: worktree.path).lastPathComponent
+        return worktree.branch ?? "\(folder) (detached)"
+    }
+
+    /// Reads the worktree list and every folder on screen again. A folder that is gone collapses with it.
+    private func refresh(_ root: URL) async {
+        await model.loadFilesWorktrees()
+        guard model.filesRoot == root else { return }  // the chosen worktree vanished: the root task relists
+        var fresh: [String: [FileEntry]] = ["": FileTree.list(root, within: root)]
+        var stillThere: Set<String> = []
+        for id in expanded.sorted() {
+            var isDirectory: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: root.appendingPathComponent(id).path, isDirectory: &isDirectory),
+                  isDirectory.boolValue else { continue }
+            fresh[id] = FileTree.list(root.appendingPathComponent(id), within: root)
+            stillThere.insert(id)
+        }
+        children = fresh
+        expanded = stillThere
     }
 
     private func tree(_ root: URL) -> some View {
@@ -77,11 +146,6 @@ struct FilesPanel: View {
         }
         append(children[""] ?? [], depth: 0)
         return result.map { (entry: $0.0, depth: $0.1) }
-    }
-
-    private func loadRoot(_ root: URL) {
-        guard children[""] == nil else { return }
-        children[""] = FileTree.list(root, within: root)
     }
 
     /// A directory toggles, reading its children the first time; a file becomes the selection.

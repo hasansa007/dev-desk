@@ -517,8 +517,14 @@ public final class ProjectWindowModel {
     /// The Diagrams chip on screen, and on Sequence the flow (by slug; nil = the first) — ADR 0047.
     public var diagramKind = "architecture"
     public var diagramFlow: String?
-    /// The browser's selected file, as a path relative to the project root.
+    /// The browser's selected file, as a path relative to the folder Files shows (`filesRoot`).
     public var selectedFilePath: String?
+    /// The worktrees Files can show, as `git worktree list` gives them; empty until listed, and for a sample.
+    public private(set) var filesWorktrees: [Worktree] = []
+    /// The worktree Files shows, by path; nil is the project folder. A selected file belongs to the old folder, so a switch clears it.
+    public var filesWorktreePath: String? {
+        didSet { if filesWorktreePath != oldValue { selectedFilePath = nil } }
+    }
     public var settingsSection: SettingsSection = .agentsAndDefaults
     /// Why the last tracker write failed, already escaped: it is rendered as markdown in a banner.
     public private(set) var writeFailure: WriteFailure?
@@ -1493,6 +1499,34 @@ public final class ProjectWindowModel {
         return nil
     }
 
+    /// The folder Files lists and the viewer reads: the chosen worktree, or the project folder.
+    public var filesRoot: URL? {
+        guard let root = projectRoot else { return nil }
+        guard let path = filesWorktreePath else { return root }
+        return URL(fileURLWithPath: path, isDirectory: true)
+    }
+
+    /// True when `worktree` is the project folder itself, which Files names by nil rather than by path.
+    /// Compared by real path, since git lists a worktree by its real path: /private/var/…, not /var/….
+    public func isProjectFolder(_ worktree: Worktree) -> Bool {
+        guard let root = projectRoot else { return false }
+        return URL(fileURLWithPath: worktree.path).resolvingSymlinksInPath().standardizedFileURL.path
+            == root.resolvingSymlinksInPath().standardizedFileURL.path
+    }
+
+    /// Reads the worktree list again. A chosen worktree that is gone — removed, or its card merged — falls back to the project folder.
+    public func loadFilesWorktrees() async {
+        guard let root = projectRoot,
+              let result = try? await runner.run("git", GitCommand.read(["worktree", "list", "--porcelain", "-z"]), in: root, timeout: CommandTimeout.git),
+              result.succeeded else {
+            filesWorktrees = []
+            filesWorktreePath = nil
+            return
+        }
+        filesWorktrees = WorktreeList.parse(result.stdout).filter { !$0.isBare }
+        if let chosen = filesWorktreePath, !filesWorktrees.contains(where: { $0.path == chosen }) { filesWorktreePath = nil }
+    }
+
     /// The absolute `file://` URL a tree path names under `root`, or nil when it is not a path inside it.
     /// Standardized before the check, because `root/../x` names a real file outside the project and `root/./x`
     /// names one LaunchServices declines; and an id that is already absolute is not a relative path at all —
@@ -1507,7 +1541,7 @@ public final class ProjectWindowModel {
 
     /// The selected file's URL: nil when nothing is selected, the project has no folder, or the path escapes it.
     public var selectedFileURL: URL? {
-        guard let root = projectRoot, let path = selectedFilePath else { return nil }
+        guard let root = filesRoot, let path = selectedFilePath else { return nil }
         return Self.fileURL(root: root, relativePath: path)
     }
 
