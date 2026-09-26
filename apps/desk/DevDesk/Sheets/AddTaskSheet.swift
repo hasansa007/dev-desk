@@ -46,11 +46,13 @@ struct AddTaskSheet: View {
                     TextField("One per line — each becomes a checklist item", text: $bullets, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(3...8)
+                        .lineBreakKeys()
                 }
                 row("Description") {
                     TextField("What it is and why, in your own words — optional", text: $notes, axis: .vertical)
                         .textFieldStyle(.roundedBorder)
                         .lineLimit(3...8)
+                        .lineBreakKeys()
                 }
                 row("Impact") { TaskRatings.picker(selection: $impact) }
                 row("Complexity") { TaskRatings.picker(selection: $complexity) }

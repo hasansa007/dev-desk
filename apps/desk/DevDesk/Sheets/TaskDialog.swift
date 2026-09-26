@@ -138,6 +138,7 @@ struct TaskDialog: View {
                         .textFieldStyle(.roundedBorder)
                         .font(DeskFont.mono(12))
                         .lineLimit(12...30)
+                        .lineBreakKeys()
                 }
             }
         }
