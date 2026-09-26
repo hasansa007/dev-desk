@@ -8,21 +8,28 @@ extension ProjectWindowModel {
         return RunTarget(folder: root, branch: snapshot?.project.branch ?? RunTarget.branch(in: root), isProjectFolder: true)
     }
 
-    /// What ⌘R runs: the Terminals tab in front when its session works in a folder of its own — a task's worktree,
-    /// or a run already going in one — and the project folder everywhere else.
+    /// What play and ⌘R run: the worktree the toolbar's picker has chosen, which is also the one Files shows.
+    /// It followed the session in front on the Terminals tab, so the folder a run went to changed with the tab
+    /// you happened to be on; the picker says it outright now, beside play rather than inside its label.
     var runTarget: RunTarget? {
         guard let root = projectFolderTarget else { return nil }
-        guard destination == .terminals, let id = selectedSessionID else { return root }
-        let folderPath: String? = {
-            if let path = projectRuns.sessionFolders[id] { return path }
-            switch sessions.state(for: id) {
-            case .running(let folder), .ended(let folder, _): return folder.url.path
-            default: return nil
-            }
-        }()
-        guard let folderPath, URL(fileURLWithPath: folderPath).standardizedFileURL != root.folder.standardizedFileURL else { return root }
-        let folder = URL(fileURLWithPath: folderPath, isDirectory: true)
-        return RunTarget(folder: folder, branch: RunTarget.branch(in: folder), isProjectFolder: false)
+        guard let path = filesWorktreePath else { return root }
+        let folder = URL(fileURLWithPath: path, isDirectory: true)
+        let branch = filesWorktrees.first { $0.path == path }?.branch ?? RunTarget.branch(in: folder)
+        return RunTarget(folder: folder, branch: branch, isProjectFolder: false)
+    }
+
+    /// A worktree as the picker names it: its branch, or its folder when it has none (a detached HEAD).
+    func worktreeLabel(_ worktree: Worktree) -> String {
+        worktree.branch ?? "\(URL(fileURLWithPath: worktree.path).lastPathComponent) (detached)"
+    }
+
+    /// The chosen worktree's name, for the picker and the Files header.
+    var chosenWorktreeLabel: String {
+        let chosen = filesWorktrees.first { worktree in
+            isProjectFolder(worktree) ? filesWorktreePath == nil : worktree.path == filesWorktreePath
+        }
+        return chosen.map(worktreeLabel) ?? snapshot?.project.branch ?? filesRoot?.lastPathComponent ?? ""
     }
 
     /// A press of play, for `target`. One live run per configuration across every folder: the same folder shows
@@ -152,29 +159,8 @@ struct RunProjectControl: View {
     /// sidebar itself has already given up its labels.
     private var isWide: Bool { windowSize.width >= DeskMetric.railBreakpoint }
 
-    /// Where a press of play actually runs. The label read `projectFolderTarget` — the FOLDER's branch —
-    /// while ⌘R has always run `runTarget`, the worktree of the session in front when there is one: the
-    /// button said "main" and ran somewhere else (2026-09-20). Both read this now, so the control names the
-    /// worktree it will run in, and work happens in worktrees (ADR 0053).
+    /// Where a press of play runs: the worktree picker's choice, the same folder ⌘R runs (ADR 0053).
     private var target: RunTarget? { model.runTarget }
-
-    /// Every folder a run can be started in: the project folder, then one per worktree this project is working,
-    /// most recently committed first. It read `worktreePath`, which only a Done card carries — a merged branch's
-    /// leftover folder — so the menu listed every finished worktree and none of the live ones (2026-09-24).
-    private var runnableTargets: [RunTarget] {
-        guard let folder = model.projectFolderTarget else { return [] }
-        let live = model.tasks
-            .filter { $0.column != .done && !$0.isMerged && $0.checkoutPath != nil }
-            .sorted { ($0.lastCommit ?? .distantPast) > ($1.lastCommit ?? .distantPast) }
-        var seen: Set<URL> = [folder.folder.standardizedFileURL]
-        let worktrees = live.compactMap { task -> RunTarget? in
-            guard let path = task.checkoutPath else { return nil }
-            let url = URL(fileURLWithPath: path, isDirectory: true)
-            guard seen.insert(url.standardizedFileURL).inserted else { return nil }
-            return RunTarget(folder: url, branch: task.branch ?? RunTarget.branch(in: url), isProjectFolder: false)
-        }
-        return [folder] + worktrees
-    }
 
     var body: some View {
         HStack(spacing: 2) {
@@ -204,19 +190,6 @@ struct RunProjectControl: View {
             Image(systemName: isRunning ? "stop.fill" : "play.fill")
                 .imageScale(.medium)
                 .foregroundStyle(isRunning ? DeskColor.tone(.running).dot : DeskColor.navInk)
-            if !isRunning, isWide, !isSample, let target {
-                HStack(spacing: 4) {
-                    // A worktree is named by its branch and marked as one; the folder is just its branch.
-                    if !target.isProjectFolder {
-                        Image(systemName: "arrow.trianglehead.branch").font(.system(size: 9))
-                    }
-                    Text(target.branch)
-                }
-                .font(DeskFont.secondary)
-                .foregroundStyle(DeskColor.mutedInk)
-                .lineLimit(1)
-                .frame(maxWidth: 160)
-            }
             if isRunning {
                 StatusDot(tone: .running, pulses: true)
                 if isWide {
@@ -257,24 +230,6 @@ struct RunProjectControl: View {
     }
 
     @ViewBuilder private var menuItems: some View {
-        // Which folder, before which configuration: a run belongs to a checkout, and the worktrees are where
-        // the work is (ADR 0053). One entry when nothing is checked out anywhere else.
-        if runnableTargets.count > 1 {
-            Section("Run in") {
-                ForEach(runnableTargets, id: \.folder) { option in
-                    Button {
-                        run(nil, in: option)
-                    } label: {
-                        let name = option.isProjectFolder ? "\(option.branch) — the project folder" : "\(option.branch) — worktree"
-                        if option.folder.standardizedFileURL == target?.folder.standardizedFileURL {
-                            Label(name, systemImage: "checkmark")
-                        } else {
-                            Text(name)
-                        }
-                    }
-                }
-            }
-        }
         ForEach(runs.plan.configurations) { configuration in
             let isLive = runs.isRunning(configurationID: configuration.id)
             Button { run(configuration.id) } label: {
@@ -300,5 +255,51 @@ struct RunProjectControl: View {
             model.present(.settings)
         }
         .help("Opens Settings → Run project, where the setup rows and the configurations live")
+    }
+}
+
+/// Which checkout the project is working in — the project folder or one of its worktrees, named by branch. Its own
+/// control, beside play rather than inside its label: choosing a folder is not running it. Files shows the same
+/// choice, and play runs in it.
+struct WorktreePicker: View {
+    let model: ProjectWindowModel
+    @Environment(\.deskWindowSize) private var windowSize
+
+    private var isSample: Bool { model.projectRoot == nil }
+    /// A new card's worktree appears in `git worktree list` when its checkout does, so the list is read again then.
+    private var listKey: String { model.ref.id + "|" + model.tasks.compactMap(\.checkoutPath).sorted().joined(separator: "|") }
+
+    var body: some View {
+        Menu {
+            ForEach(model.filesWorktrees, id: \.path) { worktree in
+                let tag = model.isProjectFolder(worktree) ? nil : worktree.path
+                Button { model.filesWorktreePath = tag } label: {
+                    let name = model.worktreeLabel(worktree) + (tag == nil ? " — the project folder" : "")
+                    if tag == model.filesWorktreePath { Label(name, systemImage: "checkmark") } else { Text(name) }
+                }
+                .help(worktree.path)
+            }
+            Divider()
+            Button("Refresh List") { Task { await model.loadFilesWorktrees() } }
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "arrow.trianglehead.branch").font(.system(size: 10))
+                if windowSize.width >= DeskMetric.railBreakpoint {
+                    Text(model.chosenWorktreeLabel).lineLimit(1).truncationMode(.middle).frame(maxWidth: 160)
+                }
+                Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+            }
+            .font(DeskFont.secondary)
+            .foregroundStyle(model.filesWorktreePath == nil ? DeskColor.mutedInk : DeskColor.navInk)
+            .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .disabled(isSample)
+        .help(isSample ? RunProjectControl.sampleReason : "The checkout Files shows and play runs in — \(model.filesRoot?.path ?? "")")
+        .accessibilityLabel("Worktree")
+        .accessibilityValue(model.chosenWorktreeLabel)
+        .task(id: listKey) { await model.loadFilesWorktrees() }
     }
 }

@@ -261,7 +261,7 @@ struct SessionDock: View {
     // MARK: - Starting
 
     /// A new scratch session, in a tile, started here rather than offering a Start the developer never wanted
-    /// to press twice — the same rule Sessions' New session follows.
+    /// to press twice — the same rule Sessions' "+" follows.
     private func open() {
         guard model.sessions.startRefusal(for: .shell) == nil, let terminals else { return }
         let id = model.newTerminal()

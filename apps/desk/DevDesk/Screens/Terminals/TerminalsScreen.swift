@@ -18,14 +18,17 @@ struct TerminalsScreen: View {
     @State private var hasChosen = false
     /// What was live when the app was last killed (ADR 0031). Records, not sessions: nothing here is running.
     @State private var recovered: [JournalRecord] = []
+    /// What the + lists, from Settings › Agents and defaults.
+    @AppStorage(PreferenceKey.sessionAgents) private var sessionAgents = SessionAgents.defaultBuiltIns
+    @AppStorage(PreferenceKey.customSessionAgents) private var customSessionAgents = Data()
     /// Where a new terminal's worktree would go, read here because opening one starts its shell at once.
     @AppStorage(PreferenceKey.worktreeLocation) private var worktreeLocation = AgentDefaults.worktreeLocation
     @Environment(JobRegistry.self) private var jobs: JobRegistry?
     @Environment(\.terminals) private var terminals
 
     /// What is in front: one of the sessions, or the starter — the pane a session is typed into being in,
-    /// which is what a window with no sessions opens on. The starter has no tab of its own: New session in the
-    /// header opens a session outright, and the starter is where the screen lands when there is no session to show.
+    /// which is what a window with no sessions opens on. The starter has no tab of its own: the "+" after the last
+    /// tab opens a session outright, and the starter is where the screen lands when there is no session to show.
     private enum Selection: Hashable {
         case starter
         case session(String)
@@ -45,8 +48,8 @@ struct TerminalsScreen: View {
     var body: some View {
         VStack(spacing: 0) {
             // The shared header first, like every tab (ADR 0046 decision 14), then the sessions as its second row.
-            // New session is the header's one primary button; the "+" that sat at the end of the tabs was the same
-            // action a second time, so it went.
+            // A new session is the "+" after the last tab, where a tab bar's new tab always is — not a header
+            // button, which put the action a screen-width away from the row it adds to.
             header
             tabBar
             // Above the open session, because it is what happened while the app was gone and the open one is now.
@@ -89,45 +92,84 @@ struct TerminalsScreen: View {
 
     /// A new scratch session, in front. Its shell is started here, not by a button in its pane: opening one and
     /// being told "Not started" made every new terminal a two-click session whose second click was never a choice.
-    private func open() {
+    private func open(_ choice: StarterChoice) {
         hasChosen = true
         let id = model.newTerminal()
         selection = .session(id)
-        startTerminal(id)
+        startTerminal(id, choice: choice)
     }
 
     /// The same start the pane's Start button made for a scratch row — the registry resolves the folder, the
     /// project root for a scratch session, and the shell opens in it. The menu item is disabled under a
     /// refusal, but the guard stays: a menu built a moment before the registry changed its mind still lands here.
-    private func startTerminal(_ id: String) {
+    /// An agent's CLI runs bare — interactive, no prompt, the session you would have opened yourself by typing
+    /// `claude` at the project root. A custom agent's line is typed into the shell once it is at its prompt.
+    private func startTerminal(_ id: String, choice: StarterChoice = .terminal) {
         guard model.sessions.startRefusal(for: .shell) == nil, let terminals else { return }
         let location = worktreeLocation
-        let title = "Terminal \(id.replacingOccurrences(of: "term:", with: ""))"
+        let title: String, command: [String], executable: String?, line: String?
+        switch choice {
+        case .agent(let agent):
+            title = AgentLaunch.displayName(agent)
+            // `agy`, not `antigravity`: the executable is the CLI's own name, which is not always the agent's.
+            command = [DebugLaunch.agentExecutable ?? agent.terminalAgent?.executable ?? agent.rawValue]
+            executable = agent.rawValue
+            line = nil
+        case .custom(let custom):
+            (title, command, executable, line) = (custom.name, [], nil, custom.command)
+        case .terminal:
+            (title, command, executable, line) = ("Terminal \(id.replacingOccurrences(of: "term:", with: ""))", [], nil, nil)
+        }
         Task {
             await model.sessions.start(taskID: id, branch: nil, taskNumber: nil,
-                                       noBranchNote: nil, worktreeLocation: location, title: title)
+                                       noBranchNote: nil, worktreeLocation: location, title: title,
+                                       executable: executable)
             guard case .running(let folder) = model.sessions.state(for: id) else { return }
-            terminals.start(taskID: id, folder: folder.url)
+            terminals.start(taskID: id, folder: folder.url, command: command)
+            if let line { await terminals.sendCommand(line, to: id) }
+        }
+    }
+
+    /// Everything the + lists, in its order: the built-in agents Settings ticks, the developer's own, then a
+    /// plain terminal, which needs no install and so is always there.
+    private var offeredChoices: [StarterChoice] {
+        SessionAgents.builtIns(sessionAgents).map(StarterChoice.agent)
+            + SessionAgents.decodeCustom(customSessionAgents).map(StarterChoice.custom)
+            + [.terminal]
+    }
+
+    /// Why a choice cannot start here: an agent's own reason, or the shell's refusal for anything typed into one.
+    private func availability(_ choice: StarterChoice) -> String? {
+        switch choice {
+        case .agent(let agent): return availability(agent)
+        case .custom, .terminal: return model.sessions.startRefusal(for: .shell)
+        }
+    }
+
+    /// Why an agent cannot be started here — the same rule a task's Start obeys.
+    private func availability(_ agent: AgentKind) -> String? {
+        if let refusal = model.sessions.startRefusal(for: .agent) { return refusal }
+        switch AgentChoice.resolve(override: AgentLaunch.connectionName(agent), defaultConnection: "",
+                                   connections: model.snapshot?.connections ?? [],
+                                   terminalAgents: model.snapshot?.terminalAgents ?? []) {
+        case .ready: return nil
+        case .unavailable(let reason): return reason
         }
     }
 
     private var header: some View {
         let live = rows.filter(\.isLive).count
-        let refusal = model.sessions.startRefusal(for: .shell)
         return ScreenHeader(.terminals) {
             Text(rows.isEmpty ? "None open" : "\(live) running · \(rows.count) open")
         } tools: {
-            Button("New session", action: open)
-                .buttonStyle(DeskButtonStyle(kind: .primary, size: .small))
-                .disabled(refusal != nil)
-                .help(refusal ?? "A login shell at the project root")
+            EmptyView()
         }
     }
 
     // MARK: - The tabs
 
-    /// The sessions across the top, in the order the list has always had them; New session is in the
-    /// header above. It scrolls sideways rather than shrinking: a tab narrow enough to fit twelve of them
+    /// The sessions across the top, in the order the list has always had them, then the "+" that opens a new
+    /// one. It scrolls sideways rather than shrinking: a tab narrow enough to fit twelve of them
     /// names none of them.
     private var tabBar: some View {
         ScrollView(.horizontal) {
@@ -139,6 +181,9 @@ struct TerminalsScreen: View {
                         selection = .session(row.id)
                     }
                 }
+                NewSessionTab(refusal: model.sessions.startRefusal(for: .shell),
+                              choices: offeredChoices.map { ($0, availability($0)) },
+                              open: open)
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, 8)
@@ -211,16 +256,17 @@ struct TerminalsScreen: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 10) {
                     SectionLabel("Start a session")
-                    Text("Start a task from the board, run a door from Findings, Ideation or Roadmap, or open a terminal here. Whether it takes a terminal or runs in the background, it is a session here.")
+                    Text("Start a task from the board, run a door from Findings, Ideation or Roadmap, or press + above to open one here. Whether it takes a terminal or runs in the background, it is a session here.")
                         .font(DeskFont.body)
                         .foregroundStyle(DeskColor.mutedInk)
                         .lineSpacing(3)
                         .fixedSize(horizontal: false, vertical: true)
                     // Only while there is nothing to switch to: with sessions listed above, the board is one
-                    // click away in the sidebar and this would be a second door to it.
+                    // click away in the sidebar and this would be a second door to it. Starting one is the + above.
                     if rows.isEmpty {
                         Button("Go to the board") { model.go(.board) }
                             .buttonStyle(DeskButtonStyle(kind: .secondary))
+                            .padding(.top, 6)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -518,6 +564,44 @@ private struct SessionTab: View {
     }
 }
 
+/// The "+" after the last tab: a picker of what the new session runs — every choice Settings offers, in its
+/// order — opened at the project root, in front. The same 30 pt row and hover fill as a tab, so it reads as
+/// the end of the row rather than a button parked on it.
+private struct NewSessionTab: View {
+    /// Why a shell cannot start here, or nil when it can.
+    let refusal: String?
+    /// Each choice with why it cannot start, or nil when it can. Listed either way — absence is information.
+    let choices: [(StarterChoice, String?)]
+    let open: (StarterChoice) -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        Menu {
+            ForEach(choices, id: \.0) { choice, reason in
+                // The plain terminal is set apart, as the one choice that is not an agent.
+                if choice == .terminal, choices.count > 1 { Divider() }
+                Button(reason == nil ? choice.name : "\(choice.name) — not available") { open(choice) }
+                    .disabled(reason != nil)
+            }
+        } label: {
+            Image(systemName: "plus")
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(isHovered ? DeskColor.ink : DeskColor.mutedInk)
+                .frame(width: 30, height: 32)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .background(isHovered && refusal == nil ? DeskColor.headerFill : Color.clear)
+        .onHover { isHovered = $0 }
+        .disabled(refusal != nil)
+        .opacity(refusal == nil ? 1 : 0.4)
+        .help(refusal ?? "New session — pick an agent or a plain terminal")
+        .accessibilityLabel("New session")
+    }
+}
+
 /// The session in front: what it is doing and its body — the terminal as it is, or a background run's log.
 /// Its name and its × belong to the tab above, and are not said twice here.
 private struct SessionPane: View {
@@ -721,7 +805,7 @@ struct SessionRow: Identifiable {
         }
         let scratch = model.scratchTerminals.map { id -> SessionRow in
             let number = id.replacingOccurrences(of: "term:", with: "")
-            return SessionRow(id: id, title: "Terminal \(number)",
+            return SessionRow(id: id, title: model.sessions.title(for: id) ?? "Terminal \(number)",
                               subtitle: "Terminal · \(state(id))",
                               isLive: model.sessions.state(for: id).isLive, kind: .scratch)
         }
@@ -741,5 +825,29 @@ struct SessionRow: Identifiable {
                               isLive: state.isLive, kind: .projectRun)
         }
         return background + doors + tasks + scratch + projectRuns
+    }
+}
+
+/// What a new session in Sessions runs: a built-in agent's CLI, one the developer added in Settings, or a plain
+/// login shell.
+enum StarterChoice: Hashable {
+    case agent(AgentKind)
+    case custom(CustomSessionAgent)
+    case terminal
+
+    var name: String {
+        switch self {
+        case .agent(let agent): return AgentLaunch.displayName(agent)
+        case .custom(let custom): return custom.name
+        case .terminal: return "Terminal"
+        }
+    }
+
+    var help: String {
+        switch self {
+        case .agent(let agent): return "Opens \(AgentLaunch.displayName(agent)) in a terminal at the project root"
+        case .custom(let custom): return "Runs `\(custom.command)` in a terminal at the project root"
+        case .terminal: return "A login shell at the project root"
+        }
     }
 }

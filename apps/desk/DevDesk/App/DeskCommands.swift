@@ -25,6 +25,16 @@ struct DeskCommands: Commands {
             Button("Open Project…") { Workspace.shared.isOpeningProject = true }
                 .keyboardShortcut("o")
         }
+        // Beside the system's own Start Dictation, which types wherever the caret is; this one types into the
+        // session in front and never presses Return. Outside Project, which is disabled on Home, so a mic left
+        // listening can still be stopped from there.
+        CommandGroup(after: .textEditing) {
+            Button(Dictation.shared.voice.isListening ? "Stop Dictating" : "Dictate into Session") {
+                Dictation.shared.toggle(in: workspace.selected)
+            }
+            .keyboardShortcut("d", modifiers: [.command, .shift])
+            .disabled(!Dictation.shared.isBusy && Dictation.shared.candidate(in: workspace.selected) == nil)
+        }
         // ⌘1…⌘9 are the strip's projects, as they are a browser's tabs (#96). In Window rather than Project, which
         // is disabled on Home — the one screen a project is most often switched to from.
         CommandGroup(before: .windowArrangement) {

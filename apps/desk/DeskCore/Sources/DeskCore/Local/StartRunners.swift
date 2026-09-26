@@ -30,7 +30,7 @@ public enum StartRunners {
 
     /// A row's note has a row's worth of space, so the sentence becomes a label; the whole reason stays in
     /// the connection's own detail, where the Accounts pane already shows it.
-    static func shortReason(_ reason: String) -> String {
+    public static func shortReason(_ reason: String) -> String {
         if reason.contains("not signed in") || reason.contains("signed in") { return "not signed in" }
         if reason.contains("isn't installed") { return "not installed" }
         if reason.contains("no confirmed way") { return "not supported" }

@@ -23,6 +23,10 @@ enum PreferenceKey {
     static let findingsGrouping = "desk.findingsGrouping"
     /// The developer's "Start with" list, as `StartWithList` JSON, for every project.
     static let startWith = "desk.startWith"
+    /// Which built-in agents Sessions' picker lists, as `SessionAgents.store` writes them, for every project.
+    static let sessionAgents = "desk.sessionAgents"
+    /// The developer's own Sessions agents, as `SessionAgents.encodeCustom` JSON, for every project.
+    static let customSessionAgents = "desk.customSessionAgents"
     /// Which agent background runs use: Claude or Codex, apart from the default connection.
     static let backgroundConnection = "desk.backgroundConnection"
 

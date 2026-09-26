@@ -210,44 +210,10 @@ struct StartSheet: View {
     }
 
     private func runnerRow(_ option: RunnerOption) -> some View {
-        optionRow(title: option.name, detail: option.detail, isSelected: selectedRunnerID == option.id,
-                  isAvailable: option.isAvailable) {
+        RadioRow(title: option.name, detail: option.detail, isSelected: selectedRunnerID == option.id,
+                 isAvailable: option.isAvailable) {
             selectedRunnerID = option.id
         }
-    }
-
-    /// One radio row. An unavailable row is still drawn — its `detail` is the reason, and absence is information.
-    private func optionRow(title: String, detail: String?, isSelected: Bool, isAvailable: Bool,
-                           select: @escaping () -> Void) -> some View {
-        Button(action: select) {
-            HStack(spacing: 8) {
-                Circle()
-                    .strokeBorder(isSelected ? DeskColor.accent : DeskColor.controlBorder, lineWidth: isSelected ? 4 : 1)
-                    .frame(width: 13, height: 13)
-                Text(title)
-                    .font(DeskFont.secondary)
-                    .foregroundStyle(DeskColor.ink)
-                Spacer(minLength: 6)
-                if let detail {
-                    Text(detail)
-                        .font(DeskFont.small)
-                        .foregroundStyle(DeskColor.faintInk)
-                        .lineLimit(1)
-                }
-            }
-            .padding(.vertical, 7)
-            .padding(.horizontal, 10)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(isSelected ? DeskColor.tone(.info).fill : DeskColor.surface,
-                        in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-            .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius)
-                .strokeBorder(isSelected ? DeskColor.accent : DeskColor.border))
-            .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
-        }
-        .buttonStyle(.plain)
-        .disabled(!isAvailable)
-        .opacity(isAvailable ? 1 : 0.45)
-        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
     // MARK: - Footer

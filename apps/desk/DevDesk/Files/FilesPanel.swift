@@ -1,8 +1,8 @@
 import DeskCore
 import SwiftUI
 
-/// The project's own files, down the right of whatever you are looking at — the project folder's, or one of its
-/// worktrees', picked in the header. Listed one directory at a time, so a repository carrying node_modules opens
+/// The project's own files, down the right of whatever you are looking at — the project folder's, or the worktree
+/// the toolbar's picker has chosen, the same checkout play runs in. Listed one directory at a time, so a repository carrying node_modules opens
 /// as fast as an empty one. Tapping one selects it; reading it is `FileViewerPane`'s job, which `ContentRouter`
 /// places beside the work rather than under the tree. A listing is a snapshot: Refresh reads it again.
 struct FilesPanel: View {
@@ -38,15 +38,13 @@ struct FilesPanel: View {
     private var header: some View {
         HStack(spacing: 8) {
             Text("Files").font(.system(size: 13, weight: .semibold, design: .monospaced)).foregroundStyle(DeskColor.ink)
-            if model.filesWorktrees.count > 1 {
-                worktreeMenu
-            } else {
-                Text(model.snapshot?.project.name ?? "")
-                    .font(DeskFont.mono(11))
-                    .foregroundStyle(DeskColor.mutedInk)
-                    .lineLimit(1)
-                    .truncationMode(.head)
-            }
+            // The choice itself is the toolbar's (beside play); the header only says which tree this is.
+            Text(model.chosenWorktreeLabel)
+                .font(DeskFont.mono(11))
+                .foregroundStyle(DeskColor.mutedInk)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .help(root?.path ?? "")
             Spacer(minLength: 8)
             if let root {
                 Button { Task { await refresh(root) } } label: { Image(systemName: "arrow.clockwise").imageScale(.small) }
@@ -61,44 +59,6 @@ struct FilesPanel: View {
         .padding(.horizontal, 12)
         .background(DeskColor.surface)
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
-    }
-
-    /// Which worktree the tree shows, named by its branch — the branch is what you are choosing between.
-    private var worktreeMenu: some View {
-        Menu {
-            ForEach(model.filesWorktrees, id: \.path) { worktree in
-                let tag = model.isProjectFolder(worktree) ? nil : worktree.path
-                Button {
-                    model.filesWorktreePath = tag
-                } label: {
-                    if tag == model.filesWorktreePath { Label(label(worktree), systemImage: "checkmark") } else { Text(label(worktree)) }
-                }
-                .help(worktree.path)
-            }
-        } label: {
-            Text("\(currentLabel) ▾")
-                .font(DeskFont.mono(11))
-                .foregroundStyle(DeskColor.ink)
-                .lineLimit(1)
-                .truncationMode(.middle)
-        }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .fixedSize(horizontal: false, vertical: true)
-        .help(root?.path ?? "")
-    }
-
-    private var currentLabel: String {
-        let current = model.filesWorktrees.first { worktree in
-            model.isProjectFolder(worktree) ? model.filesWorktreePath == nil : worktree.path == model.filesWorktreePath
-        }
-        return current.map(label) ?? (root?.lastPathComponent ?? "")
-    }
-
-    /// The branch, or the folder's name when it has none (a detached HEAD).
-    private func label(_ worktree: Worktree) -> String {
-        let folder = URL(fileURLWithPath: worktree.path).lastPathComponent
-        return worktree.branch ?? "\(folder) (detached)"
     }
 
     /// Reads the worktree list and every folder on screen again. A folder that is gone collapses with it.

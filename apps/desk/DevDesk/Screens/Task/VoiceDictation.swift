@@ -2,7 +2,7 @@ import AVFoundation
 import Speech
 import SwiftUI
 
-/// Dictation the app runs itself: the mic button over a session's terminal.
+/// Dictation the app runs itself: the recognizer behind the strip's mic and ⇧⌘D (`Dictation`).
 ///
 /// macOS has its own dictation and it reaches the terminal too now — SwiftTerm was dropping the attributed string
 /// the system commits, which `FocusingTerminalView.insertText` unwraps. This is the other half, and the half that
@@ -122,6 +122,11 @@ final class VoiceDictation {
         type = nil
     }
 
+    /// The second press: types what was heard, or drops the start while the permission prompts are still up.
+    func stop() {
+        if case .listening = status { finish() } else { cancel() }
+    }
+
     /// Stops without typing — the pane going away, or a press while the prompts are still up.
     func cancel() {
         guard status != .off else { return }
@@ -141,50 +146,85 @@ final class VoiceDictation {
     }
 }
 
-/// The mic over a running session, with what it is hearing beside it. Its own state, so each pane dictates into
-/// its own terminal and closing one stops only that mic.
-struct VoiceButton: View {
-    /// Types the finished text into the session — never sends it.
-    let type: (String) -> Void
+/// The app's one mic — the strip's button and ⇧⌘D. It was a button over every terminal, which put a mic in front of
+/// each session but none within reach of the keyboard; now there is one, and it types into the session in front:
+/// the terminal that last took the keys in the project on screen, else the one its Sessions tab has selected.
+@MainActor
+@Observable
+final class Dictation {
+    static let shared = Dictation()
 
-    @State private var voice = VoiceDictation()
+    struct Target: Equatable {
+        weak var registry: ShellTerminalRegistry?
+        let sessionID: String
 
-    var body: some View {
-        HStack(spacing: 8) {
-            if let note {
-                Text(verbatim: note)
-                    .font(.system(size: 11, design: .monospaced))
-                    .foregroundStyle(DeskColor.terminalDim2)
-                    .lineLimit(2)
-                    .frame(maxWidth: 320, alignment: .trailing)
-                    .multilineTextAlignment(.trailing)
-            }
-            Button {
-                voice.toggle(typing: type)
-            } label: {
-                Image(systemName: voice.isListening ? "mic.fill" : "mic")
-                    .font(.system(size: 16, weight: .medium))
-                    .foregroundStyle(voice.isListening ? DeskColor.onColorInk : DeskColor.terminalInk)
-                    .frame(width: 38, height: 38)
-                    .background(voice.isListening ? DeskColor.accent : DeskColor.terminalControlFill, in: Circle())
-                    .overlay(Circle().strokeBorder(DeskColor.terminalControlBorder))
-            }
-            .buttonStyle(.plain)
-            .help(voice.isListening ? "Stop dictating and type what was heard" : "Dictate into this session")
-            .accessibilityLabel(voice.isListening ? "Stop dictating" : "Dictate")
+        static func == (lhs: Target, rhs: Target) -> Bool {
+            lhs.sessionID == rhs.sessionID && lhs.registry === rhs.registry
         }
-        // Clear of the terminal's scroller and its last row, which a flat 10 pt left it sitting on.
-        .padding(.trailing, 32)
-        .padding(.bottom, 28)
-        .onDisappear { voice.cancel() }
     }
 
-    /// What to show beside the mic: the live text while it listens, or why it stopped.
+    let voice = VoiceDictation()
+    /// The terminal that last took the keys, in whichever project.
+    private(set) var focused: Target?
+    /// Where the words go, fixed at the press: switching projects mid-sentence still types where you began.
+    private(set) var target: Target?
+
+    var isBusy: Bool { voice.status == .listening || voice.status == .asking }
+
+    func noteFocus(_ registry: ShellTerminalRegistry, _ sessionID: String) {
+        focused = Target(registry: registry, sessionID: sessionID)
+    }
+
+    /// The session a press would type into in `context`; nil on Home, or when nothing there is running.
+    /// Read from the sessions' state rather than the registry, so the strip's button dims the moment one ends.
+    func candidate(in context: ProjectContext?) -> Target? {
+        guard let context else { return nil }
+        let isLive = { (id: String) in context.model.sessions.state(for: id).isLive }
+        if let focused, focused.registry === context.terminals, isLive(focused.sessionID) { return focused }
+        if let id = context.model.selectedSessionID, isLive(id) { return Target(registry: context.terminals, sessionID: id) }
+        return nil
+    }
+
+    /// A press: starts listening for the session in front, or stops and types what was heard.
+    func toggle(in context: ProjectContext?) {
+        if isBusy { voice.stop(); return }
+        guard let candidate = candidate(in: context), let registry = candidate.registry else { return }
+        target = candidate
+        let id = candidate.sessionID
+        voice.toggle { [weak registry] text in registry?.send(text, to: id) }
+    }
+}
+
+/// What the mic is hearing, over the session it types into — where your eyes already are. Nothing when this
+/// session is not the target or the mic is off.
+struct DictationNote: View {
+    let registry: ShellTerminalRegistry
+    let sessionID: String
+
+    var body: some View {
+        if let note {
+            Text(verbatim: note)
+                .font(.system(size: 11, design: .monospaced))
+                .foregroundStyle(DeskColor.terminalDim2)
+                .lineLimit(2)
+                .multilineTextAlignment(.trailing)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(DeskColor.terminalControlFill, in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+                .frame(maxWidth: 360, alignment: .trailing)
+                // Clear of the terminal's scroller and its last row.
+                .padding(.trailing, 32)
+                .padding(.bottom, 28)
+        }
+    }
+
     private var note: String? {
-        switch voice.status {
+        let dictation = Dictation.shared
+        guard let target = dictation.target, target.sessionID == sessionID, target.registry === registry else { return nil }
+        switch dictation.voice.status {
         case .off: return nil
         case .asking: return "Waiting for permission…"
-        case .listening: return voice.heard.isEmpty ? "Listening…" : voice.heard
+        case .listening: return dictation.voice.heard.isEmpty ? "Listening…" : dictation.voice.heard
         case .problem(let reason): return reason
         }
     }

@@ -102,9 +102,11 @@ extension View {
 /// The ⌘ key that reaches a place, as a keycap at its icon's bottom-left (#96) — the corner no count or dot uses.
 struct KeyHint: View {
     let key: String
+    /// What is held with the key, in the menu's order (⇧ before ⌘).
+    var modifiers = "⌘"
 
     var body: some View {
-        Text(verbatim: "⌘" + key.uppercased())
+        Text(verbatim: modifiers + key.uppercased())
             .font(.system(size: 8.5, weight: .semibold, design: .monospaced))
             .foregroundStyle(DeskColor.mutedInk)
             .padding(.horizontal, 3)
@@ -372,5 +374,47 @@ struct EmptyStateView<Actions: View>: View {
 extension EmptyStateView where Actions == EmptyView {
     init(title: String, message: String) {
         self.init(title: title, message: message) { EmptyView() }
+    }
+}
+
+/// One radio row — the start sheet's *Run it here* and the Sessions starter. An unavailable row is still drawn, its
+/// `detail` the reason: absence is information.
+struct RadioRow: View {
+    let title: String
+    let detail: String?
+    let isSelected: Bool
+    let isAvailable: Bool
+    let select: () -> Void
+
+    var body: some View {
+        Button(action: select) {
+            HStack(spacing: 8) {
+                Circle()
+                    .strokeBorder(isSelected ? DeskColor.accent : DeskColor.controlBorder, lineWidth: isSelected ? 4 : 1)
+                    .frame(width: 13, height: 13)
+                Text(title)
+                    .font(DeskFont.secondary)
+                    .foregroundStyle(DeskColor.ink)
+                Spacer(minLength: 6)
+                if let detail {
+                    Text(detail)
+                        .font(DeskFont.small)
+                        .foregroundStyle(DeskColor.faintInk)
+                        .lineLimit(1)
+                }
+            }
+            .padding(.vertical, 7)
+            .padding(.horizontal, 10)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(isSelected ? DeskColor.tone(.info).fill : DeskColor.surface,
+                        in: RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+            .overlay(RoundedRectangle(cornerRadius: DeskMetric.controlRadius)
+                .strokeBorder(isSelected ? DeskColor.accent : DeskColor.border))
+            .contentShape(RoundedRectangle(cornerRadius: DeskMetric.controlRadius))
+        }
+        .buttonStyle(.plain)
+        .disabled(!isAvailable)
+        .opacity(isAvailable ? 1 : 0.45)
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

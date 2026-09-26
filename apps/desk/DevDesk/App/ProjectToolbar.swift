@@ -46,6 +46,12 @@ struct ProjectToolbar: ToolbarContent {
             // toolbar as glass: a pale capsule per item and a pale shared one behind the group, which on the
             // Console's near-black bar read as light chips floating in a dark strip (2026-09-20, on screen).
             // The controls carry their own chrome in Dev Desk's own colours, so the system's is turned off.
+            // Which checkout, then what to do in it: the picker and play are separate items.
+            ToolbarItem(placement: .primaryAction) {
+                WorktreePicker(model: model)
+            }
+            .sharedBackgroundVisibility(.hidden)
+            ToolbarSpacer(.fixed, placement: .primaryAction)
             ToolbarItem(placement: .primaryAction) {
                 RunProjectControl(model: model, terminals: terminals)
             }
@@ -86,6 +92,12 @@ struct ProjectToolbar: ToolbarContent {
     }
 
     @ToolbarContentBuilder private var legacyRunAndPanels: some ToolbarContent {
+        ToolbarItem(placement: .primaryAction) {
+            WorktreePicker(model: model)
+        }
+        ToolbarItem(placement: .primaryAction) {
+            Divider().frame(height: 16)
+        }
         ToolbarItem(placement: .primaryAction) {
             RunProjectControl(model: model, terminals: terminals)
         }

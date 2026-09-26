@@ -151,6 +151,10 @@ struct AgentsAndDefaultsPane: View {
     @AppStorage(PreferenceKey.defaultConnection) private var defaultConnection = AgentDefaults.connection
     @AppStorage(PreferenceKey.runMode) private var runMode = AgentDefaults.runMode
     @AppStorage(PreferenceKey.backgroundConnection) private var storedBackground = ""
+    @AppStorage(PreferenceKey.sessionAgents) private var sessionAgents = SessionAgents.defaultBuiltIns
+    @AppStorage(PreferenceKey.customSessionAgents) private var customSessionAgents = Data()
+    @State private var newAgentName = ""
+    @State private var newAgentCommand = ""
 
     var body: some View {
         VStack(alignment: .leading, spacing: 18) {
@@ -184,6 +188,8 @@ struct AgentsAndDefaultsPane: View {
                 }
             }
 
+            sessionAgentsCard
+
             // Was titled "Capabilities of the selected connection" over a table of every connection, which
             // is a heading that describes a different table than the one under it (2026-09-20).
             if let model {
@@ -193,6 +199,80 @@ struct AgentsAndDefaultsPane: View {
                 if isGitHubUnavailable(model) { GitHubUnavailableNotice() }
             }
         }
+    }
+
+    // MARK: - Session agents
+
+    /// What Sessions' *Start with* and its "+" list: a switch per built-in agent, then the developer's own, each a
+    /// line typed into a login shell at the project root. A plain terminal is always listed and so is not here.
+    private var sessionAgentsCard: some View {
+        let custom = SessionAgents.decodeCustom(customSessionAgents)
+        return SettingCard("Session agents",
+                           footer: "What Sessions offers under Start with and behind the + after its tabs. A plain terminal is always listed.") {
+            ForEach(AgentLaunch.runnableKinds, id: \.self) { agent in
+                SettingToggle(title: AgentLaunch.displayName(agent), why: sessionAgentNote(agent),
+                              isOn: builtInBinding(agent))
+            }
+            ForEach(custom) { agent in
+                SettingRowShell {
+                    HStack(spacing: 8) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(agent.name)
+                                .font(DeskFont.body)
+                                .foregroundStyle(DeskColor.ink)
+                            Text(agent.command)
+                                .font(DeskFont.mono(11))
+                                .foregroundStyle(DeskColor.mutedInk)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .help(agent.command)
+                        }
+                        Spacer(minLength: 8)
+                        Button("Remove") {
+                            customSessionAgents = SessionAgents.encodeCustom(custom.filter { $0.id != agent.id })
+                        }
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .mini))
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+            SettingBlockRow("Add an agent",
+                            why: "Any CLI: its line is typed into a login shell at the project root, as you would type it.",
+                            unavailable: nil) {
+                HStack(spacing: 8) {
+                    TextField("Name", text: $newAgentName).settingField(width: 130)
+                    TextField("aider --model sonnet", text: $newAgentCommand).settingField(width: 300)
+                    Button("Add", action: addSessionAgent)
+                        .buttonStyle(DeskButtonStyle(kind: .secondary, size: .small))
+                        .disabled(newAgentName.trimmed.isEmpty || newAgentCommand.trimmed.isEmpty)
+                }
+            }
+        }
+    }
+
+    private func builtInBinding(_ agent: AgentKind) -> Binding<Bool> {
+        Binding(get: { SessionAgents.builtIns(sessionAgents).contains(agent) },
+                set: { isOn in
+                    var listed = SessionAgents.builtIns(sessionAgents).filter { $0 != agent }
+                    if isOn { listed.append(agent) }
+                    sessionAgents = SessionAgents.store(listed)
+                })
+    }
+
+    /// Listed or not, an agent says whether it could start: ticking one that is not installed is allowed — it shows
+    /// in Sessions, dimmed, with the reason — but it should not be a surprise there.
+    private func sessionAgentNote(_ agent: AgentKind) -> String {
+        switch availability(AgentLaunch.connectionName(agent)) {
+        case .some(.unavailable(let reason)): return "Runs in a terminal — \(StartRunners.shortReason(reason)) here."
+        case .some(.ready), .none: return "Runs in a terminal at the project root."
+        }
+    }
+
+    private func addSessionAgent() {
+        let agent = CustomSessionAgent(name: newAgentName.trimmed, command: newAgentCommand.trimmed)
+        customSessionAgents = SessionAgents.encodeCustom(SessionAgents.decodeCustom(customSessionAgents) + [agent])
+        newAgentName = ""
+        newAgentCommand = ""
     }
 
     /// Every project shares the app default, so with no project open the resolved mode is the same sentence.

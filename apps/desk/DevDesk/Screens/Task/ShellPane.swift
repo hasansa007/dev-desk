@@ -63,10 +63,9 @@ struct ShellPane: View {
                 }
                 if let terminals {
                     ShellTerminalView(terminals: terminals, taskID: id)
-                        // Over the terminal rather than in the bar above it: the bar is not always drawn (Terminals
-                        // keeps its own header), and the mic belongs to the session it types into.
+                        // The mic is the strip's now (⇧⌘D); what it hears still shows over the session it types into.
                         .overlay(alignment: .bottomTrailing) {
-                            VoiceButton { terminals.send($0, to: id) }
+                            DictationNote(registry: terminals, sessionID: id)
                         }
                 }
             }

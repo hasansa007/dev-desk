@@ -20,6 +20,9 @@ struct Sidebar: View {
             // Settings left the foot of this rail for the foot of the strip: it is a dialog every screen can
             // open, and a rail exists only inside a project, so Home had no way to reach it but ⌘,.
             Spacer(minLength: 0)
+            // The mic (⇧⌘D) is the project's, at the foot of its rail: it types into one of this project's
+            // sessions, and on Home — where there is none to type into — it was only ever a dimmed button.
+            micButton
         }
         .frame(minWidth: 0, maxWidth: .infinity, minHeight: 0, maxHeight: .infinity, alignment: .topLeading)
         .background(DeskColor.sidebar)
@@ -146,6 +149,44 @@ struct Sidebar: View {
     private func badgeColor(isPending: Bool, isSelected: Bool) -> Color {
         if isSelected { return isPending ? DeskColor.tone(.waiting).dot : DeskColor.ink }
         return isPending ? DeskColor.tone(.waiting).dot : DeskColor.navInk
+    }
+
+    /// Accent while it listens. Dimmed when this project has no session running, but never while listening,
+    /// so it can always be stopped.
+    private var micButton: some View {
+        let dictation = Dictation.shared
+        let listening = dictation.voice.isListening
+        let available = dictation.isBusy || dictation.candidate(in: context) != nil
+        return Button { dictation.toggle(in: context) } label: {
+            HStack(spacing: 10) {
+                // In its own circle, as it was over the terminal: a bare glyph at the rail's foot read as a label.
+                Image(systemName: listening ? "mic.fill" : "mic")
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(listening ? DeskColor.onColorInk : DeskColor.navInk)
+                    .frame(width: 38, height: 38)
+                    .background(listening ? DeskColor.accent : DeskColor.neutralChipFill, in: Circle())
+                    .overlay(Circle().strokeBorder(listening ? DeskColor.accent : DeskColor.controlBorder))
+                    .overlay(alignment: .bottomLeading) { KeyHint(key: "d", modifiers: "⇧⌘").offset(x: -7, y: 6) }
+                if !isRail {
+                    Text(listening ? "Listening…" : "Dictate")
+                        .foregroundStyle(DeskColor.navInk)
+                    Spacer(minLength: 4)
+                }
+            }
+            .font(DeskFont.body)
+            .opacity(available ? 1 : 0.4)
+            .padding(.vertical, 6)
+            .padding(.horizontal, isRail ? 0 : 6)
+            .frame(maxWidth: .infinity)
+            .contentShape(RoundedRectangle(cornerRadius: 6))
+        }
+        .buttonStyle(.plain)
+        .disabled(!available)
+        .help(listening ? "Stop dictating and type what was heard (⇧⌘D)"
+              : available ? "Dictate into the session in front (⇧⌘D)" : "Dictate (⇧⌘D) — needs a running session")
+        .accessibilityLabel(listening ? "Stop dictating" : "Dictate")
+        .padding(.horizontal, 8)
+        .padding(.bottom, 24)
     }
 
     private func symbol(for destination: Destination) -> String {

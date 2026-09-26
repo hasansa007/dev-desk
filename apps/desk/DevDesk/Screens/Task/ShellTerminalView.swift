@@ -93,8 +93,8 @@ final class ShellTerminalHost: NSView {
     }
 
     private func focusTerminal(clickedBy event: NSEvent) {
-        guard let terminal = terminal(under: event), window?.firstResponder !== terminal else { return }
-        window?.makeFirstResponder(terminal)
+        guard let terminal = terminal(under: event) else { return }
+        if window?.firstResponder === terminal || window?.makeFirstResponder(terminal) == true { terminal.onFocus?() }
     }
 }
 
@@ -244,7 +244,7 @@ final class ShellTerminalRegistry {
     /// Keyboard focus to a terminal already on screen. One that does not exist is not made for the asking.
     func focus(taskID: String) {
         guard let view = terminals[taskID]?.view, let window = view.window else { return }
-        window.makeFirstResponder(view)
+        if window.makeFirstResponder(view) { view.onFocus?() }
     }
 
     /// Types into a running shell, exactly as the user would; a shell that has not started, or has exited, gets nothing.
@@ -283,6 +283,10 @@ final class ShellTerminalRegistry {
             }
             if event == .bell, reportsThroughHooks[taskID] == true { return }
             onEvent?(taskID, event)
+        }
+        terminal.view.onFocus = { [weak self] in
+            guard let self else { return }
+            Dictation.shared.noteFocus(self, taskID)
         }
         terminals[taskID] = terminal
         return terminal
@@ -638,6 +642,9 @@ final class ShellTerminal: LocalProcessTerminalViewDelegate {
 /// Takes keyboard focus the first time it lands in a window after a start, so the user can type straight away.
 final class FocusingTerminalView: LocalProcessTerminalView {
     var focusOnAttach = false
+    /// Called when this terminal takes the keys — how dictation knows which session is the one in front.
+    /// Called from each place the app focuses it and from typing, since SwiftTerm's `becomeFirstResponder` is not open.
+    var onFocus: (() -> Void)?
     /// The app says what a bell means (a notification, with the chosen sound) instead of SwiftTerm's system beep.
     var onBell: (() -> Void)?
 
@@ -648,6 +655,7 @@ final class FocusingTerminalView: LocalProcessTerminalView {
     override func send(source: Terminal, data: ArraySlice<UInt8>) {
         // Return, and only Return: the LF that ⇧↩ sends is a line break inside the message, not the message going.
         if data.contains(0x0d) { onSend?() }
+        onFocus?()
         super.send(source: source, data: data)
     }
 
@@ -747,7 +755,7 @@ final class FocusingTerminalView: LocalProcessTerminalView {
     func takeFocusIfAsked() {
         guard focusOnAttach, let window else { return }
         focusOnAttach = false
-        window.makeFirstResponder(self)
+        if window.makeFirstResponder(self) { onFocus?() }
     }
 
     // MARK: Opening a link

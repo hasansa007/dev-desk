@@ -54,7 +54,7 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0043](0043-a-findings-run-is-told-its-stops-before-it-starts.md) | A findings run is told its stops before it starts, and refuses past its agent limit | Accepted |
 | [0044](0044-a-card-moves-on-its-runs-checkpoints-not-on-a-terminal.md) | A card moves on its run's checkpoints, not on a terminal opening | Accepted |
 | [0045](0045-add-task-files-where-the-tracker-is-checks-for-duplicates-and-can-start.md) | Add Task files where the tracker is, checks for duplicates first, and can start the work | Accepted |
-| [0046](0046-one-task-model-three-views-findings-keeps-its-name.md) | One task model in three views — Board, Plan, Findings, one filter bar; Findings keeps its name | Accepted |
+| [0046](0046-one-task-model-three-views-findings-keeps-its-name.md) | One task model in three views — Board, Plan, Findings, one filter bar; Findings keeps its name | Accepted — amended by 0056 |
 | [0047](0047-diagrams-are-architecture-data-flow-and-one-sequence-per-flow.md) | Diagrams are Architecture, Data flow and one Sequence per flow — every flow source counts the same | Accepted |
 | [0048](0048-the-board-drops-the-p0-strip.md) | The Board drops the P0 strip | Accepted |
 | [0049](0049-a-ticket-fans-out-into-slices-under-an-orchestrator.md) | A ticket fans out into slices under an orchestrator, and its decisions are front-loaded | Accepted — design |
@@ -64,3 +64,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0053](0053-kanban-is-renamed-board-in-the-door-and-the-folder.md) | Kanban is renamed Board, in the door and the folder | Accepted |
 | [0054](0054-the-install-root-is-one-hidden-symlink-not-a-skills-directory.md) | The install root is one hidden symlink, not a skills directory | Accepted |
 | [0055](0055-the-shared-board-rules-are-a-registry-both-readers-are-pinned-to.md) | The shared board rules are a registry both readers are pinned to | Accepted |
+| [0056](0056-sessions-new-session-is-a-plus-after-the-last-tab.md) | Sessions' New session is a "+" after the last tab | Accepted |

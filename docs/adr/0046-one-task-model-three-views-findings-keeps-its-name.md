@@ -105,7 +105,7 @@ answering one question, with one filter bar.**
     the session tabs, Ideation's verdicts. The header spans the tab; an inner list (milestones, diagram kinds,
     ideas) starts below it and has no title of its own. Before, the title sat in five places: pushed right by
     Work's milestones, inside Ideation's and Diagrams' lists, and absent from Sessions. The header also shows before
-    the first run, so an empty tab has the same title and button. Sessions' "+" went, since New session is the same action.
+    the first run, so an empty tab has the same title and button. Sessions' "+" went, since New session is the same action — *reversed by [0056](0056-sessions-new-session-is-a-plus-after-the-last-tab.md): the "+" is back and the header button went.*
     Findings' "what this report could not check" button uses an eye-slash icon, so the header has only one ⓘ.
     *Not applied:* Settings. It is a dialog with its own title bar, and a tab header inside it only repeated
     "Settings".

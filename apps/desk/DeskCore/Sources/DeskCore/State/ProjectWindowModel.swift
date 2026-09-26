@@ -519,9 +519,11 @@ public final class ProjectWindowModel {
     public var diagramFlow: String?
     /// The browser's selected file, as a path relative to the folder Files shows (`filesRoot`).
     public var selectedFilePath: String?
-    /// The worktrees Files can show, as `git worktree list` gives them; empty until listed, and for a sample.
+    /// The project's worktrees, as `git worktree list` gives them; empty until listed, and for a sample.
     public private(set) var filesWorktrees: [Worktree] = []
-    /// The worktree Files shows, by path; nil is the project folder. A selected file belongs to the old folder, so a switch clears it.
+    /// The worktree the toolbar's picker has chosen, by path; nil is the project folder. Files shows it and play
+    /// runs in it — one choice, so the tree you read is the checkout you run. A selected file belongs to the old
+    /// folder, so a switch clears it.
     public var filesWorktreePath: String? {
         didSet { if filesWorktreePath != oldValue { selectedFilePath = nil } }
     }

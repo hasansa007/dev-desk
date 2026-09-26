@@ -114,6 +114,7 @@ struct ProjectStrip: View {
                 .font(.system(size: 17, weight: .medium))
                 .foregroundStyle(DeskColor.navInk)
                 .frame(width: DeskMetric.stripBadge, height: DeskMetric.stripBadge)
+                .overlay(alignment: .bottomLeading) { KeyHint(key: ",").offset(x: -5, y: 4) }
                 .contentShape(RoundedRectangle(cornerRadius: DeskMetric.stripBadgeRadius))
         }
         .buttonStyle(.plain)
