@@ -150,7 +150,7 @@ ranked by cost. Everything downstream reads "flow" as "flow or fallback unit".
 
 ## Phase 4 — Fan out, one finder per flow
 
-**Skipped under `--arch`.** Otherwise dispatch one agent per flow
+**Skipped under `--arch`** (Phase 6 builds the pattern inventory itself). Otherwise dispatch one agent per flow
 (`superpowers:dispatching-parallel-agents`). **One flow per agent, never two.** A whole codebase does
 not fit one context, and a finder that runs out mid-flow does not announce it — it just returns
 fewer findings, which reads exactly like a clean flow.
@@ -186,6 +186,31 @@ return fewer findings without saying so.
 
 Each finder returns, per finding: the symptom, the file and line, the **mechanism** that produces
 it, and what it expected instead.
+
+**Each finder also returns a pattern inventory for its flow**, even when it finds nothing: how the flow
+does each recurring job — decodes images, injects its model, loads, shows empty/error states, searches,
+refreshes, formats dates — one line each with file:line. It is not a finding. It is the raw material for
+4b, the only place a pattern applied in one flow and missed in another can be seen.
+
+**Each finder runs an idiom lens over its flow:** hand-rolled UI or plumbing where the platform ships a
+first-party API (SwiftUI: a `TextField` filter bar vs `.searchable`, a manual pull-to-refresh vs
+`.refreshable`, a custom empty view vs `ContentUnavailableView`, `ObservableObject` vs `@Observable`;
+the web and Android equivalents), and **redundant state**: a value stored raw and re-derived in the view
+(`Data` held in the model and decoded in a `.task`) or assigned twice. Each is a finding with a
+mechanism: what the first-party version gives that the hand-rolled one does not.
+
+### 4b — The cross-flow consistency sweep
+
+**Runs in the main context after every finder returns, before Phase 5.** Lay the inventories side by
+side, job by job. **A job done two ways across flows is a finding**, anchored at the minority site and
+citing the majority one: *"images are decoded to `UIImage` in the model at `AvatarLoader.swift:40`; the
+detail view keeps `Data` and decodes in a `.task` at `DetailView.swift:88`."* A pattern introduced for a
+reason (an ADR, a commit message) and not carried everywhere it applies ranks above a stylistic split.
+The ADR says why the pattern exists, so the site it missed has the same problem the pattern fixed.
+
+Observed 2026-09-29: a take-home reviewed by AI generation and AI review shipped exactly this split. The
+decode was applied to list avatars but not the detail view, and the interviewer rated it critical. No
+per-flow reader could see it, because the list and the detail were different flows.
 
 **A finding without a mechanism is a guess.** *"Open a course with 40+ lessons, scroll to lesson 30,
 press back"* is a finding; *"navigation seems fragile"* is a feeling. This is `dev:create-bug`'s
@@ -251,7 +276,10 @@ a pile of bug issues**.
    to the majority. Recommending TCA to a codebase that is 70% MVVM is a **rewrite wearing the word
    unify**, and it will not happen.
 3. **List the drift as individual moves**, each one a slice someone could take.
-4. **Never recommend a rewrite**, and never recommend a pattern absent from the codebase unless the
+4. **Count implementation patterns too, not only screen architectures.** Under `--arch`, where no
+   finder ran, build 4b's inventory here by reading each flow's recurring jobs. A split in how images
+   are decoded is drift just as much as a split between MVVM and MVC.
+5. **Never recommend a rewrite**, and never recommend a pattern absent from the codebase unless the
    developer asks for one. If the honest answer is *"it is already consistent"*, that is the finding.
 
 State the cost of doing nothing, or the recommendation is a preference.
