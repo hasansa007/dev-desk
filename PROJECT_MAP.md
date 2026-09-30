@@ -91,7 +91,7 @@ ORPHANS).
 | `dev:ideation` | never run |
 | `dev:roadmap` | never written a milestone |
 | `dev:insights` | never run; this file is the first thing its Phase 5 would maintain |
-| `dev:code-review` | **run twice 2026-09-12**: over #69 after the fact (15 findings, 1 narrowed, 1 sub-point refuted) and over the branch that fixed them. The `--quick` path is still designed, not observed; the security pass ran **by hand** both times, because `security-review` reads pending changes and the first diff was already merged |
+| `dev:code-review` | **run twice 2026-09-12**: over #69 after the fact (15 findings, 1 narrowed, 1 sub-point refuted) and over the branch that fixed them; **and 2026-09-30** over another repo's merged `baseline...main` (10 engine findings: 2 confirmed, 6 plausible, 2 refuted). The `--quick` path is still designed, not observed; the security pass has only ever run **by hand**, because `security-review` reads pending changes and every diff so far was already merged. Phase 4c (records and claims) and the ownership lens are new since, and unobserved |
 
 **Repo state that blocks parts of the design:**
 

@@ -45,8 +45,9 @@ afterwards. The engine owns the fan-out.
 |---|---|---|
 | (nothing) | the current branch against its resolved base | this |
 | A branch name | that branch | current |
+| `--base=<ref>` | diff against this ref instead of the resolved base — a tag, a commit, a `baseline` branch | resolved base |
 | `--security` | force the security pass regardless of tier | on trigger only |
-| `--quick` | correctness only — skip spec-compliance, consistency and security | all passes |
+| `--quick` | correctness only — skip spec-compliance, consistency, records and security | all passes |
 
 ## Phase 2 — Resolve the repo and the diff
 
@@ -61,13 +62,32 @@ git diff <BASE_BRANCH>...HEAD --stat
 branch added* since it diverged. Reviewing the wrong one either hides your own commits or reports
 everyone else's as yours.
 
+**The repo under review is not always the one the session opened in.** When the conversation names
+another repo — a path, a project, commands meant for a different history — name the target
+(`owner/repo`, base, head) and confirm it before reading a line. Pass `git -C <path>` to every command
+rather than trusting the working directory. Observed 2026-09-30: a review was asked for from this
+family's own repo, of a take-home in another folder, against a `baseline` branch cut there minutes before.
+
 **An empty diff is a finding, not a pass.** Say so and stop — a gate that returns clean on nothing
 is indistinguishable from one that returns clean on working code.
+
+**Uncommitted changes in the reviewed files are reported first.** `git status --short` over the diff's
+paths: a file modified or deleted in the working tree means what builds locally is not what was
+reviewed. The review is of the committed range; say so, and name each file.
 
 ## Phase 3 — Correctness pass
 
 The engine's job: fan out reviewers over the diff, and **verify each finding against the code**
 before it is reported. A finding nobody checked is a guess with a line number on it.
+
+**Map every line number to the file before reporting it.** An engine working from diff output can cite
+the line's position in the diff, not in the file — `Store.swift:422` in a 211-line file. Open the file,
+find the code, cite its real line. A reference that does not land on the code it describes sends the
+reader to the wrong place and makes every other citation suspect.
+
+**Tests the diff adds are asked one question: what change to the code makes this fail?** Name the
+mutation — *delete the line that clears the error* — and check the test would catch it. A test that
+would pass either way is a finding: it looks like a regression guard and guards nothing.
 
 Scope is the diff, not the repo. A pre-existing problem the branch did not touch is worth a
 sentence, never a blocking finding — this gate exists to decide whether *this change* can ship.
@@ -107,9 +127,33 @@ cache beside the data library already in use; a bespoke formatter. Also **redund
 stored raw and re-derived on every render, or assigned twice. Each finding names what the first-party
 version gives that the hand-rolled one does not.
 
+**Ownership, for state the diff adds or moves.** For each piece of state a UI unit gains in the diff,
+name its owner and ask `dev:findings` Phase 4's inventory questions: is it a copy that goes stale, data
+the view could look up, one selection kept in two places, a view loading instead of reading, a
+data-source decision made in the view, a display-only component that knows its source, one component's
+state in a shared store, or a model holding a dependency it only uses to answer events? The questions
+are that door's; this pass asks them only of what the branch added.
+
 These findings take the same verdicts as the others (Phase 6). A missed site outside the diff is
 blocking only when the diff introduced the pattern; a split that predates the branch is a sentence,
 and `dev:findings` is where it gets filed.
+
+## Phase 4c — Decision records and claims
+
+**Skipped under `--quick`.** The engine reads code; neither check below is code.
+
+**Does the diff bring back what a record prevented?** Read the decision records — ADRs, design docs,
+`DECISIONS.md` — that name the files or types the diff touches. For each, ask what it **prevented**, not
+only what it chose, and whether the diff reintroduces that. A diff that reverses a record without
+superseding it is a finding; one that supersedes it in the same diff is not. Observed 2026-09-30: a
+redesign gave its models default arguments pointing at shared real services — the exact coupling an
+earlier ADR had been written to remove, so tests would touch real storage again.
+
+**Claims the diff adds are checked like code.** Records, notes and comments added by the branch make
+checkable statements — "never", "always", "off the main thread", "no full-resolution bitmap is held",
+"the key distinguishes every case". Check each against **every** path in the diff, fallbacks included.
+Observed 2026-09-30: an ADR in the diff under review claimed three things its own code did not do,
+and the review — engine and door both — never opened it.
 
 ## Phase 5 — Security pass (conditional)
 
@@ -154,8 +198,11 @@ Re-running a whole checklist for a renamed variable is the ceremony that gets ga
 engine        <the code-review skill | by hand, and why>
 correctness   <n> confirmed · <n> plausible · <n> refuted
 spec          <n>/<n> criteria met      <or: no ticket — say so>
-consistency   <n> split patterns · <n> hand-rolled idioms · <n> redundant state   <or: skipped (--quick)>
+consistency   <n> split patterns · <n> hand-rolled idioms · <n> redundant state · <n> ownership   <or: skipped (--quick)>
+records       <n> records read · <n> reintroduced · <n> false claims   <or: none touch the diff · skipped (--quick)>
+tests         <n> added · <n> would not fail under their named mutation
 security      <run | not triggered — and what would have triggered it>
+worktree      <clean | uncommitted: file, file — the review is of the committed range>
 
 CONFIRMED (n)   ← fixed before proceeding
 - <finding> · <file:line> · <the fix>
@@ -171,6 +218,12 @@ Then ask — **never chain**:
 > "Review clean, verification evidence attached. Next is Phase 14 (`dev:pre-prod`), which pushes and
 > opens the PR. Go?"
 
+**When there is no PR to carry the report** — the range is already merged, or the base is a custom ref
+that no PR targets — the report would otherwise live only in the chat. Offer to write it to
+`docs/review/<YYYY-MM-DD>.md` on a branch in its own worktree (`shared/entry.md`'s write boundary), and
+do **not** offer Phase 14: there is nothing to open. Observed 2026-09-30: a review of an
+already-merged range was asked *"where have you documented that"*, and the answer was nowhere.
+
 ## Never
 
 - **Never chain into Phase 14.** Opening a PR is a decision; `shared/entry.md` forbids chaining into
@@ -181,7 +234,9 @@ Then ask — **never chain**:
 - **Never let a correctness pass stand in for a security pass** when the diff triggers one.
 - **Never block on a pre-existing problem the branch did not touch.** Say it in a sentence.
 - **Never claim the engine ran when it did not.** Say "by hand" and mean it.
-- **Never review a repo other than the resolved one.**
+- **Never review a repo other than the resolved one** — and when the conversation names another, confirm
+  which one is resolved before reading (Phase 2).
+- **Never cite a line you have not opened** (Phase 3).
 
 ## Known limits
 
@@ -206,5 +261,8 @@ description, so invoking the review directly skipped all of it and looked comple
 **The engine stayed.** Replacing a working fan-out with a hand-rolled one would have been a
 downgrade wearing a family name. This door owns the protocol and calls the engine.
 
-**Undated, therefore unproven:** this door has never been run. The `--quick` path, the spec-compliance
-table and the re-verification trigger are designed rather than observed.
+**Run 2026-09-12 twice, and 2026-09-30 over another repo's merged range** (`baseline...main`, a
+take-home). The spec table ran against a README's required behaviours; the engine's findings needed
+their line numbers remapped; the ADRs in the diff went unread, and a design discussion afterwards found
+the ownership problem the review had split into four separate findings. Phases 4b's ownership lens and
+4c came from that run. The `--quick` path and the re-verification trigger are still designed, not observed.

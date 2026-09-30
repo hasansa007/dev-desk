@@ -70,3 +70,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0054](0054-the-install-root-is-one-hidden-symlink-not-a-skills-directory.md) | The install root is one hidden symlink, not a skills directory | Accepted |
 | [0055](0055-the-shared-board-rules-are-a-registry-both-readers-are-pinned-to.md) | The shared board rules are a registry both readers are pinned to | Accepted |
 | [0056](0056-sessions-new-session-is-a-plus-after-the-last-tab.md) | Sessions' New session is a "+" after the last tab | Accepted |
+| [0057](0057-consistent-is-not-correct-findings-can-recommend-a-new-owner.md) | Consistent is not correct: findings can recommend a new owner when defects trace to the old one | Accepted |

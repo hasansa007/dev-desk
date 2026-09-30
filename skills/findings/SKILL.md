@@ -105,6 +105,21 @@ failed dedupe files every finding as new.
 When a match is uncertain, file nothing and report **possible duplicate of #N**: a wrong merge hides
 a real bug, a wrong split costs one close.
 
+**Decision records are evidence, not background.** Read the repo's ADRs, design docs, RFCs or
+`DECISIONS.md` — whatever it keeps — and report, as findings like any other:
+
+- **a promise never kept** — "revisit", "later", "deferred", a TODO in the text — checked against the code
+- **a rejection whose reason depended on a design that has since changed** — the verdict may still
+  stand, but the reason no longer does, and nobody re-checked it
+- **a record or a test that pins known-wrong behaviour** instead of deciding it — writing a bug down
+  makes the eventual fix look like a regression
+- **no recorded decision about who owns state.** A set of records that each fix one defect, with none
+  deciding ownership, is how ownership drifts one fix at a time — itself a finding for Phase 6
+
+Observed 2026-09-30: a take-home's ten ADRs each fixed one defect; none decided ownership, one
+promised a revisit that never happened (it became a review finding), and one documented wrong route
+equality with a test pinning it.
+
 ## Phase 3 — Discover the flows from evidence
 
 A **flow** is a user-reachable path through the app: an entry point plus the code it exercises.
@@ -197,7 +212,43 @@ project's framework already ships it: a custom search bar, pull-to-refresh, empt
 wrapper beside the first-party one; a hand-written fetch cache beside the data library already in the
 dependencies; a bespoke date or currency formatter beside the platform's. It also looks for **redundant
 state**: a value stored raw and re-derived on every render, or assigned twice. Each is a finding with a
-mechanism: what the first-party version gives that the hand-rolled one does not.
+mechanism: what the first-party version gives that the hand-rolled one does not. The families people
+miss: **navigation rows** rebuilt as a tap handler plus a drawn chevron (`NavigationLink`, a router
+`Link`, an `<a>`); **two-state controls** built as a button that flips a flag (`Toggle`, a checkbox,
+`role="switch"`, which carry their state to accessibility); **a control nested in a control** (a button
+inside a tappable row, `<button>` inside `<a>`); **the same async boilerplate at every call site** of a
+shared component; **a shared component living in one screen's file**.
+
+**Each finder builds a state-ownership inventory for every UI unit in its flow** — screen, component,
+view — one line per piece of state it holds, naming its owner. The inventory is not a finding; these are:
+
+- **a copy that goes stale** — a value passed in when its source keeps changing
+- **data it could look up** from its owner instead of holding
+- **one selection kept in two places** — a router and a store, the URL and component state
+- **a view that loads instead of reading** — `@State` + `.task`, `useState` + `useEffect` fetching,
+  `LaunchedEffect` writing local state, a fetch in `viewDidLoad`
+- **a data-source decision made in the view** — a `??`, ternary or switch choosing what to show,
+  which the model should have decided and handed over as one value
+- **a display-only component that knows where its data comes from**
+- **one component's state in a shared store** — a global store, slice or app-wide model holding data
+  only one instance reads
+- **a model holding a dependency it only uses to answer events**, where passing data in and sending
+  actions out to the parent would do
+
+**Each finder runs three narrower lenses:**
+
+- **Claims.** Every checkable word in a comment, docstring or decision record — "never", "always",
+  "off the main thread", "thread-safe", "O(1)", "idempotent" — is checked against **every** path,
+  fallbacks and error paths included. A comment is a claim, and a false one is worse than none.
+- **Identity keys.** A list key, an effect's or task's dependency key, a cache key: each must change
+  when the thing it stands for changes. A key that says *whether* something exists, not *which*, never
+  reloads when it is replaced.
+- **Shown vs matched.** Does the UI show why a result matched the query? Does a fallback value repeat
+  another field on the same screen?
+
+Observed 2026-09-30: a per-flow audit of a two-screen app blessed its one consistent pattern while
+image state lived in views, favourites in the list store, and the detail screen held a stale copy of
+its contact — four review findings, one ownership cause. None of it was visible as a consistency split.
 
 **A finding without a mechanism is a guess.** *"Open a course with 40+ lessons, scroll to lesson 30,
 press back"* is a finding; *"navigation seems fragile"* is a feeling. This is `dev:create-bug`'s
@@ -261,6 +312,12 @@ plausible they sounded, and a fourth round still found more.
 real bug, and a bare count leaves that unauditable and makes the next run re-derive it from scratch.
 The report carries the symptom and the refutation so a human can overturn it.
 
+**A test counts as a guard only if a named change to the code makes it fail.** When a finding rests on
+"a test covers this", or a flow's tests are its evidence, the checker names the mutation — *delete the
+line that clears the error* — and says whether the test would catch it. One that would not is a finding
+of `type: Tests`: a regression guard that cannot fail is decoration. Observed 2026-09-30: a test named
+for clearing an error on success built a second, fresh store and asserted on that one.
+
 A run that refutes **nothing** is a run whose checkers were agreeing rather than checking — the same
 tell as `dev:comment-budget`'s "a run that keeps nothing". A run that refutes **almost everything** is the
 opposite failure, and the list is what makes it visible.
@@ -272,15 +329,27 @@ a pile of bug issues**.
 
 1. **Name what is actually there, with counts.** *"11 screens: 7 MVVM, 3 MVC, 1 TCA"* — measured by
    reading them, and say how you counted.
-2. **Recommend the pattern the codebase already mostly is.** Unification means moving the minority
-   to the majority. Recommending TCA to a codebase that is 70% MVVM is a **rewrite wearing the word
-   unify**, and it will not happen.
+2. **Recommend the pattern the codebase already mostly is — unless confirmed defects trace to it.**
+   Unification means moving the minority to the majority, and recommending TCA to a codebase that is
+   70% MVVM for no defect is a **rewrite wearing the word unify**. But **consistent is not correct**: a
+   pattern applied everywhere can put state in the wrong owner everywhere. When CONFIRMED findings
+   trace back to the majority pattern itself — the ownership inventory (Phase 4) shows the same misplaced
+   owner behind several of them — the recommendation is the ownership that removes them, as individual
+   moves, **each naming the confirmed findings it removes**. A move no confirmed finding traces to is
+   not recommended.
 3. **List the drift as individual moves**, each one a slice someone could take.
 4. **Count implementation patterns too, not only screen architectures.** Under `--arch`, where no
    finder ran, build 4b's inventory here by reading each flow's recurring jobs. A split in how images
    are decoded is drift just as much as a split between MVVM and MVC.
 5. **Never recommend a rewrite**, and never recommend a pattern absent from the codebase unless the
-   developer asks for one. If the honest answer is *"it is already consistent"*, that is the finding.
+   developer asks for one **or confirmed findings trace to the one that is there** (rule 2). *"It is
+   already consistent"* is a finding only after the ownership inventory is clean too — a consistent
+   codebase whose defects share one misplaced owner is not a clean one.
+
+Observed 2026-09-30: this rule, as first written, produced an ADR that rejected view models because
+the app "is already consistent on one pattern" — quoting "a rewrite wearing the word unify". The
+developer's eventual design was a view model per entity, and it removed four review findings the
+consistent pattern had caused.
 
 State the cost of doing nothing, or the recommendation is a preference.
 
@@ -466,6 +535,17 @@ For each, in order:
 **That line is the audit.** It is how the developer sees whether a decision was presented as
 mechanical when it was not — so it is printed even when it is empty, and *especially* then.
 
+**When the developer's answer replaces yours, the entry says so:** `decided by developer — replaces:
+<what you proposed>`. The report records whose design it is; a reader should never have to reconstruct
+from a transcript that the chosen approach was the developer's and the proposal was the one corrected.
+
+**A principle the developer states becomes a constraint for the rest of the run.** *"Views hold no
+state"*, *"data in, actions out"*, *"the cache is the only owner of images"* — list each one, verbatim,
+under a `constraints:` line at the top of the walkthrough, and **check every later proposal against the
+list before showing it**. A proposal that breaks one is not shown; fix it first. Observed 2026-09-30:
+after the developer ruled out view-held state and view-started loads, proposals put them back four
+times, each one corrected by hand.
+
 **`just do it` skips the current finding. `just do it all` skips the rest of the phase.** No
 re-asking, no friction, no second attempt at persuasion — and the bulk form matters here more than
 anywhere: this is the family's widest fan-out, so a 20-finding run without it costs 20 separate
@@ -543,7 +623,8 @@ Ask before filing anything (under `alert`). Then, for the confirmed set:
   visible; anchoring is not undone by asking politely afterwards.
 - **Never invent a flow, a finding, or a count.** An honest *"this flow is clean"* is a result;
   `shared/entry.md`'s *a result is not a claim* applies to every number in the report.
-- **Never recommend an architecture the codebase does not already mostly use.**
+- **Never recommend an architecture the codebase does not already mostly use** — unless confirmed
+  findings trace to the one it does use, and then only as moves each tied to those findings (Phase 6).
 - **Never read a repo other than the resolved one.**
 
 ## Next — ask, never stop flat
