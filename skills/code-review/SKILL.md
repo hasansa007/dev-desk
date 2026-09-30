@@ -46,7 +46,7 @@ afterwards. The engine owns the fan-out.
 | (nothing) | the current branch against its resolved base | this |
 | A branch name | that branch | current |
 | `--security` | force the security pass regardless of tier | on trigger only |
-| `--quick` | correctness only — skip spec-compliance and security | all passes |
+| `--quick` | correctness only — skip spec-compliance, consistency and security | all passes |
 
 ## Phase 2 — Resolve the repo and the diff
 
@@ -85,6 +85,31 @@ do it, because it reviews the diff and has never read the ticket.
 | `<from the issue>` | `file:line`, or **NOT FOUND** | met · partial · missing |
 
 **A criterion you cannot point at a line for is not met**, however plausible the code looks.
+
+## Phase 4b — Consistency and idiom pass
+
+**Skipped under `--quick`.** The engine reviews the diff line by line, and neither sweep below is
+visible at that range. This pass reads outside the diff to judge the diff.
+
+**Consistency, in both directions.** List the recurring jobs the diff does: decoding images,
+injecting a model, loading, empty and error states, search, formatting. For each one:
+
+- **The diff introduces a pattern:** is it applied at every site it applies to, inside the diff and in
+  the code the diff's pattern was meant to cover? A pattern carried into three screens and missed in the
+  fourth is the exact defect this pass exists for. An ADR or commit message naming why the pattern
+  exists ranks the missed site as important, since it still has the problem the pattern fixed.
+- **The repo already has a pattern:** does the diff follow it, or add a second way of doing the same
+  job? Anchor the finding at the diff's line and cite the existing site.
+
+**Idiom.** Anything the diff hand-rolls that the platform or a dependency already ships: a custom
+search bar, pull-to-refresh, empty state or observation wrapper beside the first-party one; a fetch
+cache beside the data library already in use; a bespoke formatter. Also **redundant state**: a value
+stored raw and re-derived on every render, or assigned twice. Each finding names what the first-party
+version gives that the hand-rolled one does not.
+
+These findings take the same verdicts as the others (Phase 6). A missed site outside the diff is
+blocking only when the diff introduced the pattern; a split that predates the branch is a sentence,
+and `dev:findings` is where it gets filed.
 
 ## Phase 5 — Security pass (conditional)
 
@@ -129,6 +154,7 @@ Re-running a whole checklist for a renamed variable is the ceremony that gets ga
 engine        <the code-review skill | by hand, and why>
 correctness   <n> confirmed · <n> plausible · <n> refuted
 spec          <n>/<n> criteria met      <or: no ticket — say so>
+consistency   <n> split patterns · <n> hand-rolled idioms · <n> redundant state   <or: skipped (--quick)>
 security      <run | not triggered — and what would have triggered it>
 
 CONFIRMED (n)   ← fixed before proceeding
@@ -161,7 +187,7 @@ Then ask — **never chain**:
 
 | | |
 |---|---|
-| Scope is the diff | A design flaw spread across untouched files is out of scope here — that is `dev:findings` |
+| Scope is the diff | A design flaw spread across untouched files is out of scope here — that is `dev:findings`. Phase 4b reads outside the diff, but only to judge the diff |
 | Spec compliance needs a ticket | With none, say so; do not invent criteria to check against |
 | The engine is optional | Without it this is a self-review, which is weaker. The report says which ran |
 | It reads; it does not run the app | Runtime behaviour is `dev:verify`'s evidence, and this gate assumes those rows already passed |
