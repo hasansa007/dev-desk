@@ -24,7 +24,7 @@ The pipeline takes a task through investigation, planning, implementation, verif
 | 10 | Quality checks | Run the project's pre-PR checks. |
 | 11 | Verification | Collect evidence per checklist item and clean up resources started for verification. |
 | 12 | Documentation | Check documentation and architecture decisions against the change. |
-| 13 | Code review | Verified findings, spec compliance, and a security pass when the **diff** touches money, auth, migrations, uploads or untrusted input — the trigger is the diff, not the tier. |
+| 13 | Code review | Verified findings, spec compliance, consistency and idiom checks, and a security pass when the **diff** touches money, auth, migrations, uploads or untrusted input — the trigger is the diff, not the tier. |
 | 14 | PR and merge | Prepare the PR, satisfy review gates, and obtain merge approval. |
 | 15 | Review cycle | Address feedback and return to Phase 14. |
 | 16 | Production | Check secrets and migrations before an approved promotion. |

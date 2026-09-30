@@ -1,6 +1,6 @@
 ## Phase 13 — Code Review Gate (AI, verified findings)
 
-`dev:code-review` owns this gate: it runs the `code-review` skill against `git diff <BASE_BRANCH>...HEAD` as its engine — a verified fan-out beats a single self-review pass — then adds the **spec-compliance check** (each acceptance criterion mapped to real code in the diff, never to an implementer's claim) and the conditional security pass. Invoke the door, not the engine, or the protocol around it is skipped.
+`dev:code-review` owns this gate: it runs the `code-review` skill against `git diff <BASE_BRANCH>...HEAD` as its engine — a verified fan-out beats a single self-review pass — then adds the **spec-compliance check** (each acceptance criterion mapped to real code in the diff, never to an implementer's claim), a consistency and idiom pass, and the conditional security pass. Invoke the door, not the engine, or the protocol around it is skipped.
 
 **Deep tier — add a security pass.** When the diff touches money, auth or entitlements, migrations,
 file upload/storage, or anything that accepts untrusted input, also run `security-review` against

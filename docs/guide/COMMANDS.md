@@ -54,7 +54,7 @@ replace runtime verification.
 | --- | --- | --- |
 | `/dev:verify` | An existing branch | Verification evidence, followed by documentation checks |
 | `/dev:docs` | A diff | Documentation and decision checks; PR `## DOCS` content |
-| `/dev:code-review` | A branch | Verified review findings, spec-compliance and security passes; Phase 13's gate |
+| `/dev:code-review` | A branch | Verified review findings, spec-compliance, consistency and security passes; Phase 13's gate |
 | `/dev:pre-prod` | A branch ready for delivery | PR preparation, review gates, and an approved merge |
 | `/dev:review` | A PR with feedback | Addressed feedback and a return to the merge stage |
 | `/dev:prod` | Verified pre-production work | Production checks and an approved promotion |
