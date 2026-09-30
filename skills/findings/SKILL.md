@@ -192,25 +192,12 @@ does each recurring job — decodes images, injects its model, loads, shows empt
 refreshes, formats dates — one line each with file:line. It is not a finding. It is the raw material for
 4b, the only place a pattern applied in one flow and missed in another can be seen.
 
-**Each finder runs an idiom lens over its flow:** hand-rolled UI or plumbing where the platform ships a
-first-party API (SwiftUI: a `TextField` filter bar vs `.searchable`, a manual pull-to-refresh vs
-`.refreshable`, a custom empty view vs `ContentUnavailableView`, `ObservableObject` vs `@Observable`;
-the web and Android equivalents), and **redundant state**: a value stored raw and re-derived in the view
-(`Data` held in the model and decoded in a `.task`) or assigned twice. Each is a finding with a
+**Each finder runs an idiom lens over its flow:** hand-rolled UI or plumbing where the platform or the
+project's framework already ships it: a custom search bar, pull-to-refresh, empty state or observation
+wrapper beside the first-party one; a hand-written fetch cache beside the data library already in the
+dependencies; a bespoke date or currency formatter beside the platform's. It also looks for **redundant
+state**: a value stored raw and re-derived on every render, or assigned twice. Each is a finding with a
 mechanism: what the first-party version gives that the hand-rolled one does not.
-
-### 4b — The cross-flow consistency sweep
-
-**Runs in the main context after every finder returns, before Phase 5.** Lay the inventories side by
-side, job by job. **A job done two ways across flows is a finding**, anchored at the minority site and
-citing the majority one: *"images are decoded to `UIImage` in the model at `AvatarLoader.swift:40`; the
-detail view keeps `Data` and decodes in a `.task` at `DetailView.swift:88`."* A pattern introduced for a
-reason (an ADR, a commit message) and not carried everywhere it applies ranks above a stylistic split.
-The ADR says why the pattern exists, so the site it missed has the same problem the pattern fixed.
-
-Observed 2026-09-29: a take-home reviewed by AI generation and AI review shipped exactly this split. The
-decode was applied to list avatars but not the detail view, and the interviewer rated it critical. No
-per-flow reader could see it, because the list and the detail were different flows.
 
 **A finding without a mechanism is a guess.** *"Open a course with 40+ lessons, scroll to lesson 30,
 press back"* is a finding; *"navigation seems fragile"* is a feeling. This is `dev:create-bug`'s
@@ -226,6 +213,19 @@ missed a search that could not find `054…` for `+972 54…`; per-flow finders 
 found it, a yearless birthday rendering as year 1, and a denial screen showing "Something Went Wrong".
 **Every CONFIRMED verdict is `read in code`**, never `reproduced at runtime`, unless a checker ran it —
 the report says which, per `shared/entry.md` → *A written claim carries its evidence*.
+
+### 4b — The cross-flow consistency sweep
+
+**Runs in the main context after every finder returns, before Phase 5.** Lay the inventories side by
+side, job by job. **A job done two ways across flows is a finding**, anchored at the minority site and
+citing the majority one: *"the list decodes images once into the model; the detail screen keeps raw
+bytes and decodes them on every appearance."* A pattern introduced for a reason (an ADR, a commit
+message) and not carried everywhere it applies ranks above a stylistic split. The ADR says why the
+pattern exists, so the site it missed has the same problem the pattern fixed.
+
+Observed 2026-09-29: a pattern applied to one flow and missed in its neighbour survived AI generation and
+AI review, and a human reviewer rated it critical. No per-flow reader could see it, because the two sites
+were in different flows.
 
 ## Phase 5 — Verify adversarially, before anything is filed
 
