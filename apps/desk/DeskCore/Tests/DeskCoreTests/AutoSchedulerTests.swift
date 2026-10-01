@@ -32,10 +32,16 @@ final class AutoSchedulerTests: XCTestCase {
         XCTAssertEqual(pick(board, running: ["10"], started: ["11"], across: 1, limit: 6), ["12", "13"])
     }
 
-    func testATaskWithNoBranchAndNoBaseRefIsNeverStarted() {
-        // Its agent would open at the project root (rule 4), which Auto never does.
+    /// Auto starts through the board's own Start, which resolves the folder itself — so no base ref is no reason to skip.
+    func testATaskWithNoBranchAndNoBaseRefIsStarted() {
         let board = [task("20", baseRef: nil), task("21", branch: "gh-21-x", baseRef: nil), task("22")]
-        XCTAssertEqual(pick(board), ["21", "22"], "a task with a branch needs no base ref")
+        XCTAssertEqual(pick(board), ["20", "21", "22"])
+    }
+
+    /// A local card has no number, and Auto used to skip every one — a project with no tracker had nothing Auto could start.
+    func testALocalCardIsStartedWithoutANumber() {
+        let board = [task("local:2026-10-01-a", baseRef: nil), task("pr:60"), task("local:2026-10-01-b", .backlog), task("7")]
+        XCTAssertEqual(pick(board), ["local:2026-10-01-a", "7"])
     }
 
     func testItStartsOnlyWhatTheLimitLeavesAcrossTheApp() {

@@ -75,4 +75,5 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0059](0059-a-local-card-carries-its-labels-to-the-board-and-to-github.md) | A local card carries its labels, to the board and to GitHub | Accepted |
 | [0060](0060-a-local-card-waits-for-what-it-needs.md) | A local card waits for what it needs, and Next up puts it after them | Accepted |
 | [0061](0061-a-live-dev-run-is-in-progress-until-its-first-checkpoint.md) | A live `/dev` run is In progress until its first checkpoint, and Start names the checkpoint command | Accepted |
+| [0062](0062-auto-presses-start-and-starts-local-cards.md) | Auto presses the card's own Start, and starts local cards | Accepted |
 | [0063](0063-quit-is-the-only-way-out-and-it-keeps-what-was-running.md) | Quit is the only way out, it asks, and it keeps what was running to resume | Accepted |

@@ -738,31 +738,15 @@ struct ProjectOverridesPane: View {
     }
 }
 
-/// This project's Auto. Turning it on asks first, since it spends tokens unattended; Cancel leaves it off.
+/// This project's Auto, the same switch the board's header carries.
 private struct AutoModeSetting: View {
-    @AppStorage private var autoMode: Bool
+    let ref: ProjectRef
+    let unavailable: String?
     @AppStorage(PreferenceKey.agentLimit) private var agentLimit = AgentLimit.defaultValue
-    @State private var confirming = false
-    private let unavailable: String?
-
-    init(ref: ProjectRef, unavailable: String?) {
-        _autoMode = AppStorage(wrappedValue: false, PreferenceKey.autoMode(ref))
-        self.unavailable = unavailable
-    }
 
     var body: some View {
-        let notice = AutoAgents.notice(limit: min(max(agentLimit, AgentLimit.range.lowerBound), AgentLimit.range.upperBound))
-        SettingRow("Auto", why: notice, unavailable: unavailable) {
-            Toggle("", isOn: Binding(get: { autoMode }, set: { isOn in
-                if isOn { confirming = true } else { autoMode = false }
-            }))
-            .toggleStyle(.switch)
-            .labelsHidden()
-            .accessibilityLabel("Auto")
-        }
-        .alert(Text(verbatim: notice), isPresented: $confirming) {
-            Button("Turn on Auto") { autoMode = true }
-            Button("Cancel", role: .cancel) {}
+        SettingRow("Auto", why: AutoSwitch.notice(limit: agentLimit), unavailable: unavailable) {
+            AutoSwitch(ref: ref)
         }
     }
 }

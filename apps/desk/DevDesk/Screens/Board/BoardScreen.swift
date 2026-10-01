@@ -127,9 +127,20 @@ struct BoardScreen: View {
         ScreenHeader(.board) {
             Text(scopeStatus)
         } tools: {
+            autoSwitch
             searchField
             newTaskButton
         }
+    }
+
+    /// The project's Auto, here as well as in Settings › Project overrides: the board is where you see Next up
+    /// fill and drain, so it is where you decide whether agents should start on it unattended.
+    private var autoSwitch: some View {
+        let noFolder = model.projectRoot == nil
+        return AutoSwitch(ref: model.ref, showsLabel: true)
+            .disabled(noFolder)
+            .help(noFolder ? "A sample project has no folder on disk, so Auto has nowhere to start an agent"
+                           : "Auto starts an agent for each task in Next up, up to the limit in Settings › Execution")
     }
 
     /// The milestone, then — while any filter is on — what is on and how much it leaves: "P0, Bug · 1 of 11 shown".
