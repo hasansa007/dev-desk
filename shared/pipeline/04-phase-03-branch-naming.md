@@ -5,10 +5,9 @@
 | GitHub | `gh-{N}-{slug}`: e.g. `gh-42-add-dark-mode` |
 | Generic | `feature/{slug}`: e.g. `feature/dark-mode-toggle` (max 5 words, lowercase, hyphens) |
 
-**A `docs/backlog/` entry records the branch cut for it** (ADR 0045): write `branch: <name>` into the
-entry's header at the cut, beside `issue:`. It is a local card's only link to git. Promoting the entry
-later adds `issue: #N` and leaves the branch's name alone — renaming a branch with work on it breaks every
-worktree and remote that tracks it.
+**A `docs/backlog/` entry records the branch cut for it** (ADR 0045) as `branch: <name>` beside `issue:`,
+its only link to git; `dev state checkpoint --local <id>` writes it, and fails on another branch's name.
+Promotion adds `issue: #N` and keeps the name: renaming a branch with work on it breaks what tracks it.
 
 ### When to cut it — at the FIRST WRITE, which differs by flow
 
@@ -24,9 +23,10 @@ Naming is free; **creating** is what carries commitment. So:
 yes — to both of you. For a bug the objection does not apply: you reproduced it, so *whether* was
 never the question, only the approach.
 
-If the branch already exists (a resumed task, or the developer cut it), say so and move on — this
-is about not pre-committing, not rejecting work in progress. **But check its base:** a branch cut
-from another in-flight branch carries its commits into your PR. Mechanics and scar in `entry.md`.
+If the branch already exists (a resumed task, or the developer cut it), say so, then **check the link**:
+an existing branch proves nothing about its entry's `branch:` line. Missing → write it now — on a resume,
+a mid-pipeline entry or a subagent's run alike. **And check its base:** a branch cut from another
+in-flight branch carries its commits into your PR. Mechanics and scar in `entry.md`.
 
 ---
 

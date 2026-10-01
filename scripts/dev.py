@@ -35,6 +35,14 @@ def repo_root(cwd: Optional[str] = None) -> Optional[str]:
     return out if code == 0 and out else None
 
 
+def main_root(cwd: Optional[str] = None) -> Optional[str]:
+    """The project folder, even from a linked worktree: the parent of the shared git dir."""
+    code, out = run(["git", "rev-parse", "--git-common-dir"], cwd)
+    if code != 0 or not out:
+        return None
+    return os.path.dirname(os.path.abspath(os.path.join(cwd or os.getcwd(), out)))
+
+
 def current_branch(cwd: Optional[str] = None) -> Optional[str]:
     code, out = run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd)
     return out if code == 0 and out else None
@@ -108,6 +116,45 @@ def save_state(root: str, branch: str, data: Dict) -> str:
     return path
 
 
+BACKLOG_DIR = os.path.join("docs", "backlog")
+
+
+def link_backlog_branch(main: str, entry: str, branch: Optional[str]) -> Optional[str]:
+    """Write `branch:` into a docs/backlog/ entry's header, or say why it cannot be; None means linked.
+
+    The link was a Phase 3 rule in prose, and a resumed run read "the branch exists" as "the link is
+    written" — they are different files. So the checkpoint writes it, or fails on a different branch.
+    """
+    if os.path.basename(entry) != entry or entry in ("", ".", ".."):
+        return "--local %r is not a backlog entry id" % entry
+    path = os.path.join(main, BACKLOG_DIR, entry + ".md")
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            lines = fh.read().split("\n")
+    except OSError:
+        return "no backlog entry %s" % os.path.relpath(path, main)
+    if branch is None:
+        return None  # detached: nothing is cut yet, so there is nothing to link
+    end = next((i for i in range(1, len(lines)) if lines[i].strip() == "---"), None)
+    if not lines or lines[0].strip() != "---" or end is None:
+        return "%s has no header to record branch: in" % os.path.relpath(path, main)
+    at = next((i for i in range(1, end) if lines[i].strip().startswith("branch:")), None)
+    if at is not None:
+        named = lines[at].split(":", 1)[1].strip().strip("`")
+        if named == branch:
+            return None
+        if named:
+            return "%s names branch %r, but this checkpoint is on %r" % (
+                os.path.relpath(path, main), named, branch)
+        lines[at] = "branch: " + branch
+    else:
+        issue = next((i for i in range(1, end) if lines[i].strip().startswith("issue:")), None)
+        lines.insert(issue + 1 if issue is not None else end, "branch: " + branch)
+    with open(path, "w", encoding="utf-8") as fh:
+        fh.write("\n".join(lines))
+    return None
+
+
 def phase_group(phase: int) -> str:
     """Coarse axis shown on a board card: phases 1-8 plan, 9-10 code, 11-13 validate."""
     if phase <= 8:
@@ -151,7 +198,20 @@ def cmd_checkpoint(args) -> int:
     else:
         key = branch
 
-    data = load_state(root, key) or {
+    if args.local:
+        # A backlog entry lives in the project folder, not the task's worktree — so does its progress, and the
+        # entry's branch: line is checked here rather than trusted to Phase 3's prose.
+        main = main_root() or root
+        problem = link_backlog_branch(main, args.local, None if detached else branch)
+        if problem:
+            print(problem, file=sys.stderr)
+            return 1
+        found = load_state(main, key) or load_state(root, key)  # progress an older run left in the worktree
+        root = main
+    else:
+        found = load_state(root, key)
+
+    data = found or {
         "repo": remote_slug(),
         "branch": None if detached else branch,
         "base": resolve_base(),

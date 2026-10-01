@@ -77,6 +77,9 @@ commit, branch, push, PR or merge:
    worktree read as "the project", and whatever else is open in it (a person, another agent) is working
    on the branch it was left on. `git switch`, `git checkout <branch>` and `gh pr checkout` in a project
    folder are blocked by a hook where one is installed; in a linked worktree they are fine.
+5. **The backlog entry is part of the task, not "the project folder".** A worktree agent told to stay out
+   of the project folder still owns its own entry's `branch:` line. When delegating, say so explicitly —
+   an agent fenced out of the project folder cannot record its link.
 
 A branch cut from another unmerged branch inherits that branch's commits, and they become part of
 your diff, your PR and your review. Nothing warns you: the name is right, the tests pass, and

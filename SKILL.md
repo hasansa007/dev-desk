@@ -114,7 +114,7 @@ Then match the FIRST situation that applies:
 
 | Situation | Detected by | Offer |
 |---|---|---|
-| **1 · Work in flight** | `.dev/<branch>.json` exists, or a branch carries commits not in the base | **Resume it.** Name the branch, the phase it reached, and what comes next. `/dev --continue`, or the door for that phase |
+| **1 · Work in flight** | `.dev/<branch>.json` exists, or a branch carries commits not in the base | **Resume it.** Name the branch, the phase it reached, and what comes next. `/dev --continue`, or the door for that phase. For a `docs/backlog/` task, check the entry's `branch:` against the branch found first — missing or mismatched is a finding named in the offer, written once the resume is accepted |
 | **2 · The board has work** | tracker reachable and has open issues | `dev:board` — the board, then pick one |
 | **3 · Code, but an empty tracker** | commits exist, tracker reachable and empty | `dev:findings` (what is wrong) · `dev:ideation` (what is worth doing) · `dev:roadmap` (group it into milestones) |
 | **4 · A fresh or empty project** | no commits, or no remote, or `gh` not authenticated | Say exactly what is missing and how to fix it, then offer `/dev <description>` to build the first thing |

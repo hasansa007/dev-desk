@@ -46,6 +46,17 @@ class TempRepo:
         shutil.rmtree(self.dir, ignore_errors=True)
 
 
+def entry(root, name, branch=None):
+    """A docs/backlog/ entry with the header Dev Desk writes, left uncommitted as the app leaves it."""
+    folder = os.path.join(root, "docs", "backlog")
+    os.makedirs(folder, exist_ok=True)
+    path = os.path.join(folder, name + ".md")
+    extra = "branch: %s\n" % branch if branch else ""
+    with open(path, "w") as fh:
+        fh.write("---\nkey: %s\ntitle: T\nissue: \n%s---\n\n# T\n\nbody\n" % (name, extra))
+    return path
+
+
 class SlugTests(unittest.TestCase):
     def test_slash_in_branch_never_creates_a_subdirectory(self):
         self.assertEqual(slugify("feature/tracker-and-pipeline-state"),
@@ -102,10 +113,46 @@ class CheckpointTests(unittest.TestCase):
 
     def test_local_checkpoint_is_keyed_by_the_backlog_entry(self):
         with TempRepo() as r:
+            entry(r.dir, "2026-09-17-c1-callback")
             self.assertEqual(main(["state", "checkpoint", "--phase", "4", "--local", "2026-09-17-c1-callback"]), 0)
             with open(os.path.join(r.dir, ".dev", "local-2026-09-17-c1-callback.json")) as fh:
                 self.assertEqual(json.load(fh)["local"], "2026-09-17-c1-callback")
             self.assertEqual(main(["state", "checkpoint", "--phase", "4", "--local", "x", "--issue", "1"]), 2)
+
+    def test_local_checkpoint_writes_the_entrys_missing_branch_line(self):
+        with TempRepo() as r:
+            path = entry(r.dir, "c3")
+            self.assertEqual(main(["state", "checkpoint", "--phase", "4", "--local", "c3"]), 0)
+            with open(path) as fh:
+                header = fh.read().split("---")[1]
+            self.assertIn("issue: \nbranch: main\n", header)
+            self.assertEqual(main(["state", "checkpoint", "--phase", "5", "--local", "c3"]), 0)
+            with open(path) as fh:
+                self.assertEqual(fh.read().count("branch:"), 1)
+
+    def test_local_checkpoint_on_another_branch_than_the_entry_names_fails(self):
+        with TempRepo() as r:
+            entry(r.dir, "c3", branch="feature/other")
+            self.assertEqual(main(["state", "checkpoint", "--phase", "4", "--local", "c3"]), 1)
+            self.assertFalse(os.path.exists(os.path.join(r.dir, ".dev", "local-c3.json")))
+
+    def test_local_checkpoint_without_its_entry_fails(self):
+        with TempRepo() as r:
+            self.assertEqual(main(["state", "checkpoint", "--phase", "4", "--local", "nope"]), 1)
+            self.assertEqual(main(["state", "checkpoint", "--phase", "4", "--local", "../f"]), 1)
+
+    def test_local_checkpoint_from_a_worktree_links_and_writes_in_the_project_folder(self):
+        with TempRepo() as r:
+            path = entry(r.dir, "c4")
+            wt = os.path.join(r.dir, "wt")
+            git(["worktree", "add", "-q", "-b", "feature/c4", wt], r.dir)
+            os.chdir(wt)
+            self.assertEqual(main(["state", "checkpoint", "--phase", "9", "--local", "c4"]), 0)
+            with open(path) as fh:
+                self.assertIn("branch: feature/c4", fh.read())
+            self.assertTrue(os.path.exists(os.path.join(r.dir, ".dev", "local-c4.json")))
+            self.assertFalse(os.path.exists(os.path.join(wt, ".dev", "local-c4.json")))
+            self.assertFalse(os.path.exists(os.path.join(wt, "docs", "backlog", "c4.md")))
 
     def test_detached_head_needs_an_issue_and_leaves_branch_empty(self):
         with TempRepo() as r:
