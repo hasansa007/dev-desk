@@ -12,15 +12,15 @@ public enum Destination: String, CaseIterable, Codable, Hashable {
     public var title: String {
         switch self {
         case .terminals: return "Sessions"
-        // Plan and Board are one tab, Work (ADR 0046 decision 13); `roadmap` stays a stored value and opens Work.
-        case .board, .roadmap: return "Work"
+        // Plan and Board are one tab (ADR 0046 decision 13), named Board since 2026-10-01; `roadmap` stays a stored value and opens it.
+        case .board, .roadmap: return "Board"
         case .findings, .ideation, .diagrams: return rawValue.prefix(1).uppercased() + rawValue.dropFirst()
         }
     }
 
-    /// The places the sidebar lists: the daily flow first (Findings → Work → Sessions), then the
+    /// The places the sidebar lists: the daily flow first (Findings → Board → Sessions), then the
     /// occasional tools (Ideation, Diagrams). Ideation second read as a step every task passes through; it is not.
-    /// `roadmap` is not listed: it opens Work.
+    /// `roadmap` is not listed: it opens Board.
     public static let sidebar: [Destination] = [.findings, .board, .terminals, .ideation, .diagrams]
 
     /// The ⌘ letter that opens the place, named for it rather than numbered: ⌘1… switch projects (#96).
@@ -671,7 +671,7 @@ public final class ProjectWindowModel {
     }
 
     public func go(_ destination: Destination) {
-        // The stored `roadmap` place opens Work (ADR 0046 decision 13).
+        // The stored `roadmap` place opens Board (ADR 0046 decision 13).
         let destination: Destination = destination == .roadmap ? .board : destination
         self.destination = destination
         if destination == .board {
@@ -875,7 +875,7 @@ public final class ProjectWindowModel {
         return openWorkIssues.filter { others.matches($0) && matches($0) }.count
     }
 
-    /// "1 of 11 shown" in Work's header while a filter is on.
+    /// "1 of 11 shown" in Board's header while a filter is on.
     public var workFilterTally: (shown: Int, total: Int) {
         let open = openWorkIssues
         return (open.filter { taskFilter.matches($0) }.count, open.count)

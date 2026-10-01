@@ -134,16 +134,16 @@ final class WorkScopeTests: XCTestCase {
         XCTAssertEqual(model.workCounts(in: .readyForDev).total, 2)
     }
 
-    func testTheSidebarListsWorkOnceAndRoadmapOpensWork() {
+    func testTheSidebarListsBoardOnceAndRoadmapOpensBoard() {
         XCTAssertEqual(Destination.sidebar, [.findings, .board, .terminals, .ideation, .diagrams])
-        XCTAssertEqual(Destination.board.title, "Work")
-        XCTAssertEqual(Destination.roadmap.title, "Work")
+        XCTAssertEqual(Destination.board.title, "Board")
+        XCTAssertEqual(Destination.roadmap.title, "Board")
     }
 
     /// #96's keys, each place its own, and none already taken by the Project menu's ⌘T, ⌘R, ⌘., ⌘[ or ⌘].
     func testEachSidebarPlaceHasItsOwnLetterKey() {
         XCTAssertEqual(Destination.sidebar.map(\.key), ["f", "b", "s", "i", "d"])
-        XCTAssertEqual(Destination.roadmap.key, Destination.board.key, "roadmap opens Work")
+        XCTAssertEqual(Destination.roadmap.key, Destination.board.key, "roadmap opens Board")
         XCTAssertTrue(Set(Destination.sidebar.map(\.key)).isDisjoint(with: ["t", "r", ".", "[", "]", "o", "w", ","]))
     }
 }

@@ -50,7 +50,7 @@ struct ScreenGuideButton: View {
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if showsFlow {
-                    Text("Findings → Work → Sessions: decide, order, do.")
+                    Text("Findings → Board → Sessions: decide, order, do.")
                         .font(.system(size: 11, design: .monospaced))
                         .foregroundStyle(DeskColor.faintInk)
                         .padding(.top, 2)

@@ -1,6 +1,6 @@
 # 0046 — One task model in three views: Board, Plan and Findings, one filter bar; Findings keeps its name
 
-Status:  Accepted
+Status:  Accepted — decision 13's tab renamed from Work to Board on 2026-10-01, on request: the header read "Work" over a board
 Date:    2026-09-19
 Commit:  (this commit)
 Amends:  ADR 0035 — Queued stays a stored stage but is no longer a column; ADR 0038 — the survey list is
