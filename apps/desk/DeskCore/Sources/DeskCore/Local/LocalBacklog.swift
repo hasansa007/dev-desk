@@ -33,6 +33,9 @@ public struct BacklogItem: Identifiable, Hashable {
     public var labels: [String]
     /// The N of `order: N of M`, the place a findings run gave it among the slices; nil when it gave none.
     public var order: Int?
+    /// What must be done before this can start (ADR 0060): other entries by key (`2026-10-01-C9`) and issues by
+    /// `#N`, as written. Empty for `needs: none`.
+    public var needs: [String]
     public var body: String
     public var path: String
 
@@ -42,7 +45,7 @@ public struct BacklogItem: Identifiable, Hashable {
 
     public init(id: String, key: String, title: String, area: String? = nil, impact: String? = nil,
                 complexity: String? = nil, source: String? = nil, issue: Int? = nil, status: String? = nil,
-                resolved: String? = nil, labels: [String] = [], order: Int? = nil, body: String, path: String) {
+                resolved: String? = nil, labels: [String] = [], order: Int? = nil, needs: [String] = [], body: String, path: String) {
         self.id = id
         self.key = key
         self.title = title
@@ -55,6 +58,7 @@ public struct BacklogItem: Identifiable, Hashable {
         self.resolved = resolved
         self.labels = labels
         self.order = order
+        self.needs = needs
         self.body = body
         self.path = path
     }
@@ -185,7 +189,13 @@ public enum LocalBacklog {
                            area: fields["area"], impact: fields["impact"], complexity: fields["complexity"],
                            source: fields["source"], issue: fields["issue"].flatMap(issueNumber),
                            status: fields["status"]?.lowercased(), resolved: fields["resolved"],
-                           labels: labels, order: order, body: body, path: path)
+                           labels: labels, order: order, needs: needs(fields["needs"] ?? ""), body: body, path: path)
+    }
+
+    /// `2026-10-01-C9, #12` → both refs; `none` (what a run writes for an entry that can start now) → nothing.
+    static func needs(_ line: String) -> [String] {
+        line.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !["none", "-", "—", "null"].contains($0.lowercased()) }
     }
 
     /// What File on GitHub asks `dev:create-issue` for. The card's labels go as real labels; one the repository
@@ -195,7 +205,11 @@ public enum LocalBacklog {
         let file = "\(folder)/\(item.id).md"
         let labels = item.labels.map(oneLine).filter { !$0.isEmpty }
         let labelling = labels.isEmpty ? "" : " Apply its labels: \(labels.joined(separator: ", ")) — each one this repository has; offer any it lacks, and never create one silently."
-        return "\(oneLine(item.title)). The full description is in \(file); file it as written.\(labelling) Report the issue URL."
+        // `needs: #N` in the issue is what Board enforces for an issue (ADR 0046); a key stays a key until its entry is
+        // filed too (ADR 0060).
+        let needs = item.needs.map(oneLine).filter { !$0.isEmpty }
+        let waiting = needs.isEmpty ? "" : " Keep its line needs: \(needs.joined(separator: ", ")) in the issue's Scope, as written."
+        return "\(oneLine(item.title)). The full description is in \(file); file it as written.\(labelling)\(waiting) Report the issue URL."
     }
 
     /// "#123", "123" or a URL ending in one — whatever the promoting run wrote back.
@@ -210,17 +224,23 @@ public enum LocalBacklog {
         !key.isEmpty && read(projectPath: projectPath).contains { $0.key == key }
     }
 
-    /// The keys of entries that became issues. A finding filed locally and later promoted is still filed, and
-    /// must not come back offering "Add to backlog" because its file moved.
-    public static func filedKeys(projectPath: String) -> Set<String> {
+    /// The entries that became issues, kept in `filed/`. Read so a `needs:` key can still name the issue its entry
+    /// became (ADR 0060).
+    public static func readFiled(projectPath: String) -> [BacklogItem] {
         let root = URL(fileURLWithPath: projectPath, isDirectory: true)
         let directory = root.appendingPathComponent(filedFolder, isDirectory: true)
         let names = (try? FileManager.default.contentsOfDirectory(atPath: directory.path)) ?? []
-        return Set(names.filter { $0.hasSuffix(".md") }.compactMap { name in
+        return names.filter { $0.hasSuffix(".md") }.sorted().compactMap { name in
             let url = directory.appendingPathComponent(name)
             guard case .text(let text) = SafeFile.read(url, maxBytes: maxBytes, within: root) else { return nil }
-            return parse(text, id: String(name.dropLast(3)), path: url.path).key.nonEmpty
-        })
+            return parse(text, id: String(name.dropLast(3)), path: url.path)
+        }
+    }
+
+    /// The keys of entries that became issues. A finding filed locally and later promoted is still filed, and
+    /// must not come back offering "Add to backlog" because its file moved.
+    public static func filedKeys(projectPath: String) -> Set<String> {
+        Set(readFiled(projectPath: projectPath).compactMap(\.key.nonEmpty))
     }
 
     // MARK: - Removing
@@ -261,6 +281,9 @@ public enum LocalBacklog {
     /// Records the issue and moves the entry to `filed/`. After this GitHub owns the item; the file is history.
     public static func markFiled(_ number: Int, atPath path: String, projectPath: String) throws {
         try recordIssue(number, atPath: path, projectPath: projectPath)
+        if let key = read(projectPath: projectPath).first(where: { $0.path == path })?.key.nonEmpty {
+            try renameNeed(key, to: "#\(number)", projectPath: projectPath)
+        }
         let root = URL(fileURLWithPath: projectPath, isDirectory: true)
         let source = URL(fileURLWithPath: path)
         let filed = root.appendingPathComponent(filedFolder, isDirectory: true)
@@ -268,6 +291,24 @@ public enum LocalBacklog {
         let destination = filed.appendingPathComponent(source.lastPathComponent)
         guard !FileManager.default.fileExists(atPath: destination.path) else { return }
         try FileManager.default.moveItem(at: source, to: destination)
+    }
+
+    /// The entries still waiting on `key` now name the issue it became (ADR 0060), so each issue they turn into
+    /// reads `needs: #N` — the line Board enforces for an issue. Only the header's `needs:` line is touched.
+    static func renameNeed(_ key: String, to ref: String, projectPath: String) throws {
+        let root = URL(fileURLWithPath: projectPath, isDirectory: true)
+        for item in read(projectPath: projectPath) where item.needs.contains(key) {
+            let url = URL(fileURLWithPath: item.path)
+            guard case .text(let text) = SafeFile.read(url, maxBytes: maxBytes, within: root) else { continue }
+            var lines = GitOutput.lines(text)
+            guard lines.first?.trimmingCharacters(in: .whitespaces) == "---",
+                  let end = lines.dropFirst().firstIndex(where: { $0.trimmingCharacters(in: .whitespaces) == "---" }),
+                  let index = lines[1..<end].firstIndex(where: { $0.trimmingCharacters(in: .whitespaces).lowercased().hasPrefix("needs:") })
+            else { continue }
+            let renamed = item.needs.map { $0 == key ? ref : $0 }
+            lines[index] = "needs: \(renamed.joined(separator: ", "))"
+            try Data((lines.joined(separator: "\n") + "\n").utf8).write(to: url, options: .atomic)
+        }
     }
 
     /// Records the issue an entry became. Written by the app after `dev:create-issue` reports a number, so the

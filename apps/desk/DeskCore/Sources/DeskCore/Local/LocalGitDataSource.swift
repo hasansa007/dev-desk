@@ -62,6 +62,7 @@ public struct LocalGitDataSource: ProjectDataSource {
         let active: (title: String?, why: String) = github.data.map { ActiveMilestone.resolve($0.milestones, order: order) } ?? (nil, github.unavailableReason ?? "")
         let localBranchNote = facts.truncatedBranchCount.map { "Showing \(GitOutput.maxBranches) of \($0) local branches." }
         let localBacklog = LocalBacklog.read(projectPath: top)
+        let filedBacklog = LocalBacklog.readFiled(projectPath: top)
         // The stages the app itself stored (ADR 0035); a sample has no folder, so it keeps none.
         let stages = BoardStages.read(projectRoot: topURL)
         let checkpoints = Self.taskStates(facts: facts, toplevel: topURL)
@@ -74,7 +75,7 @@ public struct LocalGitDataSource: ProjectDataSource {
                                                              github: github.data, activeMilestone: active.title,
                                                              pipeline: Self.pipelineStates(facts: facts, github: github.data, toplevel: topURL),
                                                              issuePipeline: checkpoints.issues, localPipeline: checkpoints.local,
-                                                             localBacklog: localBacklog, stages: stages.stages,
+                                                             localBacklog: localBacklog, filedBacklog: filedBacklog, stages: stages.stages,
                                                              waits: LocalWaits.read(projectRoot: topURL).waits)))
         }
         var offBase: FolderOffBase?
@@ -94,7 +95,7 @@ public struct LocalGitDataSource: ProjectDataSource {
             insights: InsightsAgent.availability(connections: detected, repositoryRoot: top, noAgentReason: Self.insightsReason),
             projectFacts: Self.facts(base: facts.base, baseShort: facts.baseShort, remote: project.remote, active: active, github: github),
             slug: github.data?.slug, activeMilestone: active.title,
-            localBacklog: localBacklog, filedBacklogKeys: LocalBacklog.filedKeys(projectPath: top), repositoryRoot: top,
+            localBacklog: localBacklog, filedBacklogKeys: Set(filedBacklog.compactMap(\.key.nonEmpty)), repositoryRoot: top,
             terminalAgents: await terminalCLIs)
         snapshot.folderOffBase = offBase
         snapshot.trackerUnavailable = github.data == nil ? (github.shortUnavailableReason ?? "GitHub unavailable") : nil

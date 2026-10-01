@@ -245,7 +245,12 @@ public struct Dependency: Hashable {
     /// Inline markdown with desk:// links, e.g. "Blocked by [#59](desk://task/59) — …".
     public var text: String
     public var taskID: String?
-    public init(text: String, taskID: String?) { self.text = text; self.taskID = taskID }
+    /// How a wait names it when that is not `#taskID` — a local card's key (ADR 0060).
+    public var name: String?
+    public init(text: String, taskID: String?, name: String? = nil) { self.text = text; self.taskID = taskID; self.name = name }
+
+    /// A dependency this card waits on, as opposed to one it blocks.
+    public var isBlocker: Bool { text.hasPrefix("Blocked by") }
 }
 
 public struct TerminalLine: Hashable {

@@ -1,6 +1,6 @@
 # 0027 — Work without a tracker is recorded locally, and promoted on request
 
-Status:  Accepted
+Status:  Accepted — the header gains `priority`, `labels`, `type` ([0059](0059-a-local-card-carries-its-labels-to-the-board-and-to-github.md)) and `needs` ([0060](0060-a-local-card-waits-for-what-it-needs.md))
 Date:    2026-09-13
 Commit:  (this branch)  ·  `main`
 Amends:  `docs/guide/GETTING-STARTED.md` — "Without [gh] there is no tracker, so the board and the filing doors cannot work"

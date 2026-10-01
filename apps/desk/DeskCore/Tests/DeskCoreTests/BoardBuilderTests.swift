@@ -627,6 +627,59 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(order, ["local:c11", "local:c1", "local:c2"])
     }
 
+    /// The CallApp chain of 2026-10-01: C9 needs C3, C5 needs C9 and C11; C4 needs nothing.
+    private func chain() -> BoardInput {
+        func card(_ n: Int, _ priority: String, needs: [String] = [], order: Int? = nil, done: Bool = false) -> BacklogItem {
+            BacklogItem(id: "c\(n)", key: "2026-10-01-C\(n)", title: "C\(n)", status: done ? "done" : nil, labels: [priority],
+                        order: order, needs: needs, body: "", path: "/p/docs/backlog/c\(n).md")
+        }
+        var input = fixture
+        input.localBacklog = [
+            card(5, "P1", needs: ["2026-10-01-C9", "2026-10-01-C11"], order: 1),
+            card(9, "P2", needs: ["2026-10-01-C3", "2026-10-01-C4"]),
+            card(11, "P3", needs: ["2026-10-01-C99"]),
+            card(3, "P3"),
+            card(4, "P3"),
+        ]
+        return input
+    }
+
+    /// ADR 0060: a local card says what it waits for, and links it, the way an issue with `needs: #N` does.
+    func testALocalCardWaitsForTheCardItNeeds() {
+        let built = tasks(chain())
+        XCTAssertEqual(built["local:c5"]?.cardNote, "Waits for 2026-10-01-C9")
+        XCTAssertEqual(built["local:c5"]?.dependencies.map(\.taskID), ["local:c9", "local:c11"])
+        XCTAssertEqual(built["local:c9"]?.dependencies.compactMap(\.taskID), ["local:c3", "local:c4", "local:c5"], "and the card it blocks")
+        XCTAssertNil(built["local:c11"]?.cardNote, "a key in no entry is shown, not waited on")
+        XCTAssertNil(built["local:c11"]?.dependencies.first?.taskID)
+        XCTAssertNil(built["local:c3"]?.cardNote)
+
+        var input = chain()
+        input.localBacklog[1].status = "done"
+        XCTAssertEqual(tasks(input)["local:c5"]?.cardNote, "Waits for 2026-10-01-C11", "C9 is done; C11 is not")
+        input.localBacklog[2].status = "done"
+        XCTAssertNil(tasks(input)["local:c5"]?.cardNote, "a done card is waited for no longer")
+    }
+
+    /// ADR 0060: a needed entry promoted to an issue is waited on as that issue — while it is open.
+    func testANeededEntryThatBecameAnIssueIsWaitedOnAsTheIssue() {
+        var input = chain()
+        input.localBacklog.remove(at: 1)
+        input.filedBacklog = [BacklogItem(id: "c9", key: "2026-10-01-C9", title: "C9", issue: 13, body: "", path: "/p/docs/backlog/filed/c9.md")]
+        XCTAssertEqual(tasks(input)["local:c5"]?.cardNote, "Waits for #13")
+        input.filedBacklog[0].issue = 404
+        XCTAssertEqual(tasks(input)["local:c5"]?.cardNote, "Waits for 2026-10-01-C11", "#404 is closed; C11 is next")
+    }
+
+    /// ADR 0060: dependency order first, then priority, then the run's order. C5 is the P1 and still comes last; what
+    /// it needs is ranked as a P1, so an unrelated P2 does not sit between C5 and the cards that unblock it.
+    func testLocalCardsAreOrderedByWhatTheyNeedThenPriority() {
+        var input = chain()
+        input.localBacklog.append(BacklogItem(id: "c12", key: "2026-10-01-C12", title: "C12", labels: ["P2"], body: "", path: "/p/docs/backlog/c12.md"))
+        let order = BoardOrder.byPriority(BoardBuilder.build(input).filter(\.isLocalBacklog)).map(\.id)
+        XCTAssertEqual(order, ["local:c11", "local:c3", "local:c4", "local:c9", "local:c5", "local:c12"])
+    }
+
     /// Board's Priority and Type filters reach a local card the way they reach an issue.
     func testAFilterMatchesALocalP1Bug() {
         var input = fixture

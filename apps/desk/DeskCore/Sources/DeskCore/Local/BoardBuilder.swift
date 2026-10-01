@@ -16,6 +16,8 @@ struct BoardInput {
     var localPipeline: [String: PipelineState] = [:]
     /// Entries in `docs/backlog/`. They sit in Backlog after the tracker's own, marked as local (ADR 0027).
     var localBacklog: [BacklogItem] = []
+    /// Entries already promoted (`docs/backlog/filed/`), read so a `needs:` key can name the issue it became.
+    var filedBacklog: [BacklogItem] = []
     /// Stored stages from `.devdesk/board.json`, keyed by `DeskTask.id` (ADR 0035). Consulted only
     /// after every git rule has declined, so a stage can never contradict what git says.
     var stages: [String: BoardStage] = [:]
@@ -477,7 +479,45 @@ private struct BoardContext {
             parallel: .none("No branch yet"),
             impact: item.impact, complexity: item.complexity)
         task.labels = item.labels
+        task.dependencies = localDependencies(item)
+        if task.cardNote == nil, !item.isDone, let blocker = task.dependencies.first(where: { $0.isBlocker && !isDone($0) }) {
+            task.cardNote = "Waits for \(blocker.name ?? "#\(blocker.taskID ?? "")")"
+        }
         return task
+    }
+
+    /// What a local card needs (ADR 0060), then what needs it. A key names an open entry, or the issue that entry
+    /// became; one that names neither is shown and not waited on, as `needs: #N` for an issue that is not open is not.
+    private func localDependencies(_ item: BacklogItem) -> [Dependency] {
+        let needs = item.needs.map { ref -> Dependency in
+            if let number = ref.hasPrefix("#") ? Int(ref.dropFirst()) : nil { return issueBlocker(number) }
+            if let needed = input.localBacklog.first(where: { $0.key == ref && $0.id != item.id }) {
+                if let number = needed.issue { return issueBlocker(number) }
+                let id = DeskTask.localPrefix + needed.id
+                return Dependency(text: "Blocked by [\(Markdown.escape(ref))](\(DeskLink.task(id).url.absoluteString))", taskID: id, name: ref)
+            }
+            if let number = input.filedBacklog.first(where: { $0.key == ref })?.issue { return issueBlocker(number) }
+            return Dependency(text: "Blocked by \(Markdown.escape(ref)) — no entry in \(LocalBacklog.folder)/ has this key", taskID: nil, name: ref)
+        }
+        let blocks: [Dependency] = item.key.isEmpty ? [] : input.localBacklog.filter { $0.issue == nil && $0.needs.contains(item.key) }.map { other in
+            let id = DeskTask.localPrefix + other.id
+            let name = other.key.isEmpty ? other.title : other.key
+            return Dependency(text: "Blocks [\(Markdown.escape(name))](\(DeskLink.task(id).url.absoluteString))", taskID: id, name: name)
+        }
+        return needs + blocks
+    }
+
+    private func issueBlocker(_ number: Int) -> Dependency {
+        Dependency(text: "Blocked by [#\(number)](desk://task/\(number))", taskID: String(number))
+    }
+
+    /// The board's own test of a blocker, for the note: an issue no longer open, or a local entry marked done.
+    private func isDone(_ dependency: Dependency) -> Bool {
+        guard let id = dependency.taskID else { return true }
+        if let local = id.hasPrefix(DeskTask.localPrefix) ? String(id.dropFirst(DeskTask.localPrefix.count)) : nil {
+            return input.localBacklog.first { $0.id == local }?.isDone ?? true
+        }
+        return !(input.github?.issues ?? []).contains { String($0.number) == id }
     }
 
     private func reportMergedTask(_ record: ReportMergeRecord) -> DeskTask {

@@ -284,18 +284,10 @@ extension ProjectWindowModel {
     /// Why this task cannot be started, or nil when it can.
     func startBlockedReason(for task: DeskTask, agent: String) -> String? {
         if task.isMerged { return "This work is merged; open the pull request to see it." }
-        if task.isLocalBacklog { return runBlockedReason(agent: agent) }
-        guard task.taskNumber != nil else { return "This card has no issue number, so `/dev` has nothing to open." }
-        if let blocker = openBlocker(of: task) {
-            return "Waits for #\(blocker), which is still open. Finish it first, or remove the needs:/blocked by line from this issue."
-        }
+        guard task.taskNumber != nil || task.isLocalBacklog else { return "This card has no issue number, so `/dev` has nothing to open." }
+        // An issue's `needs: #N` (ADR 0046) and a local card's `needs:` keys (ADR 0060) hold Start the same way.
+        if let reason = startWaitReason(for: task) { return reason }
         return runBlockedReason(agent: agent)
-    }
-
-    /// The first issue this card records it waits on that is still on the board and not done (ADR 0046).
-    func openBlocker(of task: DeskTask) -> Int? {
-        task.dependencies.filter { $0.text.hasPrefix("Blocked by") }.compactMap { $0.taskID.flatMap { Int($0) } }
-            .first { number in tasks.contains { $0.issueNumber == number && $0.column != .done } }
     }
 
     /// Why a folderless sample can start nothing — read by any screen that blocks before it resolves an agent.

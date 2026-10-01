@@ -81,6 +81,36 @@ final class LocalBacklogTests: XCTestCase {
         XCTAssertFalse(unlabelled.contains("labels"), unlabelled)
     }
 
+    /// ADR 0060: `needs:` names other entries by key, or issues by `#N`; `none` is what a run writes for neither.
+    func testNeedsIsReadAsKeysAndIssueRefs() {
+        let item = LocalBacklog.parse("---\nkey: 2026-10-01-C8\ntitle: t\nneeds: 2026-10-01-C3, #12 ,2026-10-01-C9\n---\n", id: "c8", path: "/p/c8.md")
+        XCTAssertEqual(item.needs, ["2026-10-01-C3", "#12", "2026-10-01-C9"])
+        XCTAssertEqual(LocalBacklog.parse("---\nkey: C3\ntitle: t\nneeds: none\n---\n", id: "c3", path: "/p/c3.md").needs, [])
+        XCTAssertEqual(LocalBacklog.parse("---\nkey: C4\ntitle: t\n---\n", id: "c4", path: "/p/c4.md").needs, [])
+    }
+
+    /// ADR 0060: once a needed entry is an issue, the entries still waiting on it name the issue, so the issue they
+    /// become reads `needs: #N` — the line Board already enforces. An entry needing something not filed keeps the key.
+    func testFilingAnEntryRewritesTheNeedsOfThoseWaitingOnIt() throws {
+        let needed = try LocalBacklog.write(projectPath: root.path, key: "2026-10-01-C9", title: "Inject", body: "b")
+        let waiting = try LocalBacklog.write(projectPath: root.path, key: "2026-10-01-C5", title: "Fetch", body: "b")
+        var text = try String(contentsOfFile: waiting, encoding: .utf8)
+        text = text.replacingOccurrences(of: "issue: ", with: "needs: 2026-10-01-C9, 2026-10-01-C11\nissue: ")
+        try Data(text.utf8).write(to: URL(fileURLWithPath: waiting))
+
+        try LocalBacklog.markFiled(41, atPath: needed, projectPath: root.path)
+
+        XCTAssertEqual(LocalBacklog.read(projectPath: root.path).first?.needs, ["#41", "2026-10-01-C11"])
+        XCTAssertTrue(try String(contentsOfFile: waiting, encoding: .utf8).contains("\nneeds: #41, 2026-10-01-C11\n"))
+        XCTAssertEqual(LocalBacklog.readFiled(projectPath: root.path).map(\.issue), [41])
+    }
+
+    /// File on GitHub keeps the needs line, so the issue says what it waits for.
+    func testPromotionCarriesTheNeedsLine() {
+        let item = BacklogItem(id: "c5", key: "C5", title: "Fetch", needs: ["#41", "2026-10-01-C11"], body: "", path: "/p/docs/backlog/c5.md")
+        XCTAssertTrue(LocalBacklog.promotionRequest(for: item).contains("needs: #41, 2026-10-01-C11"))
+    }
+
     /// A second press of the same button must not replace what the first one wrote.
     func testFilingTheSameItemTwiceKeepsTheFirst() throws {
         let first = try LocalBacklog.write(projectPath: root.path, key: "C1", title: "Same", body: "original")

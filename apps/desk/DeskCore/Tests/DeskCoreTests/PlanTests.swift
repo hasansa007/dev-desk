@@ -179,6 +179,33 @@ final class WorkScopeTests: XCTestCase {
         XCTAssertEqual(firstColumn(model), ["1", "local:c1"])
     }
 
+    /// ADR 0060, mirroring ADR 0046 decision 1: Start is refused while a needed local card is not done, with the
+    /// reason, and allowed once that card says `status: done`. An issue's reason is unchanged.
+    func testALocalCardNeedingAnUndoneCardCannotStart() async {
+        func board(c9Done: Bool) -> [DeskTask] {
+            BoardBuilder.build(BoardInput(localBacklog: [
+                BacklogItem(id: "c9", key: "2026-10-01-C9", title: "Inject", status: c9Done ? "done" : nil, body: "", path: "/p/docs/backlog/c9.md"),
+                BacklogItem(id: "c5", key: "2026-10-01-C5", title: "Fetch", needs: ["2026-10-01-C9"], body: "", path: "/p/docs/backlog/c5.md"),
+            ]))
+        }
+        let waiting = ProjectWindowModel(ref: .local(path: "/p"), source: WorkSource(tasks: board(c9Done: false), activeMilestone: nil), insightsDelay: .zero)
+        await waiting.load()
+        let c5 = waiting.tasks.first { $0.id == "local:c5" }!
+        XCTAssertEqual(waiting.startWaitReason(for: c5),
+                       "Waits for 2026-10-01-C9, which is not done. Finish it first (status: done on its card), or remove it from this card's needs: line.")
+        XCTAssertNil(waiting.startWaitReason(for: waiting.tasks.first { $0.id == "local:c9" }!))
+
+        let unblocked = ProjectWindowModel(ref: .local(path: "/p"), source: WorkSource(tasks: board(c9Done: true), activeMilestone: nil), insightsDelay: .zero)
+        await unblocked.load()
+        XCTAssertNil(unblocked.startWaitReason(for: unblocked.tasks.first { $0.id == "local:c5" }!))
+
+        var issue = task(2); issue.dependencies = [Dependency(text: "Blocked by [#1](desk://task/1)", taskID: "1")]
+        let issues = ProjectWindowModel(ref: .local(path: "/p"), source: WorkSource(tasks: [task(1), issue]), insightsDelay: .zero)
+        await issues.load()
+        XCTAssertEqual(issues.startWaitReason(for: issue),
+                       "Waits for #1, which is still open. Finish it first, or remove the needs:/blocked by line from this issue.")
+    }
+
     func testTheSidebarListsBoardOnceAndRoadmapOpensBoard() {
         XCTAssertEqual(Destination.sidebar, [.findings, .board, .terminals, .ideation, .diagrams])
         XCTAssertEqual(Destination.board.title, "Board")

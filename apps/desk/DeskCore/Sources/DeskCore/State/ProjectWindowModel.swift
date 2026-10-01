@@ -931,6 +931,28 @@ public final class ProjectWindowModel {
     /// have nowhere to wait (ADR 0058).
     private var hasNoMilestoneList: Bool { !addTaskDestination.isGitHub }
 
+    /// Why a card cannot start yet because of what it waits on, or nil (ADR 0046 decision 1, for issues; ADR 0060,
+    /// for local cards). A blocker counts while it is on the board and not done.
+    public func startWaitReason(for task: DeskTask) -> String? {
+        guard let blocker = openBlocker(of: task) else { return nil }
+        if let name = blocker.name, blocker.taskID?.hasPrefix(DeskTask.localPrefix) == true {
+            return "Waits for \(name), which is not done. Finish it first (status: done on its card), or remove it from this card's needs: line."
+        }
+        let number = blocker.taskID ?? ""
+        return task.isLocalBacklog
+            ? "Waits for #\(number), which is still open. Finish it first, or remove it from this card's needs: line."
+            : "Waits for #\(number), which is still open. Finish it first, or remove the needs:/blocked by line from this issue."
+    }
+
+    /// The first thing this card records it waits on that is still on the board and not done.
+    public func openBlocker(of task: DeskTask) -> Dependency? {
+        task.dependencies.filter(\.isBlocker).first { dependency in
+            guard let id = dependency.taskID else { return false }
+            if let number = Int(id) { return tasks.contains { $0.issueNumber == number && $0.column != .done } }
+            return tasks.contains { $0.id == id && $0.column != .done }
+        }
+    }
+
     /// A milestone chip turned on or off (ADR 0046 decision 18).
     public func toggleWorkMilestone(_ key: String) {
         var keys = effectiveWorkScope.keys
