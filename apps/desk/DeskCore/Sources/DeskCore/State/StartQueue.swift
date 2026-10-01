@@ -10,9 +10,11 @@ public enum StartQueue {
     }
 
     /// Task ids to release from Queued now, in board order, at most `freeSlots` of them; a card already
-    /// running is skipped — its slot is the one it already holds, not a place in line.
-    public static func tasksToRelease(board: [DeskTask], freeSlots: Int, runningTaskIDs: Set<String>) -> [String] {
-        Array(board.lazy.filter { $0.column == .queued && !runningTaskIDs.contains($0.id) }
+    /// running is skipped — its slot is the one it already holds, not a place in line. A card in `waiting` (its
+    /// blocker still open) is skipped too, so it never holds the head of the line against work that can run now.
+    public static func tasksToRelease(board: [DeskTask], freeSlots: Int, runningTaskIDs: Set<String>,
+                                      waiting: Set<String> = []) -> [String] {
+        Array(board.lazy.filter { $0.column == .queued && !runningTaskIDs.contains($0.id) && !waiting.contains($0.id) }
             .prefix(max(0, freeSlots)).map(\.id))
     }
 

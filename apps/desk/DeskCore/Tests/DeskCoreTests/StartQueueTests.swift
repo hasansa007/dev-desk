@@ -44,6 +44,13 @@ final class StartQueueTests: XCTestCase {
         XCTAssertEqual(StartQueue.tasksToRelease(board: board, freeSlots: -2, runningTaskIDs: []), [], "as after lowering the limit")
     }
 
+    /// A queued card waiting on an open blocker must not hold the head of the line against cards that can run now.
+    func testAWaitingQueuedCardIsSkippedAndTheNextOneTakesTheSlot() {
+        let board = [task("9", .queued), task("2", .queued), task("4", .queued)]
+        XCTAssertEqual(StartQueue.tasksToRelease(board: board, freeSlots: 1, runningTaskIDs: [], waiting: ["9"]), ["2"])
+        XCTAssertEqual(StartQueue.tasksToRelease(board: board, freeSlots: 3, runningTaskIDs: [], waiting: ["2"]), ["9", "4"])
+    }
+
     /// A released run is counted by the app only once its session is live, so a pass must subtract what it
     /// has already let go — otherwise the pass after a release spends the same slots twice.
     func testReleasesInFlightReduceTheSpendableSlots() {

@@ -66,7 +66,8 @@ final class AutoAgents {
         let started = Set(board.map(\.id).filter { Self.alreadyStarted.contains(key($0)) })
         // Active takes in a start still preparing its folder, so a task is never started twice.
         let picked = AutoScheduler.tasksToStart(board: board, runningAgentTaskIDs: Set(model.sessions.activeTaskIDs),
-                                                alreadyStarted: started, runningAgentsAcrossApp: LiveShells.shared.agentCount,
+                                                alreadyStarted: started, waiting: model.waitingTaskIDs,
+                                                runningAgentsAcrossApp: LiveShells.shared.agentCount,
                                                 limit: AgentLimit.current).compactMap(model.task)
         guard !picked.isEmpty else { return }
         let location = UserDefaults.standard.string(forKey: PreferenceKey.worktreeLocation) ?? AgentDefaults.worktreeLocation

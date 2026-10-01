@@ -13,8 +13,10 @@ final class AutoSchedulerTests: XCTestCase {
                  requirements: .unavailable(""), changes: .unavailable(""), evidence: .unavailable(""), parallel: .none(""))
     }
 
-    private func pick(_ board: [DeskTask], running: Set<String> = [], started: Set<String> = [], across: Int = 0, limit: Int = 3) -> [String] {
-        AutoScheduler.tasksToStart(board: board, runningAgentTaskIDs: running, alreadyStarted: started, runningAgentsAcrossApp: across, limit: limit)
+    private func pick(_ board: [DeskTask], running: Set<String> = [], started: Set<String> = [], waiting: Set<String> = [],
+                      across: Int = 0, limit: Int = 3) -> [String] {
+        AutoScheduler.tasksToStart(board: board, runningAgentTaskIDs: running, alreadyStarted: started, waiting: waiting,
+                                   runningAgentsAcrossApp: across, limit: limit)
     }
 
     /// Ready for dev is where planned work sits now (ADR 0035); Queued is the wait for a free slot, and
@@ -46,11 +48,19 @@ final class AutoSchedulerTests: XCTestCase {
         XCTAssertEqual(pick(Array(board.prefix(2)), limit: 3), ["1", "2"])
     }
 
-    func testTheLimitIsClampedToOneThroughSix() {
-        let board = (1...8).map { task(String($0)) }
+    func testTheLimitIsClampedToOneThroughTen() {
+        let board = (1...12).map { task(String($0)) }
         XCTAssertEqual(pick(board, limit: 0), ["1"])
         XCTAssertEqual(pick(board, limit: -4), ["1"])
-        XCTAssertEqual(pick(board, limit: 9), ["1", "2", "3", "4", "5", "6"])
-        XCTAssertEqual(pick(board, across: 5, limit: 9), ["1"], "the clamped limit, not the one asked for, leaves the slots")
+        XCTAssertEqual(pick(board, limit: 15), (1...10).map(String.init))
+        XCTAssertEqual(pick(board, across: 9, limit: 15), ["1"], "the clamped limit, not the one asked for, leaves the slots")
+    }
+
+    /// A card whose blocker is open is passed over without spending a slot, so the cards that do not depend on it run beside each other.
+    func testAWaitingCardIsPassedOverAndItsSlotGoesToTheNextIndependentOne() {
+        let board = (1...5).map { task(String($0)) }
+        XCTAssertEqual(pick(board, waiting: ["1", "3"], limit: 3), ["2", "4", "5"])
+        XCTAssertEqual(pick(board, waiting: ["1", "2", "3", "4", "5"], limit: 3), [], "everything waiting starts nothing")
+        XCTAssertEqual(pick(board, waiting: ["3"], limit: 3), ["1", "2", "4"])
     }
 }

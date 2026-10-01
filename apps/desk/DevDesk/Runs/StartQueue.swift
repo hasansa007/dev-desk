@@ -63,7 +63,7 @@ final class StartQueueRunner {
         let released = StartQueue.tasksToRelease(board: model.tasks,
                                                  freeSlots: StartQueue.spendableSlots(appFree: AgentSlots.free,
                                                                                       releasedNotYetLive: releasedNotYetLive.count),
-                                                 runningTaskIDs: running)
+                                                 runningTaskIDs: running, waiting: model.waitingTaskIDs)
             .compactMap(model.task)
             // The launch this card was parked with (ADR 0036). Without it the preferences AT RELEASE decided
             // what ran, so a card queued under Codex in Delegate started under whatever was current when a

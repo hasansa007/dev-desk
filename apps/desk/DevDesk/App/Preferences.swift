@@ -73,8 +73,8 @@ enum BackgroundConnection {
 
 /// How many agents may run at once, across every window.
 enum AgentLimit {
-    static let defaultValue = 3
-    static let range = 1...6
+    static let defaultValue = AutoScheduler.defaultLimit
+    static let range = AutoScheduler.limits
 
     static var current: Int {
         let stored = UserDefaults.standard.object(forKey: PreferenceKey.agentLimit) as? Int ?? defaultValue

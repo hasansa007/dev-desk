@@ -944,6 +944,9 @@ public final class ProjectWindowModel {
             : "Waits for #\(number), which is still open. Finish it first, or remove the needs:/blocked by line from this issue."
     }
 
+    /// The cards that wait on a blocker still open — what Auto and the Start queue pass over until it is done.
+    public var waitingTaskIDs: Set<String> { Set(tasks.filter { openBlocker(of: $0) != nil }.map(\.id)) }
+
     /// The first thing this card records it waits on that is still on the board and not done.
     public func openBlocker(of task: DeskTask) -> Dependency? {
         task.dependencies.filter(\.isBlocker).first { dependency in

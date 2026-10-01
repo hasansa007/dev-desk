@@ -74,7 +74,8 @@ open "/tmp/devdesk-dd/Build/Products/Debug/Dev Desk.app"
 - **Accounts.** Settings → Accounts shows what is installed and who it is signed in as, and runs each tool's own sign-in (`gh auth login`, `claude auth login`, `codex login`) in a terminal. Dev Desk never stores a credential.
 - **Auto.** Turn it on in Settings → Project overrides.
   - It starts agents for the board's Ready for dev tasks (where the active GitHub milestone's issues land, ADR 0035), in board order.
-  - At most 3 run at once across every open project. You can set the limit from 1 to 6 in Settings → Execution.
+  - At most 5 run at once across every open project. You can set the limit from 1 to 10 in Settings → Execution.
+  - A card that waits on another (`needs: #N` or `blocked by #N` on an issue, `needs:` on a local card) is passed over until that one is done, so independent cards run in parallel and the waiting one starts on its own afterwards. The Start queue skips it the same way.
   - A **Start** pressed while the limit is reached queues the card (the board's Queued column) instead of refusing it, and the queue drains in board order as slots free — whether or not Auto is on.
   - Turning Auto on shows a token warning first: every agent spends tokens on your Claude or Codex plan, and Dev Desk can't see your usage.
 - **Worktrees Dev Desk creates are kept** until you remove them: a Done card whose merged branch still has a worktree offers **Remove worktree**, which removes the folder and the local branch with git's safe forms (it refuses a folder with changes, or a branch the base lacks).
