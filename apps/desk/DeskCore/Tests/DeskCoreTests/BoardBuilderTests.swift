@@ -609,6 +609,24 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(built["18"]?.cardNote, "Planning · phase 5 done", "the pipeline's note wins")
     }
 
+    /// A local card carries its labels, so it shows a priority, a type and tags, and the run's order beats the
+    /// folder's, where c11 sorts before c2.
+    func testALocalCardCarriesItsLabelsAndKeepsTheRunsOrder() {
+        var input = fixture
+        input.localBacklog = [
+            BacklogItem(id: "c1", key: "C1", title: "Second", labels: ["bug", "security", "P1"], order: 2, body: "", path: "/p/docs/backlog/c1.md"),
+            BacklogItem(id: "c11", key: "C11", title: "First", order: 1, body: "", path: "/p/docs/backlog/c11.md"),
+            BacklogItem(id: "c2", key: "C2", title: "Unordered", body: "", path: "/p/docs/backlog/c2.md"),
+        ]
+        let built = tasks(input)
+        let card = built["local:c1"]
+        XCTAssertEqual(card?.priority, "P1")
+        XCTAssertEqual(card?.kind, .bug)
+        XCTAssertEqual(card?.tags, ["security"])
+        let order = BoardBuilder.build(input).filter(\.isLocalBacklog).map(\.id)
+        XCTAssertEqual(order, ["local:c11", "local:c1", "local:c2"])
+    }
+
     /// git wins once commits exist: clearing or downgrading the stage cannot pull a branch's card back.
     func testUnmergedCommitsBeatAStoredReadyForDevStage() {
         var input = fixture

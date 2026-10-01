@@ -28,6 +28,11 @@ public struct BacklogItem: Identifiable, Hashable {
     /// What finished it, as the card records it — "2026-09-15 · 99564f1". Free text on purpose: a local card
     /// can be closed by a commit, by a decision, or by the work turning out to be unnecessary.
     public var resolved: String?
+    /// The labels a filed issue would carry — `bug`, `security`, `impact:high` — so a local card filters and
+    /// shows its type the way an issue does. `priority:` joins them when the run wrote it on its own line.
+    public var labels: [String]
+    /// The N of `order: N of M`, the place a findings run gave it among the slices; nil when it gave none.
+    public var order: Int?
     public var body: String
     public var path: String
 
@@ -37,7 +42,7 @@ public struct BacklogItem: Identifiable, Hashable {
 
     public init(id: String, key: String, title: String, area: String? = nil, impact: String? = nil,
                 complexity: String? = nil, source: String? = nil, issue: Int? = nil, status: String? = nil,
-                resolved: String? = nil, body: String, path: String) {
+                resolved: String? = nil, labels: [String] = [], order: Int? = nil, body: String, path: String) {
         self.id = id
         self.key = key
         self.title = title
@@ -48,6 +53,8 @@ public struct BacklogItem: Identifiable, Hashable {
         self.issue = issue
         self.status = status
         self.resolved = resolved
+        self.labels = labels
+        self.order = order
         self.body = body
         self.path = path
     }
@@ -155,11 +162,17 @@ public enum LocalBacklog {
         if let title = fields["title"], body.hasPrefix("# \(title)") {
             body = String(body.dropFirst("# \(title)".count)).trimmingCharacters(in: .whitespacesAndNewlines)
         }
+        var labels = (fields["labels"] ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        if let priority = fields["priority"]?.uppercased(), TaskFilter.priorityOrder.contains(priority), !labels.contains(priority) {
+            labels.append(priority)
+        }
+        let order = fields["order"].flatMap { text in Int(text.prefix { $0.isNumber }) }
         return BacklogItem(id: id, key: fields["key"] ?? "", title: fields["title"] ?? id,
                            area: fields["area"], impact: fields["impact"], complexity: fields["complexity"],
                            source: fields["source"], issue: fields["issue"].flatMap(issueNumber),
                            status: fields["status"]?.lowercased(), resolved: fields["resolved"],
-                           body: body, path: path)
+                           labels: labels, order: order, body: body, path: path)
     }
 
     /// "#123", "123" or a URL ending in one — whatever the promoting run wrote back.

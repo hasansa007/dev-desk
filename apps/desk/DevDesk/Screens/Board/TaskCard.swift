@@ -456,9 +456,12 @@ struct TaskCard: View {
             if isCheckedOut {
                 StatusPill(badge: StatusBadge(.info, "Checked out"))
             }
-            // Priority first, then the tags that change how a fix is reviewed (ADR 0046).
+            // Priority first, then the type, then the tags that change how a fix is reviewed (ADR 0046).
             if let priority = task.priority {
                 PropertyChip(priority, tone: TaskCard.priorityTone(priority), verticalPadding: 0, horizontalPadding: 5)
+            }
+            if task.issueNumber != nil || task.isLocalBacklog {
+                PropertyChip(task.kind.rawValue, verticalPadding: 0, horizontalPadding: 5)
             }
             ForEach(task.tags, id: \.self) { tag in
                 PropertyChip(tag, verticalPadding: 0, horizontalPadding: 5)

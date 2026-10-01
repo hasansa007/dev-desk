@@ -252,7 +252,10 @@ private struct BoardContext {
         let merged = mergedPullRequests.map(mergedTask)
             + (input.git?.reportMerges ?? []).filter { !unmergedNames.contains($0.branch) }.map(reportMergedTask)
         // An entry that already names its issue is waiting to be moved to filed/; the issue is the card.
-        let local = input.localBacklog.filter { $0.issue == nil }.map(localTask)
+        // In the run's own order (`order: N of M`), not the folder's: names sort c1, c11, c12, c2.
+        let local = input.localBacklog.filter { $0.issue == nil }.enumerated()
+            .sorted { ($0.element.order ?? .max, $0.offset) < ($1.element.order ?? .max, $1.offset) }
+            .map { localTask($0.element) }
         return (active + pullRequestTasks + branchTasks + orderNext(backlog) + local + deferred + merged).map { task in
             var task = task
             task.baseRef = input.git?.baseRef
@@ -459,7 +462,7 @@ private struct BoardContext {
             case nil: column = .backlog
             }
         }
-        return DeskTask(
+        var task = DeskTask(
             id: id, title: item.title, column: column,
             cardMeta: item.area, cardBadge: StatusBadge(.info, "Local"),
             cardNote: column == .inProgress ? input.localPipeline[item.id]?.cardNote : column == .queued ? BoardBuilder.queuedNote : nil,
@@ -473,6 +476,8 @@ private struct BoardContext {
             evidence: .unavailable(item.isDone ? Self.finishedElsewhere : "Nothing has been started for this yet."),
             parallel: .none("No branch yet"),
             impact: item.impact, complexity: item.complexity)
+        task.labels = item.labels
+        return task
     }
 
     private func reportMergedTask(_ record: ReportMergeRecord) -> DeskTask {

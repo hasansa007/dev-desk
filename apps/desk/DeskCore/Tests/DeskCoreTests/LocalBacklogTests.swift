@@ -34,6 +34,15 @@ final class LocalBacklogTests: XCTestCase {
     }
 
     /// A second press of the same button must not replace what the first one wrote.
+    /// What a findings run writes: the labels an issue would carry, a priority line, and its place in the run.
+    func testLabelsPriorityAndOrderAreReadSoALocalCardFiltersLikeAnIssue() {
+        let text = "---\nkey: C1\ntitle: Phone search\npriority: P1\nlabels: bug, search, security, impact:high\norder: 4 of 6 · G2 2 of 3\n---\n\nbody"
+        let item = LocalBacklog.parse(text, id: "c1", path: "/p/docs/backlog/c1.md")
+        XCTAssertEqual(item.labels, ["bug", "search", "security", "impact:high", "P1"])
+        XCTAssertEqual(item.order, 4)
+        XCTAssertNil(LocalBacklog.parse("---\nkey: C2\ntitle: t\n---\n", id: "c2", path: "/p/c2.md").order)
+    }
+
     func testFilingTheSameItemTwiceKeepsTheFirst() throws {
         let first = try LocalBacklog.write(projectPath: root.path, key: "C1", title: "Same", body: "original")
         let second = try LocalBacklog.write(projectPath: root.path, key: "C1", title: "Same", body: "replacement")

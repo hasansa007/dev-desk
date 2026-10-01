@@ -864,9 +864,10 @@ public final class ProjectWindowModel {
     /// A milestone whose issues are all closed.
     public static func isFinished(_ row: PlanRow) -> Bool { row.title != nil && row.tasks.isEmpty && row.total > 0 }
 
-    /// Open issues in the selected milestone — what Work's filters narrow.
+    /// Open issues and local cards in the selected milestone — what Board's filters narrow. A local card is
+    /// filterable (`TaskFilter.matches`), so leaving it out of the counts showed 0 beside cards on screen.
     private var openWorkIssues: [DeskTask] {
-        tasks.filter { $0.issueNumber != nil && $0.column != .done && inWorkScope($0) }
+        tasks.filter { ($0.issueNumber != nil || $0.isLocalBacklog) && $0.column != .done && inWorkScope($0) }
     }
 
     /// What an option's count says: open issues in the selected milestone it would keep, with the other groups' filters on.
