@@ -603,6 +603,7 @@ public final class ProjectWindowModel {
             let loaded = try await source.load()
             guard !Task.isCancelled else { return }
             loadState = .loaded(loaded)
+            nextUpOrder = loaded.repositoryRoot.map { CardOrder.read(projectRoot: URL(fileURLWithPath: $0, isDirectory: true)) } ?? CardOrder()
             reloadError = nil
             lastLoadedAt = Date()
             guard isFirstLoad else { return }
@@ -880,6 +881,18 @@ public final class ProjectWindowModel {
     public var workFilterTally: (shown: Int, total: Int) {
         let open = openWorkIssues
         return (open.filter { taskFilter.matches($0) }.count, open.count)
+    }
+
+    /// The order Next up's cards were dragged into (`.devdesk/next-up.json`), read on every load.
+    public private(set) var nextUpOrder = CardOrder()
+
+    /// A Next up card dropped before `target` (nil: at the end). Written at once and applied without a reload,
+    /// so the card lands where it was dropped rather than snapping back while the board re-reads git.
+    public func moveCard(_ id: String, before target: String?, shown: [String]) {
+        guard id != target, shown.contains(id), let root = snapshot?.repositoryRoot else { return }
+        let order = nextUpOrder.moving(id, before: target, shown: shown)
+        order.write(projectRoot: URL(fileURLWithPath: root, isDirectory: true))
+        nextUpOrder = order
     }
 
     /// Puts `title` at the top of the Plan, so it becomes Working now and Next up reads it (ADR 0046). Stored in

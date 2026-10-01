@@ -202,8 +202,9 @@ struct BoardScreen: View {
             }
         } else {
             let columns = visibleColumns.map { column in
-                ColumnEntry(column: column,
-                            tasks: BoardOrder.inColumn(column, tasks.filter { model.inWorkColumn($0, column) && matches($0) }))
+                let automatic = BoardOrder.inColumn(column, tasks.filter { model.inWorkColumn($0, column) && matches($0) })
+                // Next up is the one column ordered by hand: a dragged order leads, the automatic one fills in.
+                return ColumnEntry(column: column, tasks: column == .readyForDev ? model.nextUpOrder.apply(automatic) : automatic)
             }
             if (!model.searchText.isEmpty || model.taskFilter.isActive) && columns.allSatisfy({ $0.tasks.isEmpty }) {
                 Text(model.searchText.isEmpty ? "No tasks match these filters." : "No tasks match “\(model.searchText)”.")
@@ -364,6 +365,28 @@ private struct BoardColumnHeader: View {
     }
 }
 
+/// A Next up card that can be dragged, and dropped onto to land above it.
+private struct Reorderable: ViewModifier {
+    let isOn: Bool
+    let id: String
+    @Binding var target: String?
+    let drop: (String) -> Void
+
+    func body(content: Content) -> some View {
+        if isOn {
+            content
+                .draggable(id)
+                .dropDestination(for: String.self) { ids, _ in
+                    guard let dragged = ids.first, dragged != id else { return false }
+                    drop(dragged)
+                    return true
+                } isTargeted: { target = $0 ? id : (target == id ? nil : target) }
+        } else {
+            content
+        }
+    }
+}
+
 private struct BoardColumnView: View {
     let column: BoardColumn
     let tasks: [DeskTask]
@@ -376,6 +399,14 @@ private struct BoardColumnView: View {
     /// In progress is where a run is watched, so it takes the wide card and the width (the Focus layout).
     private var isFocus: Bool { column == .inProgress }
     @State private var pending: PendingMove?
+    /// The card a drag is hovering over, which the dragged card would land above; `endOfColumn` for the gap below.
+    @State private var dropTarget: String?
+    private static let endOfColumn = "\u{0}end"
+    /// Only Next up reorders: every other column's order is a fact about commits, not a choice.
+    private var reorders: Bool { column == .readyForDev && shownTasks.count > 1 }
+    private var dropLine: some View {
+        Capsule().fill(DeskColor.tone(.info).dot).frame(height: 2)
+    }
     /// Done keeps only the latest few (Settings › Work); the rest is a count, not a scroll.
     private var doneLimit: Int { model.snapshot?.workSettings.doneLimit ?? 10 }
     private var shownTasks: [DeskTask] {
@@ -595,6 +626,20 @@ private struct BoardColumnView: View {
                          isCheckedOut: task.branch != nil && task.branch == model.snapshot?.project.branch,
                          variant: isFocus ? .focus : .column,
                          showRun: { model.selectedSessionID = runSessionID(for: task); model.go(.terminals) })
+                .overlay(alignment: .top) { if dropTarget == task.id { dropLine.offset(y: -5) } }
+                .modifier(Reorderable(isOn: reorders, id: task.id, target: $dropTarget) { dragged in
+                    model.moveCard(dragged, before: task.id, shown: shownTasks.map(\.id))
+                })
+            }
+            if reorders {
+                // The gap under the last card: dropping here puts a card at the end.
+                Color.clear.frame(height: 24)
+                    .overlay(alignment: .top) { if dropTarget == Self.endOfColumn { dropLine } }
+                    .dropDestination(for: String.self) { ids, _ in
+                        guard let dragged = ids.first else { return false }
+                        model.moveCard(dragged, before: nil, shown: shownTasks.map(\.id))
+                        return true
+                    } isTargeted: { dropTarget = $0 ? Self.endOfColumn : (dropTarget == Self.endOfColumn ? nil : dropTarget) }
             }
             if shownTasks.isEmpty {
                 Text(column == .inProgress ? "Nothing is running. Start a task from Next up."
