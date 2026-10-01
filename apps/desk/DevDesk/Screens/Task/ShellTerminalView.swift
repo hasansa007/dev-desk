@@ -344,9 +344,9 @@ final class LiveShells {
     /// Quit leaves no time for a timer and holds the main queue, so no exit monitor fires: SIGHUP every shell and its job,
     /// reap for at most 2 s in all, then SIGKILL whatever is left.
     func endAllBeforeQuit() {
-        // Quitting is the app's own ending, so what was live is marked clean before it goes: only a kill or a
-        // crash leaves the records unclean, and that is what the next launch offers to recover (ADR 0031).
-        agentSessions.compactMap(\.sessions).forEach { $0.markAllClean() }
+        // What was live is written down as saved at quit before it goes, so the next launch offers each one
+        // back to resume (ADR 0063). A kill or a crash leaves the same records, without the mark.
+        agentSessions.compactMap(\.sessions).forEach { $0.markAllSavedAtQuit() }
         let all = Array(shells.values)
         all.forEach { $0.send(SIGHUP) }
         var waiting = all

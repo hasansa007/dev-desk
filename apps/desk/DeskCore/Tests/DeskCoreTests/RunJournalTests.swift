@@ -91,6 +91,20 @@ final class RunJournalTests: XCTestCase {
         journal.markClean(id: "never-written")
     }
 
+    /// A quit keeps the record on offer and says it was a quit; a record written before the mark existed
+    /// still decodes, as not saved at quit.
+    func testMarkSavedAtQuitKeepsTheRecordInRecovery() throws {
+        journal.write(record(id: "job:findings:ab12cd34"))
+        XCTAssertNil(journal.recover().first?.savedAtQuit)
+        let quitAt = Date(timeIntervalSince1970: 2_000_000_000)
+        journal.markSavedAtQuit(id: "job:findings:ab12cd34", at: quitAt)
+        let saved = try XCTUnwrap(journal.recover().first)
+        XCTAssertEqual(saved.savedAtQuit, true)
+        XCTAssertEqual(saved.lastSeenAt, quitAt)
+        journal.markSavedAtQuit(id: "never-written")
+        XCTAssertEqual(journal.all().count, 1)
+    }
+
     /// The filename is sanitised because an id holds `:` and can hold `/`; the id itself must not be, because
     /// it is what a resume, a clear and the live registry all name the run by.
     func testAnIdWithPathCharactersKeepsItsRealIdInside() throws {

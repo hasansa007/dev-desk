@@ -3,9 +3,10 @@ import Foundation
 /// One run or session, as much of it as a next launch would need to say what was going on. It is written while
 /// the run is live, not when it ends: the case it exists for is the app being killed, which runs no code.
 ///
-/// `clean` is the whole distinction. A graceful end deletes the record and a graceful quit marks it clean;
-/// nothing marks it clean when the app is force-quit or crashes, so an unclean record found at launch means
-/// "this was live when the app died" without anything having to detect a crash.
+/// `clean` is the whole distinction. A graceful end deletes the record; nothing marks it clean when the app is
+/// force-quit or crashes, so an unclean record found at launch means "this was live when the app last went"
+/// without anything having to detect a crash. A quit keeps it unclean too, and says so in `savedAtQuit`
+/// (ADR 0063): a run you quit under is one you meant to come back to.
 public struct JournalRecord: Codable, Equatable, Identifiable {
     public enum Kind: String, Codable {
         case backgroundRun
@@ -45,13 +46,16 @@ public struct JournalRecord: Codable, Equatable, Identifiable {
     /// The CLI the session was running (`claude`, `codex`), so a recovered row can offer that CLI's own resume.
     /// Nil for a plain shell, and for a record written before this was kept.
     public var executable: String?
+    /// True when the app was quit on purpose while this was live, rather than killed under it. Both are
+    /// offered back; this only changes how the offer is worded. Optional so older records still decode.
+    public var savedAtQuit: Bool?
 
     public init(id: String, kind: Kind, title: String, agent: String, directory: String,
                 startedAt: Date = Date(), lastSeenAt: Date = Date(), sessionID: String? = nil,
                 door: String? = nil, subject: String? = nil, permission: String? = nil, mode: String? = nil,
                 stateLabel: String, logTail: [String] = [], clean: Bool = false,
                 purpose: String? = nil, branch: String? = nil, folderPath: String? = nil,
-                executable: String? = nil) {
+                executable: String? = nil, savedAtQuit: Bool? = nil) {
         self.id = id
         self.kind = kind
         self.title = title
@@ -71,6 +75,7 @@ public struct JournalRecord: Codable, Equatable, Identifiable {
         self.branch = branch
         self.folderPath = folderPath
         self.executable = executable
+        self.savedAtQuit = savedAtQuit
     }
 }
 
@@ -112,6 +117,15 @@ public final class RunJournal {
     public func markClean(id: String) {
         guard var record = record(at: url(for: id)), !record.clean else { return }
         record.clean = true
+        write(record)
+    }
+
+    /// Quit's path for a still-live run (ADR 0063): the process ends, the record stays to be offered back at
+    /// the next launch, stamped with the moment it was last live and the fact that the ending was a quit.
+    public func markSavedAtQuit(id: String, at date: Date = Date()) {
+        guard var record = record(at: url(for: id)), !record.clean else { return }
+        record.savedAtQuit = true
+        record.lastSeenAt = date
         write(record)
     }
 

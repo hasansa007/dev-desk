@@ -293,7 +293,7 @@ struct TerminalsScreen: View {
                 Text("Recovered")
                     .font(DeskFont.body.weight(.semibold))
                     .foregroundStyle(DeskColor.ink)
-                Text("These were running when Dev Desk last closed unexpectedly. Nothing was restarted — continuing one is your call.")
+                Text(recoveredNote)
                     .font(DeskFont.secondary)
                     .foregroundStyle(DeskColor.mutedInk)
                     .fixedSize(horizontal: false, vertical: true)
@@ -308,6 +308,14 @@ struct TerminalsScreen: View {
         .padding(12)
         .background(DeskColor.canvas)
         .overlay(alignment: .bottom) { Rectangle().fill(DeskColor.divider).frame(height: 1) }
+    }
+
+    /// A quit and a crash leave the same record (ADR 0063); only the reason the session stopped differs.
+    private var recoveredNote: String {
+        let quit = recovered.allSatisfy { $0.savedAtQuit == true }
+        return quit
+            ? "These were running when you quit Dev Desk. Nothing was restarted — pick up any of them where it left off."
+            : "These were running when Dev Desk last closed. Nothing was restarted — continuing one is your call."
     }
 
     /// Reading the journal is the whole of the launch behaviour: nothing is restarted, and ADR 0025 stands. A
@@ -437,7 +445,7 @@ private struct RecoveredTile: View {
                 if let resume {
                     Button("Resume", action: resume)
                         .buttonStyle(DeskButtonStyle(kind: .primary, size: .mini))
-                        .help("Continues the same agent session this run reported before it was lost.")
+                        .help("Continues the same agent session this run reported before Dev Desk closed.")
                 }
                 if let handoff {
                     Button(handoff.title, action: handoff.action)

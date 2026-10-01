@@ -27,7 +27,7 @@ enum DockResume {
             + paused(model: model, terminals: terminals, worktreeLocation: worktreeLocation, show: show)
     }
 
-    /// What was live when Dev Desk last closed unexpectedly. A record whose run is live in this app is not a
+    /// What was live when Dev Desk last closed, quit or killed (ADR 0063). A record whose run is live in this app is not a
     /// recovery — it is a chip in the bar already.
     private static func recovered(model: ProjectWindowModel, jobs: JobRegistry?,
                                   terminals: ShellTerminalRegistry?, worktreeLocation: String,

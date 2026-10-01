@@ -650,8 +650,8 @@ struct ExecutionPane: View {
                 SettingToggle(title: "Reload every 2 minutes",
                               why: "Off, the board is read again when you act — opening, ⌘R, a start, a stop, a move — and each of those first pulls from origin. The timed reload never pulls.",
                               isOn: $autoReload)
-                SettingToggle(title: "Ask before quitting while something is running",
-                              why: "Quitting ends every session and background run. The question is only ever asked when one of them is live.",
+                SettingToggle(title: "Ask before quitting",
+                              why: "⌘Q and the window's close button ask first. Whatever is running is saved at quit and offered to resume when Dev Desk opens again.",
                               isOn: $confirmQuit)
             }
         }

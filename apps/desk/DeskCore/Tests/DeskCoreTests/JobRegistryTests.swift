@@ -357,16 +357,15 @@ final class JobRegistryTests: XCTestCase {
         XCTAssertTrue(journal.all().isEmpty, "a finished run is history, not something to offer to continue")
     }
 
-    /// Quitting ends the run the same way a kill does, but on the app's terms. Without the clean mark every
-    /// ordinary quit would reappear as a crash to recover from.
-    func testAGracefulQuitMarksTheRecordCleanInsteadOfLeavingItLookingLikeACrash() throws {
+    /// Quitting ends the run the same way a kill does, but the run is one the developer means to come back to:
+    /// it stays on offer at the next launch, marked as saved at quit rather than lost (ADR 0063).
+    func testAQuitKeepsTheRecordOnOfferMarkedAsSavedAtQuit() throws {
         let (jobs, _, journal, root) = try journalled()
         defer { try? FileManager.default.removeItem(at: root) }
         _ = try XCTUnwrap(jobs.start(door: "findings", title: "Findings", agent: "Claude",
                                      permission: .readOnly, directory: root.path))
-        jobs.markAllClean()
-        XCTAssertTrue(journal.recover().isEmpty)
-        XCTAssertEqual(journal.all().map(\.clean), [true])
+        jobs.markAllSavedAtQuit()
+        XCTAssertEqual(journal.recover().map(\.savedAtQuit), [true])
     }
 
     /// The one thing recovery can honestly do when the session id was captured: continue that session, under

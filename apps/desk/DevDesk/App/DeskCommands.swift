@@ -20,6 +20,8 @@ struct DeskCommands: Commands {
             Button("Settings…") { openSettings() }
                 .keyboardShortcut(",", modifiers: .command)
         }
+        // No Close and no ⌘W (ADR 0063): with one window, closing it was quitting without being asked. Quit is ⌘Q.
+        CommandGroup(replacing: .saveItem) {}
         CommandGroup(replacing: .newItem) {
             // One window now (ADR 0050): Open project is the strip's `+`, raised as a dialog over it.
             Button("Open Project…") { Workspace.shared.isOpeningProject = true }
@@ -81,8 +83,8 @@ struct DeskCommands: Commands {
                 Divider()
                 Button("Settings…") { openSettings() }
                 Divider()
-                // ⌘W closes the window, which is the whole app now (ADR 0050); this takes one project off
-                // the strip. Right-click does it too, on the strip icon and on the Home card.
+                // Takes one project off the strip; the window itself never closes but by quitting (ADR 0063).
+                // Right-click does it too, on the strip icon and on the Home card.
                 Button("Close Project") { closeProject() }
                     .keyboardShortcut("w", modifiers: [.command, .shift])
             }

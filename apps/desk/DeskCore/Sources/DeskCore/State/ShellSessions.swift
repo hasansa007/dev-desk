@@ -216,10 +216,10 @@ public final class ShellSessions {
         onSessionEnded?(taskID)
     }
 
-    /// Quit's path for sessions (ADR 0031): the shells die either way, but a record marked clean is not
-    /// offered back as a crash at the next launch. A force-kill runs none of this, which is the signal.
-    public func markAllClean() {
-        for taskID in runningTaskIDs { journal?.markClean(id: taskID) }
+    /// Quit's path for sessions (ADR 0063): the shells die either way, and each record stays to be offered
+    /// back at the next launch, marked as saved at quit rather than lost to a crash.
+    public func markAllSavedAtQuit() {
+        for taskID in runningTaskIDs { journal?.markSavedAtQuit(id: taskID) }
     }
 
     public var runningTaskIDs: [String] {

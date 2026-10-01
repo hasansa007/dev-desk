@@ -192,13 +192,12 @@ public final class JobRegistry {
     /// merely paused — what to redo is the agent's call, and it can only make it if it is told.
     static let resumePrompt = "Dev Desk was closed while this run was going. Continue from where you stopped."
 
-    /// The graceful-quit path (ADR 0031). The processes die with the app either way; a record marked clean is
-    /// one the next launch will not offer to recover. Nothing marks them when the app is killed — which is the
-    /// whole signal.
-    public func markAllClean() {
+    /// The quit path (ADR 0063). The processes die with the app either way; each live run's record stays, so
+    /// the next launch offers it back — a run with a session id as Resume — marked as saved at quit.
+    public func markAllSavedAtQuit() {
         for job in jobs {
             if case .ended = job.state { continue }
-            journalFor?(job.directory)?.markClean(id: job.id)
+            journalFor?(job.directory)?.markSavedAtQuit(id: job.id)
         }
     }
 

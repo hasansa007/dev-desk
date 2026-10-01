@@ -3,9 +3,9 @@ import DeskCore
 import SwiftUI
 import UserNotifications
 
-/// Quitting used to end every agent and every background run without a word: `endAllBeforeQuit` fires on
-/// `willTerminate`, by which point the decision is already made. An agent mid-task is minutes of work and
-/// tokens already spent, so quit asks first — and only ever when something is actually live.
+/// Quit is the one way out, and it asks (ADR 0063). ⌘W used to close the window, which with one window is
+/// the whole app, without a word; it is gone, and the window's close button is a quit. What was live is kept
+/// at quit as a record the next launch offers to resume — `endAllBeforeQuit` and `applicationWillTerminate`.
 @MainActor
 final class QuitGuard: NSObject, NSApplicationDelegate {
     /// The app's background runs, handed over once the scene that owns them exists.
@@ -27,6 +27,7 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
 
     /// Held for the app's lifetime: dropping it would stop the app-icon appearance observation.
     private var appearanceObservation: NSKeyValueObservation?
+    private var keyObserver: NSObjectProtocol?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         UNUserNotificationCenter.current().delegate = self
@@ -42,6 +43,21 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
         appearanceObservation = NSApp.observe(\.effectiveAppearance) { _, _ in
             Task { @MainActor in AppIconStyle.apply() }
         }
+        // SwiftUI creates the window after launch and may recreate it, so its close button is taken over each
+        // time a window becomes key rather than once.
+        keyObserver = NotificationCenter.default.addObserver(forName: NSWindow.didBecomeKeyNotification,
+                                                             object: nil, queue: .main) { note in
+            MainActor.assumeIsolated { (note.object as? NSWindow).map(Self.routeCloseToQuit) }
+        }
+    }
+
+    /// The workspace window's close button quits — through `applicationShouldTerminate`, so it asks — instead
+    /// of closing the only window and taking every session with it unasked. Sheets and panels keep theirs.
+    private static func routeCloseToQuit(_ window: NSWindow) {
+        guard window.identifier?.rawValue.hasPrefix("workspace") == true,
+              let close = window.standardWindowButton(.closeButton) else { return }
+        close.target = NSApp
+        close.action = #selector(NSApplication.terminate(_:))
     }
 
     /// Repaint the Dock tile once the app is active, where AppKit will not paint over the choice again.
@@ -58,25 +74,39 @@ final class QuitGuard: NSObject, NSApplicationDelegate {
         AppIconStyle.apply()
     }
 
-    /// The background runs' half of the graceful-quit mark (ADR 0031); `LiveShells.endAllBeforeQuit` does the
-    /// sessions'. A quit is the app ending on its own terms, so nothing here should come back next launch as a
-    /// crash to recover from — and a force-kill, which runs none of this, should.
+    /// The background runs' half of the quit mark (ADR 0063); `LiveShells.endAllBeforeQuit` does the sessions'.
+    /// Each live run's record stays, marked saved at quit, so the next launch offers it back to resume.
     func applicationWillTerminate(_ notification: Notification) {
-        Self.jobs?.markAllClean()
+        Self.jobs?.markAllSavedAtQuit()
     }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
-        guard Self.confirmsQuit, let work = Self.liveWork else { return .terminateNow }
+        // A logout, restart or shutdown has already been decided; a modal here would only stall it.
+        guard Self.confirmsQuit, !Self.isSystemEnding else { return .terminateNow }
+        let work = Self.liveWork
         let alert = NSAlert()
-        alert.messageText = "\(work) still running"
-        alert.informativeText = "Quitting ends them. An agent's work in its worktree is kept; what it had not finished is lost."
-        alert.alertStyle = .warning
-        alert.addButton(withTitle: "Quit anyway")
+        alert.messageText = "Quit Dev Desk?"
+        alert.informativeText = work.map {
+            "\($0) running. Each is saved as it stands and offered to resume when Dev Desk opens again; what an agent was in the middle of stops now."
+        } ?? "Nothing is running."
+        alert.alertStyle = work == nil ? .informational : .warning
+        alert.addButton(withTitle: "Quit")
         alert.addButton(withTitle: "Cancel")
-        // The default is Cancel: the destructive answer should not be the one a stray Return sends.
-        alert.buttons.last?.keyEquivalent = "\r"
-        alert.buttons.first?.keyEquivalent = ""
+        // With something live the default is Cancel, so a stray Return does not stop an agent mid-turn.
+        if work != nil {
+            alert.buttons.last?.keyEquivalent = "\r"
+            alert.buttons.first?.keyEquivalent = ""
+        }
         return alert.runModal() == .alertFirstButtonReturn ? .terminateNow : .terminateCancel
+    }
+
+    /// Whether this quit is the system's — logout, restart or shutdown — rather than the developer's.
+    private static var isSystemEnding: Bool {
+        guard let event = NSAppleEventManager.shared().currentAppleEvent,
+              event.eventID == kAEQuitApplication,
+              let reason = event.attributeDescriptor(forKeyword: kAEQuitReason)?.enumCodeValue else { return false }
+        return [kAELogOut, kAEReallyLogOut, kAEShowRestartDialog, kAEShowShutdownDialog, kAERestart, kAEShutDown]
+            .contains(reason)
     }
 }
 
