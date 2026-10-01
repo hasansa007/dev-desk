@@ -74,3 +74,4 @@ alternative. See [0001](0001-adrs-live-in-docs-adr.md) for the convention itself
 | [0058](0058-local-cards-wait-in-a-local-backlog-entry.md) | Local cards wait in a Local backlog entry, and under All when there is no tracker | Accepted |
 | [0059](0059-a-local-card-carries-its-labels-to-the-board-and-to-github.md) | A local card carries its labels, to the board and to GitHub | Accepted |
 | [0060](0060-a-local-card-waits-for-what-it-needs.md) | A local card waits for what it needs, and Next up puts it after them | Accepted |
+| [0061](0061-a-live-dev-run-is-in-progress-until-its-first-checkpoint.md) | A live `/dev` run is In progress until its first checkpoint, and Start names the checkpoint command | Accepted |

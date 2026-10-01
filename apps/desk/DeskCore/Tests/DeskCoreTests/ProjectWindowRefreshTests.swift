@@ -113,6 +113,28 @@ final class TaskActivityTests: XCTestCase {
         XCTAssertEqual(ProjectWindowModel.activity(doorRun: false, session: .preparing, purpose: .agent), .agent)
     }
 
+    /// ADR 0061: a live `/dev` run is In progress until its first checkpoint says more; a shell moves nothing
+    /// (ADR 0044), and what git or a checkpoint already decided is never moved back.
+    func testALiveDoorRunIsInProgressUntilACheckpointSaysMore() {
+        for column in [BoardColumn.backlog, .readyForDev, .queued] {
+            XCTAssertEqual(ProjectWindowModel.workColumn(column, activity: .run), .inProgress, "\(column)")
+            XCTAssertEqual(ProjectWindowModel.workColumn(column, activity: .agent), column, "a hand-opened agent is not a run")
+            XCTAssertEqual(ProjectWindowModel.workColumn(column, activity: .shell), column)
+            XCTAssertEqual(ProjectWindowModel.workColumn(column, activity: nil), column, "an ended run puts the card back")
+        }
+        XCTAssertEqual(ProjectWindowModel.workColumn(.review, activity: .run), .review)
+        XCTAssertEqual(ProjectWindowModel.workColumn(.done, activity: .run), .done)
+    }
+
+    /// The prompt names the checkpoint command with the card's own key, so the run does not have to derive it.
+    func testTheStartPromptNamesTheCheckpointCommand() {
+        let issue = DoorRuns.checkpointInstruction(issue: 12, local: nil, root: ".claude/.dev-root")
+        XCTAssertEqual(issue, "After each phase that clears, run: python3 ~/.claude/.dev-root/scripts/dev.py state checkpoint --phase <N> --issue 12")
+        let local = DoorRuns.checkpointInstruction(issue: nil, local: "2026-10-01-c3-deny", root: ".claude/.dev-root")
+        XCTAssertTrue(local?.hasSuffix("--local 2026-10-01-c3-deny") == true, local ?? "")
+        XCTAssertNil(DoorRuns.checkpointInstruction(issue: nil, local: nil, root: ".claude/.dev-root"))
+    }
+
     func testADoorRunSpeaksForTheWholeTask() {
         XCTAssertEqual(ProjectWindowModel.activity(doorRun: true, session: .running(folder), purpose: .agent), .run)
     }

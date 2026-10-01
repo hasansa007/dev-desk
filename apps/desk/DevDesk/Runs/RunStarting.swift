@@ -187,7 +187,7 @@ extension ProjectWindowModel {
         if let entry = task.localBacklogID {
             // No issue to name. `/dev` takes a description as readily as a number, and the file is the description.
             if prepareRun(door: "dev", title: task.title, agent: agent,
-                          arguments: ["\(task.title) — described in \(LocalBacklog.folder)/\(entry).md"],
+                          arguments: DoorRuns.startArguments(for: task, root: DoorCommand.agent(named: agent)?.root ?? InstallRoot.claude),
                           id: DoorRuns.id(local: entry),
                           folderNote: "this has no issue yet; it runs in a fresh worktree on origin's base, where /dev cuts its branch.",
                           mode: mode) {
@@ -198,7 +198,8 @@ extension ProjectWindowModel {
         }
         guard let number = task.taskNumber else { return }
         if prepareRun(door: "dev", title: "Task #\(number)", agent: agent,
-                      arguments: ["#\(number)"], id: DoorRuns.id(task: number),
+                      arguments: DoorRuns.startArguments(for: task, root: DoorCommand.agent(named: agent)?.root ?? InstallRoot.claude),
+                      id: DoorRuns.id(task: number),
                       folderNote: "#\(number) runs in its own worktree — its gh-\(number)- branch, or a fresh one on origin's base.",
                       mode: mode, taskNumber: number) {
             Task { await recordStarted(task) }
@@ -270,10 +271,8 @@ extension ProjectWindowModel {
     func taskLaunch(for task: DeskTask, agent: String) -> TaskLaunch? {
         guard let kind = AgentLaunch.agent(forConnectionName: agent) else { return nil }
         guard let id = DoorRuns.id(for: task) else { return nil }
-        // The same arguments `startTask` dispatches with: a local entry is described by its file, an issue by its number.
-        let arguments = task.localBacklogID
-            .map { ["\(task.title) — described in \(LocalBacklog.folder)/\($0).md"] }
-            ?? task.taskNumber.map { ["#\($0)"] } ?? []
+        // The same arguments `startTask` dispatches with.
+        let arguments = DoorRuns.startArguments(for: task, root: DoorCommand.agent(named: agent)?.root ?? InstallRoot.claude)
         return TaskLaunch(id: id, task: task.id, title: task.title, door: "dev", arguments: arguments,
                           agent: kind, mode: RunModeChoice.current(for: ref),
                           worktreeLocation: UserDefaults.standard.string(forKey: PreferenceKey.worktreeLocation)

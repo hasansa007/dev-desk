@@ -59,6 +59,23 @@ public final class DoorRuns {
     /// A run for work that exists only in `docs/backlog/`, which has no number to name it by.
     public static func id(local entry: String) -> String { "local:\(entry)" }
 
+    /// What a task's `/dev` start is given: a local entry is described by its file, an issue by its number — then the
+    /// checkpoint command with the card's own key (ADR 0061). The rule is in `00-principles.md`; a run on 2026-10-01
+    /// read it and never ran it, so its card sat in Next up through four phases.
+    public static func startArguments(for task: DeskTask, root: String) -> [String] {
+        let subject = task.localBacklogID.map { ["\(task.title) — described in \(LocalBacklog.folder)/\($0).md"] }
+            ?? task.taskNumber.map { ["#\($0)"] } ?? []
+        let checkpoint = checkpointInstruction(issue: task.localBacklogID == nil ? task.taskNumber : nil,
+                                               local: task.localBacklogID, root: root)
+        return subject + (checkpoint.map { ["— \($0)"] } ?? [])
+    }
+
+    /// The command the board moves a card on, spelled out for the run. nil for a card with nothing to key it by.
+    public static func checkpointInstruction(issue: Int?, local: String?, root: String) -> String? {
+        let key = local.map { "--local \($0)" } ?? issue.map { "--issue \($0)" }
+        return key.map { "After each phase that clears, run: python3 ~/\(root)/scripts/dev.py state checkpoint --phase <N> \($0)" }
+    }
+
     /// The id a task's `/dev` start runs under, by the one rule: a local entry names itself, an issue names
     /// its number. nil for a card `/dev` has nothing to open. Here so the Start, the queue and the parked
     /// launch cannot disagree about which run a card is.

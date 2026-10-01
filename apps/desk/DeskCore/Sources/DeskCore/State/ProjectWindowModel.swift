@@ -970,10 +970,18 @@ public final class ProjectWindowModel {
         guard inWorkScope(task) else { return false }
         // Settings › Work: a pull request with no issue behind it is not a task, and can be left out of Review.
         if task.id.hasPrefix("pr:"), snapshot?.workSettings.showsPullRequestsWithoutIssue == false { return false }
-        guard column == .readyForDev else { return task.column == column }
-        if task.column == .readyForDev || task.column == .queued { return true }
-        if case .all = effectiveWorkScope { return hasNoMilestoneList && task.isLocalBacklog && task.column == .backlog }
-        return task.column == .backlog
+        let current = Self.workColumn(task.column, activity: activity(of: task))
+        guard column == .readyForDev else { return current == column }
+        if current == .readyForDev || current == .queued { return true }
+        if case .all = effectiveWorkScope { return hasNoMilestoneList && task.isLocalBacklog && current == .backlog }
+        return current == .backlog
+    }
+
+    /// ADR 0061, amending 0044: the `/dev` run Start launched is In progress while it is live, until a checkpoint or
+    /// a commit moves the card for real. A shell or a hand-opened agent moves nothing, and nothing moves back.
+    static func workColumn(_ column: BoardColumn, activity: TaskActivity?) -> BoardColumn {
+        guard activity == .run, [.backlog, .readyForDev, .queued].contains(column) else { return column }
+        return .inProgress
     }
 
     /// "Next up" for the milestone being worked (and under All); "Not started" for any other one — it waits there

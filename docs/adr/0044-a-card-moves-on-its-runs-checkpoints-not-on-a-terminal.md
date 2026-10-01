@@ -1,6 +1,6 @@
 # 0044 — A card moves on its run's checkpoints, not on a terminal opening
 
-Status:  Accepted
+Status:  Accepted — "Start moves nothing" amended by [0061](0061-a-live-dev-run-is-in-progress-until-its-first-checkpoint.md): a live `/dev` run is In progress until its first checkpoint
 Date:    2026-09-17
 Commit:  (this commit)
 
