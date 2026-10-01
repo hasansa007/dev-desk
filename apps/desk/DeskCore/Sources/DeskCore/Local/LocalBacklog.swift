@@ -75,7 +75,8 @@ public enum LocalBacklog {
     @discardableResult
     public static func write(projectPath: String, key: String, title: String, body: String,
                              area: String? = nil, source: String? = nil,
-                             impact: String? = nil, complexity: String? = nil) throws -> String {
+                             impact: String? = nil, complexity: String? = nil,
+                             labels: [String] = [], priority: String? = nil) throws -> String {
         let root = URL(fileURLWithPath: projectPath, isDirectory: true)
         let directory = root.appendingPathComponent(folder, isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
@@ -83,7 +84,7 @@ public enum LocalBacklog {
         let url = directory.appendingPathComponent("\(name).md")
         guard !FileManager.default.fileExists(atPath: url.path) else { return url.path }
         let text = document(key: key, title: title, body: body, area: area, source: source,
-                            impact: impact, complexity: complexity)
+                            impact: impact, complexity: complexity, labels: labels, priority: priority)
         do {
             // Not `.atomic`: the guarantee that matters here is create-or-fail, and Foundation refuses to
             // combine the two. A replace-by-rename would be the one thing this must never do.
@@ -95,10 +96,17 @@ public enum LocalBacklog {
     }
 
     /// The entry itself: a header the app can read back, then the prose a person reads.
+    /// `priority:` and `labels:` are the two lines a findings run writes, so a card the app filed and one a run
+    /// filed read back the same; the priority is not repeated among the labels.
     static func document(key: String, title: String, body: String, area: String?, source: String?,
-                         impact: String? = nil, complexity: String? = nil) -> String {
+                         impact: String? = nil, complexity: String? = nil,
+                         labels: [String] = [], priority: String? = nil) -> String {
         var header = ["---", "key: \(oneLine(key))", "title: \(oneLine(title))"]
         if let area { header.append("area: \(oneLine(area))") }
+        if let priority = priority.map(oneLine), !priority.isEmpty { header.append("priority: \(priority)") }
+        let rest = labels.map { oneLine($0).replacingOccurrences(of: ",", with: " ") }
+            .filter { !$0.isEmpty && $0 != priority.map(oneLine) }
+        if !rest.isEmpty { header.append("labels: \(rest.joined(separator: ", "))") }
         // Proposals for the developer to correct, the same two a filed issue carries (ADR 0020).
         header.append("impact: \(oneLine(impact ?? ""))")
         header.append("complexity: \(oneLine(complexity ?? ""))")
@@ -164,6 +172,11 @@ public enum LocalBacklog {
         }
         var labels = (fields["labels"] ?? "").split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }
             .filter { !$0.isEmpty }
+        // `type:` is how a findings run says bug or epic when it writes no `labels:` line; the other types
+        // (feature, task) are what an unlabelled card already reads as.
+        if let type = fields["type"]?.lowercased(), ["bug", "epic"].contains(type), !labels.contains(type) {
+            labels.append(type)
+        }
         if let priority = fields["priority"]?.uppercased(), TaskFilter.priorityOrder.contains(priority), !labels.contains(priority) {
             labels.append(priority)
         }
@@ -173,6 +186,16 @@ public enum LocalBacklog {
                            source: fields["source"], issue: fields["issue"].flatMap(issueNumber),
                            status: fields["status"]?.lowercased(), resolved: fields["resolved"],
                            labels: labels, order: order, body: body, path: path)
+    }
+
+    /// What File on GitHub asks `dev:create-issue` for. The card's labels go as real labels; one the repository
+    /// lacks is offered, never created silently (ADR 0020) — the door's own rule, restated so the run cannot
+    /// read "apply these" as permission to make them.
+    public static func promotionRequest(for item: BacklogItem) -> String {
+        let file = "\(folder)/\(item.id).md"
+        let labels = item.labels.map(oneLine).filter { !$0.isEmpty }
+        let labelling = labels.isEmpty ? "" : " Apply its labels: \(labels.joined(separator: ", ")) — each one this repository has; offer any it lacks, and never create one silently."
+        return "\(oneLine(item.title)). The full description is in \(file); file it as written.\(labelling) Report the issue URL."
     }
 
     /// "#123", "123" or a URL ending in one — whatever the promoting run wrote back.

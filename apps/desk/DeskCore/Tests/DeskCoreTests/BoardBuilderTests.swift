@@ -627,6 +627,17 @@ final class BoardBuilderTests: XCTestCase {
         XCTAssertEqual(order, ["local:c11", "local:c1", "local:c2"])
     }
 
+    /// Board's Priority and Type filters reach a local card the way they reach an issue.
+    func testAFilterMatchesALocalP1Bug() {
+        var input = fixture
+        input.localBacklog = [
+            BacklogItem(id: "c1", key: "C1", title: "Bug", labels: ["bug", "P1"], body: "", path: "/p/docs/backlog/c1.md"),
+            BacklogItem(id: "c2", key: "C2", title: "Feature", labels: ["P3"], body: "", path: "/p/docs/backlog/c2.md"),
+        ]
+        let filter = TaskFilter(priorities: ["P1"], kinds: [.bug])
+        XCTAssertEqual(BoardBuilder.build(input).filter(\.isLocalBacklog).filter(filter.matches).map(\.id), ["local:c1"])
+    }
+
     /// git wins once commits exist: clearing or downgrading the stage cannot pull a branch's card back.
     func testUnmergedCommitsBeatAStoredReadyForDevStage() {
         var input = fixture

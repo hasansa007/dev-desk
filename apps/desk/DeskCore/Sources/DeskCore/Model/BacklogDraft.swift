@@ -13,6 +13,8 @@ public struct BacklogDraft: Equatable {
     public var description: String
     public var area: String?
     public var source: String?
+    /// What the entry is labelled — `bug` for a defect — so its card filters the way the issue would.
+    public var labels: [String] = []
 
     public init(key: String, title: String, body: String, description: String, area: String? = nil, source: String? = nil) {
         self.key = key
@@ -41,8 +43,10 @@ extension Finding {
             ("Found by", "dev:findings, run \(runID) · \(Markdown.unescape(verificationLabel))"),
             ("Limits", Markdown.unescape(limits)),
         ])
-        return BacklogDraft(key: id, title: Markdown.unescape(title), body: body, description: backlogDescription,
-                            area: area?.rawValue, source: "dev:findings run \(runID)")
+        var draft = BacklogDraft(key: id, title: Markdown.unescape(title), body: body, description: backlogDescription,
+                                 area: area?.rawValue, source: "dev:findings run \(runID)")
+        if kind == .defect { draft.labels = ["bug"] }
+        return draft
     }
 }
 

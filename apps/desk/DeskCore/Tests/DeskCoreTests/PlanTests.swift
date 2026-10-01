@@ -84,12 +84,14 @@ final class PlanTests: XCTestCase {
 
 private struct WorkSource: ProjectDataSource {
     let tasks: [DeskTask]
+    var slug: String? = nil
+    var activeMilestone: String? = "Money"
     func load() async throws -> ProjectSnapshot {
         var s = ProjectSnapshot(project: ProjectInfo(name: "p", displayPath: "/p", branch: "main"), isDemo: false,
                                 board: .available(tasks), boardNote: "", findings: .available(FindingsReport(runs: [], findings: [])),
                                 roadmap: .unavailable("n/a"), connections: [], connectionsNote: "",
                                 capabilities: CapabilityMatrix(providers: [], rows: [], note: ""), insights: .unavailable("none"),
-                                activeMilestone: "Money")
+                                slug: slug, activeMilestone: activeMilestone)
         s.activeMilestoneReason = "top of Plan"
         return s
     }
@@ -134,6 +136,49 @@ final class WorkScopeTests: XCTestCase {
         XCTAssertEqual(model.workCounts(in: .readyForDev).total, 2)
     }
 
+    /// A `docs/backlog/` card as BoardBuilder makes one with no stored stage: in Backlog.
+    private func local(_ id: String, column: BoardColumn = .backlog) -> DeskTask {
+        DeskTask(id: DeskTask.localPrefix + id, title: id, column: column, headerBadge: StatusBadge(.info, "Local backlog"),
+                 branchLine: "", requirements: .unavailable(""), changes: .unavailable(""), evidence: .unavailable(""),
+                 parallel: .none(""))
+    }
+
+    private func firstColumn(_ model: ProjectWindowModel) -> [String] {
+        model.tasks.filter { model.inWorkColumn($0, .readyForDev) }.map(\.id)
+    }
+
+    /// ADR 0058: with no tracker there is no milestone list for a local card to wait in, so a fresh one — no stage,
+    /// no `.devdesk/board.json` — is Not started under All. A branch card stays where it was.
+    func testAFreshLocalCardIsOnTheBoardWithNoTracker() async {
+        var branch = local("x"); branch.id = "branch:feature"; branch.column = .inProgress
+        let model = ProjectWindowModel(ref: .local(path: "/p"), source: WorkSource(tasks: [local("c1"), branch], activeMilestone: nil),
+                                       insightsDelay: .zero)
+        await model.load()
+        XCTAssertEqual(model.effectiveWorkScope, .all)
+        XCTAssertEqual(firstColumn(model), ["local:c1"])
+        XCTAssertEqual(model.firstWorkColumnTitle, "Not started")
+        XCTAssertTrue(model.inWorkColumn(branch, .inProgress))
+    }
+
+    /// ADR 0058: beside a tracker a local card waits in its own entry, Local backlog, the way an issue waits in its
+    /// milestone; All and the Working now milestone are as they were.
+    func testWithATrackerLocalCardsWaitInLocalBacklog() async {
+        let model = ProjectWindowModel(ref: .local(path: "/p"), source: WorkSource(tasks: [task(1, milestone: "Money"), local("c1")], slug: "o/r"),
+                                       insightsDelay: .zero)
+        await model.load()
+        XCTAssertEqual(firstColumn(model), ["1"], "Working now")
+        model.workScope = .all
+        XCTAssertEqual(firstColumn(model), [], "no backlog under All, a local one included")
+        XCTAssertEqual(model.firstWorkColumnTitle, "Next up")
+        model.workScope = .localBacklog
+        XCTAssertEqual(firstColumn(model), ["local:c1"])
+        XCTAssertEqual(model.firstWorkColumnTitle, "Not started")
+        model.workScope = .noMilestone
+        XCTAssertEqual(firstColumn(model), [], "No milestone is issues filed nowhere, not local cards")
+        model.workScope = .several(["Money", TaskFilter.localBacklog])
+        XCTAssertEqual(firstColumn(model), ["1", "local:c1"])
+    }
+
     func testTheSidebarListsBoardOnceAndRoadmapOpensBoard() {
         XCTAssertEqual(Destination.sidebar, [.findings, .board, .terminals, .ideation, .diagrams])
         XCTAssertEqual(Destination.board.title, "Board")
@@ -168,5 +213,7 @@ final class WorkScopeKeysTests: XCTestCase {
         XCTAssertEqual(WorkScope(keys: [TaskFilter.noMilestone]), .noMilestone)
         XCTAssertEqual(WorkScope(keys: ["A", "B"]), .several(["A", "B"]))
         XCTAssertEqual(WorkScope.several(["A", TaskFilter.noMilestone]).keys, ["A", TaskFilter.noMilestone])
+        XCTAssertEqual(WorkScope(keys: [TaskFilter.localBacklog]), .localBacklog)
+        XCTAssertEqual(WorkScope.localBacklog.keys, [TaskFilter.localBacklog])
     }
 }

@@ -11,6 +11,8 @@ public struct TaskFilter: Equatable {
     public var tags: Set<String> = []
 
     public static let noMilestone = "\u{0}none"
+    /// Work's entry for `docs/backlog/` cards, which belong to no milestone (ADR 0058).
+    public static let localBacklog = "\u{0}local"
     public static let unprioritised = "none"
     public static let priorityOrder = ["P0", "P1", "P2", "P3"]
     /// The labels a card is tagged with when it carries them; the rest of a repository's labels are not filters.
@@ -86,12 +88,14 @@ extension DeskTask {
     public var tags: [String] { TaskFilter.tagLabels.filter { labels.contains($0) } }
 }
 
-/// Work's milestone selection (ADR 0046 decisions 13, 18): none (all), one, no milestone, or several — the chips are
-/// a filter group like Tag. `several` holds milestone titles and `TaskFilter.noMilestone` for issues filed nowhere.
+/// Work's milestone selection (ADR 0046 decisions 13, 18): none (all), one, no milestone, local backlog (ADR 0058), or
+/// several — the chips are a filter group like Tag. `several` holds milestone titles, `TaskFilter.noMilestone` for
+/// issues filed nowhere and `TaskFilter.localBacklog` for `docs/backlog/` cards.
 public enum WorkScope: Hashable {
     case all
     case milestone(String)
     case noMilestone
+    case localBacklog
     case several(Set<String>)
 
     /// The chips that are on.
@@ -100,6 +104,7 @@ public enum WorkScope: Hashable {
         case .all: return []
         case .milestone(let title): return [title]
         case .noMilestone: return [TaskFilter.noMilestone]
+        case .localBacklog: return [TaskFilter.localBacklog]
         case .several(let keys): return keys
         }
     }
@@ -108,7 +113,12 @@ public enum WorkScope: Hashable {
     public init(keys: Set<String>) {
         switch keys.count {
         case 0: self = .all
-        case 1: self = keys.first == TaskFilter.noMilestone ? .noMilestone : .milestone(keys.first!)
+        case 1:
+            switch keys.first! {
+            case TaskFilter.noMilestone: self = .noMilestone
+            case TaskFilter.localBacklog: self = .localBacklog
+            case let title: self = .milestone(title)
+            }
         default: self = .several(keys)
         }
     }

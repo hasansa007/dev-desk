@@ -742,7 +742,7 @@ public final class ProjectWindowModel {
         guard let root = snapshot?.repositoryRoot else { return }
         do {
             try LocalBacklog.write(projectPath: root, key: draft.key, title: draft.title, body: draft.body,
-                                   area: draft.area, source: draft.source)
+                                   area: draft.area, source: draft.source, labels: draft.labels)
             writeFailure = nil
             await load()
         } catch {
@@ -918,11 +918,18 @@ public final class ProjectWindowModel {
         case .all: return true
         case .milestone(let title): return task.milestone == title
         case .noMilestone: return task.issueNumber != nil && task.milestone == nil && task.column != .done
+        // Every local card, started or not: the entry is their milestone, so their In progress shows here too.
+        case .localBacklog: return task.isLocalBacklog
         case .several(let keys):
             if let milestone = task.milestone { return keys.contains(milestone) }
+            if task.isLocalBacklog { return keys.contains(TaskFilter.localBacklog) }
             return keys.contains(TaskFilter.noMilestone) && task.issueNumber != nil && task.column != .done
         }
     }
+
+    /// No reachable tracker means no milestone list, so All is the only selection there is and a local card would
+    /// have nowhere to wait (ADR 0058).
+    private var hasNoMilestoneList: Bool { !addTaskDestination.isGitHub }
 
     /// A milestone chip turned on or off (ADR 0046 decision 18).
     public func toggleWorkMilestone(_ key: String) {
@@ -933,7 +940,8 @@ public final class ProjectWindowModel {
 
     /// Work's columns (ADR 0046 decision 13, no duplication): the milestone list IS the backlog, so there is no
     /// Backlog column. The first column holds what has not started in the selection — the Working now milestone's
-    /// and every P0 under All; everything not started in any one milestone chosen on the left.
+    /// and every P0 under All; everything not started in any one milestone chosen on the left. Local cards wait in
+    /// Local backlog, or under All when there is no tracker and so no list (ADR 0058).
     public static let workColumns: [BoardColumn] = [.readyForDev, .inProgress, .review, .done]
 
     public func inWorkColumn(_ task: DeskTask, _ column: BoardColumn) -> Bool {
@@ -942,7 +950,7 @@ public final class ProjectWindowModel {
         if task.id.hasPrefix("pr:"), snapshot?.workSettings.showsPullRequestsWithoutIssue == false { return false }
         guard column == .readyForDev else { return task.column == column }
         if task.column == .readyForDev || task.column == .queued { return true }
-        if case .all = effectiveWorkScope { return false }
+        if case .all = effectiveWorkScope { return hasNoMilestoneList && task.isLocalBacklog && task.column == .backlog }
         return task.column == .backlog
     }
 
@@ -950,9 +958,10 @@ public final class ProjectWindowModel {
     /// until Move to top makes it Next up.
     public var firstWorkColumnTitle: String {
         switch effectiveWorkScope {
-        case .all: return BoardColumn.readyForDev.title
+        case .all: return hasNoMilestoneList && tasks.contains { $0.isLocalBacklog && $0.column == .backlog }
+            ? "Not started" : BoardColumn.readyForDev.title
         case .milestone(let title): return title == snapshot?.activeMilestone ? BoardColumn.readyForDev.title : "Not started"
-        case .noMilestone: return "Not started"
+        case .noMilestone, .localBacklog: return "Not started"
         case .several(let keys):
             return snapshot?.activeMilestone.map(keys.contains) == true ? BoardColumn.readyForDev.title : "Not started"
         }

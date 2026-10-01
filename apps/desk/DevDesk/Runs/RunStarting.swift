@@ -125,16 +125,15 @@ extension ProjectWindowModel {
     }
 
     /// Promotes a local entry to a GitHub issue — only ever on request, never because a remote appeared. The
-    /// door reads the file itself, so the issue carries the whole entry rather than a one-line summary of it.
-    /// When the run reports its number, `FiledWorkHook` moves the file to `filed/`.
+    /// door reads the file itself, so the issue carries the whole entry rather than a one-line summary of it, and
+    /// the card's labels (ADR 0059). When the run reports its number, `FiledWorkHook` moves the file to `filed/`.
     @discardableResult
     func promoteLocalItem(_ task: DeskTask, jobs: JobRegistry?, agent: String) -> String? {
         guard localBacklogReason == nil, let jobs, case .local(let path) = ref,
               let item = localBacklogItem(for: task), item.issue == nil else { return nil }
         if let existing = jobs.job(subject: task.id, in: path), existing.state.isLive { return existing.id }
-        let file = "\(LocalBacklog.folder)/\(item.id).md"
         return jobs.start(door: "create-issue", title: "File \(item.title)", agent: agent,
-                          arguments: ["\(item.title). The full description is in \(file); file it as written, and report the issue URL."],
+                          arguments: [LocalBacklog.promotionRequest(for: item)],
                           permission: .everything, directory: path, subject: task.id,
                           mode: RunModeChoice.current(for: ref))
     }

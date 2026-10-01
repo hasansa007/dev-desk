@@ -33,7 +33,6 @@ final class LocalBacklogTests: XCTestCase {
         XCTAssertFalse(items[0].body.hasPrefix("# "), "the title is the card's header, not the body's first line")
     }
 
-    /// A second press of the same button must not replace what the first one wrote.
     /// What a findings run writes: the labels an issue would carry, a priority line, and its place in the run.
     func testLabelsPriorityAndOrderAreReadSoALocalCardFiltersLikeAnIssue() {
         let text = "---\nkey: C1\ntitle: Phone search\npriority: P1\nlabels: bug, search, security, impact:high\norder: 4 of 6 · G2 2 of 3\n---\n\nbody"
@@ -43,6 +42,46 @@ final class LocalBacklogTests: XCTestCase {
         XCTAssertNil(LocalBacklog.parse("---\nkey: C2\ntitle: t\n---\n", id: "c2", path: "/p/c2.md").order)
     }
 
+    /// A card with none of them reads as an unlabelled issue does: no priority, a Feature, no tags.
+    func testACardWithNoLabelsOrPriorityHasNone() {
+        let item = LocalBacklog.parse("---\nkey: C2\ntitle: t\npriority: urgent\n---\n", id: "c2", path: "/p/c2.md")
+        XCTAssertEqual(item.labels, [], "a priority outside P0–P3 is not a priority label")
+    }
+
+    /// The CallApp cards (2026-09-16) say `type: bug` and no `labels:` line; without folding the type in they read
+    /// as Features under the Type filter.
+    func testTypeBugOrEpicJoinsTheLabels() {
+        let bug = LocalBacklog.parse("---\nkey: C1\ntitle: t\ntype: bug\npriority: P2\nissue: null\n---\n", id: "c1", path: "/p/c1.md")
+        XCTAssertEqual(bug.labels, ["bug", "P2"])
+        XCTAssertNil(bug.issue, "`null` is no issue")
+        let feature = LocalBacklog.parse("---\nkey: C3\ntitle: t\ntype: feature\nlabels: bug\n---\n", id: "c3", path: "/p/c3.md")
+        XCTAssertEqual(feature.labels, ["bug"], "only bug and epic change the kind, and a label already there is not repeated")
+    }
+
+    /// The app writes the same two lines a findings run does, and reads them back as the card's labels.
+    func testLabelsAndPriorityAreWrittenAndReadBack() throws {
+        let path = try LocalBacklog.write(projectPath: root.path, key: "C1", title: "Phone search", body: "b",
+                                          labels: ["bug", "search", "P1"], priority: "P1")
+        let text = try String(contentsOfFile: path, encoding: .utf8)
+        XCTAssertTrue(text.contains("\npriority: P1\n"), text)
+        XCTAssertTrue(text.contains("\nlabels: bug, search\n"), "the priority has its own line, not a second copy: \(text)")
+        XCTAssertEqual(LocalBacklog.read(projectPath: root.path).first?.labels, ["bug", "search", "P1"])
+        let bare = try String(contentsOfFile: LocalBacklog.write(projectPath: root.path, key: "C2", title: "Bare", body: "b"), encoding: .utf8)
+        XCTAssertFalse(bare.contains("labels:") || bare.contains("priority:"), "nothing is written for a card with neither")
+    }
+
+    /// File on GitHub asks for the card's labels as real labels, and for a missing one to be offered (ADR 0020).
+    func testPromotionAsksForTheCardsLabels() {
+        let item = BacklogItem(id: "c1", key: "C1", title: "Phone search", labels: ["bug", "P1"], body: "", path: "/p/docs/backlog/c1.md")
+        let request = LocalBacklog.promotionRequest(for: item)
+        XCTAssertTrue(request.hasPrefix("Phone search. The full description is in docs/backlog/c1.md"), request)
+        XCTAssertTrue(request.contains("labels: bug, P1"), request)
+        XCTAssertTrue(request.contains("never create"), request)
+        let unlabelled = LocalBacklog.promotionRequest(for: BacklogItem(id: "c2", key: "", title: "T", body: "", path: "/p/c2.md"))
+        XCTAssertFalse(unlabelled.contains("labels"), unlabelled)
+    }
+
+    /// A second press of the same button must not replace what the first one wrote.
     func testFilingTheSameItemTwiceKeepsTheFirst() throws {
         let first = try LocalBacklog.write(projectPath: root.path, key: "C1", title: "Same", body: "original")
         let second = try LocalBacklog.write(projectPath: root.path, key: "C1", title: "Same", body: "replacement")
@@ -131,5 +170,9 @@ final class LocalBacklogTests: XCTestCase {
         XCTAssertFalse(draft.body.contains("^[@]"), draft.body)
         XCTAssertTrue(draft.body.contains("- `MainScreen.swift:39`"), draft.body)
         XCTAssertEqual(draft.area, "UI")
+        var defect = finding; defect.kind = .defect
+        XCTAssertEqual(defect.backlogDraft.labels, ["bug"], "a defect is filed as the bug it is")
+        var architecture = finding; architecture.kind = .architecture
+        XCTAssertEqual(architecture.backlogDraft.labels, [])
     }
 }

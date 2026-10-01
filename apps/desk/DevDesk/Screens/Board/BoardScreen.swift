@@ -76,6 +76,13 @@ struct BoardScreen: View {
         func count(_ milestone: String?) -> String {
             "\(model.tasks.filter { $0.issueNumber != nil && $0.column != .done && $0.milestone == milestone && filter.matches($0) }.count)"
         }
+        // ADR 0058: `docs/backlog/` cards belong to no milestone, so they wait in an entry of their own beside
+        // No milestone. Listed while any is open, or while it is selected so it cannot vanish under you.
+        let localOpen = model.tasks.filter { $0.isLocalBacklog && $0.column != .done && filter.matches($0) }.count
+        let hasLocal = model.tasks.contains { $0.isLocalBacklog && $0.column != .done } || keys.contains(TaskFilter.localBacklog)
+        let local = hasLocal ? [FilterOption(id: TaskFilter.localBacklog, label: "Local backlog",
+                                             isOn: keys.contains(TaskFilter.localBacklog), count: "\(localOpen)",
+                                             help: "Cards in \(LocalBacklog.folder)/ — filed with no tracker to file into")] : []
         let options = rows.map { row -> FilterOption in
             guard let title = row.title else {
                 return FilterOption(id: TaskFilter.noMilestone, label: "No milestone", isOn: keys.contains(TaskFilter.noMilestone),
@@ -87,10 +94,18 @@ struct BoardScreen: View {
                                     Task { await model.moveToTopOfPlan(title) }
                                 }])
         }
-        return FilterGroup(key: "work.milestone", title: "Milestone", kind: .filter, options: options,
+        return FilterGroup(key: "work.milestone", title: "Milestone", kind: .filter, options: options + local,
                            toggle: { model.toggleWorkMilestone($0) }, guide: WorkGuides.milestone,
                            accessory: AnyView(DoorRunControl(model: model, door: "roadmap", title: "Run roadmap", size: .small)),
                            maxLabelWidth: 190)
+    }
+
+    private static func chipName(_ key: String) -> String {
+        switch key {
+        case TaskFilter.noMilestone: return "No milestone"
+        case TaskFilter.localBacklog: return "Local backlog"
+        default: return shortName(key)
+        }
     }
 
     /// "Money integrity — nothing billed…" → "Money integrity": the part before the dash names it; hover has the rest.
@@ -128,8 +143,9 @@ struct BoardScreen: View {
         switch model.effectiveWorkScope {
         case .all: return "All milestones"
         case .noMilestone: return "No milestone"
+        case .localBacklog: return "Local backlog"
         case .milestone(let title): return title
-        case .several(let keys): return keys.map { $0 == TaskFilter.noMilestone ? "No milestone" : Self.shortName($0) }.sorted().joined(separator: ", ")
+        case .several(let keys): return keys.map(Self.chipName).sorted().joined(separator: ", ")
         }
     }
 
@@ -137,7 +153,11 @@ struct BoardScreen: View {
         let rows = model.milestoneRows
         switch model.effectiveWorkScope {
         case .all:
+            // With no tracker there are no milestones to name, and the open work is the local cards.
+            guard !rows.isEmpty else { return "All tasks · \(model.workFilterTally.total) open" }
             return "All milestones · \(rows.reduce(0) { $0 + $1.tasks.count }) open"
+        case .localBacklog:
+            return "Local backlog · \(model.workFilterTally.total) open"
         case .noMilestone:
             return "No milestone · \(rows.first { $0.title == nil }?.tasks.count ?? 0) open"
         case .milestone(let title):
